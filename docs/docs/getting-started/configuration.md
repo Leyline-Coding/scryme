@@ -12,11 +12,28 @@ with `SCRYME_`.
 | `SCRYME_PORT` | `8080` | Host port for the web UI (nginx) |
 | `SCRYME_READ_ONLY` | `false` | Demo mode — disables uploads/admin mutations and shows a banner |
 
-## Backend variables
+## Database variables
+
+Provide the connection as **discrete parts** (recommended) and scryme assembles the URL with the
+password URL-encoded — so the password may safely contain `@`, `:`, `/`, and other special
+characters. Alternatively, set `SCRYME_DATABASE_URL` directly to override the parts.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `SCRYME_DATABASE_URL` | `postgresql+asyncpg://scryme:scryme@postgres:5432/scryme` | Async database URL |
+| `SCRYME_DB_HOST` | `localhost` | Database host |
+| `SCRYME_DB_PORT` | `5432` | Database port |
+| `SCRYME_DB_USER` | `scryme` | Database user |
+| `SCRYME_DB_PASSWORD` | `scryme` | Database password (any characters; encoded automatically) |
+| `SCRYME_DB_NAME` | `scryme` | Database name |
+| `SCRYME_DATABASE_URL` | *(assembled)* | Full async URL; overrides the parts above when set |
+
+The bundled `docker-compose.yml` already wires these to the `postgres` service using
+`POSTGRES_PASSWORD`.
+
+## Other backend variables
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
 | `SCRYME_DATA_DIR` | `/data` | Where bulk files and the image cache live |
 | `SCRYME_IMAGE_CACHE_DIR` | `/data/images` | Cached card images directory (served at `/images`) |
 | `SCRYME_BULK_REFRESH_MIN_HOURS` | `24` | Minimum hours between Scryfall bulk re-downloads |

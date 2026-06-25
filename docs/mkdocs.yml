@@ -44,6 +44,7 @@ theme:
 markdown_extensions:
   - admonition
   - attr_list
+  - md_in_html  # required (with attr_list) for Material "grid cards"
   - def_list
   - footnotes
   - tables
@@ -65,6 +66,7 @@ nav:
   - Getting Started:
       - Self-Hosting: getting-started/self-hosting.md
       - Configuration: getting-started/configuration.md
+      - Deploy on Kubernetes: getting-started/kubernetes.md
       - Public Demo: getting-started/demo.md
   - Importing Collections:
       - Overview: import/overview.md

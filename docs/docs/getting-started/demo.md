@@ -1,9 +1,14 @@
 # Public Demo
 
-You can run a shared, read-only instance — useful for showing scryme off without letting visitors
-modify the collection.
+A shared, read-only instance is useful for showing scryme off without letting visitors modify the
+collection. The official public demo is live at **[demo.scryme.app](https://demo.scryme.app)** —
+read-only, with a sample collection over the full Scryfall card database.
 
-## Steps
+The official demo runs on Kubernetes (k3s) behind a Cloudflare Tunnel; see
+[Deploy on Kubernetes](kubernetes.md) for those manifests. The steps below set up the same
+read-only experience with Docker Compose.
+
+## Steps (Docker Compose)
 
 1. Start the stack and ingest card data:
 

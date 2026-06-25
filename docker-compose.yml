@@ -21,7 +21,11 @@ services:
       dockerfile: Dockerfile
     environment:
       SCRYME_ENVIRONMENT: production
-      SCRYME_DATABASE_URL: postgresql+asyncpg://scryme:${POSTGRES_PASSWORD:-scryme}@postgres:5432/scryme
+      # Pass the password as a discrete part; the app URL-encodes it, so it can contain @ : / etc.
+      SCRYME_DB_HOST: postgres
+      SCRYME_DB_USER: scryme
+      SCRYME_DB_NAME: scryme
+      SCRYME_DB_PASSWORD: ${POSTGRES_PASSWORD:-scryme}
       SCRYME_DATA_DIR: /data
       SCRYME_IMAGE_CACHE_DIR: /data/images
       SCRYME_READ_ONLY: ${SCRYME_READ_ONLY:-false}

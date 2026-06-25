@@ -6,7 +6,9 @@ there is no authentication or per-user configuration here.
 
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import quote
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src import __version__
@@ -18,8 +20,24 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = False
 
-    # PostgreSQL (async driver). Override via SCRYME_DATABASE_URL.
-    database_url: str = "postgresql+asyncpg://scryme:scryme@localhost:5432/scryme"
+    # PostgreSQL (async driver). Set SCRYME_DATABASE_URL directly, or provide the parts below and
+    # the URL is assembled with the password URL-encoded (so passwords may contain @ : / etc.).
+    database_url: str = ""
+    db_host: str = "localhost"
+    db_port: int = 5432
+    db_user: str = "scryme"
+    db_password: str = "scryme"
+    db_name: str = "scryme"
+
+    @model_validator(mode="after")
+    def _assemble_database_url(self) -> "Settings":
+        if not self.database_url:
+            password = quote(self.db_password, safe="")
+            self.database_url = (
+                f"postgresql+asyncpg://{self.db_user}:{password}"
+                f"@{self.db_host}:{self.db_port}/{self.db_name}"
+            )
+        return self
 
     # Where downloaded Scryfall bulk files and cached card images live on disk.
     data_dir: Path = Path("/data")

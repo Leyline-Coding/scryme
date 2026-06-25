@@ -8,7 +8,7 @@ Cloudflare Tunnel at **demo.scryme.app**.
 | File | Purpose |
 | --- | --- |
 | `namespace.yaml` | `scryme-demo` namespace |
-| `secret.example.yaml` | template for the DB password + app DB URL (copy to `secret.yaml`) |
+| `secret.example.yaml` | template holding the single DB password (copy to `secret.yaml`) |
 | `postgres.yaml` | PostgreSQL Deployment + PVC + Service |
 | `backend.yaml` | scryme Deployment (GHCR image) + data PVC + Service + ConfigMap |
 | `kustomization.yaml` | bundles namespace + postgres + backend |
@@ -46,10 +46,10 @@ The deployment references an `imagePullSecret` named `ghcr-pull`. You have two o
 ## Deploy
 
 ```bash
-# 1. Create the namespace + app/DB secret (do NOT commit secret.yaml)
+# 1. Create the namespace + DB secret (do NOT commit secret.yaml)
 kubectl apply -f namespace.yaml
 cp secret.example.yaml secret.yaml
-$EDITOR secret.yaml            # set a real password in both fields
+$EDITOR secret.yaml            # set a real POSTGRES_PASSWORD
 kubectl apply -f secret.yaml
 
 # 1b. If the GHCR package is private, create the pull secret (see above)
@@ -87,3 +87,18 @@ images:
 ```bash
 kubectl -n scryme-demo rollout restart deploy/scryme-demo   # reruns ingest (guarded) + seed
 ```
+
+## Troubleshooting
+
+**`password authentication failed for user "scryme"`** — PostgreSQL sets the password only when it
+**first initializes** its data directory. If the `scryme-demo-postgres-data` PVC was created during
+an earlier attempt with a different password, changing the secret afterward has no effect. Reset
+the database volume (this deletes only demo data) and redeploy:
+
+```bash
+kubectl -n scryme-demo delete deploy scryme-demo scryme-demo-postgres
+kubectl -n scryme-demo delete pvc scryme-demo-postgres-data scryme-demo-data
+kubectl apply -f secret.yaml
+kubectl apply -k .
+```
+

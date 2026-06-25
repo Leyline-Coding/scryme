@@ -27,13 +27,30 @@ docker compose up -d
 On first run the collection is empty, so the home page shows an upload prompt. After importing a
 collection it becomes a Scryfall-style search bar.
 
+After starting, ingest card data and (optionally) cache images:
+
+```bash
+docker compose exec backend python -m src.cli ingest          # ~550 MB Scryfall bulk file
+docker compose exec backend python -m src.cli backfill-images # cache images for owned cards
+```
+
 ### Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `POSTGRES_PASSWORD` | `scryme` | Database password |
 | `SCRYME_PORT` | `8080` | Host port for the web UI |
-| `SCRYME_READ_ONLY` | `false` | Demo mode — disables uploads/mutations |
+| `SCRYME_READ_ONLY` | `false` | Demo mode — disables uploads/mutations and shows a banner |
+
+### Public demo
+
+Ingest cards, seed a sample collection, then run read-only:
+
+```bash
+docker compose exec backend python -m src.cli ingest
+docker compose exec backend python -m src.cli seed-demo --limit 60
+SCRYME_READ_ONLY=true docker compose up -d
+```
 
 ## Development
 

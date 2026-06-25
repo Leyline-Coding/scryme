@@ -68,9 +68,10 @@ python -m src.cli backfill-images          # cache images for owned cards
 `lexer` → `parser` (AST) → `compiler` (SQLAlchemy over `cards`) → `engine.run_search`.
 Supported filters: name, `o:`/oracle, `t:`/type, `c:`/color, `id:`/identity, `m:`/mana,
 `mv`/`cmc`, `pow`/`tou`/`loy`, `r:`/rarity, `s:`/set, `cn:`, `is:`, `f:`/format, `usd`/`eur`/`tix`,
-`lang`, `kw:`, `year`/`date`, `layout`, `a:`/artist; boolean `OR`/`AND`/`-`/parentheses; `/regex/`
-(Postgres `~*`, text fields only). `:` means `=` for numeric fields. Unknown keywords raise
-`SearchError`. Default scope is the owned collection; `scope=all` searches every card.
+`lang`, `kw:`, `year`/`date`, `layout`, `a:`/artist, `wm:`/watermark, `border:`, `frame:`,
+`game:`, `st:`/set_type, `stamp:`; boolean `OR`/`AND`/`-`/parentheses; `/regex/` (Postgres `~*`,
+text fields only). `:` means `=` for numeric fields. Unknown keywords raise `SearchError`. Default
+scope is the owned collection; `scope=all` searches every card.
 
 ## Collection import (`src/importers/`)
 
@@ -83,7 +84,7 @@ by writing a module in `importers/` with `detect`/`parse` and `@register`, then 
 
 ## Status
 
-Phases 0–4 done: scaffold + CI, Scryfall ingestion + image cache, search engine + HTMX UI, and
-collection upload with ManaBox, Dragon Shield, and Delver Lens parsers (Dragon Shield matches by
-set+collector number; Delver prefers Scryfall ID). Next: Phase 5 polish (mobile, demo seed,
-expanded syntax).
+Phases 0–5 done. Self-hostable: scaffold + CI, Scryfall ingestion + image cache, search engine +
+HTMX UI, collection upload (ManaBox / Dragon Shield / Delver Lens) with the preview→confirm merge
+engine, plus polish (responsive layout + post-upload affordance, `seed-demo` CLI for the read-only
+public demo, and expanded search syntax). The MVP roadmap is complete.

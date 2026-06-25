@@ -41,6 +41,12 @@ FIELD_ALIASES = {
     "year": "year", "date": "date",
     "layout": "layout",
     "a": "artist", "artist": "artist",
+    "wm": "watermark", "watermark": "watermark",
+    "border": "border",
+    "frame": "frame",
+    "game": "game",
+    "st": "set_type", "settype": "set_type",
+    "stamp": "stamp",
 }
 
 _TWO_CHAR_OPS = ("!=", ">=", "<=")

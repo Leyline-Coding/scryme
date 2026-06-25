@@ -35,3 +35,14 @@ def test_cli_backfill(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["scryme", "backfill-images"])
     cli.main()
     assert "Cached 3 new images" in capsys.readouterr().out
+
+
+def test_cli_seed_demo(monkeypatch, capsys):
+    async def fake_seed(limit):
+        assert limit == 5
+        return 5
+
+    monkeypatch.setattr(cli, "seed_demo", fake_seed)
+    monkeypatch.setattr(sys, "argv", ["scryme", "seed-demo", "--limit", "5"])
+    cli.main()
+    assert "Added 5 cards" in capsys.readouterr().out

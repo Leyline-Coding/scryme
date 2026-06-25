@@ -80,6 +80,31 @@ def _artist(term: Term) -> ColumnElement:
     return _text_match(Card.raw["artist"].astext, term)
 
 
+def _watermark(term: Term) -> ColumnElement:
+    return _text_match(Card.raw["watermark"].astext, term)
+
+
+def _border(term: Term) -> ColumnElement:
+    return Card.raw["border_color"].astext == term.value.lower()
+
+
+def _frame(term: Term) -> ColumnElement:
+    return Card.raw["frame"].astext == term.value.lower()
+
+
+def _set_type(term: Term) -> ColumnElement:
+    return Card.raw["set_type"].astext == term.value.lower()
+
+
+def _stamp(term: Term) -> ColumnElement:
+    return Card.raw["security_stamp"].astext == term.value.lower()
+
+
+def _game(term: Term) -> ColumnElement:
+    # Card.raw["games"] is a JSON array like ["paper", "mtgo", "arena"].
+    return Card.raw["games"].contains([term.value.lower()])
+
+
 def _mana(term: Term) -> ColumnElement:
     # Approximate m:: require the cost to contain each requested symbol.
     raw = term.value.lower()
@@ -265,6 +290,12 @@ _HANDLERS: dict[str, Callable[[Term], ColumnElement]] = {
     "tix": _price("tix"),
     "year": _year,
     "date": _date,
+    "watermark": _watermark,
+    "border": _border,
+    "frame": _frame,
+    "set_type": _set_type,
+    "stamp": _stamp,
+    "game": _game,
 }
 
 
@@ -272,7 +303,7 @@ def compile_term(term: Term) -> ColumnElement:
     handler = _HANDLERS.get(term.field)
     if handler is None:  # pragma: no cover - parser already rejects unknown fields
         raise SearchError(f"Unknown filter “{term.field}”.")
-    if term.regex and term.field not in ("name", "oracle", "type", "artist"):
+    if term.regex and term.field not in ("name", "oracle", "type", "artist", "watermark"):
         raise SearchError(f"Regex is not supported for “{term.field}”.")
     return handler(term)
 

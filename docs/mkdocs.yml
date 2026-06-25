@@ -1,0 +1,88 @@
+site_name: scryme Documentation
+site_description: "Self-hostable, Scryfall-style search for your own Magic: The Gathering collection"
+site_author: Taylor Cohron
+site_url: https://docs.scryme.app/
+
+repo_name: untraceablez/scryme
+repo_url: https://github.com/untraceablez/scryme
+edit_uri: edit/main/docs/docs/
+
+dev_addr: '127.0.0.1:8001'
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+    - content.tooltips
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - tables
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.mark
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Self-Hosting: getting-started/self-hosting.md
+      - Configuration: getting-started/configuration.md
+      - Public Demo: getting-started/demo.md
+  - Importing Collections:
+      - Overview: import/overview.md
+      - Supported Formats: import/formats.md
+      - Merge Strategies: import/merge.md
+  - Searching:
+      - Search Syntax: search/syntax.md
+      - Regular Expressions: search/regex.md
+  - Development:
+      - Architecture: development/architecture.md
+      - Contributing: development/contributing.md
+
+plugins:
+  - search
+  - git-revision-date-localized:
+      enable_creation_date: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/untraceablez/scryme

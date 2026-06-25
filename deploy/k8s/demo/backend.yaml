@@ -53,11 +53,14 @@ spec:
             - configMapRef:
                 name: scryme-demo-config
           env:
-            - name: SCRYME_DATABASE_URL
+            # Single source of truth: the URL is built from POSTGRES_PASSWORD so they can't drift.
+            - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: scryme-demo-secrets
-                  key: SCRYME_DATABASE_URL
+                  key: POSTGRES_PASSWORD
+            - name: SCRYME_DATABASE_URL
+              value: "postgresql+asyncpg://scryme:$(POSTGRES_PASSWORD)@scryme-demo-postgres:5432/scryme"
           volumeMounts:
             - name: data
               mountPath: /data
@@ -75,11 +78,13 @@ spec:
             - configMapRef:
                 name: scryme-demo-config
           env:
-            - name: SCRYME_DATABASE_URL
+            - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: scryme-demo-secrets
-                  key: SCRYME_DATABASE_URL
+                  key: POSTGRES_PASSWORD
+            - name: SCRYME_DATABASE_URL
+              value: "postgresql+asyncpg://scryme:$(POSTGRES_PASSWORD)@scryme-demo-postgres:5432/scryme"
           ports:
             - containerPort: 8000
           volumeMounts:

@@ -1,0 +1,14 @@
+# Example ingress rule for an in-cluster cloudflared tunnel.
+#
+# Merge this into your cloudflared config (the `ingress:` list in the tunnel's config.yaml /
+# ConfigMap). The catch-all 404 rule must remain last. Then publish the DNS route once:
+#
+#   cloudflared tunnel route dns <your-tunnel> demo.scryme.app
+#
+# Cloudflare terminates TLS at the edge, so the tunnel can target the Service over plain HTTP.
+
+ingress:
+  - hostname: demo.scryme.app
+    service: http://scryme-demo.scryme-demo.svc.cluster.local:8000
+  # ...your other hostnames...
+  - service: http_status:404

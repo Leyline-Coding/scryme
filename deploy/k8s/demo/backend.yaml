@@ -1,0 +1,128 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: scryme-demo-data
+  namespace: scryme-demo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi  # downloaded bulk file + cached images
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scryme-demo
+  namespace: scryme-demo
+  labels:
+    app: scryme-demo
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # single RWO data volume
+  selector:
+    matchLabels:
+      app: scryme-demo
+  template:
+    metadata:
+      labels:
+        app: scryme-demo
+    spec:
+      # One-time (idempotent) data load: wait for Postgres, migrate, ingest the Scryfall
+      # bulk file, and seed a sample collection. The 24h guard + persistent DB make reruns cheap.
+      initContainers:
+        - name: ingest-and-seed
+          image: ghcr.io/untraceablez/scryme:latest
+          imagePullPolicy: Always
+          workingDir: /app
+          command: ["sh", "-c"]
+          args:
+            - |
+              until python -c "import socket; socket.create_connection(('scryme-demo-postgres', 5432), 3)" 2>/dev/null; do
+                echo "waiting for postgres..."; sleep 2;
+              done
+              alembic upgrade head
+              python -m src.cli ingest
+              python -m src.cli seed-demo --limit 60
+          envFrom:
+            - configMapRef:
+                name: scryme-demo-config
+          env:
+            - name: SCRYME_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scryme-demo-secrets
+                  key: SCRYME_DATABASE_URL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+      containers:
+        - name: scryme
+          image: ghcr.io/untraceablez/scryme:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: scryme-demo-config
+          env:
+            - name: SCRYME_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scryme-demo-secrets
+                  key: SCRYME_DATABASE_URL
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: scryme-demo-data
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scryme-demo-config
+  namespace: scryme-demo
+data:
+  SCRYME_ENVIRONMENT: "production"
+  SCRYME_DATA_DIR: "/data"
+  SCRYME_IMAGE_CACHE_DIR: "/data/images"
+  SCRYME_READ_ONLY: "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scryme-demo
+  namespace: scryme-demo
+spec:
+  selector:
+    app: scryme-demo
+  ports:
+    - port: 8000
+      targetPort: 8000

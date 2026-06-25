@@ -29,6 +29,9 @@ node_modules/
 # MkDocs build output
 docs/site/
 
+# Kubernetes secrets (never commit real credentials)
+deploy/k8s/**/secret.yaml
+
 # Editor / OS
 .idea/
 .vscode/

@@ -29,6 +29,10 @@ spec:
       labels:
         app: scryme-demo
     spec:
+      # The image runs as non-root uid 1000; fsGroup makes the freshly-provisioned /data PVC
+      # group-writable so ingest can download the bulk file and cache images.
+      securityContext:
+        fsGroup: 1000
       # Pull the private GHCR image. Create this secret first (see README); harmless/ignored if
       # the package is public.
       imagePullSecrets:

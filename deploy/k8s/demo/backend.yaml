@@ -29,6 +29,10 @@ spec:
       labels:
         app: scryme-demo
     spec:
+      # Pull the private GHCR image. Create this secret first (see README); harmless/ignored if
+      # the package is public.
+      imagePullSecrets:
+        - name: ghcr-pull
       # One-time (idempotent) data load: wait for Postgres, migrate, ingest the Scryfall
       # bulk file, and seed a sample collection. The 24h guard + persistent DB make reruns cheap.
       initContainers:

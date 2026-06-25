@@ -21,18 +21,38 @@ data volume are persistent, so restarts are fast (the 24h cache guard skips re-d
 
 ## Prerequisites
 
-- A GHCR image: published by the `publish-image` workflow on release/tag. Make the
-  `ghcr.io/untraceablez/scryme` package **public**, or add an `imagePullSecret` to the deployment.
+- A GHCR image: published by the `publish-image` workflow on release/tag.
 - An in-cluster `cloudflared` tunnel.
 - A default StorageClass that supports `ReadWriteOnce` (k3s `local-path` works).
+
+## Pulling the image from GHCR
+
+The deployment references an `imagePullSecret` named `ghcr-pull`. You have two options:
+
+- **Make the package public** (no secret needed): on the package page
+  `github.com/users/untraceablez/packages/container/scryme` → **Package settings** → Danger Zone →
+  *Change visibility* → Public. The `imagePullSecrets` entry is then harmlessly ignored.
+- **Use a pull secret** (works while the package is private). Create a
+  [classic PAT](https://github.com/settings/tokens) with **`read:packages`** scope, then:
+
+    ```bash
+    kubectl -n scryme-demo create secret docker-registry ghcr-pull \
+      --docker-server=ghcr.io \
+      --docker-username=untraceablez \
+      --docker-password=<YOUR_PAT> \
+      --docker-email=you@example.com
+    ```
 
 ## Deploy
 
 ```bash
-# 1. Create the secret (do NOT commit it)
+# 1. Create the namespace + app/DB secret (do NOT commit secret.yaml)
+kubectl apply -f namespace.yaml
 cp secret.example.yaml secret.yaml
 $EDITOR secret.yaml            # set a real password in both fields
 kubectl apply -f secret.yaml
+
+# 1b. If the GHCR package is private, create the pull secret (see above)
 
 # 2. Deploy the stack
 kubectl apply -k .

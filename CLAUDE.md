@@ -54,7 +54,17 @@ cd backend && alembic revision --autogenerate -m "msg" && alembic upgrade head
 - Never commit personal collection data. `tests/fixtures/*_full.csv` is gitignored; commit only
   small redacted `*_sample.csv` fixtures.
 
+## Operational commands
+
+```bash
+# Ingest the Scryfall Default Cards bulk file (honors the 24h cache guard; --force overrides)
+python -m src.cli ingest [--force]
+python -m src.cli backfill-images          # cache images for owned cards
+# or via HTTP:  POST /admin/ingest   GET /admin/status
+```
+
 ## Status
 
-Phased build (see `/home/untraceablez/.claude/plans/...` plan): Phase 0 scaffold + CI is in
-progress on `feat/scaffold`. Later phases: Scryfall ingestion, search engine, uploads/merge.
+Phased build: Phase 0 (scaffold + CI) and Phase 1 (Scryfall ingestion + image cache) are done.
+`src/scryfall/` holds the policy-compliant client, bulk ingest, and image cache; the daily
+refresh runs in-process via APScheduler (`src/scheduler.py`). Next: Phase 2 search engine.

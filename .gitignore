@@ -26,6 +26,9 @@ tests/fixtures/*_full.csv
 # Node (only used for optional Tailwind build)
 node_modules/
 
+# MkDocs build output
+docs/site/
+
 # Editor / OS
 .idea/
 .vscode/

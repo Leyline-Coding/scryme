@@ -1,0 +1,41 @@
+# scryme
+
+**scryme** is a self-hostable, [Scryfall](https://scryfall.com)-style search engine for **your
+own** Magic: The Gathering collection. Upload an export from ManaBox, Dragon Shield, or Delver
+Lens, then search it with Scryfall syntax and regular expressions.
+
+## Highlights
+
+- 🔎 **Scryfall-compatible search** with regex — scoped to your collection or all cards.
+- 📥 **Collection import** from ManaBox, Dragon Shield, and Delver Lens, with a preview step and
+  **replace / increment / per-card** merge strategies.
+- 🗃️ **Local card database + image cache** built from Scryfall bulk data — works offline and stays
+  within [Scryfall's API policy](https://scryfall.com/docs/api).
+- 🐳 **Self-hostable via Docker**, with an optional read-only public demo.
+
+## Quick start
+
+```bash
+docker compose up -d
+docker compose exec backend python -m src.cli ingest   # download the Scryfall bulk file
+# open http://localhost:8080
+```
+
+The home page starts as an upload prompt. After you import a collection it becomes a
+Scryfall-style search bar.
+
+## Where to next
+
+<div class="grid cards" markdown>
+
+- :material-rocket-launch: **[Self-Hosting](getting-started/self-hosting.md)** — run scryme with Docker.
+- :material-upload: **[Importing Collections](import/overview.md)** — supported formats and merge behavior.
+- :material-magnify: **[Search Syntax](search/syntax.md)** — every supported filter.
+- :material-code-braces: **[Architecture](development/architecture.md)** — how it's built.
+
+</div>
+
+!!! note "Fan content"
+    Card data and images come from [Scryfall](https://scryfall.com). scryme is unofficial Fan
+    Content permitted under the Wizards of the Coast Fan Content Policy and is not affiliated with
+    or endorsed by Wizards of the Coast or Scryfall.

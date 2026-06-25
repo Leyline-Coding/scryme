@@ -72,7 +72,16 @@ Supported filters: name, `o:`/oracle, `t:`/type, `c:`/color, `id:`/identity, `m:
 (Postgres `~*`, text fields only). `:` means `=` for numeric fields. Unknown keywords raise
 `SearchError`. Default scope is the owned collection; `scope=all` searches every card.
 
+## Collection import (`src/importers/`)
+
+Two-phase upload: `service.stage_upload` detects the format (`base` registry), parses to
+`ImportRow`s, matches each to a card (`matching`: Scryfall ID → set+number → name → unmatched),
+and stages the result in `import_staging`; `service.confirm_upload` applies a `MergeStrategy`
+(replace / increment / per_card) via `merge.apply_merge` and clears the staging row. Add a parser
+by writing a module in `importers/` with `detect`/`parse` and `@register`, then import it in
+`importers/__init__.py`. Routes: `/upload` (form + preview), `/upload/confirm`.
+
 ## Status
 
-Phases 0–2 done: scaffold + CI, Scryfall ingestion + image cache, and the search engine + HTMX
-UI (`/search`, live results grid with a collection/all toggle). Next: Phase 3 collection upload.
+Phases 0–3 done: scaffold + CI, Scryfall ingestion + image cache, search engine + HTMX UI, and
+ManaBox upload with the preview→confirm merge engine. Next: Phase 4 Dragon Shield + Delver parsers.

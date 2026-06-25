@@ -1,7 +1,8 @@
 """FastAPI application entrypoint.
 
-Wires templates, static files, and routers. Feature routers (search, upload, images) are
-added in later phases; Phase 0 ships the app skeleton, health check, and home page.
+Wires templates, static files, and routers. Feature routers (search, upload) are added in
+later phases; this build ships the app skeleton, health/home/admin routes, and the scheduled
+Scryfall bulk refresh.
 """
 
 from contextlib import asynccontextmanager
@@ -12,7 +13,8 @@ from fastapi.staticfiles import StaticFiles
 
 from src import __version__
 from src.config import get_settings
-from src.routes import health, home
+from src.routes import admin, health, home
+from src.scheduler import shutdown_scheduler, start_scheduler
 from src.templating import STATIC_DIR
 
 log = structlog.get_logger()
@@ -23,7 +25,11 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     settings.image_cache_dir.mkdir(parents=True, exist_ok=True)
     log.info("scryme.startup", version=__version__, environment=settings.environment)
+    # The daily bulk refresh runs in-process. Skip it under tests and in read-only demos.
+    if settings.environment != "test" and not settings.read_only:
+        start_scheduler(refresh_hours=max(1, settings.bulk_refresh_min_hours))
     yield
+    shutdown_scheduler()
     log.info("scryme.shutdown")
 
 
@@ -35,6 +41,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(home.router)
+    app.include_router(admin.router)
 
     # Cached card images are served from the data volume.
     settings.image_cache_dir.mkdir(parents=True, exist_ok=True)

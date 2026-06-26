@@ -55,6 +55,7 @@ async def _clean_tables():
     async with engine.begin() as conn:
         await conn.execute(text("TRUNCATE collection_card RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE saved_search RESTART IDENTITY CASCADE"))
+        await conn.execute(text("TRUNCATE deck RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE cards CASCADE"))
 
 

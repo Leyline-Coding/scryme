@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}New deck · scryme{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-6">
+    <a href="/" class="text-2xl font-bold tracking-tight shrink-0">
+      <span class="text-accent">scry</span>me
+    </a>
+    <h1 class="text-lg font-semibold">New deck</h1>
+    <a href="/decks" class="ml-auto text-sm text-muted hover:text-fg">Decks →</a>
+  </header>
+
+  <form action="/decks" method="post" class="space-y-4">
+    <label class="block">
+      <span class="text-sm">Deck name</span>
+      <input type="text" name="name" placeholder="e.g. Mono-Red Aggro"
+        class="mt-1 w-full rounded-lg bg-surface border border-edge px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
+    </label>
+    <label class="block">
+      <span class="text-sm">Decklist</span>
+      <textarea name="decklist" rows="14" required placeholder="4 Lightning Bolt&#10;4 Monastery Swiftspear&#10;20 Mountain&#10;&#10;Sideboard&#10;2 Smash to Smithereens"
+        class="mt-1 w-full rounded-lg bg-surface border border-edge px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-accent"></textarea>
+      <span class="mt-1 block text-xs text-muted">
+        One card per line: <code>4 Lightning Bolt</code>. A <code>Sideboard</code> line starts the
+        sideboard. <code>(SET) 123</code> suffixes are ignored.
+      </span>
+    </label>
+    <div class="flex gap-3">
+      <button type="submit" class="rounded-lg bg-accent text-accent-fg px-5 py-2.5 font-medium hover:opacity-90">
+        Create deck
+      </button>
+      <a href="/decks" class="rounded-lg px-5 py-2.5 text-muted hover:text-fg">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

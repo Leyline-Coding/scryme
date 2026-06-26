@@ -796,6 +796,8 @@
       
         
       
+        
+      
     
     
     
@@ -904,6 +906,27 @@
   
   <span class="md-ellipsis">
     Collection Stats
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/prices/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Price History
   </span>
   
 
@@ -1261,6 +1284,8 @@ Jinja2 + HTMX + Tailwind. There is no separate single-page app.</p>
 <li><strong><code>import_staging</code></strong> — holds a parsed, matched upload between preview and confirm.</li>
 <li><strong><code>saved_search</code></strong> — named queries (query + scope + sort + direction).</li>
 <li><strong><code>deck</code> / <code>deck_card</code></strong> — decks and their lines, matched to the collection by oracle id.</li>
+<li><strong><code>price_snapshot</code> / <code>card_price_point</code></strong> — periodic collection-value snapshots + per-card prices
+  for the price-history page.</li>
 </ul>
 <h2 id="backend-modules-backendsrc">Backend modules (<code>backend/src/</code>)</h2>
 <table>
@@ -1292,12 +1317,16 @@ Jinja2 + HTMX + Tailwind. There is no separate single-page app.</p>
 <td>Owned-collection aggregates for the stats dashboard</td>
 </tr>
 <tr>
+<td><code>prices.py</code></td>
+<td>Price snapshots, value-over-time series, biggest movers</td>
+</tr>
+<tr>
 <td><code>symbols.py</code></td>
 <td>Render <code>{…}</code> mana tokens and set symbols via the Mana/Keyrune fonts</td>
 </tr>
 <tr>
 <td><code>routes/</code></td>
-<td><code>health</code>, <code>home</code>, <code>search</code>, <code>card</code>, <code>upload</code>, <code>export</code>, <code>saved</code>, <code>stats</code>, <code>decks</code>, <code>binders</code>, <code>admin</code></td>
+<td><code>health</code>, <code>home</code>, <code>search</code>, <code>card</code>, <code>upload</code>, <code>export</code>, <code>saved</code>, <code>stats</code>, <code>prices</code>, <code>decks</code>, <code>binders</code>, <code>admin</code></td>
 </tr>
 <tr>
 <td><code>scheduler.py</code></td>

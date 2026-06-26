@@ -6,6 +6,37 @@
  * optional custom accent are stored in localStorage and applied before paint (see base.html).
  */
 
+/* MTG-flavored card typography: Cinzel (titles) + EB Garamond (body), both SIL OFL.
+ * Vendored under static/vendor/fonts (see that NOTICE). Exposed as `font-title` / `font-card`. */
+@font-face {
+  font-family: "Cinzel";
+  src: url("/static/vendor/fonts/cinzel-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cinzel";
+  src: url("/static/vendor/fonts/cinzel-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "EB Garamond";
+  src: url("/static/vendor/fonts/ebgaramond-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "EB Garamond";
+  src: url("/static/vendor/fonts/ebgaramond-400-italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
 :root,
 [data-theme="midnight"] {
   color-scheme: dark;

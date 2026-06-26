@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Stats · scryme{% endblock %}
+
+{% macro bars(group) %}
+  {% set m = (group | map(attribute='count') | max) or 1 %}
+  <div class="space-y-1.5">
+    {% for b in group %}
+    <div class="flex items-center gap-2 text-sm">
+      <span class="w-28 shrink-0 truncate capitalize" title="{{ b.label }}">{{ b.label }}</span>
+      <div class="flex-1 bg-surface-2 rounded h-4 overflow-hidden">
+        <div class="h-full bg-accent rounded" style="width: {{ (b.count / m * 100) | round(1) }}%"></div>
+      </div>
+      <span class="w-14 text-right text-muted tabular-nums">{{ '{:,}'.format(b.count) }}</span>
+    </div>
+    {% endfor %}
+  </div>
+{% endmacro %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-6">
+    <a href="/" class="text-2xl font-bold tracking-tight shrink-0">
+      <span class="text-accent">scry</span>me
+    </a>
+    <h1 class="text-lg font-semibold">Collection stats</h1>
+    <a href="/search" class="ml-auto text-sm text-muted hover:text-fg">Search →</a>
+  </header>
+
+  {% if stats.is_empty %}
+  <div class="text-muted py-16 text-center">
+    No collection yet. <a href="/upload" class="underline">Upload one</a> to see insights.
+  </div>
+  {% else %}
+
+  {# Summary tiles #}
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+    <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <div class="text-xs text-muted">Total cards</div>
+      <div class="text-2xl font-bold">{{ '{:,}'.format(stats.total_cards) }}</div>
+    </div>
+    <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <div class="text-xs text-muted">Printings</div>
+      <div class="text-2xl font-bold">{{ '{:,}'.format(stats.printings) }}</div>
+    </div>
+    <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <div class="text-xs text-muted">Distinct cards</div>
+      <div class="text-2xl font-bold">{{ '{:,}'.format(stats.distinct_cards) }}</div>
+    </div>
+    <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <div class="text-xs text-muted">Est. value (USD)</div>
+      <div class="text-2xl font-bold">${{ '{:,.2f}'.format(stats.total_value) }}</div>
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-6">
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <h2 class="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Colors</h2>
+      {{ bars(stats.by_color) }}
+    </section>
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <h2 class="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Rarity</h2>
+      {{ bars(stats.by_rarity) }}
+    </section>
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <h2 class="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Card types</h2>
+      {{ bars(stats.by_type) }}
+    </section>
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <h2 class="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Mana curve</h2>
+      {{ bars(stats.mana_curve) }}
+    </section>
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <h2 class="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Top sets</h2>
+      {{ bars(stats.by_set) }}
+    </section>
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <h2 class="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Most valuable</h2>
+      <ol class="space-y-1.5 text-sm">
+        {% for v in stats.most_valuable %}
+        <li class="flex items-center gap-2">
+          <a href="/card/{{ v.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">
+            {{ v.name }} <span class="text-muted uppercase text-xs">{{ v.set_code }}</span>
+          </a>
+          <span class="text-right text-muted tabular-nums">${{ '{:,.2f}'.format(v.usd) }}</span>
+        </li>
+        {% endfor %}
+      </ol>
+    </section>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src import __version__
 from src.config import get_settings
-from src.routes import admin, card, export, health, home, saved, search, upload
+from src.routes import admin, card, export, health, home, saved, search, stats, upload
 from src.scheduler import shutdown_scheduler, start_scheduler
 from src.templating import STATIC_DIR
 
@@ -47,6 +47,7 @@ def create_app() -> FastAPI:
     app.include_router(card.router)
     app.include_router(export.router)
     app.include_router(saved.router)
+    app.include_router(stats.router)
 
     # Cached card images are served from the data volume.
     settings.image_cache_dir.mkdir(parents=True, exist_ok=True)

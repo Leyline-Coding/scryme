@@ -13,8 +13,10 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import get_settings
 from src.db import get_session
 from src.models import Card
+from src.routes.saved import list_saved
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
 from src.search import SearchError, SearchScope
@@ -72,7 +74,12 @@ async def search(
     except SearchError as exc:
         ctx["error"] = str(exc)
 
-    # HTMX swaps just the results; a normal navigation gets the whole page.
+    # HTMX swaps just the results; a normal navigation gets the whole page (with the saved-search
+    # menu + read-only flag, which the partial doesn't render).
     is_htmx = request.headers.get("HX-Request") == "true"
-    template = "search_results.html" if is_htmx else "search.html"
-    return templates.TemplateResponse(request, template, ctx)
+    if is_htmx:
+        return templates.TemplateResponse(request, "search_results.html", ctx)
+
+    ctx["saved_searches"] = await list_saved(session)
+    ctx["read_only"] = get_settings().read_only
+    return templates.TemplateResponse(request, "search.html", ctx)

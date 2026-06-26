@@ -3,6 +3,7 @@
 from src.models.card import Card
 from src.models.collection import CollectionCard
 from src.models.ingest import IngestState
+from src.models.saved_search import SavedSearch
 from src.models.staging import ImportStaging
 
-__all__ = ["Card", "CollectionCard", "IngestState", "ImportStaging"]
+__all__ = ["Card", "CollectionCard", "IngestState", "ImportStaging", "SavedSearch"]

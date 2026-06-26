@@ -12,6 +12,7 @@ Lens, then search it with Scryfall syntax and regular expressions.
 - 🃏 **Rich card pages** — full oracle text, prices, legalities, printings, rulings, and real
   **mana & set symbols**.
 - 🧰 **Collection tools** — a **[stats dashboard](features/stats.md)**,
+  **[price history](features/prices.md)** (value over time + movers),
   **[decks](features/decks.md)** with ownership coverage and legality checks, and
   **[binder](features/binders.md)** browsing.
 - 📥 **Collection import** from ManaBox, Dragon Shield, and Delver Lens, with a preview step and

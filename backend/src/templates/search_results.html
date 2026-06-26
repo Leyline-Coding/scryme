@@ -28,7 +28,9 @@
                    font-semibold px-2 py-0.5 shadow">×{{ v.quantity }}</span>
       {% endif %}
       <div class="px-2 py-1 text-xs truncate text-fg">
-        {{ v.card.name }} <span class="text-muted uppercase">{{ v.card.set_code }}</span>
+        {{ v.card.name }}
+        {{ set_symbol(v.card.set_code, v.card.rarity) }}
+        <span class="text-muted uppercase">{{ v.card.set_code }}</span>
       </div>
     </a>
     {% endfor %}

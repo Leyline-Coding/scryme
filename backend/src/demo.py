@@ -24,6 +24,7 @@ _DECK_DIR = Path(__file__).resolve().parent / "seed_data" / "decks"
 EXAMPLE_DECKS = {
     "Heavenly Inferno (Commander)": "heavenly_inferno.txt",
     "Elves (Duel Decks)": "elves.txt",
+    "Goblins (Duel Decks)": "goblins.txt",
 }
 
 

@@ -10,6 +10,26 @@ from src.models import Card, CollectionCard, Deck
 from src.scryfall.mapping import card_to_columns
 
 
+def test_parse_strips_foil_markers():
+    rows = parse_decklist("1 Kaalia of the Vast (CMA) 180 *F*\n1 Anger (CMA) 76")
+    assert rows[0].name == "Kaalia of the Vast"
+    assert rows[1].name == "Anger"
+
+
+def test_merge_lines_combines_duplicates():
+    from src.decks import _merge_lines
+    merged = _merge_lines(parse_decklist("5 Forest (DD1) 28\n4 Forest (DD1) 31\n3 Llanowar Elves"))
+    by_name = {m.name: m.quantity for m in merged}
+    assert by_name == {"Forest": 9, "Llanowar Elves": 3}
+
+
+@pytest.mark.asyncio
+async def test_seed_demo_decks_idempotent(session):
+    from src.demo import EXAMPLE_DECKS, seed_demo_decks
+    assert await seed_demo_decks() == len(EXAMPLE_DECKS)
+    assert await seed_demo_decks() == 0  # decks already exist -> skipped
+
+
 def test_parse_decklist_quantities_board_and_suffix():
     text = ("4 Lightning Bolt\n2x Counterspell (MH2) 267\n# comment\n\n"
             "Sideboard\n1 Naturalize\nSB: 3 Duress")

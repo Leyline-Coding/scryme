@@ -18,6 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models import Card, CollectionCard, Deck, DeckCard
 
 _LINE = re.compile(r"^\s*(\d+)\s*[xX]?\s+(.+?)\s*$")
+# Strip trailing export markers like "*F*" (foil) / "*E*" (etched).
+_MARKER = re.compile(r"(\s*\*[^*]*\*)+\s*$")
 # Strip a trailing "(SET) 123" / "(SET)" printing hint from a card name.
 _SET_SUFFIX = re.compile(r"\s*\([A-Za-z0-9]{2,6}\)\s*[A-Za-z0-9-]*\s*$")
 
@@ -46,10 +48,25 @@ def parse_decklist(text: str | None) -> list[ParsedLine]:
         m = _LINE.match(s)
         if not m:
             continue
-        name = _SET_SUFFIX.sub("", m.group(2)).strip()
+        name = _MARKER.sub("", m.group(2))
+        name = _SET_SUFFIX.sub("", name).strip()
         if name:
             out.append(ParsedLine(int(m.group(1)), name, "side" if sb else board))
     return out
+
+
+def _merge_lines(parsed: list[ParsedLine]) -> list[ParsedLine]:
+    """Combine lines with the same name + board (e.g. basic lands across collector numbers)."""
+    merged: dict[tuple, ParsedLine] = {}
+    order: list[tuple] = []
+    for p in parsed:
+        key = (p.name.lower(), p.board)
+        if key in merged:
+            merged[key].quantity += p.quantity
+        else:
+            merged[key] = ParsedLine(p.quantity, p.name, p.board)
+            order.append(key)
+    return [merged[k] for k in order]
 
 
 async def _owned_by_oracle(session: AsyncSession) -> dict:
@@ -102,7 +119,7 @@ async def _resolve_names(session: AsyncSession, names: list[str], owned_sids: se
 
 
 async def create_deck(session: AsyncSession, name: str, decklist_text: str) -> Deck:
-    parsed = parse_decklist(decklist_text)
+    parsed = _merge_lines(parse_decklist(decklist_text))
     owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
     resolved = await _resolve_names(session, [p.name for p in parsed], owned_sids)
 

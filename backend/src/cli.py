@@ -36,6 +36,16 @@ async def _seed_demo(limit: int) -> None:
     print(f"Created {decks} example deck(s).")
 
 
+async def _snapshot_prices() -> None:
+    from src.prices import take_snapshot
+
+    snap = await take_snapshot()
+    if snap is None:
+        print("No owned cards; nothing to snapshot.")
+    else:
+        print(f"Captured snapshot: ${snap.total_usd:,.2f} across {snap.card_count} cards.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="scryme")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -48,6 +58,8 @@ def main() -> None:
     p_demo = sub.add_parser("seed-demo", help="Add sample cards to the collection (demo)")
     p_demo.add_argument("--limit", type=int, default=DEFAULT_LIMIT, help="How many cards to add")
 
+    sub.add_parser("snapshot-prices", help="Capture a price snapshot of the owned collection")
+
     args = parser.parse_args()
     if args.command == "ingest":
         asyncio.run(_ingest(args.force))
@@ -55,6 +67,8 @@ def main() -> None:
         asyncio.run(_backfill())
     elif args.command == "seed-demo":
         asyncio.run(_seed_demo(args.limit))
+    elif args.command == "snapshot-prices":
+        asyncio.run(_snapshot_prices())
 
 
 if __name__ == "__main__":

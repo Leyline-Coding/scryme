@@ -2,62 +2,62 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://docs.scryme.app/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-06-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://docs.scryme.app/development/architecture/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-06-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://docs.scryme.app/development/contributing/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-06-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://docs.scryme.app/getting-started/configuration/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-06-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://docs.scryme.app/getting-started/demo/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-06-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://docs.scryme.app/getting-started/kubernetes/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-06-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://docs.scryme.app/getting-started/self-hosting/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-06-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://docs.scryme.app/import/formats/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-06-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://docs.scryme.app/import/merge/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-06-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://docs.scryme.app/import/overview/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-06-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://docs.scryme.app/search/regex/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-06-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://docs.scryme.app/search/syntax/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-06-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
 </urlset>

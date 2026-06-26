@@ -2,7 +2,7 @@
 {% block content %}
 <section class="flex flex-col items-center justify-center px-4 py-24">
   <a href="/" class="mb-8 text-4xl font-bold tracking-tight">
-    <span class="text-indigo-400">scry</span>me
+    <span class="text-accent">scry</span>me
   </a>
 
   {% if has_collection %}
@@ -13,22 +13,22 @@
       name="q"
       autofocus
       placeholder="Search your collection — e.g. c:r t:instant mv<=2"
-      class="w-full rounded-full bg-slate-900 border border-slate-700 px-6 py-4 text-lg
-             focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      class="w-full rounded-full bg-surface border border-edge px-6 py-4 text-lg
+             focus:outline-none focus:ring-2 focus:ring-accent"
     />
   </form>
-  <p class="mt-4 text-sm text-slate-400">
+  <p class="mt-4 text-sm text-muted">
     Supports <a class="underline" href="https://scryfall.com/docs/syntax" target="_blank"
       rel="noopener">Scryfall syntax</a>.
   </p>
   {% else %}
   {# Empty collection: prompt the first upload (wired up in Phase 3). #}
   <div class="w-full max-w-lg text-center">
-    <p class="mb-6 text-slate-300">
+    <p class="mb-6 text-fg">
       No collection yet. Upload an export from ManaBox, Dragon Shield, or Delver Lens to begin.
     </p>
     <a href="/upload"
-       class="inline-block rounded-lg bg-indigo-600 px-6 py-3 font-medium hover:bg-indigo-500">
+       class="inline-block rounded-lg bg-accent text-accent-fg px-6 py-3 font-medium hover:opacity-90">
       Upload a collection
     </a>
   </div>

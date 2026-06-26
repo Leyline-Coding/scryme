@@ -4,7 +4,7 @@
 <div class="max-w-6xl mx-auto px-4 py-6">
   <header class="flex flex-wrap items-center gap-3 mb-6">
     <a href="/" class="text-2xl font-bold tracking-tight shrink-0">
-      <span class="text-indigo-400">scry</span>me
+      <span class="text-accent">scry</span>me
     </a>
     <form
       class="order-last w-full sm:order-none sm:w-auto flex-1 flex gap-2"
@@ -19,17 +19,17 @@
         value="{{ q }}"
         autofocus
         placeholder="Search — e.g. c:r t:instant mv<=2"
-        class="flex-1 min-w-0 rounded-full bg-slate-900 border border-slate-700 px-5 py-2.5
-               focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        class="flex-1 min-w-0 rounded-full bg-surface border border-edge px-5 py-2.5
+               focus:outline-none focus:ring-2 focus:ring-accent"
       />
       <select name="scope"
-        class="rounded-full bg-slate-900 border border-slate-700 px-3 py-2.5 text-sm">
+        class="rounded-full bg-surface border border-edge px-3 py-2.5 text-sm">
         <option value="collection" {% if scope == 'collection' %}selected{% endif %}>My collection</option>
         <option value="all" {% if scope == 'all' %}selected{% endif %}>All cards</option>
       </select>
     </form>
     <a href="/upload"
-       class="ml-auto shrink-0 rounded-full bg-slate-800 hover:bg-slate-700 px-4 py-2 text-sm font-medium">
+       class="ml-auto shrink-0 rounded-full bg-surface-2 hover:bg-surface-3 px-4 py-2 text-sm font-medium">
       + Upload
     </a>
   </header>

@@ -1,0 +1,102 @@
+{# Floating theme picker: preset themes + custom accent, persisted in localStorage (client-only,
+   so it works even in the read-only demo). The pre-paint script in base.html applies the choice. #}
+<div x-data="themePicker()" class="fixed bottom-4 right-4 z-50 print:hidden">
+  <button
+    @click="open = !open"
+    title="Theme"
+    aria-label="Theme settings"
+    class="rounded-full bg-surface-2 hover:bg-surface-3 border border-edge w-11 h-11
+           flex items-center justify-center shadow-lg transition"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-fg" viewBox="0 0 24 24"
+         fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="13.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="17.5" cy="10.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="8.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="6.5" cy="12.5" r="1.2" fill="currentColor" stroke="none" />
+      <path d="M12 2a10 10 0 1 0 0 20 2.5 2.5 0 0 0 2-4 2.5 2.5 0 0 1 2-4h2a4 4 0 0 0 4-4 10 10 0 0 0-12-8z" />
+    </svg>
+  </button>
+
+  <div
+    x-show="open"
+    @click.outside="open = false"
+    x-transition
+    class="absolute bottom-14 right-0 w-64 rounded-xl bg-surface border border-edge shadow-xl p-4 space-y-4"
+    style="display: none"
+  >
+    <div>
+      <p class="text-xs font-semibold text-muted mb-2 uppercase tracking-wide">Theme</p>
+      <div class="grid grid-cols-2 gap-2">
+        <template x-for="t in themes" :key="t.id">
+          <button
+            @click="setTheme(t.id)"
+            class="flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm transition hover:border-accent"
+            :class="theme === t.id ? 'border-accent ring-1 ring-accent' : 'border-edge'"
+          >
+            <span class="w-4 h-4 rounded-full border border-edge shrink-0" :style="`background:${t.bg}`"></span>
+            <span x-text="t.name"></span>
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <div>
+      <p class="text-xs font-semibold text-muted mb-2 uppercase tracking-wide">Accent</p>
+      <div class="flex items-center gap-2 flex-wrap">
+        <label class="relative w-8 h-8 rounded-full border border-edge overflow-hidden cursor-pointer shrink-0"
+               :style="`background:${accentValue()}`" title="Custom color">
+          <input type="color" :value="accentValue()" @input="setAccent($event.target.value)"
+                 class="absolute inset-0 opacity-0 cursor-pointer" />
+        </label>
+        <template x-for="c in swatches" :key="c">
+          <button @click="setAccent(c)"
+                  class="w-7 h-7 rounded-full border transition hover:scale-110"
+                  :class="custom === c ? 'border-fg' : 'border-edge'"
+                  :style="`background:${c}`"></button>
+        </template>
+      </div>
+      <button x-show="custom" @click="resetAccent()"
+              class="mt-2 text-xs text-muted hover:text-fg underline">Reset to theme default</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function themePicker() {
+    return {
+      open: false,
+      theme: localStorage.getItem("scryme-theme") || "midnight",
+      custom: localStorage.getItem("scryme-accent") || "",
+      themes: [
+        { id: "midnight", name: "Midnight", bg: "#020617", accent: "#6366f1" },
+        { id: "slate", name: "Slate", bg: "#16181d", accent: "#14b8a6" },
+        { id: "light", name: "Daylight", bg: "#f8fafc", accent: "#4f46e5" },
+        { id: "parchment", name: "Parchment", bg: "#efe6d2", accent: "#9a6b2f" },
+      ],
+      swatches: ["#6366f1", "#14b8a6", "#e11d48", "#f59e0b", "#8b5cf6", "#22c55e"],
+      themeDefault() {
+        var t = this.themes.find((x) => x.id === this.theme);
+        return t ? t.accent : "#6366f1";
+      },
+      accentValue() {
+        return this.custom || this.themeDefault();
+      },
+      setTheme(id) {
+        this.theme = id;
+        localStorage.setItem("scryme-theme", id);
+        document.documentElement.setAttribute("data-theme", id);
+      },
+      setAccent(c) {
+        this.custom = c;
+        localStorage.setItem("scryme-accent", c);
+        document.documentElement.style.setProperty("--c-accent", c);
+      },
+      resetAccent() {
+        this.custom = "";
+        localStorage.removeItem("scryme-accent");
+        document.documentElement.style.removeProperty("--c-accent");
+      },
+    };
+  }
+</script>

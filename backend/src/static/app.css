@@ -1,4 +1,60 @@
-/* Project-specific styles layered on top of Tailwind. Kept minimal for the scaffold. */
-:root {
+/* Project-specific styles layered on top of Tailwind.
+ *
+ * Theming: colors are semantic design tokens exposed as CSS custom properties and consumed by
+ * Tailwind via the `tailwind.config` in base.html (e.g. `bg-bg`, `text-fg`, `bg-accent`). Each
+ * preset theme sets the tokens under a `[data-theme=...]` selector; the active theme and an
+ * optional custom accent are stored in localStorage and applied before paint (see base.html).
+ */
+
+:root,
+[data-theme="midnight"] {
   color-scheme: dark;
+  --c-bg: #020617;
+  --c-surface: #0f172a;
+  --c-surface-2: #1e293b;
+  --c-surface-3: #334155;
+  --c-edge: #334155;
+  --c-fg: #f1f5f9;
+  --c-muted: #94a3b8;
+  --c-accent: #6366f1;
+  --c-accent-fg: #ffffff;
+}
+
+[data-theme="slate"] {
+  color-scheme: dark;
+  --c-bg: #16181d;
+  --c-surface: #1e2127;
+  --c-surface-2: #272b33;
+  --c-surface-3: #333843;
+  --c-edge: #3a3f4b;
+  --c-fg: #e8eaed;
+  --c-muted: #9aa0ab;
+  --c-accent: #14b8a6;
+  --c-accent-fg: #ffffff;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --c-bg: #f8fafc;
+  --c-surface: #ffffff;
+  --c-surface-2: #f1f5f9;
+  --c-surface-3: #e2e8f0;
+  --c-edge: #e2e8f0;
+  --c-fg: #0f172a;
+  --c-muted: #64748b;
+  --c-accent: #4f46e5;
+  --c-accent-fg: #ffffff;
+}
+
+[data-theme="parchment"] {
+  color-scheme: light;
+  --c-bg: #efe6d2;
+  --c-surface: #faf4e6;
+  --c-surface-2: #ece1c8;
+  --c-surface-3: #ddcfa9;
+  --c-edge: #d3c29c;
+  --c-fg: #33291a;
+  --c-muted: #7c6c4f;
+  --c-accent: #9a6b2f;
+  --c-accent-fg: #ffffff;
 }

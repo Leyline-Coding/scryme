@@ -3,24 +3,24 @@
 {% block content %}
 <div class="max-w-2xl mx-auto px-4 py-12" x-data="{ strategy: 'increment' }">
   <a href="/" class="text-2xl font-bold tracking-tight">
-    <span class="text-indigo-400">scry</span>me
+    <span class="text-accent">scry</span>me
   </a>
   <h1 class="mt-8 text-xl font-semibold">Review import
-    <span class="text-slate-500 text-base">({{ preview.source_format }})</span>
+    <span class="text-muted text-base">({{ preview.source_format }})</span>
   </h1>
 
   <dl class="mt-4 grid grid-cols-3 gap-3 text-center">
-    <div class="rounded-lg bg-slate-900 p-3">
-      <dt class="text-xs text-slate-400">Rows</dt>
+    <div class="rounded-lg bg-surface p-3">
+      <dt class="text-xs text-muted">Rows</dt>
       <dd class="text-lg font-semibold">{{ preview.total_rows }}</dd>
     </div>
-    <div class="rounded-lg bg-slate-900 p-3">
-      <dt class="text-xs text-slate-400">Matched</dt>
-      <dd class="text-lg font-semibold text-emerald-400">{{ preview.matched_count }}</dd>
+    <div class="rounded-lg bg-surface p-3">
+      <dt class="text-xs text-muted">Matched</dt>
+      <dd class="text-lg font-semibold text-emerald-500">{{ preview.matched_count }}</dd>
     </div>
-    <div class="rounded-lg bg-slate-900 p-3">
-      <dt class="text-xs text-slate-400">Unmatched</dt>
-      <dd class="text-lg font-semibold {% if preview.unmatched_count %}text-amber-400{% endif %}">
+    <div class="rounded-lg bg-surface p-3">
+      <dt class="text-xs text-muted">Unmatched</dt>
+      <dd class="text-lg font-semibold {% if preview.unmatched_count %}text-amber-500{% endif %}">
         {{ preview.unmatched_count }}</dd>
     </div>
   </dl>
@@ -30,12 +30,12 @@
     <summary class="cursor-pointer text-amber-200 text-sm">
       {{ preview.unmatched_count }} card(s) couldn't be matched and will be skipped
     </summary>
-    <ul class="mt-2 text-sm text-slate-300 list-disc list-inside">
+    <ul class="mt-2 text-sm text-fg list-disc list-inside">
       {% for r in preview.unmatched_samples %}
-      <li>{{ r.name }}{% if r.set_code %} <span class="uppercase text-slate-500">{{ r.set_code }}</span>{% endif %}</li>
+      <li>{{ r.name }}{% if r.set_code %} <span class="uppercase text-muted">{{ r.set_code }}</span>{% endif %}</li>
       {% endfor %}
       {% if preview.unmatched_count > preview.unmatched_samples|length %}
-      <li class="text-slate-500">…and more</li>
+      <li class="text-muted">…and more</li>
       {% endif %}
     </ul>
   </details>
@@ -45,7 +45,7 @@
     <input type="hidden" name="token" value="{{ preview.token }}" />
 
     <fieldset class="space-y-2">
-      <legend class="text-sm font-medium text-slate-300 mb-1">How should this merge?</legend>
+      <legend class="text-sm font-medium text-fg mb-1">How should this merge?</legend>
       <label class="flex gap-2 items-start">
         <input type="radio" name="strategy" value="increment" x-model="strategy" class="mt-1" />
         <span><b>Add</b> — increase quantities for cards you already own.</span>
@@ -61,18 +61,18 @@
     </fieldset>
 
     {% if preview.conflicts %}
-    <div x-show="strategy === 'per_card'" class="rounded-lg border border-slate-700">
-      <p class="px-4 py-2 text-sm text-slate-400 border-b border-slate-800">
+    <div x-show="strategy === 'per_card'" class="rounded-lg border border-edge">
+      <p class="px-4 py-2 text-sm text-muted border-b border-edge">
         {{ preview.conflicts|length }} card(s) already in your collection:
       </p>
-      <ul class="divide-y divide-slate-800">
+      <ul class="divide-y divide-edge">
         {% for c in preview.conflicts %}
         <li class="px-4 py-2 flex items-center justify-between gap-3 text-sm">
           <span>{{ c.name }}
-            <span class="text-slate-500">({{ c.finish }}) {{ c.existing_qty }} → +{{ c.import_qty }}</span>
+            <span class="text-muted">({{ c.finish }}) {{ c.existing_qty }} → +{{ c.import_qty }}</span>
           </span>
           <select name="decision_{{ c.index }}"
-            class="rounded bg-slate-900 border border-slate-700 px-2 py-1 text-xs">
+            class="rounded bg-surface border border-edge px-2 py-1 text-xs">
             <option value="increment">Add</option>
             <option value="replace">Replace</option>
           </select>
@@ -84,10 +84,10 @@
 
     <div class="flex gap-3">
       <button type="submit"
-        class="rounded-lg bg-indigo-600 px-5 py-2.5 font-medium hover:bg-indigo-500">
+        class="rounded-lg bg-accent text-accent-fg px-5 py-2.5 font-medium hover:opacity-90">
         Confirm import
       </button>
-      <a href="/upload" class="rounded-lg px-5 py-2.5 text-slate-300 hover:text-white">Cancel</a>
+      <a href="/upload" class="rounded-lg px-5 py-2.5 text-fg hover:text-accent">Cancel</a>
     </div>
   </form>
 </div>

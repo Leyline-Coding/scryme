@@ -3,7 +3,7 @@
     {{ error }}
   </div>
 {% elif result %}
-  <p class="text-sm text-slate-400 mb-4">
+  <p class="text-sm text-muted mb-4">
     {{ result.total }} card{{ '' if result.total == 1 else 's' }}
     {% if scope == 'collection' %}in your collection{% endif %}
     {% if result.total_pages > 1 %}· page {{ result.page }} of {{ result.total_pages }}{% endif %}
@@ -13,22 +13,22 @@
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
     {% for v in views %}
     <a href="{{ v.scryfall_uri }}" target="_blank" rel="noopener"
-       class="group relative block rounded-xl overflow-hidden bg-slate-900 ring-1 ring-slate-800
-              hover:ring-indigo-500 transition">
+       class="group relative block rounded-xl overflow-hidden bg-surface ring-1 ring-edge
+              hover:ring-accent transition">
       {% if v.image %}
       <img src="{{ v.image }}" alt="{{ v.card.name }}" loading="lazy"
            class="w-full aspect-[5/7] object-cover" />
       {% else %}
-      <div class="w-full aspect-[5/7] flex items-center justify-center text-center p-2 text-xs text-slate-400">
+      <div class="w-full aspect-[5/7] flex items-center justify-center text-center p-2 text-xs text-muted">
         {{ v.card.name }}
       </div>
       {% endif %}
       {% if v.quantity %}
-      <span class="absolute top-1.5 right-1.5 rounded-full bg-indigo-600 text-white text-xs
+      <span class="absolute top-1.5 right-1.5 rounded-full bg-accent text-accent-fg text-xs
                    font-semibold px-2 py-0.5 shadow">×{{ v.quantity }}</span>
       {% endif %}
-      <div class="px-2 py-1 text-xs truncate text-slate-300">
-        {{ v.card.name }} <span class="text-slate-500 uppercase">{{ v.card.set_code }}</span>
+      <div class="px-2 py-1 text-xs truncate text-fg">
+        {{ v.card.name }} <span class="text-muted uppercase">{{ v.card.set_code }}</span>
       </div>
     </a>
     {% endfor %}
@@ -37,13 +37,13 @@
   {% if result.total_pages > 1 %}
   <nav class="flex items-center justify-center gap-3 mt-6 text-sm">
     {% if result.page > 1 %}
-    <button class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700"
+    <button class="px-3 py-1.5 rounded bg-surface-2 hover:bg-surface-3"
       hx-get="/search?q={{ q | urlencode }}&scope={{ scope }}&page={{ result.page - 1 }}"
       hx-target="#results" hx-push-url="true">← Prev</button>
     {% endif %}
-    <span class="text-slate-400">{{ result.page }} / {{ result.total_pages }}</span>
+    <span class="text-muted">{{ result.page }} / {{ result.total_pages }}</span>
     {% if result.page < result.total_pages %}
-    <button class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700"
+    <button class="px-3 py-1.5 rounded bg-surface-2 hover:bg-surface-3"
       hx-get="/search?q={{ q | urlencode }}&scope={{ scope }}&page={{ result.page + 1 }}"
       hx-target="#results" hx-push-url="true">Next →</button>
     {% endif %}
@@ -51,9 +51,9 @@
   {% endif %}
 
   {% else %}
-  <div class="text-slate-400 py-16 text-center">
+  <div class="text-muted py-16 text-center">
     No cards match
-    {% if q %}<code class="text-slate-300">{{ q }}</code>{% else %}your collection yet{% endif %}.
+    {% if q %}<code class="text-fg">{{ q }}</code>{% else %}your collection yet{% endif %}.
   </div>
   {% endif %}
 {% endif %}

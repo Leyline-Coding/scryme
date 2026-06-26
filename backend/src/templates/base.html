@@ -5,13 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}scryme{% endblock %}</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+  <!-- Apply the saved theme + custom accent before paint to avoid a flash of the default theme. -->
+  <script>
+    (function () {
+      try {
+        var d = document.documentElement;
+        d.setAttribute("data-theme", localStorage.getItem("scryme-theme") || "midnight");
+        var a = localStorage.getItem("scryme-accent");
+        if (a) d.style.setProperty("--c-accent", a);
+      } catch (e) {}
+    })();
+  </script>
   <!-- Tailwind via CDN keeps the app a single pure-Python service; swap for a build step later. -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Map Tailwind color utilities to the semantic CSS-variable tokens defined in app.css.
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: "var(--c-bg)",
+            surface: "var(--c-surface)",
+            "surface-2": "var(--c-surface-2)",
+            "surface-3": "var(--c-surface-3)",
+            edge: "var(--c-edge)",
+            fg: "var(--c-fg)",
+            muted: "var(--c-muted)",
+            accent: "var(--c-accent)",
+            "accent-fg": "var(--c-accent-fg)",
+          },
+        },
+      },
+    };
+  </script>
   <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
   <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
   <link rel="stylesheet" href="/static/app.css" />
 </head>
-<body class="h-full bg-slate-950 text-slate-100 antialiased">
+<body class="h-full bg-bg text-fg antialiased">
   {% if read_only %}
   <div class="bg-amber-500/90 text-slate-900 text-center text-sm py-1 font-medium">
     Demo mode &mdash; this is a shared, read-only sandbox collection.
@@ -20,5 +51,6 @@
   <main class="min-h-full">
     {% block content %}{% endblock %}
   </main>
+  {% include "_theme_menu.html" %}
 </body>
 </html>

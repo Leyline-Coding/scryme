@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-from src.demo import DEFAULT_LIMIT, seed_demo
+from src.demo import DEFAULT_LIMIT, seed_demo, seed_demo_decks
 from src.scryfall.images import ImageCache
 from src.scryfall.ingest import ingest_default_cards
 
@@ -32,6 +32,8 @@ async def _backfill() -> None:
 async def _seed_demo(limit: int) -> None:
     added = await seed_demo(limit)
     print(f"Added {added} cards to the demo collection.")
+    decks = await seed_demo_decks()
+    print(f"Created {decks} example deck(s).")
 
 
 def main() -> None:

@@ -20,6 +20,10 @@ _scheduler: AsyncIOScheduler | None = None
 async def _refresh_job() -> None:
     try:
         await ingest_default_cards()
+        # Capture a price snapshot once prices are fresh (best-effort).
+        from src.prices import take_snapshot
+
+        await take_snapshot()
     except Exception as exc:  # noqa: BLE001 - never let a scheduled job crash the loop
         log.error("scryfall.refresh.failed", error=str(exc))
 

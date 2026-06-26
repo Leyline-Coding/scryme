@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Prices · scryme{% endblock %}
+
+{% macro mover_list(movers) %}
+  {% if movers %}
+  <ul class="space-y-1.5 text-sm">
+    {% for m in movers %}
+    <li class="flex items-center gap-2">
+      <a href="/card/{{ m.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">
+        {{ m.name }} <span class="text-muted uppercase text-xs">{{ m.set_code }}</span>
+      </a>
+      <span class="text-right text-muted tabular-nums">${{ '{:,.2f}'.format(m.old) }} → ${{ '{:,.2f}'.format(m.new) }}</span>
+      <span class="w-20 text-right tabular-nums font-medium {% if m.delta > 0 %}text-emerald-500{% else %}text-rose-500{% endif %}">
+        {{ '+' if m.delta > 0 else '' }}{{ '{:,.2f}'.format(m.delta) }} ({{ m.pct }}%)
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-sm text-muted">None.</p>
+  {% endif %}
+{% endmacro %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-6">
+    <a href="/" class="text-2xl font-bold tracking-tight shrink-0">
+      <span class="text-accent">scry</span>me
+    </a>
+    <h1 class="text-lg font-semibold">Price history</h1>
+    <a href="/stats" class="ml-auto text-sm text-muted hover:text-fg">Stats →</a>
+  </header>
+
+  {% if not series %}
+  <div class="text-muted py-16 text-center">
+    No price snapshots yet. scryme records one each time it refreshes Scryfall prices (daily);
+    you can also capture one with <code>python -m src.cli snapshot-prices</code>.
+  </div>
+  {% else %}
+
+  {% set latest = series[-1] %}
+  {% set maxv = (series | map(attribute='total_usd') | max) or 1 %}
+  <div class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
+    <div class="text-xs text-muted">Collection value</div>
+    <div class="text-2xl font-bold">${{ '{:,.2f}'.format(latest.total_usd) }}</div>
+    <div class="text-xs text-muted">as of {{ latest.captured_at.strftime('%Y-%m-%d') }}</div>
+
+    {# Value over time: one bar per snapshot. #}
+    <div class="mt-4 flex items-end gap-1 h-32">
+      {% for s in series %}
+      <div class="flex-1 bg-accent rounded-t hover:opacity-80"
+           style="height: {{ (s.total_usd / maxv * 100) | round(1) }}%"
+           title="{{ s.captured_at.strftime('%Y-%m-%d') }} · ${{ '{:,.2f}'.format(s.total_usd) }}"></div>
+      {% endfor %}
+    </div>
+    <div class="mt-1 flex justify-between text-xs text-muted">
+      <span>{{ series[0].captured_at.strftime('%Y-%m-%d') }}</span>
+      <span>{{ series|length }} snapshot{{ '' if series|length == 1 else 's' }}</span>
+      <span>{{ latest.captured_at.strftime('%Y-%m-%d') }}</span>
+    </div>
+  </div>
+
+  {# Biggest movers #}
+  {% if movers.available %}
+  <p class="text-sm text-muted mb-3">
+    Movers since {{ movers.previous_at.strftime('%Y-%m-%d') }}
+  </p>
+  <div class="grid md:grid-cols-2 gap-6">
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <h2 class="text-sm font-semibold text-emerald-500 mb-2 uppercase tracking-wide">▲ Gainers</h2>
+      {{ mover_list(movers.gainers) }}
+    </section>
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <h2 class="text-sm font-semibold text-rose-500 mb-2 uppercase tracking-wide">▼ Losers</h2>
+      {{ mover_list(movers.losers) }}
+    </section>
+  </div>
+  {% else %}
+  <p class="text-sm text-muted">Two snapshots are needed to show movers — check back after the next price refresh.</p>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

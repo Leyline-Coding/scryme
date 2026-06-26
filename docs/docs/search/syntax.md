@@ -3,6 +3,11 @@
 scryme implements a faithful subset of [Scryfall's search syntax](https://scryfall.com/docs/syntax).
 Queries combine **filters** with boolean logic, and by default search **your collection**.
 
+!!! tip "Don't know the syntax yet?"
+    The **[Advanced search](/advanced)** page (linked as *Advanced* next to the search bar) is a
+    form-based builder: fill in names, colors, mana value, rarity, format, price, and more, and it
+    assembles the query for you — then shows the generated query string so you can learn by example.
+
 ## Scope
 
 Use the dropdown next to the search bar (or the `scope` query parameter):

@@ -51,6 +51,18 @@ def _to_views(result) -> list[CardView]:
     return views
 
 
+@router.get("/advanced", response_class=HTMLResponse)
+async def advanced(request: Request) -> HTMLResponse:
+    """Form-based query builder for users who don't know Scryfall syntax.
+
+    The form assembles a Scryfall query string client-side (Alpine) and navigates to /search, so
+    there's a single search-engine path and the generated query is visible/editable afterward.
+    """
+    return templates.TemplateResponse(
+        request, "advanced.html", {"read_only": get_settings().read_only}
+    )
+
+
 @router.get("/search", response_class=HTMLResponse)
 async def search(
     request: Request,

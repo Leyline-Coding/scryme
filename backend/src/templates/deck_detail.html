@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ cov.deck.name }} · scryme{% endblock %}
+
+{% macro rows(cards) %}
+  <ul class="divide-y divide-edge">
+    {% for r in cards %}
+    <li class="py-1.5 flex items-center gap-2 text-sm
+               {% if not r.matched %}text-amber-500{% endif %}">
+      <span class="w-8 shrink-0 text-right text-muted tabular-nums">{{ r.quantity }}×</span>
+      {% if r.scryfall_id %}
+      <a href="/card/{{ r.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">{{ r.name }}</a>
+      {% else %}
+      <span class="flex-1 min-w-0 truncate" title="Not found in the card database">{{ r.name }}</span>
+      {% endif %}
+      {% if not r.matched %}
+      <span class="shrink-0 text-xs">unrecognized</span>
+      {% elif r.owned >= r.quantity %}
+      <span class="shrink-0 text-xs text-emerald-500" title="You own enough">✓ own {{ r.owned }}</span>
+      {% else %}
+      <span class="shrink-0 text-xs text-muted">own {{ r.owned }}/{{ r.quantity }}</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+{% endmacro %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-6">
+    <a href="/" class="text-2xl font-bold tracking-tight shrink-0">
+      <span class="text-accent">scry</span>me
+    </a>
+    <h1 class="text-lg font-semibold truncate">{{ cov.deck.name }}</h1>
+    <a href="/decks" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Decks →</a>
+  </header>
+
+  {# Coverage summary #}
+  <div class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
+    <div class="flex items-end justify-between gap-3 mb-2">
+      <div>
+        <div class="text-2xl font-bold">{{ cov.pct_complete }}% owned</div>
+        <div class="text-sm text-muted">{{ cov.owned_count }} of {{ cov.total_needed }} cards</div>
+      </div>
+      <div class="text-right text-sm">
+        {% if cov.missing_count %}
+        <div class="text-amber-500 font-medium">{{ cov.missing_count }} missing
+          <span class="text-muted">({{ cov.unique_missing }} distinct)</span></div>
+        {% if cov.missing_cost %}<div class="text-muted">≈ ${{ '{:,.2f}'.format(cov.missing_cost) }} to complete</div>{% endif %}
+        {% else %}
+        <div class="text-emerald-500 font-medium">Complete — you own everything</div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="bg-surface-2 rounded h-2 overflow-hidden">
+      <div class="h-full bg-accent" style="width: {{ cov.pct_complete }}%"></div>
+    </div>
+    {% if cov.unmatched %}
+    <p class="mt-2 text-xs text-amber-500">{{ cov.unmatched }} line(s) didn't match a known card.</p>
+    {% endif %}
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-6">
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
+        Mainboard ({{ cov.main | map(attribute='quantity') | sum }})
+      </h2>
+      {{ rows(cov.main) }}
+    </section>
+    {% if cov.side %}
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
+        Sideboard ({{ cov.side | map(attribute='quantity') | sum }})
+      </h2>
+      {{ rows(cov.side) }}
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

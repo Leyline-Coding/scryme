@@ -23,3 +23,10 @@ Mana costs and oracle text render with real Magic symbols, and set codes render 
 symbols (tinted by rarity), using the open-licensed
 [Mana](https://mana.andrewgioia.com) and [Keyrune](https://keyrune.andrewgioia.com) icon fonts
 (SIL OFL / MIT). The fonts are vendored, so symbols work offline with no external requests.
+
+## Card typography
+
+Card pages use MTG-flavored typefaces — **Cinzel** for card titles and **EB Garamond** for type
+lines and oracle text — to approximate the look of a real card. These are free, open-licensed
+(SIL OFL) fonts, vendored for offline use; they are not the proprietary fonts printed on physical
+cards.

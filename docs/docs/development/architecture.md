@@ -25,6 +25,8 @@ Jinja2 + HTMX + Tailwind. There is no separate single-page app.
 - **`import_staging`** — holds a parsed, matched upload between preview and confirm.
 - **`saved_search`** — named queries (query + scope + sort + direction).
 - **`deck` / `deck_card`** — decks and their lines, matched to the collection by oracle id.
+- **`price_snapshot` / `card_price_point`** — periodic collection-value snapshots + per-card prices
+  for the price-history page.
 
 ## Backend modules (`backend/src/`)
 
@@ -35,8 +37,9 @@ Jinja2 + HTMX + Tailwind. There is no separate single-page app.
 | `importers/` | Format registry, per-app parsers, card matching, merge strategies |
 | `decks.py` | Decklist parsing, card resolution, ownership coverage + legality |
 | `stats.py` | Owned-collection aggregates for the stats dashboard |
+| `prices.py` | Price snapshots, value-over-time series, biggest movers |
 | `symbols.py` | Render `{…}` mana tokens and set symbols via the Mana/Keyrune fonts |
-| `routes/` | `health`, `home`, `search`, `card`, `upload`, `export`, `saved`, `stats`, `decks`, `binders`, `admin` |
+| `routes/` | `health`, `home`, `search`, `card`, `upload`, `export`, `saved`, `stats`, `prices`, `decks`, `binders`, `admin` |
 | `scheduler.py` | Daily Scryfall refresh |
 | `cli.py` | `ingest`, `backfill-images`, `seed-demo` |
 

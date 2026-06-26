@@ -52,7 +52,15 @@ spec:
                 echo "waiting for postgres..."; sleep 2;
               done
               alembic upgrade head
-              python -m src.cli ingest
+              # Ingest only on first boot (empty DB). The card DB persists on the PVC, so later
+              # restarts skip the ~115k-card ingest and the pod becomes Ready in seconds — keeping
+              # the Recreate-strategy downtime minimal even when Scryfall has a newer bulk file.
+              CARDS=$(python -c "import asyncio; from src.scryfall.ingest import current_card_count; print(asyncio.run(current_card_count()))")
+              if [ "${CARDS:-0}" -lt 1000 ]; then
+                python -m src.cli ingest
+              else
+                echo "cards already present ($CARDS); skipping ingest"
+              fi
               python -m src.cli seed-demo --limit 60
           envFrom:
             - configMapRef:

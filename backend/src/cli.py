@@ -46,6 +46,13 @@ async def _snapshot_prices() -> None:
         print(f"Captured snapshot: ${snap.total_usd:,.2f} across {snap.card_count} cards.")
 
 
+async def _prune_digital() -> None:
+    from src.scryfall.ingest import prune_digital_only
+
+    removed = await prune_digital_only()
+    print(f"Removed {removed} digital-only (Arena/MTGO) card(s).")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="scryme")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -60,6 +67,8 @@ def main() -> None:
 
     sub.add_parser("snapshot-prices", help="Capture a price snapshot of the owned collection")
 
+    sub.add_parser("prune-digital", help="Remove digital-only (Arena/MTGO) cards from the DB")
+
     args = parser.parse_args()
     if args.command == "ingest":
         asyncio.run(_ingest(args.force))
@@ -69,6 +78,8 @@ def main() -> None:
         asyncio.run(_seed_demo(args.limit))
     elif args.command == "snapshot-prices":
         asyncio.run(_snapshot_prices())
+    elif args.command == "prune-digital":
+        asyncio.run(_prune_digital())
 
 
 if __name__ == "__main__":

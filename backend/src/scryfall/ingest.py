@@ -16,7 +16,7 @@ from pathlib import Path
 
 import ijson
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -45,19 +45,40 @@ def _is_gzip(path: Path) -> bool:
         return fh.read(2) == b"\x1f\x8b"
 
 
+def _is_paper(raw: dict) -> bool:
+    """True unless the card is digital-only (Arena/MTGO). scryme is for physical collections."""
+    games = raw.get("games")
+    return not games or "paper" in games
+
+
 def _read_batches(path: Path, batch_size: int = BATCH_SIZE) -> Iterator[list[dict]]:
-    """Yield lists of raw card dicts from a (gzip or plain) JSON array file."""
+    """Yield lists of raw card dicts from a (gzip or plain) JSON array file (paper cards only)."""
     opener = gzip.open if _is_gzip(path) else open
     with opener(path, "rb") as fh:
         batch: list[dict] = []
         # use_float keeps numbers as float (not Decimal), so raw is JSON-serializable for JSONB.
         for obj in ijson.items(fh, "item", use_float=True):
+            if not _is_paper(obj):
+                continue
             batch.append(obj)
             if len(batch) >= batch_size:
                 yield batch
                 batch = []
         if batch:
             yield batch
+
+
+async def prune_digital_only(session_factory: async_sessionmaker = SessionLocal) -> int:
+    """Delete already-ingested digital-only (Arena/MTGO) cards. Returns rows removed."""
+    async with session_factory() as session:
+        result = await session.execute(
+            text(
+                "DELETE FROM cards WHERE jsonb_typeof(raw->'games') = 'array' "
+                "AND NOT (raw->'games' @> '[\"paper\"]'::jsonb)"
+            )
+        )
+        await session.commit()
+        return result.rowcount or 0
 
 
 async def _upsert_batch(session, raw_cards: list[dict]) -> None:
@@ -93,6 +114,10 @@ async def ingest_from_path(
             await session.commit()
         total += len(batch)
         log.info("scryfall.ingest.progress", cards=total)
+    # Remove any digital-only cards left over from an earlier (unfiltered) ingest.
+    removed = await prune_digital_only(session_factory)
+    if removed:
+        log.info("scryfall.ingest.pruned_digital", removed=removed)
     return total
 
 

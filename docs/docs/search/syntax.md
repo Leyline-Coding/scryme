@@ -4,7 +4,7 @@ scryme implements a faithful subset of [Scryfall's search syntax](https://scryfa
 Queries combine **filters** with boolean logic, and by default search **your collection**.
 
 !!! tip "Don't know the syntax yet?"
-    The **[Advanced search](/advanced)** page (linked as *Advanced* next to the search bar) is a
+    The **[Advanced search](advanced.md)** page (linked as *Advanced* next to the search bar) is a
     form-based builder: fill in names, colors, mana value, rarity, format, price, and more, and it
     assembles the query for you — then shows the generated query string so you can learn by example.
 
@@ -111,3 +111,24 @@ See [Regular Expressions](regex.md) for the `/…/` regex flavor and its caveats
 !!! tip "Unknown filters"
     If you use a keyword scryme doesn't recognize, it tells you instead of returning a confusing or
     empty result.
+
+## Sorting results
+
+Use the **Sort** and direction dropdowns next to the search bar (or the `sort` and `dir` query
+parameters) to order results by **name**, **mana value**, **price (USD)**, **set**, **rarity**, or
+**release date**, ascending or descending. Cards without a value (e.g. no price) always sort last.
+
+## Saved searches
+
+Save a query you run often from the **Saved** menu: it stores the query along with its scope, sort,
+and direction, and one click re-runs it later. Saving with an existing name overwrites it. Saved
+searches are disabled in read-only (demo) mode.
+
+## Exporting results
+
+The **Export** menu downloads the current results (it respects the live query, scope, and sort):
+
+- **CSV** — one row per card with the owned quantity and USD price.
+- **Decklist (.txt)** — `Nx Name (SET) CN` lines.
+- **ManaBox CSV** — your owned stacks matching the search, in ManaBox's layout, so the file
+  re-imports cleanly.

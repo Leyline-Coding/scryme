@@ -1,0 +1,50 @@
+# Decks
+
+Decks are named lists of cards you compare against your collection to answer **"what am I
+missing?"** — and to check **format legality**.
+
+Open **Decks** from the header (or `/decks`).
+
+## Creating a deck
+
+Click **+ New deck**, give it a name, and paste a plain decklist:
+
+```
+4 Lightning Bolt
+4 Monastery Swiftspear
+20 Mountain
+
+Sideboard
+2 Smash to Smithereens
+```
+
+- One card per line: `4 Lightning Bolt` (or `4x Lightning Bolt`).
+- A `Sideboard` line starts the sideboard; an `SB:` prefix marks a single sideboard line.
+- A trailing printing hint like `(MH2) 122` is ignored.
+- `#` / `//` lines are treated as comments.
+
+Each line is resolved to a card — preferring a printing you **own** (so the image and price match
+your copy), otherwise the most recent printing. Lines that don't match a known card are kept and
+flagged as **unrecognized**.
+
+## Ownership coverage
+
+The deck page shows how complete the deck is against your collection:
+
+- **% owned** and an owned / total card count.
+- **Missing** cards (total and distinct) and an **estimated cost to complete** (USD).
+- Per card: how many you own versus how many the deck needs. Ownership is matched by the card's
+  oracle identity, so **any printing you own counts** — a deck calling for a new printing is
+  satisfied by an old one you already have.
+
+## Legality
+
+Pick a format from the **Legality** dropdown (Standard, Pioneer, Modern, Legacy, Vintage,
+Commander, Pauper, Brawl, Historic, Oathbreaker). scryme reads each card's legalities and reports:
+
+- **✓ Legal** in the chosen format, or
+- the number of cards that are **not legal** (banned or not in the format), with each offending
+  card badged, or
+- **can't confirm** when the deck still has unrecognized lines.
+
+`restricted` cards (e.g. in Vintage) count as legal.

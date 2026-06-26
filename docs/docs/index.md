@@ -6,12 +6,20 @@ Lens, then search it with Scryfall syntax and regular expressions.
 
 ## Highlights
 
-- 🔎 **Scryfall-compatible search** with regex — scoped to your collection or all cards.
+- 🔎 **Scryfall-compatible search** with regex — scoped to your collection or all cards, with
+  sorting, **saved searches**, an **[advanced form builder](search/advanced.md)**, and CSV /
+  decklist / ManaBox **export**.
+- 🃏 **Rich card pages** — full oracle text, prices, legalities, printings, rulings, and real
+  **mana & set symbols**.
+- 🧰 **Collection tools** — a **[stats dashboard](features/stats.md)**,
+  **[decks](features/decks.md)** with ownership coverage and legality checks, and
+  **[binder](features/binders.md)** browsing.
 - 📥 **Collection import** from ManaBox, Dragon Shield, and Delver Lens, with a preview step and
   **replace / increment / per-card** merge strategies.
 - 🗃️ **Local card database + image cache** built from Scryfall bulk data — works offline and stays
   within [Scryfall's API policy](https://scryfall.com/docs/api).
-- 🐳 **Self-hostable via Docker**, with an optional read-only public demo.
+- 🎨 **Themeable UI** (preset themes + custom accent) and 🐳 **self-hostable via Docker**, with an
+  optional read-only public demo.
 
 ## Quick start
 
@@ -30,7 +38,9 @@ Scryfall-style search bar.
 
 - :material-rocket-launch: **[Self-Hosting](getting-started/self-hosting.md)** — run scryme with Docker.
 - :material-upload: **[Importing Collections](import/overview.md)** — supported formats and merge behavior.
-- :material-magnify: **[Search Syntax](search/syntax.md)** — every supported filter.
+- :material-magnify: **[Search Syntax](search/syntax.md)** — every supported filter, sorting, and export.
+- :material-cards: **[Decks](features/decks.md)** — ownership coverage and legality checks.
+- :material-chart-box: **[Collection stats](features/stats.md)** — value and breakdowns at a glance.
 - :material-code-braces: **[Architecture](development/architecture.md)** — how it's built.
 
 </div>

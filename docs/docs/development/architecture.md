@@ -23,6 +23,8 @@ Jinja2 + HTMX + Tailwind. There is no separate single-page app.
   *(card, finish, condition, language, binder)*.
 - **`ingest_state`** — tracks the last bulk download to honor the ≥24h cache rule.
 - **`import_staging`** — holds a parsed, matched upload between preview and confirm.
+- **`saved_search`** — named queries (query + scope + sort + direction).
+- **`deck` / `deck_card`** — decks and their lines, matched to the collection by oracle id.
 
 ## Backend modules (`backend/src/`)
 
@@ -31,7 +33,10 @@ Jinja2 + HTMX + Tailwind. There is no separate single-page app.
 | `scryfall/` | Policy-compliant API client, bulk ingestion (`ijson` streaming), image cache |
 | `search/` | `lexer` → `parser` (AST) → `compiler` (SQLAlchemy) → `engine.run_search` |
 | `importers/` | Format registry, per-app parsers, card matching, merge strategies |
-| `routes/` | `health`, `home`, `search`, `upload`, `admin` |
+| `decks.py` | Decklist parsing, card resolution, ownership coverage + legality |
+| `stats.py` | Owned-collection aggregates for the stats dashboard |
+| `symbols.py` | Render `{…}` mana tokens and set symbols via the Mana/Keyrune fonts |
+| `routes/` | `health`, `home`, `search`, `card`, `upload`, `export`, `saved`, `stats`, `decks`, `binders`, `admin` |
 | `scheduler.py` | Daily Scryfall refresh |
 | `cli.py` | `ingest`, `backfill-images`, `seed-demo` |
 

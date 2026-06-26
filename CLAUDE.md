@@ -84,7 +84,13 @@ by writing a module in `importers/` with `detect`/`parse` and `@register`, then 
 
 ## Status
 
-Phases 0–5 done. Self-hostable: scaffold + CI, Scryfall ingestion + image cache, search engine +
-HTMX UI, collection upload (ManaBox / Dragon Shield / Delver Lens) with the preview→confirm merge
-engine, plus polish (responsive layout + post-upload affordance, `seed-demo` CLI for the read-only
-public demo, and expanded search syntax). The MVP roadmap is complete.
+MVP (Phases 0–5) complete: scaffold + CI, Scryfall ingestion + image cache, search engine + HTMX
+UI, collection upload (ManaBox / Dragon Shield / Delver Lens) with the preview→confirm merge
+engine, and polish (`seed-demo` CLI, expanded search syntax).
+
+Post-MVP features shipped (see `routes/` + docs): theming (preset themes + custom accent), result
+**sort** options, **card detail** page (`/card/{id}`), result **export** (`/export`: CSV /
+decklist / ManaBox), **saved searches** (`/saved`), **advanced search** form builder (`/advanced`),
+**mana & set symbols** (vendored Mana/Keyrune fonts; `src/symbols.py`), a **stats** dashboard
+(`/stats`; `src/stats.py`), **decks** with ownership coverage + format legality (`/decks`;
+`src/decks.py`), and **binder** browsing (`/binders`). Migrations through `0004_decks`.

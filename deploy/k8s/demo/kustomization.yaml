@@ -10,5 +10,5 @@ resources:
   - backend.yaml
 
 images:
-  - name: ghcr.io/untraceablez/scryme
+  - name: ghcr.io/leyline-coding/scryme
     newTag: latest

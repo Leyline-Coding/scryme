@@ -2,14 +2,14 @@
 
 The official demo at **[demo.scryme.app](https://demo.scryme.app)** runs on k3s, fronted by an
 in-cluster Cloudflare Tunnel. The manifests live in the repo under
-[`deploy/k8s/demo/`](https://github.com/untraceablez/scryme/tree/main/deploy/k8s/demo) and are
+[`deploy/k8s/demo/`](https://github.com/Leyline-Coding/scryme/tree/main/deploy/k8s/demo) and are
 bundled with kustomize.
 
 ## What gets deployed
 
 - **PostgreSQL** — a Deployment with a PVC.
 - **scryme** — a Deployment that pulls the published image
-  `ghcr.io/untraceablez/scryme` and persists card data on a PVC.
+  `ghcr.io/leyline-coding/scryme` and persists card data on a PVC.
 - An **init container** that, on first boot, waits for Postgres, runs migrations, ingests the
   Scryfall bulk file, and seeds a sample collection (`alembic upgrade` → `ingest` → `seed-demo`).
   Persistent Postgres + the 24h cache guard make later restarts fast.
@@ -19,7 +19,7 @@ bundled with kustomize.
 ## Prerequisites
 
 - A default StorageClass supporting `ReadWriteOnce` (k3s `local-path` works).
-- The published image. Make the `ghcr.io/untraceablez/scryme` package **public**, or create a pull
+- The published image. Make the `ghcr.io/leyline-coding/scryme` package **public**, or create a pull
   secret named `ghcr-pull` from a `read:packages` token:
 
     ```bash
@@ -71,9 +71,9 @@ Cloudflare terminates TLS at the edge, so the tunnel targets the Service over pl
 
 ```yaml
 images:
-  - name: ghcr.io/untraceablez/scryme
+  - name: ghcr.io/leyline-coding/scryme
     newTag: v0.1.0
 ```
 
-See the [deploy README](https://github.com/untraceablez/scryme/blob/main/deploy/k8s/demo/README.md)
+See the [deploy README](https://github.com/Leyline-Coding/scryme/blob/main/deploy/k8s/demo/README.md)
 for troubleshooting (including resetting the database volume).

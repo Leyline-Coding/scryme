@@ -3,8 +3,8 @@ site_description: "Self-hostable, Scryfall-style search for your own Magic: The 
 site_author: Taylor Cohron
 site_url: https://docs.scryme.app/
 
-repo_name: untraceablez/scryme
-repo_url: https://github.com/untraceablez/scryme
+repo_name: Leyline-Coding/scryme
+repo_url: https://github.com/Leyline-Coding/scryme
 edit_uri: edit/main/docs/docs/
 
 dev_addr: '127.0.0.1:8001'
@@ -87,4 +87,4 @@ plugins:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/untraceablez/scryme
+      link: https://github.com/Leyline-Coding/scryme

@@ -33,7 +33,7 @@ data volume are persistent, so restarts are fast (the 24h cache guard skips re-d
 The deployment references an `imagePullSecret` named `ghcr-pull`. You have two options:
 
 - **Make the package public** (no secret needed): on the package page
-  `github.com/users/untraceablez/packages/container/scryme` → **Package settings** → Danger Zone →
+  `github.com/orgs/Leyline-Coding/packages/container/scryme` → **Package settings** → Danger Zone →
   *Change visibility* → Public. The `imagePullSecrets` entry is then harmlessly ignored.
 - **Use a pull secret** (works while the package is private). Create a
   [classic PAT](https://github.com/settings/tokens) with **`read:packages`** scope, then:
@@ -41,7 +41,7 @@ The deployment references an `imagePullSecret` named `ghcr-pull`. You have two o
     ```bash
     kubectl -n scryme-demo create secret docker-registry ghcr-pull \
       --docker-server=ghcr.io \
-      --docker-username=untraceablez \
+      --docker-username=<your-github-username> \
       --docker-password=<YOUR_PAT> \
       --docker-email=you@example.com
     ```
@@ -81,7 +81,7 @@ The tunnel targets `http://scryme-demo.scryme-demo.svc.cluster.local:8000`; Clou
 
 ```yaml
 images:
-  - name: ghcr.io/untraceablez/scryme
+  - name: ghcr.io/leyline-coding/scryme
     newTag: v0.1.0
 ```
 

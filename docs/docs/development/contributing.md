@@ -3,7 +3,7 @@
 ## Local setup
 
 ```bash
-git clone https://github.com/untraceablez/scryme.git
+git clone https://github.com/Leyline-Coding/scryme.git
 cd scryme
 docker compose -f docker-compose.dev.yml up   # backend on http://localhost:8000 with hot reload
 ```

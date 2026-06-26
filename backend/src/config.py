@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     # Scryfall good-citizenship settings (see https://scryfall.com/docs/api).
     # User-Agent MUST identify this app; Accept MUST be set. Keep < 10 req/s.
     scryfall_api_base: str = "https://api.scryfall.com"
-    scryfall_user_agent: str = f"scryme/{__version__} (+https://github.com/untraceablez/scryme)"
+    scryfall_user_agent: str = f"scryme/{__version__} (+https://github.com/Leyline-Coding/scryme)"
     scryfall_accept: str = "application/json;q=0.9,*/*;q=0.8"
     scryfall_min_request_interval: float = 0.1  # seconds between requests (<= 10/s)
     # Don't re-download bulk data more often than this many hours (Scryfall asks >= 24h cache).

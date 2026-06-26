@@ -12,7 +12,7 @@ proxy that also serves cached card images.
 ## Start the stack
 
 ```bash
-git clone https://github.com/untraceablez/scryme.git
+git clone https://github.com/Leyline-Coding/scryme.git
 cd scryme
 docker compose up -d
 ```

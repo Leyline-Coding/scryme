@@ -41,7 +41,7 @@ spec:
       # bulk file, and seed a sample collection. The 24h guard + persistent DB make reruns cheap.
       initContainers:
         - name: ingest-and-seed
-          image: ghcr.io/untraceablez/scryme:latest
+          image: ghcr.io/leyline-coding/scryme:latest
           imagePullPolicy: Always
           workingDir: /app
           command: ["sh", "-c"]
@@ -76,7 +76,7 @@ spec:
               memory: 1Gi
       containers:
         - name: scryme
-          image: ghcr.io/untraceablez/scryme:latest
+          image: ghcr.io/leyline-coding/scryme:latest
           imagePullPolicy: Always
           envFrom:
             - configMapRef:

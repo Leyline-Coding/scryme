@@ -23,18 +23,20 @@ def test_parse_decklist_quantities_board_and_suffix():
 async def _seed_cards(session):
     # Bolt has two printings; the owned one shares the oracle, so ownership counts either.
     oracle_bolt = str(uuid.uuid4())
+    bolt_legal = {"modern": "legal", "standard": "not_legal", "commander": "legal"}
     bolt_old = {"id": str(uuid.uuid4()), "oracle_id": oracle_bolt, "name": "Lightning Bolt",
                 "set": "LEA", "collector_number": "161", "rarity": "common", "cmc": 1,
                 "type_line": "Instant", "colors": ["R"], "color_identity": ["R"],
-                "released_at": "1993-08-05", "prices": {"usd": "5.00"}}
+                "released_at": "1993-08-05", "prices": {"usd": "5.00"}, "legalities": bolt_legal}
     bolt_new = {"id": str(uuid.uuid4()), "oracle_id": oracle_bolt, "name": "Lightning Bolt",
                 "set": "MH2", "collector_number": "122", "rarity": "uncommon", "cmc": 1,
                 "type_line": "Instant", "colors": ["R"], "color_identity": ["R"],
-                "released_at": "2021-06-18", "prices": {"usd": "2.00"}}
+                "released_at": "2021-06-18", "prices": {"usd": "2.00"}, "legalities": bolt_legal}
     forest = {"id": str(uuid.uuid4()), "oracle_id": str(uuid.uuid4()), "name": "Forest",
               "set": "MH2", "collector_number": "490", "rarity": "common", "cmc": 0,
               "type_line": "Basic Land — Forest", "colors": [], "color_identity": ["G"],
-              "prices": {"usd": "0.10"}}
+              "prices": {"usd": "0.10"},
+              "legalities": {"modern": "legal", "standard": "legal", "commander": "legal"}}
     cards = {}
     for raw in (bolt_old, bolt_new, forest):
         c = Card(**card_to_columns(raw))
@@ -71,6 +73,18 @@ async def test_coverage_counts_owned_and_missing(session):
     assert cov.unique_missing == 3  # Bolt, Forest, the unmatched line
     # Missing cost = 3 Bolt * $5 (owned LEA printing's price) + 20 Forest * $0.10.
     assert round(cov.missing_cost, 2) == 17.00
+
+
+@pytest.mark.asyncio
+async def test_legality_check(session):
+    await _seed_cards(session)
+    deck = await create_deck(session, "Burn", "4 Lightning Bolt\n20 Forest")
+    legal = await deck_coverage(session, deck, fmt="modern")
+    assert legal.fmt == "modern" and legal.illegal_count == 0 and legal.is_legal
+    illegal = await deck_coverage(session, deck, fmt="standard")
+    assert illegal.illegal_count == 1 and not illegal.is_legal  # Bolt isn't standard-legal
+    # An unknown / blank format clears the check.
+    assert (await deck_coverage(session, deck, fmt="bogus")).fmt is None
 
 
 @pytest.mark.asyncio

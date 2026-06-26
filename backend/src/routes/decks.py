@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
 from src.db import get_session
-from src.decks import create_deck, deck_coverage
+from src.decks import LEGALITY_FORMATS, create_deck, deck_coverage
 from src.models import Deck
 from src.templating import templates
 
@@ -59,14 +59,23 @@ async def create(
 
 @router.get("/decks/{deck_id}", response_class=HTMLResponse)
 async def view_deck(
-    request: Request, deck_id: int, session: AsyncSession = Depends(get_session)
+    request: Request,
+    deck_id: int,
+    format: str = "",
+    session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     deck = await session.get(Deck, deck_id)
     if deck is None:
         raise HTTPException(status_code=404, detail="Deck not found.")
-    coverage = await deck_coverage(session, deck)
+    coverage = await deck_coverage(session, deck, fmt=format or None)
     return templates.TemplateResponse(
-        request, "deck_detail.html", {"cov": coverage, "read_only": get_settings().read_only}
+        request,
+        "deck_detail.html",
+        {
+            "cov": coverage,
+            "formats": LEGALITY_FORMATS,
+            "read_only": get_settings().read_only,
+        },
     )
 
 

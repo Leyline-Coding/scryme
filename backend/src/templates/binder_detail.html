@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ label }} · Binders · scryme{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-6">
+    <a href="/" class="text-2xl font-bold tracking-tight shrink-0">
+      <span class="text-accent">scry</span>me
+    </a>
+    <h1 class="text-lg font-semibold truncate">{{ label }}</h1>
+    <a href="/binders" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Binders →</a>
+  </header>
+
+  {% if views %}
+  <p class="text-sm text-muted mb-4">{{ views | length }} distinct card{{ '' if views|length == 1 else 's' }}</p>
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+    {% for v in views %}
+    <a href="/card/{{ v.card.scryfall_id }}"
+       class="group relative block rounded-xl overflow-hidden bg-surface ring-1 ring-edge hover:ring-accent transition">
+      {% if v.image %}
+      <img src="{{ v.image }}" alt="{{ v.card.name }}" loading="lazy" class="w-full aspect-[5/7] object-cover" />
+      {% else %}
+      <div class="w-full aspect-[5/7] flex items-center justify-center text-center p-2 text-xs text-muted">{{ v.card.name }}</div>
+      {% endif %}
+      {% if v.quantity %}
+      <span class="absolute top-1.5 right-1.5 rounded-full bg-accent text-accent-fg text-xs font-semibold px-2 py-0.5 shadow">×{{ v.quantity }}</span>
+      {% endif %}
+      <div class="px-2 py-1 text-xs truncate text-fg">
+        {{ v.card.name }}
+        {{ set_symbol(v.card.set_code, v.card.rarity) }}
+        <span class="text-muted uppercase">{{ v.card.set_code }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-muted py-16 text-center">This binder is empty.</div>
+  {% endif %}
+</div>
+{% endblock %}

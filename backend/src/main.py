@@ -15,6 +15,7 @@ from src import __version__
 from src.config import get_settings
 from src.routes import (
     admin,
+    binders,
     card,
     decks,
     export,
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
     app.include_router(saved.router)
     app.include_router(stats.router)
     app.include_router(decks.router)
+    app.include_router(binders.router)
 
     # Cached card images are served from the data volume.
     settings.image_cache_dir.mkdir(parents=True, exist_ok=True)

@@ -119,6 +119,15 @@ async def create_deck(session: AsyncSession, name: str, decklist_text: str) -> D
     return deck
 
 
+# Formats offered for the deck legality check (Scryfall reports ~20; this is the useful subset).
+LEGALITY_FORMATS = [
+    "standard", "pioneer", "modern", "legacy", "vintage",
+    "commander", "pauper", "brawl", "historic", "oathbreaker",
+]
+# A card is allowed in a deck when legal (restricted = legal but limited to one copy).
+_ALLOWED_LEGALITIES = {"legal", "restricted"}
+
+
 @dataclass
 class CardRow:
     name: str
@@ -127,6 +136,7 @@ class CardRow:
     owned: int
     matched: bool
     scryfall_id: str | None
+    legality: str | None = None     # status in the selected format, or None when no format chosen
 
 
 @dataclass
@@ -139,6 +149,8 @@ class DeckCoverage:
     unique_missing: int = 0         # distinct cards (oracle / unmatched line) not fully owned
     missing_cost: float = 0.0
     unmatched: int = 0              # lines whose name didn't resolve to a card
+    fmt: str | None = None          # selected legality format, if any
+    illegal_count: int = 0          # distinct cards not legal in the selected format
 
     @property
     def owned_count(self) -> int:
@@ -148,6 +160,10 @@ class DeckCoverage:
     def pct_complete(self) -> int:
         return round(100 * self.owned_count / self.total_needed) if self.total_needed else 0
 
+    @property
+    def is_legal(self) -> bool:
+        return bool(self.fmt) and self.illegal_count == 0 and self.unmatched == 0
+
 
 def _usd(prices: dict | None) -> float:
     try:
@@ -156,22 +172,27 @@ def _usd(prices: dict | None) -> float:
         return 0.0
 
 
-async def deck_coverage(session: AsyncSession, deck: Deck) -> DeckCoverage:
+async def deck_coverage(
+    session: AsyncSession, deck: Deck, fmt: str | None = None
+) -> DeckCoverage:
     owned = await _owned_by_oracle(session)
+    fmt = fmt if fmt in LEGALITY_FORMATS else None
 
     sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
     price_by_sid: dict[str, dict] = {}
+    legal_by_oracle: dict = {}
     oracle_sid: dict = {}
     if sids:
         rows = (
             await session.execute(
-                select(Card.scryfall_id, Card.oracle_id, Card.prices).where(
+                select(Card.scryfall_id, Card.oracle_id, Card.prices, Card.legalities).where(
                     Card.scryfall_id.in_(sids)
                 )
             )
         ).all()
-        for sid, oracle, prices in rows:
+        for sid, oracle, prices, legalities in rows:
             price_by_sid[str(sid)] = prices or {}
+            legal_by_oracle[oracle] = legalities or {}
             oracle_sid[oracle] = str(sid)
 
     # Needed totals per oracle across both boards (ownership is shared between main + side).
@@ -180,16 +201,24 @@ async def deck_coverage(session: AsyncSession, deck: Deck) -> DeckCoverage:
         if c.oracle_id:
             needed_by_oracle[c.oracle_id] = needed_by_oracle.get(c.oracle_id, 0) + c.quantity
 
-    cov = DeckCoverage(deck=deck)
+    cov = DeckCoverage(deck=deck, fmt=fmt)
+    illegal_oracles: set = set()
     for c in deck.cards:
+        legality = None
+        if fmt and c.oracle_id:
+            legality = legal_by_oracle.get(c.oracle_id, {}).get(fmt, "not_legal")
+            if legality not in _ALLOWED_LEGALITIES:
+                illegal_oracles.add(c.oracle_id)
         row = CardRow(
             name=c.name, quantity=c.quantity, board=c.board,
             owned=owned.get(c.oracle_id, 0) if c.oracle_id else 0,
             matched=c.oracle_id is not None,
             scryfall_id=str(c.scryfall_id) if c.scryfall_id else None,
+            legality=legality,
         )
         (cov.main if c.board == "main" else cov.side).append(row)
         cov.total_needed += c.quantity
+    cov.illegal_count = len(illegal_oracles)
 
     # Missing math, counted once per oracle (and per unmatched line).
     for oracle, needed in needed_by_oracle.items():

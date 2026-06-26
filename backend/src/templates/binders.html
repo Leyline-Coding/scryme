@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Binders · scryme{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-6">
+    <a href="/" class="text-2xl font-bold tracking-tight shrink-0">
+      <span class="text-accent">scry</span>me
+    </a>
+    <h1 class="text-lg font-semibold">Binders</h1>
+    <a href="/search" class="ml-auto text-sm text-muted hover:text-fg">Search →</a>
+  </header>
+
+  {% if binders %}
+  <ul class="grid sm:grid-cols-2 gap-3">
+    {% for b in binders %}
+    <li>
+      <a href="/binders/cards?name={{ b.key | urlencode }}"
+         class="block rounded-xl bg-surface ring-1 ring-edge px-4 py-3 hover:ring-accent transition">
+        <div class="font-medium truncate {% if not b.name %}text-muted italic{% endif %}">{{ b.label }}</div>
+        <div class="text-xs text-muted">{{ '{:,}'.format(b.quantity) }} cards · {{ '{:,}'.format(b.distinct) }} distinct</div>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="text-muted py-16 text-center">
+    No collection yet. <a href="/upload" class="underline">Upload one</a> to organize it into binders.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

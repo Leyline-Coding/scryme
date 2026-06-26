@@ -12,6 +12,11 @@
       {% else %}
       <span class="flex-1 min-w-0 truncate" title="Not found in the card database">{{ r.name }}</span>
       {% endif %}
+      {% if r.legality and r.legality not in ('legal', 'restricted') %}
+      <span class="shrink-0 text-xs text-rose-500 capitalize" title="Not legal in {{ cov.fmt }}">{{ r.legality.replace('_', ' ') }}</span>
+      {% elif r.legality == 'restricted' %}
+      <span class="shrink-0 text-xs text-amber-500">restricted</span>
+      {% endif %}
       {% if not r.matched %}
       <span class="shrink-0 text-xs">unrecognized</span>
       {% elif r.owned >= r.quantity %}
@@ -57,6 +62,27 @@
     {% if cov.unmatched %}
     <p class="mt-2 text-xs text-amber-500">{{ cov.unmatched }} line(s) didn't match a known card.</p>
     {% endif %}
+
+    {# Legality check #}
+    <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm">
+      <span class="text-muted">Legality:</span>
+      <select onchange="location.href='/decks/{{ cov.deck.id }}?format=' + this.value"
+        class="rounded-lg bg-surface-2 border border-edge px-2 py-1 text-sm">
+        <option value="">— pick a format —</option>
+        {% for f in formats %}
+        <option value="{{ f }}" {% if cov.fmt == f %}selected{% endif %} class="capitalize">{{ f }}</option>
+        {% endfor %}
+      </select>
+      {% if cov.fmt %}
+        {% if cov.is_legal %}
+        <span class="text-emerald-500 font-medium">✓ Legal in {{ cov.fmt }}</span>
+        {% elif cov.illegal_count %}
+        <span class="text-rose-500 font-medium">{{ cov.illegal_count }} card(s) not legal in {{ cov.fmt }}</span>
+        {% elif cov.unmatched %}
+        <span class="text-amber-500">Can't confirm — {{ cov.unmatched }} unrecognized card(s)</span>
+        {% endif %}
+      {% endif %}
+    </div>
   </div>
 
   <div class="grid md:grid-cols-2 gap-6">

@@ -29,10 +29,10 @@
     <div class="space-y-5">
       <div>
         <div class="flex items-baseline justify-between gap-3 flex-wrap">
-          <h1 class="text-2xl font-bold">{{ card.name }}</h1>
+          <h1 class="font-title text-2xl font-bold tracking-wide">{{ card.name }}</h1>
           {% if card.mana_cost %}<span class="text-lg">{{ card.mana_cost | mana }}</span>{% endif %}
         </div>
-        <p class="text-muted mt-1">{{ card.type_line }}</p>
+        <p class="font-card text-muted mt-1">{{ card.type_line }}</p>
       </div>
 
       {# Oracle text — render per-face for double-faced cards, otherwise the card's text. #}
@@ -41,16 +41,16 @@
         {% for f in faces %}
         <div class="rounded-lg bg-surface ring-1 ring-edge p-3">
           <div class="flex items-baseline justify-between gap-2">
-            <p class="font-semibold">{{ f.name }}</p>
+            <p class="font-title font-semibold tracking-wide">{{ f.name }}</p>
             {% if f.mana_cost %}<span class="text-sm">{{ f.mana_cost | mana }}</span>{% endif %}
           </div>
-          {% if f.type_line %}<p class="text-sm text-muted">{{ f.type_line }}</p>{% endif %}
-          {% if f.oracle_text %}<p class="mt-1 whitespace-pre-line text-sm">{{ f.oracle_text | mana }}</p>{% endif %}
+          {% if f.type_line %}<p class="font-card text-sm text-muted">{{ f.type_line }}</p>{% endif %}
+          {% if f.oracle_text %}<p class="font-card mt-1 whitespace-pre-line text-[15px] leading-snug">{{ f.oracle_text | mana }}</p>{% endif %}
           {% if f.power %}<p class="mt-1 text-sm text-muted">{{ f.power }}/{{ f.toughness }}</p>{% endif %}
         </div>
         {% endfor %}
         {% elif card.oracle_text %}
-        <p class="whitespace-pre-line rounded-lg bg-surface ring-1 ring-edge p-3 text-sm">{{ card.oracle_text | mana }}</p>
+        <p class="font-card whitespace-pre-line rounded-lg bg-surface ring-1 ring-edge p-3 text-[15px] leading-snug">{{ card.oracle_text | mana }}</p>
         {% endif %}
 
         {% if card.power and not faces %}

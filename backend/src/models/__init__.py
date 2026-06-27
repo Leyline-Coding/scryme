@@ -7,8 +7,9 @@ from src.models.ingest import IngestState
 from src.models.price import CardPricePoint, PriceSnapshot
 from src.models.saved_search import SavedSearch
 from src.models.staging import ImportStaging
+from src.models.wishlist import WishlistItem
 
 __all__ = [
     "Card", "CardPricePoint", "CollectionCard", "Deck", "DeckCard", "IngestState",
-    "ImportStaging", "PriceSnapshot", "SavedSearch",
+    "ImportStaging", "PriceSnapshot", "SavedSearch", "WishlistItem",
 ]

@@ -250,3 +250,37 @@ async def deck_coverage(
             cov.unique_missing += 1
             cov.unmatched += 1
     return cov
+
+
+@dataclass
+class MissingEntry:
+    name: str
+    scryfall_id: str
+    missing: int
+
+
+async def deck_missing(session: AsyncSession, deck: Deck) -> list[MissingEntry]:
+    """Matched cards the deck still needs, one entry per oracle (for adding to the wishlist).
+
+    Ownership is shared across both boards and counted by oracle id; unmatched lines (no resolved
+    printing) are skipped since the wishlist is keyed by ``scryfall_id``.
+    """
+    owned = await _owned_by_oracle(session)
+    needed_by_oracle: dict = {}
+    name_by_oracle: dict = {}
+    sid_by_oracle: dict = {}
+    for c in deck.cards:
+        if not c.oracle_id:
+            continue
+        needed_by_oracle[c.oracle_id] = needed_by_oracle.get(c.oracle_id, 0) + c.quantity
+        name_by_oracle.setdefault(c.oracle_id, c.name)
+        if c.scryfall_id:
+            sid_by_oracle.setdefault(c.oracle_id, str(c.scryfall_id))
+
+    out: list[MissingEntry] = []
+    for oracle, needed in needed_by_oracle.items():
+        miss = max(0, needed - owned.get(oracle, 0))
+        sid = sid_by_oracle.get(oracle)
+        if miss and sid:
+            out.append(MissingEntry(name=name_by_oracle[oracle], scryfall_id=sid, missing=miss))
+    return out

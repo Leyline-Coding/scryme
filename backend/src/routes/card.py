@@ -22,6 +22,7 @@ from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
 from src.tags import add_card_tag, card_tags, remove_card_tag
 from src.templating import templates
+from src.wishlist import is_wishlisted
 
 router = APIRouter(tags=["card"])
 _cache = ImageCache()
@@ -114,6 +115,7 @@ async def card_detail(
             "price_rows": price_rows,
             "legality_rows": legality_rows,
             "tags": await card_tags(session, card.scryfall_id),
+            "wishlisted": await is_wishlisted(session, card.scryfall_id),
             "read_only": get_settings().read_only,
         },
     )

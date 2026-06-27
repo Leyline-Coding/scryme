@@ -15,6 +15,7 @@ from src.db import get_session
 from src.decks import LEGALITY_FORMATS, create_deck, deck_coverage
 from src.models import Deck
 from src.templating import templates
+from src.wishlist import add_deck_missing
 
 router = APIRouter(tags=["decks"])
 
@@ -87,3 +88,14 @@ async def delete_deck(deck_id: int, session: AsyncSession = Depends(get_session)
         await session.delete(deck)
         await session.commit()
     return RedirectResponse(url="/decks", status_code=303)
+
+
+@router.post("/decks/{deck_id}/wishlist")
+async def deck_to_wishlist(deck_id: int, session: AsyncSession = Depends(get_session)):
+    """Add every card the deck is still missing to the wishlist, then show the wishlist."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail="Deck not found.")
+    await add_deck_missing(session, deck)
+    return RedirectResponse(url="/wishlist", status_code=303)

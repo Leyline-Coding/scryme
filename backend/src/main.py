@@ -27,6 +27,7 @@ from src.routes import (
     sets,
     stats,
     upload,
+    wishlist,
 )
 from src.scheduler import shutdown_scheduler, start_scheduler
 from src.templating import STATIC_DIR
@@ -66,6 +67,7 @@ def create_app() -> FastAPI:
     app.include_router(binders.router)
     app.include_router(prices.router)
     app.include_router(sets.router)
+    app.include_router(wishlist.router)
 
     # Cached card images are served from the data volume.
     settings.image_cache_dir.mkdir(parents=True, exist_ok=True)

@@ -95,5 +95,7 @@ decklist / ManaBox), **saved searches** (`/saved`), **advanced search** form bui
 **mana & set symbols** (vendored Mana/Keyrune fonts; `src/symbols.py`), a **stats** dashboard
 (`/stats`; `src/stats.py`, incl. a value-over-time chart), **decks** with ownership coverage +
 format legality (`/decks`; `src/decks.py`), **binder** browsing (`/binders`), **price history**
-with acquisition P/L (`/prices`; `src/prices.py`), and a **set completion** tracker (`/sets`;
-`src/sets.py`). Migrations through `0005_prices`.
+with acquisition P/L (`/prices`; `src/prices.py`), a **set completion** tracker (`/sets`;
+`src/sets.py`), **card tags** (`tag:` search; `collection_card.tags`; `src/tags.py`), and a
+**wishlist** (`/wishlist`; `src/wishlist.py`, incl. "add a deck's missing cards"). Migrations
+through `0007_wishlist`.

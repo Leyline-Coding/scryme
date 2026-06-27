@@ -81,6 +81,12 @@
       </div>
       {% endif %}
 
+      {# Wishlist #}
+      {% if not read_only or wishlisted %}
+      {% set card_id = card.scryfall_id %}
+      {% include "_wishlist_button.html" %}
+      {% endif %}
+
       {# Owned #}
       <div class="rounded-lg bg-surface ring-1 ring-edge p-3">
         <p class="text-sm font-semibold mb-1">

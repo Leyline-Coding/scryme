@@ -51,6 +51,13 @@
         <div class="text-amber-500 font-medium">{{ cov.missing_count }} missing
           <span class="text-muted">({{ cov.unique_missing }} distinct)</span></div>
         {% if cov.missing_cost %}<div class="text-muted">≈ ${{ '{:,.2f}'.format(cov.missing_cost) }} to complete</div>{% endif %}
+        {% if not read_only and cov.unique_missing > cov.unmatched %}
+        <form method="post" action="/decks/{{ cov.deck.id }}/wishlist" class="mt-1">
+          <button type="submit" class="text-xs rounded bg-surface-2 hover:bg-surface-3 px-2 py-1">
+            ☆ Add missing to wishlist
+          </button>
+        </form>
+        {% endif %}
         {% else %}
         <div class="text-emerald-500 font-medium">Complete — you own everything</div>
         {% endif %}

@@ -9,11 +9,12 @@ Lens, then search it with Scryfall syntax and regular expressions.
 - 🔎 **Scryfall-compatible search** with regex — scoped to your collection or all cards, with
   sorting, **saved searches**, an **[advanced form builder](search/advanced.md)**, and CSV /
   decklist / ManaBox **export**.
-- 🃏 **Rich card pages** — full oracle text, prices, legalities, printings, rulings, and real
-  **mana & set symbols**.
-- 🧰 **Collection tools** — a **[stats dashboard](features/stats.md)**,
-  **[price history](features/prices.md)** (value over time + movers),
-  **[decks](features/decks.md)** with ownership coverage and legality checks, and
+- 🃏 **Rich card pages** — full oracle text, prices, legalities, printings, rulings, real
+  **mana & set symbols**, and **[tags](features/cards.md#tags)** you can search with `tag:`.
+- 🧰 **Collection tools** — a **[stats dashboard](features/stats.md)** (with a value-over-time
+  chart), **[price history](features/prices.md)** (value over time, movers, and acquisition
+  profit/loss), **[decks](features/decks.md)** with ownership coverage and legality checks,
+  **[set completion](features/sets.md)** tracking, a **[wishlist](features/wishlist.md)**, and
   **[binder](features/binders.md)** browsing.
 - 📥 **Collection import** from ManaBox, Dragon Shield, and Delver Lens, with a preview step and
   **replace / increment / per-card** merge strategies.
@@ -21,6 +22,8 @@ Lens, then search it with Scryfall syntax and regular expressions.
   within [Scryfall's API policy](https://scryfall.com/docs/api).
 - 🎨 **Themeable UI** (preset themes + custom accent) and 🐳 **self-hostable via Docker**, with an
   optional read-only public demo.
+
+See the **[roadmap](roadmap.md)** for what's shipped and what's planned.
 
 ## Quick start
 

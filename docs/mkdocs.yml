@@ -85,6 +85,7 @@ nav:
       - Collection Stats: features/stats.md
       - Price History: features/prices.md
       - Theming: features/theming.md
+  - Roadmap: roadmap.md
   - Development:
       - Architecture: development/architecture.md
       - Contributing: development/contributing.md

@@ -6,13 +6,14 @@ Mutations are blocked in read-only (demo) mode, mirroring uploads.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
 from src.db import get_session
-from src.decks import LEGALITY_FORMATS, create_deck, deck_coverage
+from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
+from src.decks import LEGALITY_FORMATS, create_deck, deck_coverage, deck_stats
 from src.models import Deck
 from src.templating import templates
 from src.wishlist import add_deck_missing
@@ -75,8 +76,35 @@ async def view_deck(
         {
             "cov": coverage,
             "formats": LEGALITY_FORMATS,
+            "stats": await deck_stats(session, deck),
+            "export_formats": EXPORT_FORMATS,
             "read_only": get_settings().read_only,
         },
+    )
+
+
+def _slug(name: str) -> str:
+    cleaned = "".join(ch if ch.isalnum() else "-" for ch in (name or "").lower())
+    return "-".join(filter(None, cleaned.split("-")))[:60] or "deck"
+
+
+@router.get("/decks/{deck_id}/export")
+async def export_deck(
+    deck_id: int, fmt: str = "text", session: AsyncSession = Depends(get_session)
+) -> PlainTextResponse:
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail="Deck not found.")
+    if fmt not in EXPORT_FORMATS:
+        fmt = "text"
+    suffix, media_type, _label = EXPORT_FORMATS[fmt]
+    cards = await collect_export_cards(session, deck)
+    content = render_deck(cards, fmt)
+    filename = f"{_slug(deck.name)}.{suffix}"
+    return PlainTextResponse(
+        content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

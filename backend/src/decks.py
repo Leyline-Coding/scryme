@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Card, CollectionCard, Deck, DeckCard
+from src.stats import Bar, _bars, _color_bucket
 
 _LINE = re.compile(r"^\s*(\d+)\s*[xX]?\s+(.+?)\s*$")
 # Strip trailing export markers like "*F*" (foil) / "*E*" (etched).
@@ -284,3 +285,52 @@ async def deck_missing(session: AsyncSession, deck: Deck) -> list[MissingEntry]:
         if miss and sid:
             out.append(MissingEntry(name=name_by_oracle[oracle], scryfall_id=sid, missing=miss))
     return out
+
+
+_MAX_MV_BUCKET = 7  # 7+ collapses into one bucket
+_CURVE_ORDER = [str(i) for i in range(_MAX_MV_BUCKET)] + [f"{_MAX_MV_BUCKET}+"]
+
+
+@dataclass
+class DeckStats:
+    mana_curve: list[Bar] = field(default_factory=list)   # nonland spells by mana value (mainboard)
+    by_color: list[Bar] = field(default_factory=list)     # mainboard cards by color identity
+    total_value: float = 0.0                              # qty * USD across the whole deck
+
+    @property
+    def has_data(self) -> bool:
+        return bool(self.mana_curve or self.by_color or self.total_value)
+
+
+async def deck_stats(session: AsyncSession, deck: Deck) -> DeckStats:
+    """Mana curve (nonland mainboard spells), color breakdown, and total USD value."""
+    sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
+    info: dict = {}
+    if sids:
+        rows = (
+            await session.execute(
+                select(
+                    Card.scryfall_id, Card.cmc, Card.color_identity, Card.type_line, Card.prices
+                ).where(Card.scryfall_id.in_(sids))
+            )
+        ).all()
+        info = {sid: (cmc, ci, tl, prices) for sid, cmc, ci, tl, prices in rows}
+
+    curve: dict[str, int] = {}
+    colors: dict[str, int] = {}
+    total = 0.0
+    for c in deck.cards:
+        cmc, ci, type_line, prices = info.get(c.scryfall_id, (None, None, None, None))
+        total += c.quantity * _usd(prices)
+        # Curve + color pie cover mainboard nonland spells, so basics don't dominate.
+        if not c.scryfall_id or c.board != "main" or (type_line and "Land" in type_line):
+            continue
+        colors[_color_bucket(ci)] = colors.get(_color_bucket(ci), 0) + c.quantity
+        bucket = f"{_MAX_MV_BUCKET}+" if (cmc or 0) >= _MAX_MV_BUCKET else str(int(cmc or 0))
+        curve[bucket] = curve.get(bucket, 0) + c.quantity
+
+    return DeckStats(
+        mana_curve=_bars(curve, order=_CURVE_ORDER),
+        by_color=_bars(colors),
+        total_value=round(total, 2),
+    )

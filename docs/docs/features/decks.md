@@ -48,3 +48,26 @@ Commander, Pauper, Brawl, Historic, Oathbreaker). scryme reads each card's legal
 - **can't confirm** when the deck still has unrecognized lines.
 
 `restricted` cards (e.g. in Vintage) count as legal.
+
+## Deck stats
+
+Each deck page shows a quick profile:
+
+- **Mana curve** — mainboard nonland spells bucketed by mana value (0–6 and 7+), so lands don't
+  flatten the curve.
+- **Colors** — the mainboard's color identity breakdown (also excluding lands).
+- **Deck value** — the total USD value of every card in the deck at current Scryfall prices.
+
+## Export
+
+Use the **Export** buttons on the deck page to download the list:
+
+- **Plain text** — `4 Lightning Bolt` lines with a `Sideboard` section. The most portable form.
+- **Arena** — `4 Lightning Bolt (LEA) 161` annotated with set + collector number, for MTG Arena's
+  import box.
+- **Moxfield** — the same annotated lines with a `SIDEBOARD:` marker; pastes into Moxfield and
+  Archidekt.
+- **MTGO (.dek)** — an XML `.dek` file for Magic Online.
+
+Cards scryme couldn't resolve are exported by name only (no set/number).
+

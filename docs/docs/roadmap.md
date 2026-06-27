@@ -14,7 +14,8 @@ The MVP plus a steady stream of post-MVP features:
   [preview → confirm merge](import/merge.md) flow.
 - **Card detail pages** with art, oracle text, prices, legalities, rulings, and
   [mana/set symbols](features/cards.md).
-- **Decks** — paste a list for [ownership coverage + format legality](features/decks.md).
+- **Decks** — paste a list for [ownership coverage, format legality, per-deck stats, and
+  export](features/decks.md) (text / Arena / Moxfield / MTGO).
 - **Binders** — browse your collection by its import binders.
 - **[Set completion](features/sets.md)** — how much of each set you own, with the missing cards.
 - **[Price history](features/prices.md)** — value-over-time snapshots, biggest movers, and
@@ -33,7 +34,6 @@ Tracked as open issues — roughly in priority order:
 
 | Issue | Feature |
 | --- | --- |
-| [#64](https://github.com/Leyline-Coding/scryme/issues/64) | Deck export (text / Arena / MTGO / Moxfield) + per-deck stats |
 | [#65](https://github.com/Leyline-Coding/scryme/issues/65) | Backup & restore of your data (logical dump) |
 | [#58](https://github.com/Leyline-Coding/scryme/issues/58) | Saved-search alerts — surface newly-matching cards after an ingest |
 | [#59](https://github.com/Leyline-Coding/scryme/issues/59) | Undo last import (pre-merge snapshot + one-click restore) |

@@ -317,6 +317,23 @@
   
   
   
+    <li class="md-tabs__item">
+      <a href="roadmap/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
     
     
       <li class="md-tabs__item">
@@ -1081,6 +1098,26 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="roadmap/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
     
     
       
@@ -1100,10 +1137,10 @@
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -1114,8 +1151,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_6">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             Development
           </label>
@@ -1250,11 +1287,12 @@ Lens, then search it with Scryfall syntax and regular expressions.</p>
 <li>🔎 <strong>Scryfall-compatible search</strong> with regex — scoped to your collection or all cards, with
   sorting, <strong>saved searches</strong>, an <strong><a href="search/advanced/">advanced form builder</a></strong>, and CSV /
   decklist / ManaBox <strong>export</strong>.</li>
-<li>🃏 <strong>Rich card pages</strong> — full oracle text, prices, legalities, printings, rulings, and real
-  <strong>mana &amp; set symbols</strong>.</li>
-<li>🧰 <strong>Collection tools</strong> — a <strong><a href="features/stats/">stats dashboard</a></strong>,
-  <strong><a href="features/prices/">price history</a></strong> (value over time + movers),
-  <strong><a href="features/decks/">decks</a></strong> with ownership coverage and legality checks, and
+<li>🃏 <strong>Rich card pages</strong> — full oracle text, prices, legalities, printings, rulings, real
+  <strong>mana &amp; set symbols</strong>, and <strong><a href="features/cards/#tags">tags</a></strong> you can search with <code>tag:</code>.</li>
+<li>🧰 <strong>Collection tools</strong> — a <strong><a href="features/stats/">stats dashboard</a></strong> (with a value-over-time
+  chart), <strong><a href="features/prices/">price history</a></strong> (value over time, movers, and acquisition
+  profit/loss), <strong><a href="features/decks/">decks</a></strong> with ownership coverage and legality checks,
+  <strong><a href="features/sets/">set completion</a></strong> tracking, a <strong><a href="features/wishlist/">wishlist</a></strong>, and
   <strong><a href="features/binders/">binder</a></strong> browsing.</li>
 <li>📥 <strong>Collection import</strong> from ManaBox, Dragon Shield, and Delver Lens, with a preview step and
   <strong>replace / increment / per-card</strong> merge strategies.</li>
@@ -1263,6 +1301,7 @@ Lens, then search it with Scryfall syntax and regular expressions.</p>
 <li>🎨 <strong>Themeable UI</strong> (preset themes + custom accent) and 🐳 <strong>self-hostable via Docker</strong>, with an
   optional read-only public demo.</li>
 </ul>
+<p>See the <strong><a href="roadmap/">roadmap</a></strong> for what's shipped and what's planned.</p>
 <h2 id="quick-start">Quick start</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>backend<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>ingest<span class="w">   </span><span class="c1"># download the Scryfall bulk file</span>
@@ -1309,7 +1348,7 @@ or endorsed by Wizards of the Coast or Scryfall.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 26, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 27, 2026</span>
   </span>
 
     

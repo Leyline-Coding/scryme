@@ -6,6 +6,11 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://docs.scryme.app/roadmap/</loc>
+         <lastmod>2026-06-27</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://docs.scryme.app/development/architecture/</loc>
          <lastmod>2026-06-27</lastmod>
          <changefreq>daily</changefreq>

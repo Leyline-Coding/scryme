@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
 from src.db import get_session
+from src.facets import compute_facets
 from src.models import Card
 from src.routes.saved import list_saved
 from src.scryfall.images import ImageCache
@@ -85,6 +86,8 @@ async def search(
         )
         ctx["result"] = result
         ctx["views"] = _to_views(result)
+        if result.total:
+            ctx["facets"] = await compute_facets(session, q, scope_enum)
     except SearchError as exc:
         ctx["error"] = str(exc)
 

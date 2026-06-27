@@ -98,6 +98,14 @@
     </a>
   </header>
   <script>
+    // Facet click: set the query input to the toggled query and re-run the search (via the form's
+    // existing "change" hx-trigger), so the query string stays the single source of truth.
+    function applyFacet(query) {
+      var input = document.querySelector('input[name=q]');
+      if (!input) return;
+      input.value = query;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
     function exportMenu() {
       return {
         open: false,

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ set.name }} · scryme{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-6">
+    <a href="/" class="text-2xl font-bold tracking-tight shrink-0">
+      <span class="text-accent">scry</span>me
+    </a>
+    <a href="/sets" class="text-sm text-muted hover:text-fg shrink-0">← Sets</a>
+    <a href="/search?q={{ ('s:' ~ set.code) | urlencode }}" class="ml-auto text-sm text-muted hover:text-fg">
+      View owned →
+    </a>
+  </header>
+
+  <div class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
+    <div class="flex items-center gap-2">
+      <span class="text-2xl leading-none">{{ set_symbol(set.code) }}</span>
+      <h1 class="text-lg font-semibold truncate">{{ set.name }}</h1>
+      <span class="text-xs text-muted uppercase">{{ set.code }}</span>
+      {% if set.set_type %}
+      <span class="text-xs text-muted capitalize">· {{ set.set_type | replace('_', ' ') }}</span>
+      {% endif %}
+    </div>
+    <div class="mt-3 flex items-baseline gap-2">
+      <span class="text-2xl font-bold tabular-nums">{{ '{:,}'.format(set.owned) }}/{{ '{:,}'.format(set.total) }}</span>
+      <span class="text-muted">owned ({{ set.pct }}%) · {{ '{:,}'.format(set.missing) }} missing</span>
+    </div>
+    <div class="mt-2 h-2 bg-surface-2 rounded overflow-hidden">
+      <div class="h-full bg-accent rounded" style="width: {{ set.pct }}%"></div>
+    </div>
+  </div>
+
+  {% if set.missing_cards %}
+  <h2 class="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Missing ({{ '{:,}'.format(set.missing) }})</h2>
+  <ul class="divide-y divide-edge rounded-xl bg-surface ring-1 ring-edge overflow-hidden">
+    {% for c in set.missing_cards %}
+    <li>
+      <a href="/card/{{ c.scryfall_id }}" class="flex items-center gap-3 px-4 py-2 hover:bg-surface-2">
+        <span class="w-12 shrink-0 text-xs text-muted tabular-nums text-right">{{ c.collector_number }}</span>
+        <span class="leading-none">{{ set_symbol(set.code, c.rarity) }}</span>
+        <span class="flex-1 min-w-0 truncate">{{ c.name }}</span>
+        {% if c.rarity %}<span class="text-xs text-muted capitalize shrink-0">{{ c.rarity }}</span>{% endif %}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="text-emerald-500 py-12 text-center font-medium">
+    ✓ You own every printing scryme knows for this set.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

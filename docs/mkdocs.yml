@@ -80,6 +80,7 @@ nav:
       - Card Details & Symbols: features/cards.md
       - Decks: features/decks.md
       - Binders: features/binders.md
+      - Set Completion: features/sets.md
       - Collection Stats: features/stats.md
       - Price History: features/prices.md
       - Theming: features/theming.md

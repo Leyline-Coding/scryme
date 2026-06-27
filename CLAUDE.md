@@ -92,5 +92,7 @@ Post-MVP features shipped (see `routes/` + docs): theming (preset themes + custo
 **sort** options, **card detail** page (`/card/{id}`), result **export** (`/export`: CSV /
 decklist / ManaBox), **saved searches** (`/saved`), **advanced search** form builder (`/advanced`),
 **mana & set symbols** (vendored Mana/Keyrune fonts; `src/symbols.py`), a **stats** dashboard
-(`/stats`; `src/stats.py`), **decks** with ownership coverage + format legality (`/decks`;
-`src/decks.py`), and **binder** browsing (`/binders`). Migrations through `0004_decks`.
+(`/stats`; `src/stats.py`, incl. a value-over-time chart), **decks** with ownership coverage +
+format legality (`/decks`; `src/decks.py`), **binder** browsing (`/binders`), **price history**
+with acquisition P/L (`/prices`; `src/prices.py`), and a **set completion** tracker (`/sets`;
+`src/sets.py`). Migrations through `0005_prices`.

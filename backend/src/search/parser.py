@@ -47,6 +47,7 @@ FIELD_ALIASES = {
     "game": "game",
     "st": "set_type", "settype": "set_type",
     "stamp": "stamp",
+    "tag": "tag", "tags": "tag",
 }
 
 _TWO_CHAR_OPS = ("!=", ">=", "<=")

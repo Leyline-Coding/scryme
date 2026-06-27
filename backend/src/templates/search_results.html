@@ -32,6 +32,13 @@
         {{ set_symbol(v.card.set_code, v.card.rarity) }}
         <span class="text-muted uppercase">{{ v.card.set_code }}</span>
       </div>
+      {% if v.tags %}
+      <div class="px-2 pb-1.5 flex flex-wrap gap-1">
+        {% for t in v.tags %}
+        <span class="rounded bg-surface-2 text-muted text-[10px] leading-none px-1.5 py-0.5">{{ t }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
     </a>
     {% endfor %}
   </div>

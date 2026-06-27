@@ -13,12 +13,13 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db import Base
@@ -41,6 +42,9 @@ class CollectionCard(Base):
     binder_name: Mapped[str | None] = mapped_column(String(256))
     source_format: Mapped[str | None] = mapped_column(String(32))  # manabox | dragonshield | delver
 
+    # User-defined labels (e.g. "for-trade", "deck:goblins"), searchable via `tag:`.
+    tags: Mapped[list[str] | None] = mapped_column(ARRAY(String(64)))
+
     added_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -56,4 +60,5 @@ class CollectionCard(Base):
             "binder_name",
             name="uq_collection_stack",
         ),
+        Index("ix_collection_card_tags_gin", "tags", postgresql_using="gin"),
     )

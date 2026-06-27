@@ -69,7 +69,8 @@ python -m src.cli backfill-images          # cache images for owned cards
 Supported filters: name, `o:`/oracle, `t:`/type, `c:`/color, `id:`/identity, `m:`/mana,
 `mv`/`cmc`, `pow`/`tou`/`loy`, `r:`/rarity, `s:`/set, `cn:`, `is:`, `f:`/format, `usd`/`eur`/`tix`,
 `lang`, `kw:`, `year`/`date`, `layout`, `a:`/artist, `wm:`/watermark, `border:`, `frame:`,
-`game:`, `st:`/set_type, `stamp:`; boolean `OR`/`AND`/`-`/parentheses; `/regex/` (Postgres `~*`,
+`game:`, `st:`/set_type, `stamp:`, `tag:` (user tags on owned cards, via `collection_card.tags`);
+boolean `OR`/`AND`/`-`/parentheses; `/regex/` (Postgres `~*`,
 text fields only). `:` means `=` for numeric fields. Unknown keywords raise `SearchError`. Default
 scope is the owned collection; `scope=all` searches every card.
 

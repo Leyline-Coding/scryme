@@ -1,0 +1,24 @@
+{# Tag editor for one printing. Re-rendered (outerHTML swap) after each add/remove. #}
+<div id="card-tags" class="mt-2 flex flex-wrap items-center gap-1.5">
+  {% for t in tags %}
+  <span class="inline-flex items-center gap-1 rounded bg-surface-2 text-xs px-2 py-0.5">
+    {{ t }}
+    {% if not read_only %}
+    <button type="button" title="Remove tag" class="text-muted hover:text-rose-500 leading-none"
+            hx-post="/card/{{ card_id }}/tags/delete"
+            hx-vals='{"tag": {{ t | tojson }}}'
+            hx-target="#card-tags" hx-swap="outerHTML">×</button>
+    {% endif %}
+  </span>
+  {% else %}
+  {% if read_only %}<span class="text-xs text-muted">No tags.</span>{% endif %}
+  {% endfor %}
+
+  {% if not read_only %}
+  <form class="inline-flex" hx-post="/card/{{ card_id }}/tags"
+        hx-target="#card-tags" hx-swap="outerHTML" hx-on::after-request="this.reset()">
+    <input type="text" name="tag" maxlength="64" placeholder="+ tag"
+           class="w-24 rounded bg-surface-2 text-xs px-2 py-0.5 outline-none focus:ring-1 focus:ring-accent" />
+  </form>
+  {% endif %}
+</div>

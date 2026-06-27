@@ -65,6 +65,7 @@ class SearchResult:
     page: int
     page_size: int
     quantities: dict[str, int] = field(default_factory=dict)
+    tags: dict[str, list[str]] = field(default_factory=dict)
 
     @property
     def total_pages(self) -> int:
@@ -102,6 +103,22 @@ async def _owned_quantities(session: AsyncSession, ids: list) -> dict[str, int]:
     return {str(sid): int(qty) for sid, qty in rows.all()}
 
 
+async def _owned_tags(session: AsyncSession, ids: list) -> dict[str, list[str]]:
+    """Union of tags per printing across its owned stacks, for the result cards on this page."""
+    if not ids:
+        return {}
+    rows = await session.execute(
+        select(CollectionCard.scryfall_id, CollectionCard.tags)
+        .where(CollectionCard.scryfall_id.in_(ids))
+        .where(CollectionCard.tags.isnot(None))
+    )
+    out: dict[str, set] = {}
+    for sid, tags in rows.all():
+        if tags:
+            out.setdefault(str(sid), set()).update(tags)
+    return {sid: sorted(tags) for sid, tags in out.items()}
+
+
 async def run_search(
     session: AsyncSession,
     query: str,
@@ -120,7 +137,10 @@ async def run_search(
     rows = await session.execute(base.limit(page_size).offset((page - 1) * page_size))
     cards = list(rows.scalars().all())
 
-    quantities = await _owned_quantities(session, [c.scryfall_id for c in cards])
+    ids = [c.scryfall_id for c in cards]
+    quantities = await _owned_quantities(session, ids)
+    tags = await _owned_tags(session, ids)
     return SearchResult(
-        cards=cards, total=total, page=page, page_size=page_size, quantities=quantities
+        cards=cards, total=total, page=page, page_size=page_size,
+        quantities=quantities, tags=tags,
     )

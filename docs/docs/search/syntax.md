@@ -88,7 +88,12 @@ id:wubrg       five-color identity
 | `game:` | — | `game:mtgo` | available on paper/mtgo/arena |
 | `st:` | `settype:` | `st:funny` | set type |
 | `stamp:` | — | `stamp:oval` | security stamp |
+| `tag:` | `tags:` | `tag:for-trade` | your own [tag](../features/cards.md#tags) on an owned card |
 | `m:` | `mana:` | `m:{R}{R}` | mana cost contains these symbols (approximate) |
+
+`tag:` matches the labels you add to cards in your collection, so it only ever finds cards you own
+(combine it with `-` to exclude, e.g. `-tag:for-trade`). Tags can contain colons, so
+`tag:deck:goblins` works.
 
 ### Mana value vs. mana cost
 

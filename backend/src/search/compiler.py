@@ -11,10 +11,10 @@ import datetime
 import operator
 from collections.abc import Callable
 
-from sqlalchemy import Float, and_, cast, func, not_, or_
+from sqlalchemy import Float, and_, cast, func, not_, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
-from src.models import Card
+from src.models import Card, CollectionCard
 from src.search.ast import And, Node, Not, Or, Term
 from src.search.colors import ColorParseError, parse_colors
 from src.search.errors import SearchError
@@ -216,6 +216,14 @@ def _keyword(term: Term) -> ColumnElement:
     return joined.like(f"%{_like_escape(term.value.lower())}%", escape="\\")
 
 
+def _tag(term: Term) -> ColumnElement:
+    # Tags live on collection_card (owned stacks); match printings with a stack carrying the tag.
+    tagged = select(CollectionCard.scryfall_id).where(
+        CollectionCard.tags.contains([term.value.lower()])
+    )
+    return Card.scryfall_id.in_(tagged)
+
+
 _IS_LAYOUTS = {
     "split": ["split"],
     "flip": ["flip"],
@@ -296,6 +304,7 @@ _HANDLERS: dict[str, Callable[[Term], ColumnElement]] = {
     "set_type": _set_type,
     "stamp": _stamp,
     "game": _game,
+    "tag": _tag,
 }
 
 

@@ -9,16 +9,18 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.config import get_settings
 from src.db import get_session
 from src.models import Card, CollectionCard
 from src.scryfall.client import ScryfallClient, ScryfallError
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
+from src.tags import add_card_tag, card_tags, remove_card_tag
 from src.templating import templates
 
 router = APIRouter(tags=["card"])
@@ -111,8 +113,46 @@ async def card_detail(
             "printings": [(p, _image(p, "small")) for p in printings],
             "price_rows": price_rows,
             "legality_rows": legality_rows,
+            "tags": await card_tags(session, card.scryfall_id),
+            "read_only": get_settings().read_only,
         },
     )
+
+
+def _tags_response(request: Request, card_id: uuid.UUID, tags: list[str]) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "_card_tags.html",
+        {"card_id": card_id, "tags": tags, "read_only": get_settings().read_only},
+    )
+
+
+@router.post("/card/{scryfall_id}/tags", response_class=HTMLResponse)
+async def add_tag(
+    request: Request,
+    scryfall_id: str,
+    tag: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    if get_settings().read_only:
+        raise HTTPException(status_code=403, detail="This demo is read-only.")
+    card = await _load_card(session, scryfall_id)
+    tags = await add_card_tag(session, card.scryfall_id, tag)
+    return _tags_response(request, card.scryfall_id, tags)
+
+
+@router.post("/card/{scryfall_id}/tags/delete", response_class=HTMLResponse)
+async def delete_tag(
+    request: Request,
+    scryfall_id: str,
+    tag: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    if get_settings().read_only:
+        raise HTTPException(status_code=403, detail="This demo is read-only.")
+    card = await _load_card(session, scryfall_id)
+    tags = await remove_card_tag(session, card.scryfall_id, tag)
+    return _tags_response(request, card.scryfall_id, tags)
 
 
 @router.get("/card/{scryfall_id}/rulings", response_class=HTMLResponse)

@@ -33,6 +33,7 @@ class CardView:
     quantity: int
     image: str
     scryfall_uri: str
+    tags: list[str]
 
 
 def _to_views(result) -> list[CardView]:
@@ -46,6 +47,7 @@ def _to_views(result) -> list[CardView]:
                 quantity=result.quantities.get(sid, 0),
                 image=image or "",
                 scryfall_uri=card.raw.get("scryfall_uri", "#"),
+                tags=result.tags.get(sid, []),
             )
         )
     return views

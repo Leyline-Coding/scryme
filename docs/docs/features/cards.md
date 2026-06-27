@@ -17,6 +17,17 @@ Click any card in the results grid (or a binder/stats list) to open its detail p
 - **Rulings** — loaded on demand from Scryfall; the page renders instantly and degrades gracefully
   if rulings can't be fetched.
 
+## Tags
+
+On a card you own, the detail page has a **Tags** editor: add free-form labels like `for-trade`,
+`deck:goblins`, or `sentimental` and remove them with a click. Tags are stored on your collection
+(not the card database), so they apply to the printing you own and survive re-ingests.
+
+Find tagged cards with the [`tag:` search filter](../search/syntax.md) — e.g. `tag:for-trade` or
+`-tag:for-trade` to exclude. Tags also show as small chips under each card in the results grid.
+
+Tags are normalized (trimmed and lower-cased), so `For Trade` and `for trade` are the same tag.
+
 ## Mana & set symbols
 
 Mana costs and oracle text render with real Magic symbols, and set codes render as their expansion

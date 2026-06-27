@@ -99,6 +99,13 @@
           </li>
           {% endfor %}
         </ul>
+        {% if owned or tags %}
+        <div class="mt-2 pt-2 border-t border-edge">
+          <p class="text-xs text-muted">Tags</p>
+          {% set card_id = card.scryfall_id %}
+          {% include "_card_tags.html" %}
+        </div>
+        {% endif %}
         {% else %}
         <p class="text-sm text-muted">You don't own this printing yet.</p>
         {% endif %}

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import get_settings
 from src.db import get_session
 from src.prices import build_value_chart, value_series
-from src.stats import collection_stats
+from src.stats import collection_growth, collection_stats
 from src.templating import templates
 
 router = APIRouter(tags=["stats"])
@@ -26,6 +26,7 @@ async def stats(
         {
             "stats": await collection_stats(session),
             "value_chart": build_value_chart(await value_series(session)),
+            "growth": await collection_growth(session),
             "read_only": get_settings().read_only,
         },
     )

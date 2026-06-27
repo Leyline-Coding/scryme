@@ -82,6 +82,33 @@
   </section>
   {% endif %}
 
+  {# Collection growth — cards added per month #}
+  {% if growth.available %}
+  <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-8">
+    <div class="flex items-baseline justify-between mb-3">
+      <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">Collection growth</h2>
+      <span class="text-xs text-muted">{{ '{:,}'.format(growth.total_added) }} cards
+        · ${{ '{:,.2f}'.format(growth.total_value) }} added</span>
+    </div>
+    {% set m = growth.max_added or 1 %}
+    <div class="flex items-end gap-1 h-32">
+      {% for p in growth.points %}
+      <div class="flex-1 bg-accent rounded-t hover:opacity-80 min-h-[2px]"
+           style="height: {{ (p.added / m * 100) | round(1) }}%"
+           title="{{ p.label }} · +{{ '{:,}'.format(p.added) }} cards · ${{ '{:,.2f}'.format(p.value) }}"></div>
+      {% endfor %}
+    </div>
+    <div class="mt-1 flex justify-between text-xs text-muted">
+      <span>{{ growth.points[0].label }}</span>
+      <span>
+        {%- if growth.windowed %}last {{ growth.points|length }} of {{ growth.total_months }} months
+        {%- else %}{{ growth.points|length }} month{{ '' if growth.points|length == 1 else 's' }}{% endif -%}
+      </span>
+      <span>{{ growth.points[-1].label }}</span>
+    </div>
+  </section>
+  {% endif %}
+
   <div class="grid md:grid-cols-2 gap-6">
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
       <h2 class="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Colors</h2>

@@ -1,11 +1,12 @@
 """Collection stats tests: aggregation correctness + the dashboard route."""
 
+import datetime
 import uuid
 
 import pytest
 from src.models import Card, CollectionCard
 from src.scryfall.mapping import card_to_columns
-from src.stats import collection_stats
+from src.stats import collection_growth, collection_stats
 
 
 async def _seed(session):
@@ -77,3 +78,45 @@ async def test_stats_route_renders(client, session):
     assert "Collection stats" in resp.text
     assert "Most valuable" in resp.text
     assert "$22.20" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_collection_growth_by_month(session):
+    raw = {"id": str(uuid.uuid4()), "oracle_id": str(uuid.uuid4()), "name": "Aaa", "set": "TST",
+           "collector_number": "1", "rarity": "rare", "prices": {"usd": "2.00"}}
+    card = Card(**card_to_columns(raw))
+    session.add(card)
+    await session.flush()
+    # Two stacks added in Jan, one in March (different added_at months).
+    jan = datetime.datetime(2026, 1, 10, tzinfo=datetime.UTC)
+    mar = datetime.datetime(2026, 3, 5, tzinfo=datetime.UTC)
+    session.add(CollectionCard(scryfall_id=card.scryfall_id, quantity=3, finish="normal",
+                               added_at=jan))
+    session.add(CollectionCard(scryfall_id=card.scryfall_id, quantity=1, finish="foil",
+                               condition="nm", added_at=jan))
+    session.add(CollectionCard(scryfall_id=card.scryfall_id, quantity=2, finish="normal",
+                               binder_name="B", added_at=mar))
+    await session.commit()
+
+    growth = await collection_growth(session)
+    assert growth.available
+    labels = {p.label: p.added for p in growth.points}
+    assert labels == {"2026-01": 4, "2026-03": 2}     # 3+1 in Jan, 2 in Mar
+    assert growth.total_added == 6
+    assert growth.total_months == 2
+    assert growth.points[0].label == "2026-01"        # oldest-first
+    assert growth.points[0].value == 8.00             # 4 cards * $2.00
+
+
+@pytest.mark.asyncio
+async def test_collection_growth_empty(session):
+    growth = await collection_growth(session)
+    assert not growth.available
+    assert growth.total_added == 0
+
+
+@pytest.mark.asyncio
+async def test_stats_route_shows_growth(client, session):
+    await _seed(session)
+    resp = await client.get("/stats")
+    assert "Collection growth" in resp.text

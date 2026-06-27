@@ -92,6 +92,68 @@ def _bars(
     return bars[:top] if top else bars
 
 
+@dataclass
+class GrowthPoint:
+    label: str   # "YYYY-MM"
+    added: int   # cards added that month
+    value: float # their value at current prices
+
+
+@dataclass
+class CollectionGrowth:
+    points: list[GrowthPoint] = field(default_factory=list)  # oldest-first (recent window)
+    total_added: int = 0
+    total_value: float = 0.0
+    total_months: int = 0  # distinct months with any activity (may exceed the shown window)
+
+    @property
+    def available(self) -> bool:
+        return bool(self.points)
+
+    @property
+    def max_added(self) -> int:
+        return max((p.added for p in self.points), default=0)
+
+    @property
+    def windowed(self) -> bool:
+        return self.total_months > len(self.points)
+
+
+async def collection_growth(session: AsyncSession, months: int = 12) -> CollectionGrowth:
+    """Cards (and current-price value) added per month, from ``collection_card.added_at``.
+
+    The chart shows the most recent ``months`` with activity; totals cover the whole history.
+    """
+    rows = (
+        await session.execute(
+            select(
+                CollectionCard.added_at, CollectionCard.quantity, CollectionCard.finish,
+                Card.prices,
+            ).join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
+        )
+    ).all()
+
+    added: dict[str, int] = {}
+    value: dict[str, float] = {}
+    for added_at, qty, finish, prices in rows:
+        if added_at is None:
+            continue
+        key = added_at.strftime("%Y-%m")
+        qty = qty or 0
+        added[key] = added.get(key, 0) + qty
+        value[key] = value.get(key, 0.0) + qty * _unit_price(prices, finish)
+
+    keys = sorted(added)
+    window = keys[-months:] if months else keys
+    points = [GrowthPoint(label=k, added=added[k], value=round(value[k], 2)) for k in window]
+    return CollectionGrowth(
+        points=points,
+        total_added=sum(added.values()),
+        total_value=round(sum(value.values()), 2),
+        total_months=len(keys),
+    )
+
+
 async def collection_stats(session: AsyncSession) -> CollectionStats:
     rows = (
         await session.execute(

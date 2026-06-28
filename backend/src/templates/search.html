@@ -139,8 +139,61 @@
     }
   </script>
 
+  {% if not read_only %}
+  <form id="bulkform" method="post" action="/collection/bulk">
+    <input type="hidden" name="q" /><input type="hidden" name="scope" />
+    <input type="hidden" name="sort" /><input type="hidden" name="dir" />
+    <input type="hidden" name="bulk_action" />
+    <div id="bulkbar" class="hidden sticky top-2 z-30 mb-3 flex flex-wrap items-center gap-2
+                rounded-xl bg-surface ring-1 ring-accent px-3 py-2 text-sm shadow-lg">
+      <span><b id="bulkcount">0</b> selected</span>
+      <input name="tag" placeholder="tag" class="rounded bg-surface-2 px-2 py-1 w-28" />
+      <button type="button" onclick="bulkSubmit('tag')"
+        class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Add tag</button>
+      <button type="button" onclick="bulkSubmit('add')"
+        class="rounded bg-accent text-accent-fg px-2.5 py-1">+1 to collection</button>
+      <button type="button" onclick="bulkClear()" class="ml-auto text-muted hover:text-fg">Clear</button>
+    </div>
+    <div id="results">
+      {% include "search_results.html" %}
+    </div>
+  </form>
+  {% else %}
   <div id="results">
     {% include "search_results.html" %}
   </div>
+  {% endif %}
 </div>
+
+<script>
+  function bulkChecked() {
+    return document.querySelectorAll('#results input[name="scryfall_ids"]:checked');
+  }
+  function bulkCount() {
+    var n = bulkChecked().length;
+    var bar = document.getElementById('bulkbar');
+    var c = document.getElementById('bulkcount');
+    if (c) c.textContent = n;
+    if (bar) bar.classList.toggle('hidden', n === 0);
+  }
+  function bulkClear() {
+    bulkChecked().forEach(function (b) { b.checked = false; });
+    bulkCount();
+  }
+  function bulkSubmit(action) {
+    var f = document.getElementById('bulkform');
+    if (!f || !bulkChecked().length) return;
+    var p = new URLSearchParams(window.location.search);
+    f.querySelector('[name=q]').value = p.get('q') || '';
+    f.querySelector('[name=scope]').value = p.get('scope') || 'collection';
+    f.querySelector('[name=sort]').value = p.get('sort') || 'name';
+    f.querySelector('[name=dir]').value = p.get('dir') || 'asc';
+    f.querySelector('[name=bulk_action]').value = action;
+    f.submit();
+  }
+  // After an HTMX results swap the checkboxes are fresh (unchecked) — re-sync the bar.
+  document.body.addEventListener('htmx:afterSwap', function (e) {
+    if (e.target && e.target.id === 'results') bulkCount();
+  });
+</script>
 {% endblock %}

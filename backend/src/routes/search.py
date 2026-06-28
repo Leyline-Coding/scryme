@@ -79,7 +79,8 @@ async def search(
     scope_enum = SearchScope.ALL if scope == SearchScope.ALL.value else SearchScope.COLLECTION
     sort = sort if sort in SORT_KEYS else DEFAULT_SORT
     descending = dir == "desc"
-    ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir}
+    ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir,
+                 "read_only": get_settings().read_only}
     try:
         result = await run_search(
             session, q, scope=scope_enum, page=page, sort=sort, descending=descending

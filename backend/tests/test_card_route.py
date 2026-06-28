@@ -39,7 +39,7 @@ async def test_card_page_renders(client, session):
     assert "deals 3 damage" in body
     assert "Christopher Rush" in body
     assert "In your collection" in body
-    assert "×3" in body  # owned quantity badge
+    assert "3 total" in body  # owned quantity (now shown with the inline +/- controls)
     assert "Other printings" in body  # the LEA printing shares the oracle_id
     assert "Legalities" in body
 

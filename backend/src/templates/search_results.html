@@ -36,6 +36,12 @@
   <div class="flex-1 min-w-0">
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
     {% for v in views %}
+    <div class="relative">
+    {% if not read_only %}
+    <input type="checkbox" name="scryfall_ids" value="{{ v.card.scryfall_id }}"
+           onchange="bulkCount()" title="Select for bulk edit"
+           class="absolute top-1.5 left-1.5 z-10 w-4 h-4 cursor-pointer accent-[color:var(--c-accent)]" />
+    {% endif %}
     <a href="/card/{{ v.card.scryfall_id }}"
        class="group relative block rounded-xl overflow-hidden bg-surface ring-1 ring-edge
               hover:ring-accent transition">
@@ -64,6 +70,7 @@
       </div>
       {% endif %}
     </a>
+    </div>
     {% endfor %}
   </div>
 

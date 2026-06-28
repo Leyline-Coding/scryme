@@ -1,0 +1,68 @@
+{# Owned stacks for one printing, with inline edit controls. Swapped (outerHTML) after each edit. #}
+<div id="card-collection" class="rounded-lg bg-surface ring-1 ring-edge p-3">
+  <p class="text-sm font-semibold mb-1">
+    In your collection
+    {% if owned_total %}<span class="text-accent">· {{ owned_total }} total</span>{% endif %}
+  </p>
+
+  {% if owned %}
+  <ul class="text-sm divide-y divide-edge">
+    {% for s in owned %}
+    <li class="py-1.5 flex items-center gap-2">
+      {% if not read_only %}
+      <span class="inline-flex items-center rounded-full bg-surface-2 overflow-hidden shrink-0">
+        <button type="button" title="Remove one" class="px-2 leading-none hover:bg-surface-3"
+                hx-post="/collection/stack/{{ s.id }}/adjust" hx-vals='{"delta": -1}'
+                hx-target="#card-collection" hx-swap="outerHTML">−</button>
+        <span class="px-1.5 tabular-nums">{{ s.quantity }}</span>
+        <button type="button" title="Add one" class="px-2 leading-none hover:bg-surface-3"
+                hx-post="/collection/stack/{{ s.id }}/adjust" hx-vals='{"delta": 1}'
+                hx-target="#card-collection" hx-swap="outerHTML">+</button>
+      </span>
+      {% else %}
+      <span class="rounded-full bg-accent text-accent-fg text-xs font-semibold px-2 py-0.5">×{{ s.quantity }}</span>
+      {% endif %}
+      <span class="capitalize">{{ s.finish }}</span>
+      {% if s.condition %}<span class="text-muted">· {{ s.condition }}</span>{% endif %}
+      <span class="text-muted uppercase">· {{ s.language }}</span>
+      {% if s.binder_name %}<span class="text-muted">· {{ s.binder_name }}</span>{% endif %}
+      {% if not read_only %}
+      <button type="button" title="Delete this stack"
+              class="ml-auto shrink-0 text-muted hover:text-rose-500"
+              hx-post="/collection/stack/{{ s.id }}/delete"
+              hx-target="#card-collection" hx-swap="outerHTML"
+              hx-confirm="Delete this stack?">✕</button>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-sm text-muted">You don't own this printing yet.</p>
+  {% endif %}
+
+  {% if owned or tags %}
+  <div class="mt-2 pt-2 border-t border-edge">
+    <p class="text-xs text-muted">Tags</p>
+    {% include "_card_tags.html" %}
+  </div>
+  {% endif %}
+
+  {% if not read_only %}
+  <form class="mt-2 pt-2 border-t border-edge flex flex-wrap items-end gap-1.5 text-sm"
+        hx-post="/collection/add" hx-target="#card-collection" hx-swap="outerHTML"
+        hx-on::after-request="this.reset()">
+    <input type="hidden" name="scryfall_id" value="{{ card_id }}" />
+    <input type="number" name="quantity" value="1" min="1" title="Quantity"
+           class="w-14 rounded bg-surface-2 px-2 py-1" />
+    <select name="finish" title="Finish" class="rounded bg-surface-2 px-2 py-1">
+      <option value="normal">normal</option>
+      <option value="foil">foil</option>
+      <option value="etched">etched</option>
+    </select>
+    <input type="text" name="binder" placeholder="binder" title="Binder (optional)"
+           class="w-24 rounded bg-surface-2 px-2 py-1" />
+    <button type="submit"
+            class="rounded bg-accent text-accent-fg px-3 py-1 font-medium">+ Add</button>
+  </form>
+  {% endif %}
+</div>

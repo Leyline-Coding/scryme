@@ -17,6 +17,27 @@ Click any card in the results grid (or a binder/stats list) to open its detail p
 - **Rulings** — loaded on demand from Scryfall; the page renders instantly and degrades gracefully
   if rulings can't be fetched.
 
+## Editing your collection
+
+You don't have to re-import to make small changes. The **In your collection** box on each card page
+is editable:
+
+- **Adjust quantity** — the `−` / `+` buttons on a stack nudge its count; dropping to zero removes
+  the stack.
+- **Delete** a stack with the `✕` button.
+- **Add to collection** — the small form adds a copy (quantity, finish, and an optional binder).
+  Adding a printing you already own in the same finish/binder just increments that stack.
+
+### Bulk edit from search
+
+In the results grid, tick the checkbox on any cards to reveal a **bulk bar**:
+
+- **Add tag** — apply a [tag](#tags) to every selected card at once.
+- **+1 to collection** — add one copy of each selected printing (handy when browsing **All cards**
+  to pull several into your collection quickly).
+
+All editing is disabled on the read-only public demo.
+
 ## Tags
 
 On a card you own, the detail page has a **Tags** editor: add free-form labels like `for-trade`,

@@ -8,6 +8,11 @@ Queries combine **filters** with boolean logic, and by default search **your col
     form-based builder: fill in names, colors, mana value, rarity, format, price, and more, and it
     assembles the query for you — then shows the generated query string so you can learn by example.
 
+!!! tip "Did you mean?"
+    If a plain-name search returns nothing, scryme suggests the closest card names (fuzzy matched)
+    — click a suggestion to re-run the search with it. Suggestions respect your scope, so in
+    *My collection* they only point at cards you own.
+
 !!! tip "Filter by clicking"
     On wider screens a **facets** sidebar appears next to the results with the colors, rarities,
     types, and sets present in the current results (and how many of each). Click one to toggle that

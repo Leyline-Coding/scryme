@@ -119,6 +119,28 @@ async def _owned_tags(session: AsyncSession, ids: list) -> dict[str, list[str]]:
     return {sid: sorted(tags) for sid, tags in out.items()}
 
 
+def _is_name_query(query: str) -> bool:
+    """True for a plain-words query (no key:filters, regex, comparisons, or parens)."""
+    q = query.strip()
+    return bool(q) and not any(ch in q for ch in ":/<>=()")
+
+
+async def name_suggestions(
+    session: AsyncSession, query: str, scope: SearchScope, limit: int = 5
+) -> list[str]:
+    """Closest card names to a plain-name query, via pg_trgm similarity (for zero-result help)."""
+    if not _is_name_query(query):
+        return []
+    q = query.strip().strip('"')
+    sim = func.similarity(Card.name, q)
+    stmt = select(Card.name).where(Card.name.op("%")(q))
+    if scope is SearchScope.COLLECTION:
+        stmt = stmt.where(Card.scryfall_id.in_(select(CollectionCard.scryfall_id)))
+    stmt = stmt.group_by(Card.name).order_by(func.max(sim).desc()).limit(limit)
+    rows = await session.execute(stmt)
+    return [name for (name,) in rows.all()]
+
+
 async def run_search(
     session: AsyncSession,
     query: str,

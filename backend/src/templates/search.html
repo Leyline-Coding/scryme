@@ -106,6 +106,12 @@
       input.value = query;
       input.dispatchEvent(new Event('change', { bubbles: true }));
     }
+    // Delegated so it works for facet buttons re-rendered inside #results by HTMX. The toggled
+    // query rides in data-q (safely HTML-escaped) rather than an inline-JS string.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.facet-btn');
+      if (btn) applyFacet(btn.dataset.q);
+    });
     function exportMenu() {
       return {
         open: false,

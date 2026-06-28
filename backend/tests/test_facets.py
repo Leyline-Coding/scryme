@@ -72,5 +72,9 @@ async def test_search_page_renders_facets(client, session):
     await _seed(session)
     resp = await client.get("/search?q=")
     assert resp.status_code == 200
-    assert "applyFacet(" in resp.text   # facet buttons wired up
     assert "Colors" in resp.text and "Rarity" in resp.text
+    # Facet buttons carry the toggled query in data-q (read by a delegated click handler) — the
+    # value must be a normal HTML attribute, not broken inline-JS double quotes.
+    assert 'class="facet-btn' in resp.text
+    assert 'data-q="c:r"' in resp.text
+    assert 'onclick="applyFacet(' not in resp.text

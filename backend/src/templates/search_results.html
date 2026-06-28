@@ -97,6 +97,14 @@
   <div class="text-muted py-16 text-center">
     No cards match
     {% if q %}<code class="text-fg">{{ q }}</code>{% else %}your collection yet{% endif %}.
+    {% if suggestions %}
+    <div class="mt-4 text-sm">
+      Did you mean:
+      {% for name in suggestions %}
+      <button type="button" class="facet-btn text-accent hover:underline" data-q="{{ name }}">{{ name }}</button>{% if not loop.last %}<span class="text-muted">·</span>{% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
   {% endif %}
 {% endif %}

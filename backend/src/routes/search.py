@@ -21,7 +21,7 @@ from src.routes.saved import list_saved
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
 from src.search import SearchError, SearchScope
-from src.search.engine import DEFAULT_SORT, SORT_KEYS, run_search
+from src.search.engine import DEFAULT_SORT, SORT_KEYS, name_suggestions, run_search
 from src.templating import templates
 
 router = APIRouter(tags=["search"])
@@ -89,6 +89,8 @@ async def search(
         ctx["views"] = _to_views(result)
         if result.total:
             ctx["facets"] = await compute_facets(session, q, scope_enum)
+        else:
+            ctx["suggestions"] = await name_suggestions(session, q, scope_enum)
     except SearchError as exc:
         ctx["error"] = str(exc)
 

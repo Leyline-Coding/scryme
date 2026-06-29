@@ -19,8 +19,7 @@ pytest tests/         # tests + coverage (writes coverage.xml)
 ruff check src tests  # lint
 ```
 
-CI (GitHub Actions) runs the same checks on every pull request; a Jenkins + SonarQube pipeline adds
-a coverage quality gate.
+CI (GitHub Actions) runs the same checks on every pull request and must pass before merge.
 
 ## Workflow
 

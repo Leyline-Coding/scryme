@@ -16,6 +16,27 @@
   </div>
 {% endmacro %}
 
+{# Like bars(), but prefixes each row with its mana symbol (used for the color breakdown). #}
+{% set _COLOR_PIPS = {"White": "w", "Blue": "u", "Black": "b", "Red": "r", "Green": "g",
+                      "Colorless": "c", "Multicolor": "multicolor"} %}
+{% macro color_bars(group) %}
+  {% set m = (group | map(attribute='count') | max) or 1 %}
+  <div class="space-y-1.5">
+    {% for b in group %}
+    <div class="flex items-center gap-2 text-sm">
+      <span class="w-28 shrink-0 truncate flex items-center gap-1.5" title="{{ b.label }}">
+        {% if _COLOR_PIPS.get(b.label) %}<i class="ms ms-cost ms-{{ _COLOR_PIPS[b.label] }}"></i>{% endif %}
+        {{ b.label }}
+      </span>
+      <div class="flex-1 bg-surface-2 rounded h-4 overflow-hidden">
+        <div class="h-full bg-accent rounded" style="width: {{ (b.count / m * 100) | round(1) }}%"></div>
+      </div>
+      <span class="w-14 text-right text-muted tabular-nums">{{ '{:,}'.format(b.count) }}</span>
+    </div>
+    {% endfor %}
+  </div>
+{% endmacro %}
+
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 py-6">
   <header class="flex items-center gap-3 mb-6">
@@ -113,7 +134,7 @@
   <div class="grid md:grid-cols-2 gap-6">
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
       <h2 class="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Colors</h2>
-      {{ bars(stats.by_color) }}
+      {{ color_bars(stats.by_color) }}
     </section>
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
       <h2 class="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Rarity</h2>

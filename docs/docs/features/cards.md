@@ -56,6 +56,10 @@ symbols (tinted by rarity), using the open-licensed
 [Mana](https://mana.andrewgioia.com) and [Keyrune](https://keyrune.andrewgioia.com) icon fonts
 (SIL OFL / MIT). The fonts are vendored, so symbols work offline with no external requests.
 
+The symbols show up across the app: the **[advanced search](../search/advanced.md)** color pickers
+are mana pips, the **[stats](stats.md)** and **[deck](decks.md)** color breakdowns are labeled with
+their pips, and set symbols appear next to cards in results, binders, the wishlist, and set lists.
+
 ## Card typography
 
 Card pages use MTG-flavored typefaces — **Cinzel** for card titles and **EB Garamond** for type

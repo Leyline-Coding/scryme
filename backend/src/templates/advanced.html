@@ -44,11 +44,12 @@
         <div class="flex flex-wrap items-center gap-2">
           <span class="text-sm w-28" x-text="grp.label"></span>
           <template x-for="c in ['W','U','B','R','G','C']" :key="c">
-            <label class="cursor-pointer">
+            <label class="cursor-pointer" :title="c === 'C' ? 'Colorless' : c">
               <input type="checkbox" class="peer sr-only" x-model="grp.map[c]" />
-              <span class="inline-flex w-8 h-8 items-center justify-center rounded-full border border-edge text-sm
-                           peer-checked:bg-accent peer-checked:text-accent-fg peer-checked:border-accent"
-                    x-text="c"></span>
+              <span class="inline-flex w-8 h-8 items-center justify-center rounded-full transition
+                           opacity-50 peer-checked:opacity-100 peer-checked:ring-2 peer-checked:ring-accent">
+                <i class="ms ms-cost text-xl" :class="'ms-' + c.toLowerCase()"></i>
+              </span>
             </label>
           </template>
           <select x-model="grp.label === 'Color' ? colorMode : idMode"

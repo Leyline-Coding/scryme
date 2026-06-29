@@ -78,6 +78,16 @@ async def test_stats_route_renders(client, session):
     assert "Collection stats" in resp.text
     assert "Most valuable" in resp.text
     assert "$22.20" in resp.text
+    assert "ms ms-cost ms-" in resp.text  # color breakdown shows mana pips
+
+
+@pytest.mark.asyncio
+async def test_advanced_page_uses_mana_pips(client):
+    resp = await client.get("/advanced")
+    assert resp.status_code == 200
+    # Color picker renders mana pips (the class is bound by Alpine from the letter).
+    assert "ms ms-cost" in resp.text
+    assert "'ms-' + c.toLowerCase()" in resp.text
 
 
 @pytest.mark.asyncio

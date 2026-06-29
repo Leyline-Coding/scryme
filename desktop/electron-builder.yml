@@ -13,6 +13,9 @@ publish:
   provider: github
   owner: Leyline-Coding
   repo: scryme
+  # Upload to the already-published release for the tag (default is "draft", which electron-builder
+  # refuses to attach to an existing published release).
+  releaseType: release
 
 # The frozen backend (built separately by `npm run build:backend`) ships as an extra resource so it
 # lands at resources/backend/ — where src/main.js looks for it. asar can't hold an executable, so it

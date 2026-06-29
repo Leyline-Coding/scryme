@@ -12,7 +12,7 @@ Jinja2 + HTMX + Tailwind. There is no separate single-page app.
 | Database | PostgreSQL 16 (`pg_trgm` for regex/`ILIKE` acceleration) |
 | Scheduling | APScheduler (in-process daily bulk refresh) |
 | Packaging | Docker (multi-stage), Docker Compose, nginx |
-| CI/CD | GitHub Actions (tests), Jenkins + SonarQube |
+| CI | GitHub Actions (pytest + ruff on every PR) |
 
 ## Data model
 

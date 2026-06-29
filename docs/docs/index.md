@@ -21,7 +21,8 @@ Lens, then search it with Scryfall syntax and regular expressions.
   **[binder](features/binders.md)** browsing.
 - 📥 **Collection import** from ManaBox, Dragon Shield, Delver Lens, Moxfield, and Archidekt — or
   **any CSV** via the column-mapping wizard (preview → **replace / increment / per-card** merge),
-  and **[backup & restore](features/backup.md)** of all your data.
+  and **[backup & restore](features/backup.md)** of all your data — including scheduled on-disk
+  backups to a folder you choose.
 - 🗃️ **Local card database + image cache** built from Scryfall bulk data — works offline and stays
   within [Scryfall's API policy](https://scryfall.com/docs/api).
 - 🎨 **Themeable UI** (preset themes + custom accent), **USD/EUR** currency, and 🐳 **self-hostable

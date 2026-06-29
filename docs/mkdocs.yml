@@ -65,6 +65,7 @@ nav:
   - Home: index.md
   - Getting Started:
       - Self-Hosting: getting-started/self-hosting.md
+      - Desktop App: getting-started/desktop.md
       - Configuration: getting-started/configuration.md
       - Deploy on Kubernetes: getting-started/kubernetes.md
       - Public Demo: getting-started/demo.md

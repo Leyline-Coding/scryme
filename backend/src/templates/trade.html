@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Trade binder · scryme{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-6">
+    <a href="/" class="text-2xl font-bold tracking-tight shrink-0">
+      <span class="text-accent">scry</span>me
+    </a>
+    <h1 class="text-lg font-semibold">Trade binder</h1>
+    <a href="/search" class="ml-auto text-sm text-muted hover:text-fg">Search →</a>
+  </header>
+
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <form method="get" action="/trade" class="flex items-center gap-2 text-sm">
+      <label class="text-muted">Keep</label>
+      <select name="keep" onchange="this.form.submit()"
+        class="rounded-lg bg-surface border border-edge px-2 py-1">
+        {% for n in [0, 1, 2, 3, 4] %}
+        <option value="{{ n }}" {% if binder.keep == n %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+      <span class="text-muted">copies — show the spares beyond that (plus cards tagged for trade).</span>
+    </form>
+    {% if binder.cards %}
+    <div class="flex items-center gap-3 text-sm">
+      <span class="text-muted">{{ '{:,}'.format(binder.total_cards) }} cards ·
+        <b>{{ cur.symbol }}{{ '{:,.2f}'.format(binder.total_value) }}</b></span>
+      <a href="/trade/export?fmt=txt&keep={{ binder.keep }}" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.txt</a>
+      <a href="/trade/export?fmt=csv&keep={{ binder.keep }}" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.csv</a>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if binder.cards %}
+  <div class="overflow-x-auto rounded-xl ring-1 ring-edge">
+    <table class="w-full text-sm">
+      <thead class="text-xs text-muted text-left bg-surface-2">
+        <tr>
+          <th class="py-2 px-2">Card</th>
+          <th class="px-2">Set</th>
+          <th class="px-2 text-right">Own</th>
+          <th class="px-2 text-right">Trade</th>
+          <th class="px-2 text-right">{{ cur.symbol }} ea</th>
+          <th class="px-2 text-right">{{ cur.symbol }} total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in binder.cards %}
+        <tr class="border-t border-edge hover:bg-surface-2">
+          <td class="py-1.5 px-2">
+            <a href="/card/{{ c.scryfall_id }}" class="hover:text-accent">{{ c.name }}</a>
+            {% if c.for_trade %}<span class="ml-1 text-accent text-xs" title="Tagged for trade">★</span>{% endif %}
+          </td>
+          <td class="px-2 whitespace-nowrap">{{ set_symbol(c.set_code, c.rarity) }}
+            <span class="text-muted uppercase text-xs">{{ c.set_code }}</span></td>
+          <td class="px-2 text-right tabular-nums text-muted">{{ c.owned }}</td>
+          <td class="px-2 text-right tabular-nums font-medium">{{ c.tradeable }}</td>
+          <td class="px-2 text-right tabular-nums text-muted">{% if c.unit %}{{ cur.symbol }}{{ '{:,.2f}'.format(c.unit) }}{% endif %}</td>
+          <td class="px-2 text-right tabular-nums">{% if c.value %}{{ cur.symbol }}{{ '{:,.2f}'.format(c.value) }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-muted py-16 text-center">
+    Nothing to trade at this threshold. Lower <b>Keep</b>, or tag cards
+    <code class="text-fg">for-trade</code> on their card page.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

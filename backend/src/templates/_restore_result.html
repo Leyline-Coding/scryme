@@ -1,0 +1,34 @@
+{% set labels = {
+  "collection_card": "Collection cards", "saved_search": "Saved searches", "wishlist": "Wishlist",
+  "deck": "Decks", "deck_card": "Deck cards", "price_snapshot": "Price snapshots",
+  "card_price_point": "Price points"
+} %}
+{% if error or (result and not result.ok) %}
+<div class="rounded-lg border border-rose-700 bg-rose-950/50 px-4 py-3 text-rose-200 text-sm">
+  {{ error or result.error }}
+</div>
+{% elif result %}
+<div class="rounded-lg ring-1 ring-edge bg-surface-2 p-4 text-sm">
+  {% if result.applied %}
+  <p class="text-emerald-500 font-semibold mb-2">✓ Restored {{ '{:,}'.format(result.total) }} rows.</p>
+  {% else %}
+  <p class="font-semibold mb-2">Preview — this backup contains:</p>
+  {% endif %}
+  <ul class="space-y-0.5">
+    {% for name, n in result.counts.items() %}
+    {% if n %}<li class="flex justify-between"><span>{{ labels.get(name, name) }}</span><span class="tabular-nums text-muted">{{ '{:,}'.format(n) }}</span></li>{% endif %}
+    {% endfor %}
+  </ul>
+  {% if result.skipped_missing_cards %}
+  <p class="mt-2 text-amber-500">
+    {{ '{:,}'.format(result.skipped_missing_cards) }} row(s) skipped — their card isn't in this
+    database yet. Run an ingest, then restore again.
+  </p>
+  {% endif %}
+  {% if not result.applied and not read_only %}
+  <p class="mt-2 text-muted text-xs">
+    Click <b>Restore (replace)</b> to apply — this wipes your current data first.
+  </p>
+  {% endif %}
+</div>
+{% endif %}

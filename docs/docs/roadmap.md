@@ -24,8 +24,10 @@ The MVP plus a steady stream of post-MVP features:
   value-over-time chart.
 - **[Tags](features/cards.md#tags)** — label owned cards and find them with `tag:`.
 - **[Wishlist](features/wishlist.md)** — a want list, including "add a deck's missing cards".
-- **[Theming](features/theming.md)**, result **sort**, result **export** (CSV / decklist / ManaBox),
-  and **saved searches**.
+- **[Theming](features/theming.md)** + **[currency](features/theming.md#display-currency)** (USD/EUR),
+  result **sort**, result **export** (CSV / decklist / ManaBox), and **saved searches**.
+- **[Backup & restore](features/backup.md)** — a portable JSON dump of your data.
+- In-app **collection editing** (add/edit/bulk), **faceted browse**, and **"did you mean?"** search.
 - **Physical-only** — Arena/MTGO-only cards are excluded; scryme is for paper collections.
 
 ## Planned
@@ -34,7 +36,6 @@ Tracked as open issues — roughly in priority order:
 
 | Issue | Feature |
 | --- | --- |
-| [#65](https://github.com/Leyline-Coding/scryme/issues/65) | Backup & restore of your data (logical dump) |
 | [#58](https://github.com/Leyline-Coding/scryme/issues/58) | Saved-search alerts — surface newly-matching cards after an ingest |
 | [#59](https://github.com/Leyline-Coding/scryme/issues/59) | Undo last import (pre-merge snapshot + one-click restore) |
 | [#66](https://github.com/Leyline-Coding/scryme/issues/66) | More import formats (Archidekt / Moxfield / TCGplayer / Deckbox) + CSV column mapping |

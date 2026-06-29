@@ -15,6 +15,7 @@ from src import __version__
 from src.config import get_settings
 from src.routes import (
     admin,
+    backup,
     binders,
     card,
     collection,
@@ -70,6 +71,7 @@ def create_app() -> FastAPI:
     app.include_router(sets.router)
     app.include_router(wishlist.router)
     app.include_router(collection.router)
+    app.include_router(backup.router)
 
     # Cached card images are served from the data volume.
     settings.image_cache_dir.mkdir(parents=True, exist_ok=True)

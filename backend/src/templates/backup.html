@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Backup & restore · scryme{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-6">
+    <a href="/" class="text-2xl font-bold tracking-tight shrink-0">
+      <span class="text-accent">scry</span>me
+    </a>
+    <h1 class="text-lg font-semibold">Backup &amp; restore</h1>
+    <a href="/search" class="ml-auto text-sm text-muted hover:text-fg">Search →</a>
+  </header>
+
+  <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
+    <h2 class="text-sm font-semibold mb-2">Download a backup</h2>
+    <p class="text-sm text-muted mb-3">
+      A single JSON file with your <b>collection, decks, saved searches, wishlist, tags, and price
+      history</b>. The card database isn't included — it's rebuilt from Scryfall — so backups stay
+      small and survive re-ingests.
+    </p>
+    <a href="/backup/download"
+       class="inline-block rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium">
+      ↓ Download backup (.json)
+    </a>
+  </section>
+
+  <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+    <h2 class="text-sm font-semibold mb-2">Restore from a backup</h2>
+    {% if read_only %}
+    <p class="text-sm text-muted">Restore is disabled on the read-only demo. (Download still works.)</p>
+    {% else %}
+    <p class="text-sm text-muted mb-3">
+      Restoring <b>replaces</b> your current data. Preview first to see what's in the file; rows
+      whose card isn't in this database yet are skipped (run an ingest first).
+    </p>
+    <form hx-post="/backup/restore" hx-target="#restore-result" hx-swap="innerHTML"
+          hx-encoding="multipart/form-data" class="flex flex-wrap items-center gap-2">
+      <input type="file" name="file" accept="application/json,.json" required
+             class="text-sm file:mr-2 file:rounded file:border-0 file:bg-surface-2 file:px-3 file:py-1.5" />
+      <button type="submit" name="mode" value="preview"
+              class="rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-1.5 text-sm">Preview</button>
+      <button type="submit" name="mode" value="apply"
+              onclick="return confirm('Restoring REPLACES your current collection, decks, etc. Continue?')"
+              class="rounded-lg bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 text-sm">
+        Restore (replace)
+      </button>
+    </form>
+    <div id="restore-result" class="mt-4"></div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

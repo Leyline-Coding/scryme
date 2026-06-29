@@ -53,6 +53,40 @@ async def _prune_digital() -> None:
     print(f"Removed {removed} digital-only (Arena/MTGO) card(s).")
 
 
+async def _backup(directory: str | None) -> None:
+    from pathlib import Path
+
+    from src.backup import take_disk_backup
+    from src.config import get_settings
+
+    settings = get_settings()
+    target = Path(directory) if directory else settings.backup_dir
+    if target is None:
+        print("No backup directory. Pass --dir or set SCRYME_BACKUP_DIR.")
+        return
+    path = await take_disk_backup(target, keep=settings.backup_keep)
+    print(f"Wrote backup: {path}")
+
+
+async def _restore(path: str, apply: bool) -> None:
+    from pathlib import Path
+
+    from src.backup import restore_from_path
+    from src.db import SessionLocal
+
+    async with SessionLocal() as session:
+        result = await restore_from_path(session, Path(path), dry_run=not apply)
+    if not result.ok:
+        print(f"Error: {result.error}")
+        return
+    verb = "Restored" if result.applied else "Would restore"
+    print(f"{verb} {result.total} rows: " + ", ".join(f"{k}={v}" for k, v in result.counts.items()))
+    if result.skipped_missing_cards:
+        print(f"  ({result.skipped_missing_cards} skipped — card not in the database)")
+    if not apply:
+        print("Dry run. Re-run with --apply to replace your current data.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="scryme")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -69,6 +103,14 @@ def main() -> None:
 
     sub.add_parser("prune-digital", help="Remove digital-only (Arena/MTGO) cards from the DB")
 
+    p_backup = sub.add_parser("backup", help="Write a backup of your data to disk")
+    p_backup.add_argument("--dir", help="Target directory (default: SCRYME_BACKUP_DIR)")
+
+    p_restore = sub.add_parser("restore", help="Restore your data from a backup file")
+    p_restore.add_argument("file", help="Path to a scryme backup .json file")
+    p_restore.add_argument("--apply", action="store_true",
+                           help="Apply the restore (default is a dry-run preview)")
+
     args = parser.parse_args()
     if args.command == "ingest":
         asyncio.run(_ingest(args.force))
@@ -80,6 +122,10 @@ def main() -> None:
         asyncio.run(_snapshot_prices())
     elif args.command == "prune-digital":
         asyncio.run(_prune_digital())
+    elif args.command == "backup":
+        asyncio.run(_backup(args.dir))
+    elif args.command == "restore":
+        asyncio.run(_restore(args.file, args.apply))
 
 
 if __name__ == "__main__":

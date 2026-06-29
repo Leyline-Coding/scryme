@@ -14,13 +14,16 @@ are preserved so deck/snapshot relationships stay intact; the identity sequences
 from __future__ import annotations
 
 import datetime
+import json
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from sqlalchemy import Date, DateTime, insert, select, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.db import SessionLocal
 from src.models import (
     Card,
     CardPricePoint,
@@ -155,3 +158,82 @@ async def restore_backup(
         )
     await session.commit()
     return RestoreResult(ok=True, applied=True, counts=counts, skipped_missing_cards=skipped)
+
+
+# --- on-disk backups (the "backup to a folder" / desktop-sync engine) ---------------------------
+
+_BACKUP_PREFIX = "scryme-backup-"
+_BACKUP_SUFFIX = ".json"
+
+
+@dataclass
+class BackupFile:
+    name: str
+    size: int
+    modified: datetime.datetime
+
+
+def _is_backup_name(name: str) -> bool:
+    return name.startswith(_BACKUP_PREFIX) and name.endswith(_BACKUP_SUFFIX)
+
+
+def resolve_backup(directory: Path, name: str) -> Path | None:
+    """A safe path to a backup file inside *directory* (None for traversal / non-backup names)."""
+    if not _is_backup_name(name) or "/" in name or "\\" in name:
+        return None
+    path = (directory / name).resolve()
+    if path.parent != directory.resolve() or not path.is_file():
+        return None
+    return path
+
+
+def list_backups(directory: Path) -> list[BackupFile]:
+    """On-disk backups in *directory*, newest first."""
+    if not directory.is_dir():
+        return []
+    out = []
+    for p in directory.iterdir():
+        if p.is_file() and _is_backup_name(p.name):
+            stat = p.stat()
+            out.append(BackupFile(name=p.name, size=stat.st_size,
+                                  modified=datetime.datetime.fromtimestamp(stat.st_mtime)))
+    return sorted(out, key=lambda b: b.name, reverse=True)
+
+
+def prune_backups(directory: Path, keep: int) -> int:
+    """Delete all but the newest *keep* backups. Returns how many were removed."""
+    backups = list_backups(directory)
+    removed = 0
+    for b in backups[max(0, keep):]:
+        (directory / b.name).unlink(missing_ok=True)
+        removed += 1
+    return removed
+
+
+async def write_backup(session: AsyncSession, directory: Path, *, keep: int = 0) -> Path:
+    """Write a timestamped backup into *directory* (created if needed) and prune to *keep*."""
+    directory.mkdir(parents=True, exist_ok=True)
+    data = await export_backup(session)
+    stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    path = directory / f"{_BACKUP_PREFIX}{stamp}{_BACKUP_SUFFIX}"
+    path.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
+    if keep:
+        prune_backups(directory, keep)
+    return path
+
+
+async def take_disk_backup(directory: Path, *, keep: int = 0) -> Path:
+    """Open a session and write a backup to disk (for the scheduler / CLI)."""
+    async with SessionLocal() as session:
+        return await write_backup(session, directory, keep=keep)
+
+
+async def restore_from_path(
+    session: AsyncSession, path: Path, *, dry_run: bool = True
+) -> RestoreResult:
+    """Restore from a backup file on disk."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return RestoreResult(ok=False, error="Couldn't read that backup file.")
+    return await restore_backup(session, data, dry_run=dry_run)

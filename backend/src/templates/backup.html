@@ -47,5 +47,57 @@
     <div id="restore-result" class="mt-4"></div>
     {% endif %}
   </section>
+
+  {# On-disk backups: point SCRYME_BACKUP_DIR at a synced folder (Dropbox/Drive) to back up there. #}
+  <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mt-6">
+    <h2 class="text-sm font-semibold mb-2">Backups on disk</h2>
+    {% if not backup_dir %}
+    <p class="text-sm text-muted">
+      Set <code class="text-fg">SCRYME_BACKUP_DIR</code> to a folder — for example one synced by
+      Dropbox, Google Drive, or iCloud — to enable scheduled backups and one-click restore here.
+      <code class="text-fg">SCRYME_BACKUP_INTERVAL_HOURS</code> turns on a recurring backup and
+      <code class="text-fg">SCRYME_BACKUP_KEEP</code> bounds how many are kept.
+    </p>
+    {% else %}
+    <p class="text-sm text-muted mb-3">
+      Backing up to <code class="text-fg break-all">{{ backup_dir }}</code> ·
+      keep {{ keep }} ·
+      {% if interval %}auto every {{ interval }}h{% else %}manual (set SCRYME_BACKUP_INTERVAL_HOURS to schedule){% endif %}
+    </p>
+    {% if not read_only %}
+    <form method="post" action="/backup/disk" class="mb-3">
+      <button type="submit" class="rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium">
+        Back up now
+      </button>
+    </form>
+    {% endif %}
+    {% if backups %}
+    <ul class="divide-y divide-edge rounded-lg ring-1 ring-edge overflow-hidden">
+      {% for b in backups %}
+      <li class="flex items-center gap-3 px-3 py-2 text-sm">
+        <span class="flex-1 min-w-0 truncate">{{ b.name }}</span>
+        <span class="text-xs text-muted shrink-0">{{ b.modified.strftime('%Y-%m-%d %H:%M') }}
+          · {{ (b.size / 1024) | round | int }} KB</span>
+        <a href="/backup/disk/download?name={{ b.name | urlencode }}"
+           class="shrink-0 text-xs text-muted hover:text-fg">download</a>
+        {% if not read_only %}
+        <form method="post" action="/backup/disk/restore" hx-post="/backup/disk/restore"
+              hx-target="#restore-result" hx-swap="innerHTML" class="shrink-0 inline-flex gap-1">
+          <input type="hidden" name="name" value="{{ b.name }}" />
+          <button type="submit" name="mode" value="preview"
+                  class="text-xs rounded bg-surface-2 hover:bg-surface-3 px-2 py-1">preview</button>
+          <button type="submit" name="mode" value="apply"
+                  onclick="return confirm('Restoring REPLACES your current data. Continue?')"
+                  class="text-xs rounded bg-rose-600 hover:bg-rose-500 text-white px-2 py-1">restore</button>
+        </form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-muted">No backups in that folder yet.</p>
+    {% endif %}
+    {% endif %}
+  </section>
 </div>
 {% endblock %}

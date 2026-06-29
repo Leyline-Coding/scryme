@@ -10,6 +10,7 @@ import structlog
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
+from src.config import get_settings
 from src.scryfall.ingest import ingest_default_cards
 
 log = structlog.get_logger()
@@ -28,10 +29,24 @@ async def _refresh_job() -> None:
         log.error("scryfall.refresh.failed", error=str(exc))
 
 
+async def _backup_job() -> None:
+    settings = get_settings()
+    if not settings.backup_dir:
+        return
+    try:
+        from src.backup import take_disk_backup
+
+        path = await take_disk_backup(settings.backup_dir, keep=settings.backup_keep)
+        log.info("backup.scheduled.done", path=str(path))
+    except Exception as exc:  # noqa: BLE001 - never let a scheduled job crash the loop
+        log.error("backup.scheduled.failed", error=str(exc))
+
+
 def start_scheduler(refresh_hours: int = 24) -> AsyncIOScheduler:
     global _scheduler
     if _scheduler is not None:
         return _scheduler
+    settings = get_settings()
     _scheduler = AsyncIOScheduler()
     _scheduler.add_job(
         _refresh_job,
@@ -39,6 +54,16 @@ def start_scheduler(refresh_hours: int = 24) -> AsyncIOScheduler:
         id="scryfall_refresh",
         replace_existing=True,
     )
+    # Scheduled on-disk backups are opt-in: a backup directory + a positive interval.
+    if settings.backup_dir and settings.backup_interval_hours > 0:
+        _scheduler.add_job(
+            _backup_job,
+            IntervalTrigger(hours=settings.backup_interval_hours),
+            id="disk_backup",
+            replace_existing=True,
+        )
+        log.info("scheduler.backup_enabled", hours=settings.backup_interval_hours,
+                 dir=str(settings.backup_dir))
     _scheduler.start()
     log.info("scheduler.started", refresh_hours=refresh_hours)
     return _scheduler

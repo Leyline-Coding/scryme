@@ -1,7 +1,8 @@
 # Theming
 
-scryme ships with several themes and a custom accent color. Open the **palette** button
-(bottom-right of any page) to change them.
+scryme ships with several themes and a custom accent color. Open the **settings** gear
+(top-right of any page) to change them — the same panel holds the currency toggle and links to
+Backup and Status.
 
 - **Preset themes** — Midnight (default dark), Slate, Daylight (light), and Parchment (a warm,
   MTG-flavored light theme).
@@ -14,7 +15,7 @@ read-only public demo — each visitor gets their own preference.
 
 ## Display currency
 
-The same palette menu has a **Currency** toggle — **USD** or **EUR**. scryme shows the matching
+The same settings panel has a **Currency** toggle — **USD** or **EUR**. scryme shows the matching
 Scryfall price (`usd` / `eur`) for *current values*: the [stats](stats.md) collection value and
 growth, [deck](decks.md) value and cost-to-complete, the [wishlist](wishlist.md) estimate, and the
 card page's price list (the chosen currency leads). It's a price-key choice, **not** a converted

@@ -1,20 +1,17 @@
-{# Floating theme picker: preset themes + custom accent, persisted in localStorage (client-only,
-   so it works even in the read-only demo). The pre-paint script in base.html applies the choice. #}
-<div x-data="themePicker()" class="fixed bottom-4 right-4 z-50 print:hidden">
+{# Settings: a top-right gear opening a panel — theme, accent, currency, and operator links.
+   Theme/accent/currency persist client-side (localStorage / cookie), so they work on the demo. #}
+<div x-data="settingsMenu()" class="fixed top-3 right-3 z-50 print:hidden">
   <button
     @click="open = !open"
-    title="Theme"
-    aria-label="Theme settings"
-    class="rounded-full bg-surface-2 hover:bg-surface-3 border border-edge w-11 h-11
+    title="Settings"
+    aria-label="Settings"
+    class="rounded-full bg-surface-2 hover:bg-surface-3 border border-edge w-10 h-10
            flex items-center justify-center shadow-lg transition"
   >
     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-fg" viewBox="0 0 24 24"
          fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="13.5" cy="6.5" r="1.2" fill="currentColor" stroke="none" />
-      <circle cx="17.5" cy="10.5" r="1.2" fill="currentColor" stroke="none" />
-      <circle cx="8.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
-      <circle cx="6.5" cy="12.5" r="1.2" fill="currentColor" stroke="none" />
-      <path d="M12 2a10 10 0 1 0 0 20 2.5 2.5 0 0 0 2-4 2.5 2.5 0 0 1 2-4h2a4 4 0 0 0 4-4 10 10 0 0 0-12-8z" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   </button>
 
@@ -22,7 +19,7 @@
     x-show="open"
     @click.outside="open = false"
     x-transition
-    class="absolute bottom-14 right-0 w-64 rounded-xl bg-surface border border-edge shadow-xl p-4 space-y-4"
+    class="absolute top-12 right-0 w-64 rounded-xl bg-surface border border-edge shadow-xl p-4 space-y-4"
     style="display: none"
   >
     <div>
@@ -72,11 +69,16 @@
       </div>
       <p class="mt-1 text-xs text-muted">Price history stays in USD.</p>
     </div>
+
+    <div class="border-t border-edge pt-3 grid grid-cols-2 gap-2 text-sm">
+      <a href="/backup" class="rounded-lg border border-edge hover:border-accent px-2.5 py-1.5 text-center">Backup</a>
+      <a href="/admin" class="rounded-lg border border-edge hover:border-accent px-2.5 py-1.5 text-center">Status</a>
+    </div>
   </div>
 </div>
 
 <script>
-  function themePicker() {
+  function settingsMenu() {
     return {
       open: false,
       theme: localStorage.getItem("scryme-theme") || "midnight",

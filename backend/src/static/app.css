@@ -89,3 +89,11 @@
   --c-accent: #9a6b2f;
   --c-accent-fg: #ffffff;
 }
+
+/* Brand mark: mask the logo SVG and tint it with the current text color so it themes. */
+.logo-mark {
+  display: inline-block;
+  background-color: currentColor;
+  -webkit-mask: url("/static/scryme-logo.svg") center / contain no-repeat;
+  mask: url("/static/scryme-logo.svg") center / contain no-repeat;
+}

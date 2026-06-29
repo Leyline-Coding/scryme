@@ -12,7 +12,8 @@ const fs = require("fs");
 const { spawn } = require("child_process");
 const getPort = require("get-port");
 
-const EmbeddedPostgres = require("embedded-postgres").default || require("embedded-postgres");
+// embedded-postgres is ESM-only ("type": "module"), so it can't be require()'d from this CommonJS
+// file — it's loaded lazily via dynamic import() in startPostgres().
 
 const isDev = !app.isPackaged;
 const DB_USER = "scryme";
@@ -33,6 +34,8 @@ function dataDir() {
 }
 
 async function startPostgres(dir, port) {
+  // ESM-only module — dynamic import() works from CommonJS; `.default` is the class.
+  const { default: EmbeddedPostgres } = await import("embedded-postgres");
   const databaseDir = path.join(dir, "pg");
   pg = new EmbeddedPostgres({
     databaseDir,
@@ -64,7 +67,12 @@ function backendCommand(dir, backendPort, pgPort) {
   };
   if (isDev) {
     // Dev: run the Python backend from ../backend (set SCRYME_PYTHON to a venv interpreter).
-    const python = process.env.SCRYME_PYTHON || "python3";
+    // Resolve a relative SCRYME_PYTHON against the launch dir so spawn (which runs with the backend
+    // as cwd) still finds it; a bare "python3" is left to PATH lookup.
+    let python = process.env.SCRYME_PYTHON || "python3";
+    if (python.includes("/") && !path.isAbsolute(python)) {
+      python = path.resolve(process.cwd(), python);
+    }
     return { cmd: python, args: ["-m", "src.desktop_entry"],
              opts: { cwd: path.resolve(__dirname, "../../backend"), env } };
   }

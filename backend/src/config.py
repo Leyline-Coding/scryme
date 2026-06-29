@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     # or X-API-Key). Empty = open (fine for a single-user localhost instance).
     api_token: str = ""
 
+    # Desktop LAN sharing. When true (the desktop app sets SCRYME_LAN_GUARD=1 and binds 0.0.0.0),
+    # non-loopback requests are blocked unless LAN sharing is enabled — and then optionally gated by
+    # an access code. Off by default, so the Docker/self-host deployment is unaffected.
+    lan_guard: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

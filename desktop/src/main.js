@@ -147,6 +147,27 @@ function createWindow(port) {
   });
   mainWindow.loadURL(`http://127.0.0.1:${port}/`);
   mainWindow.on("closed", () => { mainWindow = null; });
+  buildMenu(port);
+}
+
+function buildMenu(port) {
+  const go = (p) => () => { if (mainWindow) mainWindow.loadURL(`http://127.0.0.1:${port}${p}`); };
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    { role: "appMenu" },
+    {
+      label: "File",
+      submenu: [
+        { label: "Home", accelerator: "CommandOrControl+H", click: go("/") },
+        { label: "Import collection…", click: go("/upload") },
+        { label: "Share on LAN…", click: go("/lan") },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    },
+    { role: "editMenu" },
+    { role: "viewMenu" },
+    { role: "windowMenu" },
+  ]));
 }
 
 // Global quick-search: a system-wide hotkey raises the window and focuses the search box.
@@ -191,12 +212,7 @@ async function shutdown() {
 }
 
 app.whenReady().then(() => {
-  Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { role: "appMenu" },
-    { role: "editMenu" },
-    { role: "viewMenu" },
-    { role: "windowMenu" },
-  ]));
+  // The application menu is built in createWindow() once the backend port is known.
   boot().catch((err) => {
     dialog.showErrorBox("scryme", `Failed to start: ${err && err.message ? err.message : err}`);
     app.quit();

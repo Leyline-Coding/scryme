@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Share on LAN · scryme{% endblock %}
+{% block content %}
+<div class="max-w-xl mx-auto px-4 py-12">
+  {% include "_brand.html" %}
+  <h1 class="mt-8 text-xl font-semibold">Share on your network</h1>
+
+  {% if not available %}
+  <p class="mt-4 text-muted">
+    LAN sharing is only available in the scryme desktop app.
+  </p>
+  {% else %}
+  <p class="mt-2 text-muted text-sm">
+    Let other devices on your home network — your phone, a tablet — browse this collection.
+    Intended for trusted networks only; there's no login, so add an access code if others share
+    your network.
+  </p>
+
+  <form action="/lan/toggle" method="post" class="mt-6 flex items-center justify-between
+        rounded-lg border border-edge bg-surface px-4 py-3">
+    <span class="font-medium">
+      LAN sharing is
+      <span class="{% if state.enabled %}text-emerald-500{% else %}text-muted{% endif %}">
+        {{ "on" if state.enabled else "off" }}</span>
+    </span>
+    <button type="submit"
+      class="rounded-lg px-4 py-2 font-medium
+             {% if state.enabled %}border border-edge hover:border-accent{% else %}bg-accent text-accent-fg hover:opacity-90{% endif %}">
+      {{ "Turn off" if state.enabled else "Turn on" }}
+    </button>
+  </form>
+
+  {% if state.enabled %}
+  <div class="mt-6 rounded-lg border border-edge bg-surface p-5 text-center">
+    <p class="text-sm text-muted mb-3">Open this on another device:</p>
+    <div class="flex justify-center">
+      <div class="bg-white p-3 rounded-lg w-48 h-48">{{ qr|safe }}</div>
+    </div>
+    <p class="mt-3 font-mono text-sm break-all">{{ url }}</p>
+  </div>
+
+  <form action="/lan/code" method="post" class="mt-4 flex items-center justify-between
+        rounded-lg border border-edge bg-surface px-4 py-3">
+    <div class="text-sm">
+      <p class="font-medium">Access code</p>
+      {% if state.code %}
+      <p class="text-muted">Required to connect: <span class="font-mono">{{ state.code }}</span></p>
+      {% else %}
+      <p class="text-muted">No code — anyone on the network can connect.</p>
+      {% endif %}
+    </div>
+    {% if state.code %}
+    <button name="action" value="clear"
+      class="rounded-lg border border-edge hover:border-accent px-4 py-2 text-sm">Remove</button>
+    {% else %}
+    <button name="action" value="set"
+      class="rounded-lg bg-accent text-accent-fg hover:opacity-90 px-4 py-2 text-sm">
+      Require a code</button>
+    {% endif %}
+  </form>
+  {% endif %}
+  {% endif %}
+
+  <p class="mt-8"><a href="/" class="text-muted hover:text-accent underline">← Back</a></p>
+</div>
+{% endblock %}

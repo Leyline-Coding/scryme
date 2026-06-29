@@ -73,6 +73,9 @@
     <div class="border-t border-edge pt-3 grid grid-cols-2 gap-2 text-sm">
       <a href="/backup" class="rounded-lg border border-edge hover:border-accent px-2.5 py-1.5 text-center">Backup</a>
       <a href="/admin" class="rounded-lg border border-edge hover:border-accent px-2.5 py-1.5 text-center">Status</a>
+      {% if lan_available() %}
+      <a href="/lan" class="col-span-2 rounded-lg border border-edge hover:border-accent px-2.5 py-1.5 text-center">Share on LAN</a>
+      {% endif %}
     </div>
   </div>
 </div>

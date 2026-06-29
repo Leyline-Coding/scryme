@@ -18,6 +18,7 @@ from src.routes import (
     backup,
     binders,
     card,
+    checklists,
     collection,
     decks,
     export,
@@ -74,6 +75,7 @@ def create_app() -> FastAPI:
     app.include_router(collection.router)
     app.include_router(backup.router)
     app.include_router(trade.router)
+    app.include_router(checklists.router)
 
     # Cached card images are served from the data volume.
     settings.image_cache_dir.mkdir(parents=True, exist_ok=True)

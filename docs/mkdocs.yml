@@ -81,6 +81,7 @@ nav:
       - Decks: features/decks.md
       - Binders: features/binders.md
       - Set Completion: features/sets.md
+      - Checklists: features/checklists.md
       - Wishlist: features/wishlist.md
       - Trade Binder: features/trade.md
       - Collection Stats: features/stats.md

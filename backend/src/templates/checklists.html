@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Checklists · scryme{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-6">
+    <a href="/" class="text-2xl font-bold tracking-tight shrink-0">
+      <span class="text-accent">scry</span>me
+    </a>
+    <h1 class="text-lg font-semibold">Checklists</h1>
+    <a href="/sets" class="ml-auto text-sm text-muted hover:text-fg">Set completion →</a>
+  </header>
+
+  <p class="text-sm text-muted mb-4">
+    Track your completion of any card list — the Power 9, the original dual lands, a Commander's
+    staples. Matched by card identity, so any printing you own counts.
+  </p>
+
+  {% if checklists %}
+  <ul class="space-y-2 mb-8">
+    {% for c, n in checklists %}
+    <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3">
+      <a href="/checklists/{{ c.id }}" class="flex-1 min-w-0 truncate font-medium hover:text-accent">{{ c.name }}</a>
+      <span class="text-xs text-muted shrink-0">{{ '{:,}'.format(n) }} cards</span>
+      {% if not read_only %}
+      <form method="post" action="/checklists/{{ c.id }}/delete" class="shrink-0"
+            onsubmit="return confirm('Delete this checklist?')">
+        <button type="submit" class="text-muted hover:text-rose-500" title="Delete">✕</button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-muted mb-8">No checklists yet.</p>
+  {% endif %}
+
+  {% if not read_only %}
+  <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+    <h2 class="text-sm font-semibold mb-2">New checklist</h2>
+    <form method="post" action="/checklists" class="space-y-2">
+      <input type="text" name="name" placeholder="Name (e.g. Power 9)" required
+             class="w-full rounded-lg bg-bg border border-edge px-3 py-2 text-sm" />
+      <textarea name="cards" rows="8" required
+                placeholder="One card per line, e.g.&#10;Black Lotus&#10;Mox Sapphire&#10;Ancestral Recall"
+                class="w-full rounded-lg bg-bg border border-edge px-3 py-2 text-sm font-mono"></textarea>
+      <button type="submit" class="rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium">
+        Create checklist
+      </button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

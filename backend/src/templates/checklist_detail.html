@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ cov.checklist.name }} · scryme{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-6">
+    <a href="/" class="text-2xl font-bold tracking-tight shrink-0">
+      <span class="text-accent">scry</span>me
+    </a>
+    <h1 class="text-lg font-semibold truncate">{{ cov.checklist.name }}</h1>
+    <a href="/checklists" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Checklists →</a>
+  </header>
+
+  <div class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
+    <div class="flex items-end justify-between gap-3 mb-2">
+      <div>
+        <div class="text-2xl font-bold">{{ cov.pct_complete }}% complete</div>
+        <div class="text-sm text-muted">{{ cov.owned_count }} of {{ cov.total }} owned</div>
+      </div>
+      {% if not read_only and cov.missing_matched %}
+      <form method="post" action="/checklists/{{ cov.checklist.id }}/wishlist">
+        <button type="submit" class="text-xs rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">
+          ☆ Add {{ cov.missing_matched }} missing to wishlist
+        </button>
+      </form>
+      {% endif %}
+    </div>
+    <div class="bg-surface-2 rounded h-2 overflow-hidden">
+      <div class="h-full bg-accent" style="width: {{ cov.pct_complete }}%"></div>
+    </div>
+    {% if cov.unmatched %}
+    <p class="mt-2 text-xs text-amber-500">{{ cov.unmatched }} line(s) didn't match a known card.</p>
+    {% endif %}
+  </div>
+
+  <ul class="divide-y divide-edge rounded-xl bg-surface ring-1 ring-edge overflow-hidden">
+    {% for r in cov.rows %}
+    <li class="flex items-center gap-3 px-4 py-2 text-sm {% if not r.matched %}text-amber-500{% endif %}">
+      <span class="w-5 shrink-0 text-center">
+        {% if r.owned %}<span class="text-emerald-500">✓</span>{% else %}<span class="text-muted">○</span>{% endif %}
+      </span>
+      {% if r.scryfall_id %}
+      <a href="/card/{{ r.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">{{ r.name }}</a>
+      {% else %}
+      <span class="flex-1 min-w-0 truncate" title="Not found in the card database">{{ r.name }}</span>
+      {% endif %}
+      {% if not r.matched %}<span class="text-xs shrink-0">unrecognized</span>
+      {% elif not r.owned %}<span class="text-xs text-muted shrink-0">missing</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

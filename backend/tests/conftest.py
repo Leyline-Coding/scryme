@@ -56,6 +56,7 @@ async def _clean_tables():
         await conn.execute(text("TRUNCATE collection_card RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE saved_search RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE deck RESTART IDENTITY CASCADE"))
+        await conn.execute(text("TRUNCATE checklist RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE price_snapshot RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE wishlist RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE cards CASCADE"))

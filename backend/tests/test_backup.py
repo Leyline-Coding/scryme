@@ -94,7 +94,7 @@ async def test_restore_dry_run_does_not_write(session):
 @pytest.mark.asyncio
 async def test_backup_routes(client, session):
     await _seed_user_data(session)
-    dl = await client.get("/backup/download")
+    dl = await client.post("/backup/download", data={})
     assert dl.status_code == 200
     assert "attachment" in dl.headers["content-disposition"]
     payload = json.loads(dl.text)

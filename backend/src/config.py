@@ -65,6 +65,8 @@ class Settings(BaseSettings):
     backup_dir: Path | None = None
     backup_keep: int = 14
     backup_interval_hours: int = 0
+    # If set, on-disk/scheduled backups are encrypted with this passphrase (restore needs it too).
+    backup_passphrase: str = ""
 
     # JSON API: when set, every /api/* request must send this token (Authorization: Bearer <token>
     # or X-API-Key). Empty = open (fine for a single-user localhost instance).

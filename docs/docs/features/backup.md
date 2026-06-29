@@ -50,5 +50,18 @@ python -m src.cli restore backup.json --apply    # replace your data
 ```
 
 This is the engine behind the planned [desktop app](https://github.com/Leyline-Coding/scryme/issues/49)'s
-backup story. Encrypting backups with a passphrase is tracked separately
-([#114](https://github.com/Leyline-Coding/scryme/issues/114)).
+backup story.
+
+## Encrypted backups
+
+Add a **passphrase** to encrypt a backup. On the download form, type a passphrase to get an
+encrypted `.enc.json` file; from the CLI, `python -m src.cli backup --passphrase <pass>`. The file
+is a small envelope — the JSON is encrypted with Fernet (AES-128 + HMAC) under a key derived from
+your passphrase via PBKDF2-HMAC-SHA256, so nothing is readable without it.
+
+Restoring an encrypted backup asks for the passphrase (a field on the restore form, or
+`restore --passphrase <pass>`); a wrong passphrase or a tampered file fails cleanly without touching
+your data. For **scheduled/on-disk** backups, set `SCRYME_BACKUP_PASSPHRASE` and every written
+backup is encrypted automatically (and restore from disk uses it).
+
+**There's no recovery if you lose the passphrase** — keep it somewhere safe.

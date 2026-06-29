@@ -15,10 +15,16 @@
       history</b>. The card database isn't included — it's rebuilt from Scryfall — so backups stay
       small and survive re-ingests.
     </p>
-    <a href="/backup/download"
-       class="inline-block rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium">
-      ↓ Download backup (.json)
-    </a>
+    <form method="post" action="/backup/download" class="flex flex-wrap items-center gap-2">
+      <input type="password" name="passphrase" placeholder="passphrase (optional)" autocomplete="new-password"
+             class="rounded-lg bg-bg border border-edge px-3 py-2 text-sm w-48" />
+      <button type="submit"
+              class="rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium">
+        ↓ Download backup
+      </button>
+    </form>
+    <p class="mt-2 text-xs text-muted">Add a passphrase to download an <b>encrypted</b> backup
+      (you'll need it to restore).</p>
   </section>
 
   <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
@@ -34,6 +40,8 @@
           hx-encoding="multipart/form-data" class="flex flex-wrap items-center gap-2">
       <input type="file" name="file" accept="application/json,.json" required
              class="text-sm file:mr-2 file:rounded file:border-0 file:bg-surface-2 file:px-3 file:py-1.5" />
+      <input type="password" name="passphrase" placeholder="passphrase (if encrypted)" autocomplete="new-password"
+             class="rounded-lg bg-bg border border-edge px-3 py-1.5 text-sm w-44" />
       <button type="submit" name="mode" value="preview"
               class="rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-1.5 text-sm">Preview</button>
       <button type="submit" name="mode" value="apply"
@@ -82,6 +90,10 @@
         <form method="post" action="/backup/disk/restore" hx-post="/backup/disk/restore"
               hx-target="#restore-result" hx-swap="innerHTML" class="shrink-0 inline-flex gap-1">
           <input type="hidden" name="name" value="{{ b.name }}" />
+          {% if b.name.endswith('.enc.json') %}
+          <input type="password" name="passphrase" placeholder="passphrase" autocomplete="new-password"
+                 class="rounded bg-bg border border-edge px-2 py-1 text-xs w-28" />
+          {% endif %}
           <button type="submit" name="mode" value="preview"
                   class="text-xs rounded bg-surface-2 hover:bg-surface-3 px-2 py-1">preview</button>
           <button type="submit" name="mode" value="apply"

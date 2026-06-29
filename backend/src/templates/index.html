@@ -104,6 +104,24 @@
     · <a class="underline" href="/collection">my collection</a>
     · <a class="underline" href="/prices">prices</a>.
   </p>
+
+  {% if alerts %}
+  <div class="mt-8 w-full max-w-2xl rounded-xl border border-edge bg-surface p-4">
+    <p class="text-sm font-semibold text-accent mb-2">✨ What's new since the last update</p>
+    <ul class="divide-y divide-edge">
+      {% for a in alerts %}
+      <li>
+        <a href="/saved/{{ a.id }}/open"
+           class="flex items-center justify-between gap-3 py-2 px-1 hover:text-accent">
+          <span>{{ a.name }}</span>
+          <span class="rounded-full bg-accent text-accent-fg text-xs font-semibold px-2 py-0.5">
+            +{{ a.count }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
   {% else %}
   {# Empty collection: prompt the first upload (wired up in Phase 3). #}
   <div class="w-full max-w-lg text-center">

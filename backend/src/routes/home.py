@@ -27,6 +27,11 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)) 
     # searched or matched against — gate the home page on a one-time first-run ingest instead.
     card_count = await session.scalar(select(func.count()).select_from(Card))
     needs_cards = not card_count and not settings.read_only
+
+    # Saved-search alerts: cards that newly match after a recent ingest (#58).
+    from src.saved_alerts import searches_with_new
+
+    alerts = [] if settings.read_only else await searches_with_new(session)
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -34,5 +39,6 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)) 
             "has_collection": bool(count),
             "read_only": settings.read_only,
             "needs_cards": needs_cards,
+            "alerts": alerts,
         },
     )

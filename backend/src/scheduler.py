@@ -25,6 +25,10 @@ async def _refresh_job() -> None:
         from src.prices import take_snapshot
 
         await take_snapshot()
+        # Re-evaluate saved searches against the new data and record newly-matching cards (#58).
+        from src.saved_alerts import evaluate_alerts
+
+        await evaluate_alerts()
     except Exception as exc:  # noqa: BLE001 - never let a scheduled job crash the loop
         log.error("scryfall.refresh.failed", error=str(exc))
 

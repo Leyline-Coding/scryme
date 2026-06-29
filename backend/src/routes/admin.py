@@ -79,3 +79,7 @@ async def trigger_ingest(background: BackgroundTasks, force: bool = False) -> di
 
 async def _run_ingest(force: bool) -> None:
     await ingest_default_cards(force=force)
+    # Surface newly-matching saved searches after a manual ingest too (#58).
+    from src.saved_alerts import evaluate_alerts
+
+    await evaluate_alerts()

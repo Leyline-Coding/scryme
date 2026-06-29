@@ -83,3 +83,25 @@ async def delete_saved(
         await session.delete(obj)
         await session.commit()
     return RedirectResponse(url="/search", status_code=303)
+
+
+@router.get("/saved/alerts")
+async def saved_alerts(session: AsyncSession = Depends(get_session)):
+    """Total unviewed new matches across saved searches (polled by the notification script)."""
+    from src.saved_alerts import total_new_matches
+
+    return {"total": await total_new_matches(session)}
+
+
+@router.get("/saved/{saved_id}/open")
+async def open_saved(saved_id: int, session: AsyncSession = Depends(get_session)):
+    """Run a saved search and mark its new matches as seen (clears the alert badge)."""
+    from src.saved_alerts import clear_new
+
+    obj = await session.get(SavedSearch, saved_id)
+    if obj is None:
+        return RedirectResponse(url="/", status_code=303)
+    await clear_new(session, saved_id)
+    return RedirectResponse(
+        url=_run_url(obj.query, obj.scope, obj.sort, obj.direction), status_code=303
+    )

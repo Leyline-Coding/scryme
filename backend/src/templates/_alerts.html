@@ -1,0 +1,29 @@
+{# Saved-search alert notifications (#58). Polls the unviewed-new-matches total once per page load
+   and fires a desktop/web notification when it grows. In the Electron desktop app these render as
+   native OS notifications. Skipped in read-only (demo) mode. #}
+{% if not read_only %}
+<script>
+  (function () {
+    if (!("Notification" in window)) return;
+    fetch("/saved/alerts")
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var total = (d && d.total) || 0;
+        if (!total) return;
+        var last = parseInt(localStorage.getItem("scryme-alert-seen") || "0", 10);
+        localStorage.setItem("scryme-alert-seen", String(total));
+        if (total <= last) return; // only notify when there's something new
+        var body = total + " new card" + (total === 1 ? "" : "s") + " match your saved searches.";
+        function fire() {
+          var n = new Notification("scryme — what's new", { body: body });
+          n.onclick = function () { window.focus(); window.location.href = "/"; };
+        }
+        if (Notification.permission === "granted") fire();
+        else if (Notification.permission !== "denied") {
+          Notification.requestPermission().then(function (p) { if (p === "granted") fire(); });
+        }
+      })
+      .catch(function () { /* ignore */ });
+  })();
+</script>
+{% endif %}

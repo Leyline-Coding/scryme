@@ -1,0 +1,20 @@
+# Maintainer: Leyline Coding <untraceablez@users.noreply.github.com>
+# AUR package: installs the published AppImage as /usr/bin/scryme.
+# Update pkgver + run `updpkgsums` each release.
+pkgname=scryme-bin
+pkgver=0.10.0
+pkgrel=1
+pkgdesc="Self-hostable, Scryfall-like search for your MTG collection (desktop app)"
+arch=('x86_64')
+url="https://github.com/Leyline-Coding/scryme"
+license=('custom')
+provides=('scryme')
+conflicts=('scryme')
+depends=('fuse2')
+options=(!strip)
+source=("scryme-${pkgver}.AppImage::https://github.com/Leyline-Coding/scryme/releases/download/v${pkgver}/scryme-${pkgver}.AppImage")
+sha256sums=('REPLACE_WITH_AppImage_SHA256')
+
+package() {
+  install -Dm755 "scryme-${pkgver}.AppImage" "${pkgdir}/usr/bin/scryme"
+}

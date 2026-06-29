@@ -1,0 +1,11 @@
+PackageIdentifier: Leyline-Coding.scryme
+PackageVersion: 0.10.0
+InstallerLocale: en-US
+InstallerType: nullsoft
+Scope: user
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/Leyline-Coding/scryme/releases/download/v0.10.0/scryme-Setup-0.10.0.exe
+    InstallerSha256: REPLACE_WITH_exe_SHA256
+ManifestType: installer
+ManifestVersion: 1.6.0

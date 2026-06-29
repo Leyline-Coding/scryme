@@ -7,19 +7,21 @@ Lens, then search it with Scryfall syntax and regular expressions.
 ## Highlights
 
 - 🔎 **Scryfall-compatible search** with regex — scoped to your collection or all cards, with
-  sorting, **clickable [facets](search/syntax.md)**, **"did you mean?"** suggestions, **saved
-  searches**, an **[advanced form builder](search/advanced.md)**, and CSV / decklist / ManaBox
-  **export**.
+  sorting, a **grid / table** toggle, **clickable [facets](search/syntax.md)**, **"did you mean?"**
+  suggestions, **saved searches**, an **[advanced form builder](search/advanced.md)**, and CSV /
+  decklist / ManaBox **export**.
 - 🃏 **Rich card pages** — full oracle text, prices, legalities, printings, rulings, real
   **mana & set symbols**, **[tags](features/cards.md#tags)** you can search with `tag:`, and inline
   **[add/edit](features/cards.md#editing-your-collection)** (plus bulk edit from results).
 - 🧰 **Collection tools** — a **[stats dashboard](features/stats.md)** (value + growth over time),
   **[price history](features/prices.md)** (movers + acquisition profit/loss),
   **[decks](features/decks.md)** with coverage, legality, stats, and export,
-  **[set completion](features/sets.md)**, a **[wishlist](features/wishlist.md)**, and
+  **[set completion](features/sets.md)**, **[custom checklists](features/checklists.md)**, a
+  **[wishlist](features/wishlist.md)**, a **[trade binder](features/trade.md)**, and
   **[binder](features/binders.md)** browsing.
-- 📥 **Collection import** from ManaBox, Dragon Shield, and Delver Lens (preview → **replace /
-  increment / per-card** merge), and **[backup & restore](features/backup.md)** of all your data.
+- 📥 **Collection import** from ManaBox, Dragon Shield, Delver Lens, Moxfield, and Archidekt — or
+  **any CSV** via the column-mapping wizard (preview → **replace / increment / per-card** merge),
+  and **[backup & restore](features/backup.md)** of all your data.
 - 🗃️ **Local card database + image cache** built from Scryfall bulk data — works offline and stays
   within [Scryfall's API policy](https://scryfall.com/docs/api).
 - 🎨 **Themeable UI** (preset themes + custom accent), **USD/EUR** currency, and 🐳 **self-hostable

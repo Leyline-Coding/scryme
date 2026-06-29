@@ -1,5 +1,6 @@
 appId: app.scryme.desktop
 productName: scryme
+executableName: scryme
 copyright: Leyline Coding
 
 directories:

@@ -41,23 +41,39 @@ The embedded PostgreSQL downloads its binaries on first `npm install` (via `embe
 
 ## Build a distributable
 
-PyInstaller output is platform-specific, so build on the OS you're packaging for (no
-cross-compilation). Two steps: freeze the backend, then package the app.
+Two steps: freeze the backend, then package the app.
 
 ```bash
 cd desktop
 npm install
-npm run build:backend     # → dist/scryme-backend/  (PyInstaller, uses a throwaway venv)
+npm run build:backend     # → dist/scryme-backend/  (the frozen backend)
 npm run dist              # → release/  (electron-builder: dmg/zip, nsis, AppImage/deb)
 ```
 
-`npm run pack` produces an unpacked app under `release/` for quick local testing without building
-installers.
+`npm run pack` produces an unpacked app under `release/<platform>-unpacked/` for quick local testing
+without building installers — launch the `scryme` executable inside it.
+
+### How the backend gets frozen
+
+`build:backend` auto-selects one of two paths:
+
+- **Docker (preferred, default when Docker is running)** — freezes inside a `python:3.12-slim`
+  container, so **no host Python, venv, or sudo** is needed and the Linux binary is portable
+  (glibc ≥ 2.36). Set `SCRYME_BUILD_NO_DOCKER=1` to skip it.
+- **Local interpreter** — used when Docker isn't available. Needs a Python env with the backend
+  requirements; it tries a throwaway venv at `.build-venv`, then `$SCRYME_BUILD_PYTHON` /
+  `$SCRYME_PYTHON` / `python3`.
+
+PyInstaller output is platform-specific (no cross-compilation): the Docker path produces a **Linux**
+binary; for **macOS/Windows** installers, run `build:backend` via the local path on a Mac/Windows
+host, then `npm run dist`.
 
 ## Notes & caveats
 
-- **Not yet runnable/verifiable in CI here** — the GUI, the PyInstaller freeze, and electron-builder
-  all need a real desktop OS. Build and smoke-test locally.
+- **The GUI must be smoke-tested on a real desktop** (it needs a display). The Linux build chain is
+  verified end-to-end otherwise: `npm install`, the embedded Postgres boot, the Docker freeze, and
+  `electron-builder` packaging all succeed, and the frozen backend applies migrations + serves
+  `GET /health` standalone.
 - **Hidden imports:** FastAPI/uvicorn/asyncpg import some modules dynamically. If the frozen backend
   dies with `ModuleNotFoundError`, add the module to `extra_hidden` in `backend.spec`.
 - **Icons:** `build/icon.png` (1024×1024) is the source; electron-builder derives `.icns`/`.ico`.

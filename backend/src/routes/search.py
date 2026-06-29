@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
+from src.currency import get_currency, info
 from src.db import get_session
 from src.facets import compute_facets
 from src.models import Card
@@ -79,8 +80,10 @@ async def search(
     scope_enum = SearchScope.ALL if scope == SearchScope.ALL.value else SearchScope.COLLECTION
     sort = sort if sort in SORT_KEYS else DEFAULT_SORT
     descending = dir == "desc"
+    view = "list" if request.cookies.get("scryme_view") == "list" else "grid"
     ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir,
-                 "read_only": get_settings().read_only}
+                 "read_only": get_settings().read_only, "view": view,
+                 "cur": info(get_currency(request))}
     try:
         result = await run_search(
             session, q, scope=scope_enum, page=page, sort=sort, descending=descending

@@ -68,6 +68,15 @@ async def test_facet_value_tokens_and_toggle(session):
 
 
 @pytest.mark.asyncio
+async def test_view_toggle_grid_vs_list(client, session):
+    await _seed(session)
+    grid = await client.get("/search?q=")
+    assert "grid grid-cols-2" in grid.text and "<table" not in grid.text
+    lst = await client.get("/search?q=", headers={"Cookie": "scryme_view=list"})
+    assert "<table" in lst.text and "<thead" in lst.text
+
+
+@pytest.mark.asyncio
 async def test_search_page_renders_facets(client, session):
     await _seed(session)
     resp = await client.get("/search?q=")

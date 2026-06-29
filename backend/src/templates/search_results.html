@@ -3,11 +3,21 @@
     {{ error }}
   </div>
 {% elif result %}
-  <p class="text-sm text-muted mb-4">
-    {{ result.total }} card{{ '' if result.total == 1 else 's' }}
-    {% if scope == 'collection' %}in your collection{% endif %}
-    {% if result.total_pages > 1 %}· page {{ result.page }} of {{ result.total_pages }}{% endif %}
-  </p>
+  <div class="flex items-center justify-between gap-3 mb-4">
+    <p class="text-sm text-muted">
+      {{ result.total }} card{{ '' if result.total == 1 else 's' }}
+      {% if scope == 'collection' %}in your collection{% endif %}
+      {% if result.total_pages > 1 %}· page {{ result.page }} of {{ result.total_pages }}{% endif %}
+    </p>
+    {% if views %}
+    <div class="inline-flex rounded-lg ring-1 ring-edge overflow-hidden shrink-0 text-base leading-none">
+      <button type="button" onclick="setView('grid')" title="Grid view" aria-label="Grid view"
+        class="px-2.5 py-1 {% if view != 'list' %}bg-surface-2 text-fg{% else %}text-muted hover:text-fg{% endif %}">▦</button>
+      <button type="button" onclick="setView('list')" title="List view" aria-label="List view"
+        class="px-2.5 py-1 border-l border-edge {% if view == 'list' %}bg-surface-2 text-fg{% else %}text-muted hover:text-fg{% endif %}">☰</button>
+    </div>
+    {% endif %}
+  </div>
 
   {% if views %}
   <div class="flex gap-6">
@@ -35,6 +45,50 @@
   </aside>
   {% endif %}
   <div class="flex-1 min-w-0">
+  {% if view == 'list' %}
+  {# Compact table view #}
+  <div class="overflow-x-auto rounded-xl ring-1 ring-edge">
+    <table class="w-full text-sm">
+      <thead class="text-xs text-muted text-left bg-surface-2">
+        <tr>
+          {% if not read_only %}<th class="w-8"></th>{% endif %}
+          <th class="py-2 px-2">Name</th>
+          <th class="px-2">Set</th>
+          <th class="px-2 text-right">#</th>
+          <th class="px-2">Rarity</th>
+          <th class="px-2 text-right">Qty</th>
+          <th class="px-2 text-right">{{ cur.symbol }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in views %}
+        <tr class="border-t border-edge hover:bg-surface-2">
+          {% if not read_only %}
+          <td class="px-2 text-center">
+            <input type="checkbox" name="scryfall_ids" value="{{ v.card.scryfall_id }}"
+                   onchange="bulkCount()" title="Select for bulk edit"
+                   class="w-4 h-4 cursor-pointer accent-[color:var(--c-accent)]" />
+          </td>
+          {% endif %}
+          <td class="py-1.5 px-2">
+            <a href="/card/{{ v.card.scryfall_id }}" class="hover:text-accent">{{ v.card.name }}</a>
+            {% for t in v.tags %}<span class="ml-1 rounded bg-surface-2 text-muted text-[10px] px-1 py-0.5">{{ t }}</span>{% endfor %}
+          </td>
+          <td class="px-2 whitespace-nowrap">{{ set_symbol(v.card.set_code, v.card.rarity) }}
+            <span class="text-muted uppercase text-xs">{{ v.card.set_code }}</span></td>
+          <td class="px-2 text-right text-muted tabular-nums">{{ v.card.collector_number }}</td>
+          <td class="px-2 capitalize text-muted">{{ v.card.rarity }}</td>
+          <td class="px-2 text-right tabular-nums">{% if v.quantity %}{{ v.quantity }}{% endif %}</td>
+          <td class="px-2 text-right tabular-nums text-muted">
+            {%- set p = v.card.prices.get(cur.key) if v.card.prices else None -%}
+            {% if p %}{{ cur.symbol }}{{ '{:,.2f}'.format(p | float) }}{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
   <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
     {% for v in views %}
     <div class="relative">
@@ -74,6 +128,7 @@
     </div>
     {% endfor %}
   </div>
+  {% endif %}
 
   {% if result.total_pages > 1 %}
   <nav class="flex items-center justify-center gap-3 mt-6 text-sm">

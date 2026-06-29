@@ -13,6 +13,10 @@ Queries combine **filters** with boolean logic, and by default search **your col
     — click a suggestion to re-run the search with it. Suggestions respect your scope, so in
     *My collection* they only point at cards you own.
 
+!!! tip "Grid or list"
+    The toggle above the results switches between the **card grid** and a compact **table view**
+    (name, set, collector number, rarity, quantity owned, and price). Your choice is remembered.
+
 !!! tip "Filter by clicking"
     On wider screens a **facets** sidebar appears next to the results with the colors, rarities,
     types, and sets present in the current results (and how many of each). Click one to toggle that

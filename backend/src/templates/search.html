@@ -112,6 +112,13 @@
       var btn = e.target.closest('.facet-btn');
       if (btn) applyFacet(btn.dataset.q);
     });
+    // Grid/list toggle: persist in a cookie (read server-side) and re-run the search so the
+    // results partial re-renders in the chosen layout.
+    function setView(v) {
+      document.cookie = "scryme_view=" + v + ";path=/;max-age=31536000;samesite=lax";
+      var input = document.querySelector('input[name=q]');
+      if (input) input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
     function exportMenu() {
       return {
         open: false,

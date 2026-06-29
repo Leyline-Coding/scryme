@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="flex flex-col items-center justify-center px-4 py-24">
-  <a href="/" class="mb-8 text-4xl font-bold tracking-tight">
-    <span class="text-accent">scry</span>me
+  <a href="/" class="mb-8 flex items-center gap-3">
+    <span class="logo-mark w-12 h-12 text-accent" aria-hidden="true"></span>
+    <span class="text-4xl font-bold tracking-tight"><span class="text-accent">scry</span>me</span>
   </a>
 
   {% if has_collection %}
@@ -28,9 +29,7 @@
     · <a class="underline" href="/sets">sets</a>
     · <a class="underline" href="/checklists">checklists</a>
     · <a class="underline" href="/wishlist">wishlist</a>
-    · <a class="underline" href="/trade">trade</a>
-    · <a class="underline" href="/backup">backup</a>
-    · <a class="underline" href="/admin">status</a>.
+    · <a class="underline" href="/trade">trade</a>.
   </p>
   {% else %}
   {# Empty collection: prompt the first upload (wired up in Phase 3). #}

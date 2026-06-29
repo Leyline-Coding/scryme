@@ -24,8 +24,8 @@ interface that understands [Scryfall search syntax](https://scryfall.com/docs/sy
 ## Features
 
 - 🔎 **Scryfall-compatible search** with regex, scoped to your collection or all cards — plus a
-  grid/table toggle, clickable facets, "did you mean?" suggestions, saved searches, and an
-  advanced form builder.
+  grid/table toggle, clickable facets, "did you mean?" suggestions, saved searches (with **alerts**
+  for cards that newly match after an update), and an advanced form builder.
 - 📥 **Import** from ManaBox, Dragon Shield, Delver Lens, Moxfield, and Archidekt — or any CSV via
   the column-mapping wizard — with **replace / increment / per-card** merge on re-import.
 - 🃏 **Rich card pages** — oracle text, prices, legalities, printings, rulings, real mana & set
@@ -38,6 +38,9 @@ interface that understands [Scryfall search syntax](https://scryfall.com/docs/sy
   folder you choose (point it at a synced folder for cross-device backup).
 - 🖼️ **Local card database + image cache** — works offline and respects Scryfall's API policy.
 - 🐳 **Self-hostable via Docker**, with an optional read-only public demo.
+- 🖥️ **Desktop app** (macOS / Windows / Linux) — an install-free build that bundles PostgreSQL and
+  the backend, with drag-and-drop import, a global quick-search hotkey, LAN sharing, and
+  auto-update.
 
 ## Quick start (self-host)
 
@@ -77,6 +80,30 @@ docker compose exec backend python -m src.cli ingest
 docker compose exec backend python -m src.cli seed-demo --limit 60
 SCRYME_READ_ONLY=true docker compose up -d
 ```
+
+## Desktop app
+
+Prefer a native app to Docker? The **scryme desktop app** bundles its own PostgreSQL and the
+backend — no Docker, no setup. Download the installer for your OS from the
+[latest release](https://github.com/Leyline-Coding/scryme/releases/latest):
+
+| OS | File |
+| --- | --- |
+| **Linux** | `.AppImage` (portable) or `.deb` |
+| **Windows** | `.exe` installer |
+| **macOS** | `.zip` or `.dmg` (Apple Silicon) |
+
+On first launch it downloads the card database (once), then it's the same app as the web version.
+All data lives in one folder you can back up or point at a synced drive. Highlights:
+
+- **Drag-and-drop import**, a **global quick-search hotkey** (`Ctrl/Cmd+Shift+S`), and **system
+  notifications** for saved-search alerts.
+- **LAN sharing** — browse your collection from your phone on the home network (with a QR code and
+  optional access code).
+- **Auto-update** from GitHub Releases.
+
+Installers are currently **unsigned**, so Windows SmartScreen / macOS Gatekeeper will warn on first
+open (signing is on the roadmap). Build from source and details: [`desktop/`](desktop/).
 
 ## Development
 

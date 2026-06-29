@@ -26,9 +26,28 @@ The MVP plus a steady stream of post-MVP features:
 - **[Wishlist](features/wishlist.md)** — a want list, including "add a deck's missing cards".
 - **[Theming](features/theming.md)** + **[currency](features/theming.md#display-currency)** (USD/EUR),
   result **sort**, result **export** (CSV / decklist / ManaBox), and **saved searches**.
-- **[Backup & restore](features/backup.md)** — a portable JSON dump of your data.
+- **[Backup & restore](features/backup.md)** — a portable JSON dump of your data, plus scheduled
+  on-disk backups (optionally encrypted).
 - In-app **collection editing** (add/edit/bulk), **faceted browse**, and **"did you mean?"** search.
+- More import formats (Moxfield, Archidekt) + a **CSV column-mapping wizard**; **trade/surplus
+  binder**; **custom checklists**.
+- **[Saved-search alerts](search/advanced.md)** — after each card-data update, saved searches
+  surface cards that newly match (with a "What's new" panel and desktop notifications).
+- A versioned **JSON/REST API** (`/api/v1`) and **Prometheus metrics** (`/metrics`).
+- **[Desktop app](getting-started/desktop.md)** — a native macOS/Windows/Linux build (see below).
 - **Physical-only** — Arena/MTGO-only cards are excluded; scryme is for paper collections.
+
+## Desktop app
+
+The **[Electron desktop app](getting-started/desktop.md)** is shipped: an install-free build that
+bundles PostgreSQL and the backend, with drag-and-drop import, a global quick-search hotkey, LAN
+sharing, system notifications, and auto-update. Still on its roadmap:
+
+- **Signed & notarized installers** — today's builds are unsigned (SmartScreen / Gatekeeper warn on
+  first open). The signing config is in place; it needs Windows/Apple certificates.
+- **Store distribution** — Homebrew cask, winget, Flatpak, and AUR (starter manifests exist under
+  `desktop/packaging/`).
+- **Multi-arch builds** — currently x64 on Windows/Linux and arm64 on macOS.
 
 ## Planned
 
@@ -36,17 +55,14 @@ Tracked as open issues — roughly in priority order:
 
 | Issue | Feature |
 | --- | --- |
-| [#58](https://github.com/Leyline-Coding/scryme/issues/58) | Saved-search alerts — surface newly-matching cards after an ingest |
 | [#59](https://github.com/Leyline-Coding/scryme/issues/59) | Undo last import (pre-merge snapshot + one-click restore) |
-| [#66](https://github.com/Leyline-Coding/scryme/issues/66) | More import formats (Archidekt / Moxfield / TCGplayer / Deckbox) + CSV column mapping |
-| [#67](https://github.com/Leyline-Coding/scryme/issues/67) | Trade / surplus binder view |
 | [#68](https://github.com/Leyline-Coding/scryme/issues/68) | Mobile-responsive pass |
-
-## On the horizon
-
-- **[#49 — Electron desktop app](https://github.com/Leyline-Coding/scryme/issues/49)** — package
-  scryme as a self-contained desktop app with portable Postgres and a user-chosen data directory
-  you can back up to Google Drive, Dropbox, and the like.
+| [#87](https://github.com/Leyline-Coding/scryme/issues/87) | Build a deck from your collection |
+| [#88](https://github.com/Leyline-Coding/scryme/issues/88) | Price watchlist with thresholds |
+| [#80](https://github.com/Leyline-Coding/scryme/issues/80) | Read-only share links for decks/binders |
+| [#98](https://github.com/Leyline-Coding/scryme/issues/98) | Import a deck from a URL |
+| [#100](https://github.com/Leyline-Coding/scryme/issues/100) | Deck diff / versions |
+| [#101](https://github.com/Leyline-Coding/scryme/issues/101) | Duplicate / merge stacks |
 
 See the [architecture notes](development/architecture.md) and
 [contributing guide](development/contributing.md) if you'd like to help build any of it.

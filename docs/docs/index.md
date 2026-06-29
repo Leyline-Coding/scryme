@@ -27,6 +27,8 @@ Lens, then search it with Scryfall syntax and regular expressions.
   within [Scryfall's API policy](https://scryfall.com/docs/api).
 - 🎨 **Themeable UI** (preset themes + custom accent), **USD/EUR** currency, and 🐳 **self-hostable
   via Docker**, with an optional read-only public demo.
+- 🖥️ **Desktop app** (macOS / Windows / Linux) — an install-free build that bundles PostgreSQL and
+  the backend, with drag-and-drop import, a quick-search hotkey, LAN sharing, and auto-update.
 
 See the **[roadmap](roadmap.md)** for what's shipped and what's planned.
 
@@ -46,6 +48,7 @@ Scryfall-style search bar.
 <div class="grid cards" markdown>
 
 - :material-rocket-launch: **[Self-Hosting](getting-started/self-hosting.md)** — run scryme with Docker.
+- :material-monitor: **[Desktop App](getting-started/desktop.md)** — the install-free native build.
 - :material-upload: **[Importing Collections](import/overview.md)** — supported formats and merge behavior.
 - :material-magnify: **[Search Syntax](search/syntax.md)** — every supported filter, sorting, and export.
 - :material-cards: **[Decks](features/decks.md)** — ownership coverage and legality checks.

@@ -19,12 +19,20 @@ router = APIRouter(tags=["home"])
 
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request, session: AsyncSession = Depends(get_session)) -> HTMLResponse:
-    from src.models import CollectionCard
+    from src.models import Card, CollectionCard
 
     count = await session.scalar(select(func.count()).select_from(CollectionCard))
     settings = get_settings()
+    # When the card database itself is empty (a fresh desktop install), the collection can't be
+    # searched or matched against — gate the home page on a one-time first-run ingest instead.
+    card_count = await session.scalar(select(func.count()).select_from(Card))
+    needs_cards = not card_count and not settings.read_only
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"has_collection": bool(count), "read_only": settings.read_only},
+        {
+            "has_collection": bool(count),
+            "read_only": settings.read_only,
+            "needs_cards": needs_cards,
+        },
     )

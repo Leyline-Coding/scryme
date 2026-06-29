@@ -16,7 +16,8 @@
   </div>
   {% endif %}
 
-  <form action="/upload" method="post" enctype="multipart/form-data" class="mt-6 space-y-4">
+  <form action="/upload" method="post" enctype="multipart/form-data" class="mt-6 space-y-4"
+        x-data="{ busy: false }" @submit="busy = true">
     <input
       type="file"
       name="file"
@@ -25,10 +26,13 @@
       class="block w-full text-sm text-fg file:mr-4 file:rounded-lg file:border-0
              file:bg-accent file:px-4 file:py-2 file:text-accent-fg hover:file:opacity-90"
     />
-    <button type="submit"
-      class="rounded-lg bg-accent text-accent-fg px-5 py-2.5 font-medium hover:opacity-90">
-      Preview import
+    <button type="submit" :disabled="busy"
+      class="rounded-lg bg-accent text-accent-fg px-5 py-2.5 font-medium hover:opacity-90
+             disabled:opacity-60 disabled:cursor-wait">
+      <span x-show="!busy">Preview import</span>
+      <span x-show="busy" x-cloak>Reading &amp; matching…</span>
     </button>
+    {% include "_busy_bar.html" %}
   </form>
 </div>
 {% endblock %}

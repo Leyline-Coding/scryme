@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Confirm import · scryme{% endblock %}
 {% block content %}
-<div class="max-w-2xl mx-auto px-4 py-12" x-data="{ strategy: 'increment' }">
+<div class="max-w-2xl mx-auto px-4 py-12" x-data="{ strategy: 'increment', busy: false }">
   <a href="/" class="text-2xl font-bold tracking-tight">
     <span class="text-accent">scry</span>me
   </a>
@@ -41,7 +41,7 @@
   </details>
   {% endif %}
 
-  <form action="/upload/confirm" method="post" class="mt-6 space-y-5">
+  <form action="/upload/confirm" method="post" class="mt-6 space-y-5" @submit="busy = true">
     <input type="hidden" name="token" value="{{ preview.token }}" />
 
     <fieldset class="space-y-2">
@@ -83,12 +83,16 @@
     {% endif %}
 
     <div class="flex gap-3">
-      <button type="submit"
-        class="rounded-lg bg-accent text-accent-fg px-5 py-2.5 font-medium hover:opacity-90">
-        Confirm import
+      <button type="submit" :disabled="busy"
+        class="rounded-lg bg-accent text-accent-fg px-5 py-2.5 font-medium hover:opacity-90
+               disabled:opacity-60 disabled:cursor-wait">
+        <span x-show="!busy">Confirm import</span>
+        <span x-show="busy" x-cloak>Importing…</span>
       </button>
-      <a href="/upload" class="rounded-lg px-5 py-2.5 text-fg hover:text-accent">Cancel</a>
+      <a href="/upload" class="rounded-lg px-5 py-2.5 text-fg hover:text-accent"
+         x-show="!busy">Cancel</a>
     </div>
+    {% include "_busy_bar.html" %}
   </form>
 </div>
 {% endblock %}

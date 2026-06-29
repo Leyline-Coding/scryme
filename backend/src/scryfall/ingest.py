@@ -31,6 +31,23 @@ log = structlog.get_logger()
 BATCH_SIZE = 1000
 BULK_TYPE = "default_cards"
 
+# Rough physical-card count, used only to animate the first-run progress bar (the exact total
+# isn't known until the stream finishes). The live `ingested` count below is always exact.
+ESTIMATED_TOTAL = 110_000
+
+# Live ingest progress, polled via GET /admin/ingest/progress. In-memory is fine: the desktop app
+# and self-host both run a single uvicorn process. phase: idle|downloading|ingesting|done|error.
+_PROGRESS: dict = {"phase": "idle", "ingested": 0, "total": None, "error": None}
+
+
+def get_ingest_progress() -> dict:
+    """A snapshot of the current ingest progress."""
+    return dict(_PROGRESS)
+
+
+def _set_progress(**kw) -> None:
+    _PROGRESS.update(kw)
+
 
 @dataclass
 class IngestResult:
@@ -113,6 +130,7 @@ async def ingest_from_path(
             await _upsert_batch(session, batch)
             await session.commit()
         total += len(batch)
+        _set_progress(ingested=total)
         log.info("scryfall.ingest.progress", cards=total)
     # Remove any digital-only cards left over from an earlier (unfiltered) ingest.
     removed = await prune_digital_only(session_factory)
@@ -158,6 +176,7 @@ async def ingest_default_cards(
             state, source_updated, settings.bulk_refresh_min_hours
         ):
             log.info("scryfall.ingest.skipped", reason="within cache window")
+            _set_progress(phase="done", error=None)
             return IngestResult(
                 skipped=True,
                 card_count=state.card_count if state else 0,
@@ -166,17 +185,21 @@ async def ingest_default_cards(
             )
 
         await _set_status("running")
+        _set_progress(phase="downloading", ingested=0, total=ESTIMATED_TOTAL, error=None)
         dest = settings.data_dir / "default_cards.json.gz"
         log.info("scryfall.ingest.download", url=entry["download_uri"], dest=str(dest))
         await sc.download_to_file(entry["download_uri"], dest)
 
     try:
+        _set_progress(phase="ingesting", total=ESTIMATED_TOTAL)
         count = await ingest_from_path(dest)
-    except Exception:
+    except Exception as exc:
         await _set_status("error")
+        _set_progress(phase="error", error=str(exc))
         raise
 
     await _record_success(source_updated, count)
+    _set_progress(phase="done", ingested=count, total=count, error=None)
     log.info("scryfall.ingest.done", cards=count)
     return IngestResult(skipped=False, card_count=count, source_updated_at=source_updated)
 

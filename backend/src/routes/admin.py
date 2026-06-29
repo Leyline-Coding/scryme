@@ -12,7 +12,12 @@ from src.admin_stats import collect_admin_stats, image_cache_disk, render_metric
 from src.config import get_settings
 from src.db import SessionLocal, get_session
 from src.models import IngestState
-from src.scryfall.ingest import BULK_TYPE, current_card_count, ingest_default_cards
+from src.scryfall.ingest import (
+    BULK_TYPE,
+    current_card_count,
+    get_ingest_progress,
+    ingest_default_cards,
+)
 from src.templating import templates
 
 router = APIRouter(tags=["admin"])
@@ -55,10 +60,19 @@ async def status() -> dict:
     }
 
 
+@router.get("/admin/ingest/progress")
+async def ingest_progress() -> dict:
+    """Live progress for the first-run / refresh ingest, polled by the setup screen."""
+    return {**get_ingest_progress(), "card_count": await current_card_count()}
+
+
 @router.post("/admin/ingest", status_code=202)
 async def trigger_ingest(background: BackgroundTasks, force: bool = False) -> dict:
     if get_settings().read_only:
         raise HTTPException(status_code=403, detail="Instance is read-only")
+    # Don't stack a second ingest if one is already in flight (e.g. the setup screen reloaded).
+    if get_ingest_progress().get("phase") in ("downloading", "ingesting"):
+        return {"accepted": False, "already_running": True}
     background.add_task(_run_ingest, force)
     return {"accepted": True, "force": force}
 

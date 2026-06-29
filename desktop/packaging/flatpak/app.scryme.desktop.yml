@@ -1,0 +1,33 @@
+# Flatpak manifest — SKELETON, not yet working. See ../README.md.
+#
+# Wrapping an Electron app that bundles its own PostgreSQL + a PyInstaller backend in a Flatpak
+# sandbox is non-trivial: the sandbox blocks arbitrary exec/network and Electron expects the Flatpak
+# Electron BaseApp. This unpacks the published AppImage as a starting point; expect real work on
+# finsh-args (sandbox holes) and possibly bundling Postgres differently before it runs on Flathub.
+app-id: app.scryme.desktop
+runtime: org.freedesktop.Platform
+runtime-version: "23.08"
+sdk: org.freedesktop.Sdk
+command: scryme
+
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --share=network            # the backend binds localhost; LAN sharing needs network too
+  - --device=dri
+  - --filesystem=home          # the data dir lives under the user's home
+
+modules:
+  - name: scryme
+    buildsystem: simple
+    build-commands:
+      - chmod +x scryme.AppImage
+      - ./scryme.AppImage --appimage-extract
+      - cp -r squashfs-root /app/scryme
+      - install -Dm755 /dev/stdin /app/bin/scryme <<< '#!/bin/sh\nexec /app/scryme/AppRun "$@"'
+    sources:
+      - type: file
+        url: https://github.com/Leyline-Coding/scryme/releases/download/v0.10.0/scryme-0.10.0.AppImage
+        sha256: REPLACE_WITH_AppImage_SHA256
+        dest-filename: scryme.AppImage

@@ -1,0 +1,15 @@
+PackageIdentifier: Leyline-Coding.scryme
+PackageVersion: 0.10.0
+PackageLocale: en-US
+Publisher: Leyline Coding
+PublisherUrl: https://github.com/Leyline-Coding
+PackageName: scryme
+PackageUrl: https://github.com/Leyline-Coding/scryme
+License: See repository LICENSE
+ShortDescription: "Self-hostable, Scryfall-like search for your Magic: The Gathering collection."
+Tags:
+  - mtg
+  - magic-the-gathering
+  - collection
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

@@ -43,6 +43,15 @@ mac:
   target:
     - dmg
     - zip
+  # Signing-ready: with an Apple Developer cert (CSC_LINK/CSC_KEY_PASSWORD) these produce a signed
+  # build; set notarize: true and provide APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID to
+  # notarize. Harmless for the current unsigned builds. The entitlements let the bundled Postgres +
+  # backend run under hardened runtime once signed.
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  notarize: false
 
 win:
   target:

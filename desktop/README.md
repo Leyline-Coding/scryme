@@ -86,10 +86,12 @@ repo secrets and electron-builder picks them up:
 
 The workflow sets `CSC_IDENTITY_AUTO_DISCOVERY=false` so unsigned builds stay green until then.
 
-### Store distribution (follow-ups)
+### Store distribution
 
-Homebrew cask, winget, Flatpak, and AUR are not wired yet — they consume the published GitHub
-Release artifacts, so they can be added once releases are flowing. Tracked under #85.
+Starter manifests live in [`packaging/`](packaging/) — Homebrew cask, winget, AUR, and a Flatpak
+skeleton. They consume the published GitHub Release artifacts, so each needs the release's real
+SHA-256 sums filled in and submission to its external repo. See `packaging/README.md`. Tracked under
+#85.
 
 ## Notes & caveats
 

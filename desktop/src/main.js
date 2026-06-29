@@ -33,6 +33,24 @@ function dataDir() {
   return dir;
 }
 
+// The window loads http://127.0.0.1:<backendPort>, and theme/currency settings live in the
+// renderer's localStorage/cookies — which are keyed by origin (and thus port). A fresh random port
+// each launch would silently wipe those settings, so we persist the port and reuse it when free.
+function backendPortFor(dir) {
+  const file = path.join(dir, "backend-port");
+  let saved;
+  try {
+    saved = parseInt(fs.readFileSync(file, "utf8").trim(), 10);
+  } catch (_) {
+    saved = undefined;
+  }
+  // getPort returns the preferred port if available, else any free port.
+  return getPort(saved ? { port: saved } : undefined).then((port) => {
+    try { fs.writeFileSync(file, String(port)); } catch (_) { /* best-effort */ }
+    return port;
+  });
+}
+
 async function startPostgres(dir, port) {
   // ESM-only module — dynamic import() works from CommonJS; `.default` is the class.
   const { default: EmbeddedPostgres } = await import("embedded-postgres");
@@ -133,7 +151,8 @@ function createWindow(port) {
 
 async function boot() {
   const dir = dataDir();
-  const [backendPort, pgPort] = await Promise.all([getPort(), getPort()]);
+  // Backend port is stable across launches (keeps renderer settings); the internal PG port is not.
+  const [backendPort, pgPort] = await Promise.all([backendPortFor(dir), getPort()]);
 
   await startPostgres(dir, pgPort);
   startBackend(dir, backendPort, pgPort);

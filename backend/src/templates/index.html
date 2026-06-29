@@ -18,10 +18,7 @@
            :class="{ 'animate-pulse': phase === 'downloading' }"
            :style="`width: ${pct}%`"></div>
     </div>
-    <p class="mt-3 text-sm text-muted" x-show="!error">
-      <span x-text="ingested.toLocaleString()">0</span> cards
-      <span x-show="phase === 'downloading'">· downloading…</span>
-    </p>
+    <p class="mt-3 text-sm text-muted h-5" x-show="!error" x-html="line"></p>
     <p class="mt-2 text-xs text-muted" x-show="!error">This only happens once.</p>
 
     <div x-show="error" class="mt-4">
@@ -35,10 +32,32 @@
 
   <script>
     function firstRun() {
+      const FLAVOR = [
+        "Bombarding with Goblins…",
+        "Scrying the top of your library…",
+        "Equipping Skullclamp…",
+        "Drawing 7…",
+        'Not paying the <i class="ms ms-1 ms-cost ms-shadow align-middle"></i>…',
+        "Attacking with my commander…",
+        "Countering your spell…",
+        "Shuffling after fetching…",
+        "Tapping out for the big play…",
+        "Untapping, upkeep, draw…",
+        "Going wide with tokens…",
+        "Casting from the command zone…",
+      ];
       return {
         phase: "starting", ingested: 0, pct: 0, error: "", message: "Preparing…",
+        line: FLAVOR[0], _flavorTimer: null,
+        cycleFlavor() {
+          if (this._flavorTimer) return;
+          const tick = () => { this.line = FLAVOR[Math.floor(Math.random() * FLAVOR.length)]; };
+          tick();
+          this._flavorTimer = setInterval(tick, 2200);
+        },
         async start() {
           this.error = ""; this.phase = "starting"; this.pct = 0; this.message = "Preparing…";
+          this.cycleFlavor();
           try { await fetch("/admin/ingest", { method: "POST" }); } catch (e) {}
           this.poll();
         },
@@ -54,8 +73,10 @@
               this.pct = Math.min(99, Math.round(this.ingested / (d.total || 110000) * 100));
             } else if (d.phase === "done" || d.card_count > 0) {
               this.message = "Done!"; this.pct = 100;
+              clearInterval(this._flavorTimer); this._flavorTimer = null;
               setTimeout(() => location.reload(), 700); return;
             } else if (d.phase === "error") {
+              clearInterval(this._flavorTimer); this._flavorTimer = null;
               this.error = d.error || "Unknown error"; return;
             }
           } catch (e) { /* transient; keep polling */ }

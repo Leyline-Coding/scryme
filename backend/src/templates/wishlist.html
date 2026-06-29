@@ -16,7 +16,7 @@
       {{ '{:,}'.format(view.total_cards) }} card{{ '' if view.total_cards == 1 else 's' }}
       across {{ rows | length }} printing{{ '' if rows | length == 1 else 's' }}
     </p>
-    <p class="text-sm">Est. cost <span class="font-bold">${{ '{:,.2f}'.format(view.total_cost) }}</span></p>
+    <p class="text-sm">Est. cost <span class="font-bold">{{ cur.symbol }}{{ '{:,.2f}'.format(view.total_cost) }}</span></p>
   </div>
 
   <ul class="space-y-2">
@@ -36,8 +36,8 @@
       </div>
       <div class="text-right text-sm shrink-0">
         <div class="tabular-nums">×{{ item.quantity }}</div>
-        {% set usd = item.card.prices.get('usd') if item.card.prices else None %}
-        {% if usd %}<div class="text-xs text-muted tabular-nums">${{ '{:,.2f}'.format(item.quantity * (usd | float)) }}</div>{% endif %}
+        {% set price = item.card.prices.get(cur.key) if item.card.prices else None %}
+        {% if price %}<div class="text-xs text-muted tabular-nums">{{ cur.symbol }}{{ '{:,.2f}'.format(item.quantity * (price | float)) }}</div>{% endif %}
       </div>
       {% if not read_only %}
       <form method="post" action="/wishlist/remove" class="shrink-0">

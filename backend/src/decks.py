@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.currency import unit_price
 from src.models import Card, CollectionCard, Deck, DeckCard
 from src.stats import Bar, _bars, _color_bucket
 
@@ -183,15 +184,8 @@ class DeckCoverage:
         return bool(self.fmt) and self.illegal_count == 0 and self.unmatched == 0
 
 
-def _usd(prices: dict | None) -> float:
-    try:
-        return float((prices or {}).get("usd") or 0)
-    except (TypeError, ValueError):
-        return 0.0
-
-
 async def deck_coverage(
-    session: AsyncSession, deck: Deck, fmt: str | None = None
+    session: AsyncSession, deck: Deck, fmt: str | None = None, currency: str = "usd"
 ) -> DeckCoverage:
     owned = await _owned_by_oracle(session)
     fmt = fmt if fmt in LEGALITY_FORMATS else None
@@ -244,7 +238,9 @@ async def deck_coverage(
         if miss:
             cov.missing_count += miss
             cov.unique_missing += 1
-            cov.missing_cost += miss * _usd(price_by_sid.get(oracle_sid.get(oracle, ""), {}))
+            cov.missing_cost += miss * unit_price(
+                price_by_sid.get(oracle_sid.get(oracle, ""), {}), "normal", currency
+            )
     for c in deck.cards:
         if not c.oracle_id:
             cov.missing_count += c.quantity
@@ -302,7 +298,7 @@ class DeckStats:
         return bool(self.mana_curve or self.by_color or self.total_value)
 
 
-async def deck_stats(session: AsyncSession, deck: Deck) -> DeckStats:
+async def deck_stats(session: AsyncSession, deck: Deck, currency: str = "usd") -> DeckStats:
     """Mana curve (nonland mainboard spells), color breakdown, and total USD value."""
     sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
     info: dict = {}
@@ -321,7 +317,7 @@ async def deck_stats(session: AsyncSession, deck: Deck) -> DeckStats:
     total = 0.0
     for c in deck.cards:
         cmc, ci, type_line, prices = info.get(c.scryfall_id, (None, None, None, None))
-        total += c.quantity * _usd(prices)
+        total += c.quantity * unit_price(prices, "normal", currency)
         # Curve + color pie cover mainboard nonland spells, so basics don't dominate.
         if not c.scryfall_id or c.board != "main" or (type_line and "Land" in type_line):
             continue

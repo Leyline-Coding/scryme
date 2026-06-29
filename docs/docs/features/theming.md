@@ -11,3 +11,16 @@ scryme ships with several themes and a custom accent color. Open the **palette**
 Your choice is stored in the browser (localStorage) and applied before the page paints, so there's
 no flash of the default theme on load. Because it's client-side, theming also works on the
 read-only public demo — each visitor gets their own preference.
+
+## Display currency
+
+The same palette menu has a **Currency** toggle — **USD** or **EUR**. scryme shows the matching
+Scryfall price (`usd` / `eur`) for *current values*: the [stats](stats.md) collection value and
+growth, [deck](decks.md) value and cost-to-complete, the [wishlist](wishlist.md) estimate, and the
+card page's price list (the chosen currency leads). It's a price-key choice, **not** a converted
+rate.
+
+The default can be set per-deployment with `SCRYME_DEFAULT_CURRENCY=eur`; each visitor's override is
+remembered in a cookie. **[Price history](prices.md)** (snapshots, profit/loss, and movers) stays in
+USD — it's built on stored USD snapshots and recorded purchase prices, which can't be converted
+without an exchange rate.

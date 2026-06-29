@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     # Read-only demo mode disables uploads/mutations (used by the public sandbox).
     read_only: bool = False
 
+    # Default display currency for current-value prices (usd | eur). Per-visitor override via the
+    # `scryme_currency` cookie set from the currency picker.
+    default_currency: str = "usd"
+
 
 @lru_cache
 def get_settings() -> Settings:

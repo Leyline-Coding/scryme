@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.currency import unit_price
 from src.models import Card, CollectionCard
 
 _COLOR_NAMES = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"}
@@ -53,14 +54,6 @@ class CollectionStats:
         return self.total_cards == 0
 
 
-def _unit_price(prices: dict | None, finish: str) -> float:
-    prices = prices or {}
-    key = "usd_foil" if finish in ("foil", "etched") else "usd"
-    raw = prices.get(key) or prices.get("usd")
-    try:
-        return float(raw) if raw else 0.0
-    except (TypeError, ValueError):
-        return 0.0
 
 
 def _primary_type(type_line: str | None) -> str:
@@ -119,7 +112,9 @@ class CollectionGrowth:
         return self.total_months > len(self.points)
 
 
-async def collection_growth(session: AsyncSession, months: int = 12) -> CollectionGrowth:
+async def collection_growth(
+    session: AsyncSession, currency: str = "usd", months: int = 12
+) -> CollectionGrowth:
     """Cards (and current-price value) added per month, from ``collection_card.added_at``.
 
     The chart shows the most recent ``months`` with activity; totals cover the whole history.
@@ -141,7 +136,7 @@ async def collection_growth(session: AsyncSession, months: int = 12) -> Collecti
         key = added_at.strftime("%Y-%m")
         qty = qty or 0
         added[key] = added.get(key, 0) + qty
-        value[key] = value.get(key, 0.0) + qty * _unit_price(prices, finish)
+        value[key] = value.get(key, 0.0) + qty * unit_price(prices, finish, currency)
 
     keys = sorted(added)
     window = keys[-months:] if months else keys
@@ -154,7 +149,7 @@ async def collection_growth(session: AsyncSession, months: int = 12) -> Collecti
     )
 
 
-async def collection_stats(session: AsyncSession) -> CollectionStats:
+async def collection_stats(session: AsyncSession, currency: str = "usd") -> CollectionStats:
     rows = (
         await session.execute(
             select(
@@ -183,7 +178,7 @@ async def collection_stats(session: AsyncSession) -> CollectionStats:
         if oracle_id:
             oracles.add(oracle_id)
 
-        unit = _unit_price(prices, finish)
+        unit = unit_price(prices, finish, currency)
         s.total_value += qty * unit
 
         colors[_color_bucket(color_identity)] = colors.get(_color_bucket(color_identity), 0) + qty

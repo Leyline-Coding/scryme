@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
+from src.currency import get_currency, info
 from src.db import get_session
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
@@ -31,12 +32,14 @@ def _image(card) -> str:
 async def wishlist_page(
     request: Request, session: AsyncSession = Depends(get_session)
 ) -> HTMLResponse:
-    view = await list_wishlist(session)
+    currency = get_currency(request)
+    view = await list_wishlist(session, currency)
     rows = [(item, _image(item.card)) for item in view.items]
     return templates.TemplateResponse(
         request,
         "wishlist.html",
-        {"rows": rows, "view": view, "read_only": get_settings().read_only},
+        {"rows": rows, "view": view, "cur": info(currency),
+         "read_only": get_settings().read_only},
     )
 
 

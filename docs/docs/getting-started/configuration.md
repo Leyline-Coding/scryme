@@ -11,6 +11,7 @@ with `SCRYME_`.
 | `POSTGRES_PASSWORD` | `scryme` | PostgreSQL password |
 | `SCRYME_PORT` | `8080` | Host port for the web UI (nginx) |
 | `SCRYME_READ_ONLY` | `false` | Demo mode — disables uploads/admin mutations and shows a banner |
+| `SCRYME_DEFAULT_CURRENCY` | `usd` | Default display currency for current values (`usd` or `eur`); visitors can override via the palette menu |
 
 ## Database variables
 

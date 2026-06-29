@@ -13,19 +13,13 @@ from dataclasses import dataclass
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.currency import unit_price
 from src.decks import deck_missing
 from src.models import Card, Deck, WishlistItem
 
 
 def _as_uuid(scryfall_id) -> uuid.UUID:
     return scryfall_id if isinstance(scryfall_id, uuid.UUID) else uuid.UUID(str(scryfall_id))
-
-
-def _usd(prices: dict | None) -> float:
-    try:
-        return float((prices or {}).get("usd") or 0)
-    except (TypeError, ValueError):
-        return 0.0
 
 
 async def add_to_wishlist(
@@ -83,7 +77,7 @@ class WishlistView:
     total_cards: int
 
 
-async def list_wishlist(session: AsyncSession) -> WishlistView:
+async def list_wishlist(session: AsyncSession, currency: str = "usd") -> WishlistView:
     items = list(
         (
             await session.execute(
@@ -93,6 +87,8 @@ async def list_wishlist(session: AsyncSession) -> WishlistView:
         .scalars()
         .all()
     )
-    total_cost = sum(item.quantity * _usd(item.card.prices) for item in items)
+    total_cost = sum(
+        item.quantity * unit_price(item.card.prices, "normal", currency) for item in items
+    )
     total_cards = sum(item.quantity for item in items)
     return WishlistView(items=items, total_cost=round(total_cost, 2), total_cards=total_cards)

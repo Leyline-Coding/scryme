@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
+from src.currency import get_currency, info
 from src.db import get_session
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
 from src.decks import LEGALITY_FORMATS, create_deck, deck_coverage, deck_stats
@@ -69,15 +70,17 @@ async def view_deck(
     deck = await session.get(Deck, deck_id)
     if deck is None:
         raise HTTPException(status_code=404, detail="Deck not found.")
-    coverage = await deck_coverage(session, deck, fmt=format or None)
+    currency = get_currency(request)
+    coverage = await deck_coverage(session, deck, fmt=format or None, currency=currency)
     return templates.TemplateResponse(
         request,
         "deck_detail.html",
         {
             "cov": coverage,
             "formats": LEGALITY_FORMATS,
-            "stats": await deck_stats(session, deck),
+            "stats": await deck_stats(session, deck, currency),
             "export_formats": EXPORT_FORMATS,
+            "cur": info(currency),
             "read_only": get_settings().read_only,
         },
     )

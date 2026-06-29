@@ -47,8 +47,8 @@
       <div class="text-2xl font-bold">{{ '{:,}'.format(stats.distinct_cards) }}</div>
     </div>
     <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
-      <div class="text-xs text-muted">Est. value (USD)</div>
-      <div class="text-2xl font-bold">${{ '{:,.2f}'.format(stats.total_value) }}</div>
+      <div class="text-xs text-muted">Est. value ({{ cur.label }})</div>
+      <div class="text-2xl font-bold">{{ cur.symbol }}{{ '{:,.2f}'.format(stats.total_value) }}</div>
     </div>
   </div>
 
@@ -56,7 +56,8 @@
   {% if value_chart.available %}
   <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-8">
     <div class="flex items-baseline justify-between mb-3">
-      <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">Value over time</h2>
+      <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">
+        Value over time{% if cur.code != 'usd' %} (USD){% endif %}</h2>
       <a href="/prices" class="text-xs text-muted hover:text-fg">Price history →</a>
     </div>
     {% if value_chart.has_trend %}
@@ -88,14 +89,14 @@
     <div class="flex items-baseline justify-between mb-3">
       <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">Collection growth</h2>
       <span class="text-xs text-muted">{{ '{:,}'.format(growth.total_added) }} cards
-        · ${{ '{:,.2f}'.format(growth.total_value) }} added</span>
+        · {{ cur.symbol }}{{ '{:,.2f}'.format(growth.total_value) }} added</span>
     </div>
     {% set m = growth.max_added or 1 %}
     <div class="flex items-end gap-1 h-32">
       {% for p in growth.points %}
       <div class="flex-1 bg-accent rounded-t hover:opacity-80 min-h-[2px]"
            style="height: {{ (p.added / m * 100) | round(1) }}%"
-           title="{{ p.label }} · +{{ '{:,}'.format(p.added) }} cards · ${{ '{:,.2f}'.format(p.value) }}"></div>
+           title="{{ p.label }} · +{{ '{:,}'.format(p.added) }} cards · {{ cur.symbol }}{{ '{:,.2f}'.format(p.value) }}"></div>
       {% endfor %}
     </div>
     <div class="mt-1 flex justify-between text-xs text-muted">
@@ -138,7 +139,7 @@
           <a href="/card/{{ v.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">
             {{ v.name }} <span class="text-muted uppercase text-xs">{{ v.set_code }}</span>
           </a>
-          <span class="text-right text-muted tabular-nums">${{ '{:,.2f}'.format(v.usd) }}</span>
+          <span class="text-right text-muted tabular-nums">{{ cur.symbol }}{{ '{:,.2f}'.format(v.usd) }}</span>
         </li>
         {% endfor %}
       </ol>

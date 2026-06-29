@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
+from src.currency import get_currency
 from src.db import get_session
 from src.models import Card, CollectionCard
 from src.scryfall.client import ScryfallClient, ScryfallError
@@ -92,10 +93,12 @@ async def card_detail(
         )
 
     prices = card.prices or {}
+    _usd_rows = [("USD", "usd"), ("USD foil", "usd_foil")]
+    _eur_rows = [("EUR", "eur"), ("EUR foil", "eur_foil")]
+    # Lead with the visitor's chosen display currency.
+    ordered = (_eur_rows + _usd_rows if get_currency(request) == "eur" else _usd_rows + _eur_rows)
     price_rows = [
-        (label, prices.get(key))
-        for label, key in (("USD", "usd"), ("USD foil", "usd_foil"), ("EUR", "eur"), ("TIX", "tix"))
-        if prices.get(key)
+        (label, prices.get(key)) for label, key in [*ordered, ("TIX", "tix")] if prices.get(key)
     ]
     legalities = card.legalities or {}
     legality_rows = [(fmt, legalities.get(fmt, "not_legal")) for fmt in LEGALITY_FORMATS]

@@ -8,6 +8,8 @@ proxy that also serves cached card images.
 - Docker and Docker Compose
 - ~2 GB of disk for the card database, plus more if you cache images (the Scryfall bulk file is
   ~550 MB compressed; full image caches can run to several GB)
+- Any common CPU architecture — the published image is **multi-arch (linux/amd64 + linux/arm64)**,
+  so it runs natively on x86 servers as well as a Raspberry Pi or Apple-Silicon machine.
 
 ## Start the stack
 

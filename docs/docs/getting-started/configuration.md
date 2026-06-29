@@ -15,6 +15,7 @@ with `SCRYME_`.
 | `SCRYME_BACKUP_DIR` | _(unset)_ | Folder for [on-disk backups](../features/backup.md#automatic-backups-to-a-folder-and-cross-device-sync); enables Back up now, scheduled backups, and restore from disk |
 | `SCRYME_BACKUP_INTERVAL_HOURS` | `0` | Hours between scheduled backups to `SCRYME_BACKUP_DIR` (`0` disables scheduling) |
 | `SCRYME_BACKUP_KEEP` | `14` | How many on-disk backups to retain (older ones are pruned) |
+| `SCRYME_API_TOKEN` | _(unset)_ | If set, the [JSON API](../development/api.md) requires this token (`Authorization: Bearer …` / `X-API-Key`); empty = open |
 
 ## Database variables
 

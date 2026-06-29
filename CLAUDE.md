@@ -107,7 +107,9 @@ format legality + per-deck stats + export (text/Arena/Moxfield/MTGO; `/decks`; `
 `src/deck_export.py`), **binder** browsing (`/binders`), **price history**
 with acquisition P/L (`/prices`; `src/prices.py`), a **set completion** tracker (`/sets`;
 `src/sets.py`), **card tags** (`tag:` search; `collection_card.tags`; `src/tags.py`), a
-**wishlist** (`/wishlist`; `src/wishlist.py`, incl. "add a deck's missing cards"), in-app
+**wishlist** (`/wishlist`; `src/wishlist.py`, incl. "add a deck's missing cards"), a versioned
+**JSON API** (`/api/v1`; `src/routes/api.py`; OpenAPI at `/docs`; optional `SCRYME_API_TOKEN`),
+in-app
 **collection editing** (add/edit/bulk; `src/collection_edit.py`), **faceted browse** + **"did you
 mean?"** search (`src/facets.py`; `engine.name_suggestions`), **multi-currency** display (USD/EUR;
 `src/currency.py`), and **backup/restore** (`/backup`; `src/backup.py`). Migrations through

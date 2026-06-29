@@ -91,6 +91,7 @@ nav:
   - Roadmap: roadmap.md
   - Development:
       - Architecture: development/architecture.md
+      - JSON API: development/api.md
       - Contributing: development/contributing.md
 
 plugins:

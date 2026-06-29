@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     backup_keep: int = 14
     backup_interval_hours: int = 0
 
+    # JSON API: when set, every /api/* request must send this token (Authorization: Bearer <token>
+    # or X-API-Key). Empty = open (fine for a single-user localhost instance).
+    api_token: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

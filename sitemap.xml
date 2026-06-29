@@ -36,6 +36,11 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://docs.scryme.app/features/checklists/</loc>
+         <lastmod>2026-06-29</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://docs.scryme.app/features/decks/</loc>
          <lastmod>2026-06-29</lastmod>
          <changefreq>daily</changefreq>

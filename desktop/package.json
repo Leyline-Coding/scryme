@@ -3,7 +3,11 @@
   "productName": "scryme",
   "version": "0.9.0",
   "description": "Self-hosted Scryfall-like search for your MTG collection — desktop app",
-  "author": "Leyline Coding",
+  "homepage": "https://github.com/Leyline-Coding/scryme",
+  "author": {
+    "name": "Leyline Coding",
+    "email": "untraceablez@users.noreply.github.com"
+  },
   "license": "see repository LICENSE",
   "main": "src/main.js",
   "scripts": {

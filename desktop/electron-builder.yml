@@ -14,10 +14,12 @@ extraResources:
   - from: dist/scryme-backend
     to: backend
 
-# embedded-postgres ships native PG binaries that must run from disk, not from inside the asar.
-asarUnpack:
-  - "node_modules/embedded-postgres/**"
-  - "node_modules/@embedded-postgres/**"
+# Disable asar: embedded-postgres resolves its native PG binaries relative to its own __dirname and
+# stat/chmod/spawns them. Inside an asar that path isn't a real file (chmod → ENOTDIR), and
+# asarUnpack doesn't help because the library still computes the in-archive path. With asar off the
+# whole app is a plain directory tree (matching dev), so the binaries run from disk. The heavy
+# backend is already shipped unpacked via extraResources, and the app's own JS is tiny.
+asar: false
 
 files:
   - "src/**"

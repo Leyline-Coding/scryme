@@ -109,3 +109,16 @@
 .busy-indeterminate {
   animation: busy-slide 1.1s ease-in-out infinite;
 }
+
+/* Print-friendly layout for binder / proxy / decklist sheets: drop the app chrome and
+   force a light ink-on-paper palette regardless of theme. */
+@media print {
+  #scryme-dropzone,
+  [data-print-hide] { display: none !important; }
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  a { color: #000 !important; text-decoration: none !important; }
+  .print-cols { columns: 2; }
+}

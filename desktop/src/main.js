@@ -6,7 +6,7 @@
 // stops the backend and the database. Everything lives under the user's data dir, so it can sit in
 // a synced folder (Dropbox/Drive) and be backed up.
 
-const { app, BrowserWindow, dialog, shell, Menu } = require("electron");
+const { app, BrowserWindow, dialog, shell, Menu, globalShortcut } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
@@ -149,6 +149,18 @@ function createWindow(port) {
   mainWindow.on("closed", () => { mainWindow = null; });
 }
 
+// Global quick-search: a system-wide hotkey raises the window and focuses the search box.
+const QUICK_SEARCH_ACCELERATOR = "CommandOrControl+Shift+S";
+function registerShortcuts() {
+  globalShortcut.register(QUICK_SEARCH_ACCELERATOR, () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send("scryme:focus-search");
+  });
+}
+
 async function boot() {
   const dir = dataDir();
   // Backend port is stable across launches (keeps renderer settings); the internal PG port is not.
@@ -164,10 +176,12 @@ async function boot() {
     return;
   }
   createWindow(backendPort);
+  registerShortcuts();
 }
 
 async function shutdown() {
   app.isQuitting = true;
+  globalShortcut.unregisterAll();
   if (backend && !backend.killed) {
     backend.kill();
   }

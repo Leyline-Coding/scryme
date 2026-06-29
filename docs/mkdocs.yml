@@ -82,6 +82,7 @@ nav:
       - Binders: features/binders.md
       - Set Completion: features/sets.md
       - Wishlist: features/wishlist.md
+      - Trade Binder: features/trade.md
       - Collection Stats: features/stats.md
       - Price History: features/prices.md
       - Theming: features/theming.md

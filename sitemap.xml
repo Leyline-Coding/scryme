@@ -21,6 +21,11 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://docs.scryme.app/features/backup/</loc>
+         <lastmod>2026-06-29</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://docs.scryme.app/features/binders/</loc>
          <lastmod>2026-06-29</lastmod>
          <changefreq>daily</changefreq>

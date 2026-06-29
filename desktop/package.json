@@ -1,0 +1,23 @@
+{
+  "name": "scryme-desktop",
+  "productName": "scryme",
+  "version": "0.9.0",
+  "description": "Self-hosted Scryfall-like search for your MTG collection — desktop app",
+  "author": "Leyline Coding",
+  "license": "see repository LICENSE",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:backend": "bash scripts/build-backend.sh",
+    "dist": "electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "dependencies": {
+    "embedded-postgres": "^17.1.0",
+    "get-port": "^5.1.1"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  }
+}

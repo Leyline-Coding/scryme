@@ -1,0 +1,47 @@
+appId: app.scryme.desktop
+productName: scryme
+copyright: Leyline Coding
+
+directories:
+  output: release
+  buildResources: build
+
+# The frozen backend (built separately by `npm run build:backend`) ships as an extra resource so it
+# lands at resources/backend/ — where src/main.js looks for it. asar can't hold an executable, so it
+# stays unpacked.
+extraResources:
+  - from: dist/scryme-backend
+    to: backend
+
+# embedded-postgres ships native PG binaries that must run from disk, not from inside the asar.
+asarUnpack:
+  - "node_modules/embedded-postgres/**"
+  - "node_modules/@embedded-postgres/**"
+
+files:
+  - "src/**"
+  - "package.json"
+  - "!**/*.md"
+
+# Icons: electron-builder generates the platform formats (.icns / .ico) from build/icon.png
+# (1024×1024) automatically, so only the Linux PNG is specified explicitly.
+mac:
+  category: public.app-category.utilities
+  target:
+    - dmg
+    - zip
+
+win:
+  target:
+    - nsis
+
+linux:
+  category: Utility
+  target:
+    - AppImage
+    - deb
+  icon: build/icon.png
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

@@ -6,10 +6,17 @@ import datetime
 import json
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.backup import export_backup, restore_backup
+from src.backup import (
+    export_backup,
+    list_backups,
+    resolve_backup,
+    restore_backup,
+    restore_from_path,
+    write_backup,
+)
 from src.config import get_settings
 from src.db import get_session
 from src.templating import templates
@@ -17,10 +24,20 @@ from src.templating import templates
 router = APIRouter(tags=["backup"])
 
 
+def _guard_writable() -> None:
+    if get_settings().read_only:
+        raise HTTPException(status_code=403, detail="This instance is read-only.")
+
+
 @router.get("/backup", response_class=HTMLResponse)
 async def backup_page(request: Request) -> HTMLResponse:
+    settings = get_settings()
+    backups = list_backups(settings.backup_dir) if settings.backup_dir else []
     return templates.TemplateResponse(
-        request, "backup.html", {"read_only": get_settings().read_only}
+        request, "backup.html",
+        {"read_only": settings.read_only, "backup_dir": settings.backup_dir,
+         "backups": backups, "interval": settings.backup_interval_hours,
+         "keep": settings.backup_keep},
     )
 
 
@@ -60,5 +77,52 @@ async def restore(
         request,
         "_restore_result.html",
         {"result": result, "error": error, "applied": applying,
+         "read_only": get_settings().read_only},
+    )
+
+
+# --- on-disk backups ----------------------------------------------------------------------------
+
+def _backup_dir():
+    directory = get_settings().backup_dir
+    if directory is None:
+        raise HTTPException(status_code=404, detail="No backup directory configured.")
+    return directory
+
+
+@router.post("/backup/disk")
+async def backup_now(session: AsyncSession = Depends(get_session)) -> Response:
+    _guard_writable()
+    directory = _backup_dir()
+    await write_backup(session, directory, keep=get_settings().backup_keep)
+    return Response(status_code=303, headers={"Location": "/backup"})
+
+
+@router.get("/backup/disk/download")
+async def disk_download(name: str) -> FileResponse:
+    path = resolve_backup(_backup_dir(), name)
+    if path is None:
+        raise HTTPException(status_code=404, detail="Backup not found.")
+    return FileResponse(path, media_type="application/json", filename=name)
+
+
+@router.post("/backup/disk/restore", response_class=HTMLResponse)
+async def disk_restore(
+    request: Request,
+    name: str = Form(...),
+    mode: str = Form("preview"),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    applying = mode == "apply"
+    if applying:
+        _guard_writable()
+    path = resolve_backup(_backup_dir(), name)
+    if path is None:
+        raise HTTPException(status_code=404, detail="Backup not found.")
+    result = await restore_from_path(session, path, dry_run=not applying)
+    return templates.TemplateResponse(
+        request,
+        "_restore_result.html",
+        {"result": result, "error": None, "applied": applying,
          "read_only": get_settings().read_only},
     )

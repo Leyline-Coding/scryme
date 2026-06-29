@@ -60,8 +60,14 @@ cd backend && alembic revision --autogenerate -m "msg" && alembic upgrade head
 # Ingest the Scryfall Default Cards bulk file (honors the 24h cache guard; --force overrides)
 python -m src.cli ingest [--force]
 python -m src.cli backfill-images          # cache images for owned cards
+python -m src.cli backup [--dir DIR]       # write a JSON backup of user data to disk
+python -m src.cli restore FILE [--apply]   # restore user data (dry-run without --apply)
 # or via HTTP:  POST /admin/ingest   GET /admin/status
 ```
+
+On-disk/scheduled backups live in `src/backup.py` (`write_backup`/`list_backups`/`prune_backups`/
+`restore_from_path`), driven by `SCRYME_BACKUP_DIR` / `_INTERVAL_HOURS` / `_KEEP`; the scheduler
+adds a backup job when configured. UI: `/backup` (download/upload restore + on-disk list).
 
 ## Search engine (`src/search/`)
 

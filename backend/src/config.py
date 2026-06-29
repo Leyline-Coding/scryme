@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     # `scryme_currency` cookie set from the currency picker.
     default_currency: str = "usd"
 
+    # On-disk backups. Point `backup_dir` at a folder (e.g. a Dropbox/Drive-synced one) to enable
+    # "Back up now", scheduled backups, and restore from disk. `backup_keep` bounds retention;
+    # `backup_interval_hours` > 0 enables a scheduled backup (0 disables it).
+    backup_dir: Path | None = None
+    backup_keep: int = 14
+    backup_interval_hours: int = 0
+
 
 @lru_cache
 def get_settings() -> Settings:

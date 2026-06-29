@@ -23,6 +23,7 @@ from sqlalchemy import Date, DateTime, insert, select, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.cryptobackup import BackupDecryptError, decrypt_backup, encrypt_backup, is_encrypted
 from src.db import SessionLocal
 from src.models import (
     Card,
@@ -79,6 +80,7 @@ class RestoreResult:
     error: str | None = None
     counts: dict[str, int] = field(default_factory=dict)
     skipped_missing_cards: int = 0
+    needs_passphrase: bool = False
 
     @property
     def total(self) -> int:
@@ -111,9 +113,17 @@ def validate_backup(data) -> str | None:
 
 
 async def restore_backup(
-    session: AsyncSession, data, *, dry_run: bool = True
+    session: AsyncSession, data, *, dry_run: bool = True, passphrase: str = ""
 ) -> RestoreResult:
-    """Validate and (unless dry_run) replace the user tables with the backup contents."""
+    """Validate and (unless dry_run) replace the user tables with the backup contents.
+
+    An encrypted envelope is decrypted with *passphrase* first.
+    """
+    if is_encrypted(data):
+        try:
+            data = decrypt_backup(data, passphrase)
+        except BackupDecryptError as exc:
+            return RestoreResult(ok=False, error=str(exc), needs_passphrase=True)
     error = validate_backup(data)
     if error:
         return RestoreResult(ok=False, error=error)
@@ -210,30 +220,38 @@ def prune_backups(directory: Path, keep: int) -> int:
     return removed
 
 
-async def write_backup(session: AsyncSession, directory: Path, *, keep: int = 0) -> Path:
-    """Write a timestamped backup into *directory* (created if needed) and prune to *keep*."""
+async def write_backup(
+    session: AsyncSession, directory: Path, *, keep: int = 0, passphrase: str = ""
+) -> Path:
+    """Write a timestamped backup into *directory* (created if needed) and prune to *keep*.
+
+    With a *passphrase* the file is an encrypted envelope (``.enc.json``).
+    """
     directory.mkdir(parents=True, exist_ok=True)
     data = await export_backup(session)
+    suffix = ".enc.json" if passphrase else _BACKUP_SUFFIX
+    if passphrase:
+        data = encrypt_backup(data, passphrase)
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    path = directory / f"{_BACKUP_PREFIX}{stamp}{_BACKUP_SUFFIX}"
+    path = directory / f"{_BACKUP_PREFIX}{stamp}{suffix}"
     path.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
     if keep:
         prune_backups(directory, keep)
     return path
 
 
-async def take_disk_backup(directory: Path, *, keep: int = 0) -> Path:
+async def take_disk_backup(directory: Path, *, keep: int = 0, passphrase: str = "") -> Path:
     """Open a session and write a backup to disk (for the scheduler / CLI)."""
     async with SessionLocal() as session:
-        return await write_backup(session, directory, keep=keep)
+        return await write_backup(session, directory, keep=keep, passphrase=passphrase)
 
 
 async def restore_from_path(
-    session: AsyncSession, path: Path, *, dry_run: bool = True
+    session: AsyncSession, path: Path, *, dry_run: bool = True, passphrase: str = ""
 ) -> RestoreResult:
-    """Restore from a backup file on disk."""
+    """Restore from a backup file on disk (decrypting first if it's an encrypted envelope)."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return RestoreResult(ok=False, error="Couldn't read that backup file.")
-    return await restore_backup(session, data, dry_run=dry_run)
+    return await restore_backup(session, data, dry_run=dry_run, passphrase=passphrase)

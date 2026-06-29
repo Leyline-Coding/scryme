@@ -36,7 +36,8 @@ async def _backup_job() -> None:
     try:
         from src.backup import take_disk_backup
 
-        path = await take_disk_backup(settings.backup_dir, keep=settings.backup_keep)
+        path = await take_disk_backup(settings.backup_dir, keep=settings.backup_keep,
+                                      passphrase=settings.backup_passphrase)
         log.info("backup.scheduled.done", path=str(path))
     except Exception as exc:  # noqa: BLE001 - never let a scheduled job crash the loop
         log.error("backup.scheduled.failed", error=str(exc))

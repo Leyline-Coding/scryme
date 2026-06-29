@@ -18,6 +18,7 @@ from src.backup import (
     write_backup,
 )
 from src.config import get_settings
+from src.cryptobackup import encrypt_backup
 from src.db import get_session
 from src.templating import templates
 
@@ -41,15 +42,21 @@ async def backup_page(request: Request) -> HTMLResponse:
     )
 
 
-@router.get("/backup/download")
-async def download(session: AsyncSession = Depends(get_session)) -> Response:
+@router.post("/backup/download")
+async def download(
+    passphrase: str = Form(""), session: AsyncSession = Depends(get_session)
+) -> Response:
     data = await export_backup(session)
+    suffix = ".json"
+    if passphrase:
+        data = encrypt_backup(data, passphrase)
+        suffix = ".enc.json"
     body = json.dumps(data, separators=(",", ":"))
     today = datetime.date.today().isoformat()
     return Response(
         content=body,
         media_type="application/json",
-        headers={"Content-Disposition": f'attachment; filename="scryme-backup-{today}.json"'},
+        headers={"Content-Disposition": f'attachment; filename="scryme-backup-{today}{suffix}"'},
     )
 
 
@@ -57,6 +64,7 @@ async def download(session: AsyncSession = Depends(get_session)) -> Response:
 async def restore(
     request: Request,
     mode: str = Form("preview"),
+    passphrase: str = Form(""),
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
@@ -70,7 +78,7 @@ async def restore(
         result = None
         error = "Couldn't read that file — it isn't valid JSON."
     else:
-        result = await restore_backup(session, data, dry_run=not applying)
+        result = await restore_backup(session, data, dry_run=not applying, passphrase=passphrase)
         error = None
 
     return templates.TemplateResponse(
@@ -93,8 +101,9 @@ def _backup_dir():
 @router.post("/backup/disk")
 async def backup_now(session: AsyncSession = Depends(get_session)) -> Response:
     _guard_writable()
-    directory = _backup_dir()
-    await write_backup(session, directory, keep=get_settings().backup_keep)
+    settings = get_settings()
+    await write_backup(session, _backup_dir(), keep=settings.backup_keep,
+                       passphrase=settings.backup_passphrase)
     return Response(status_code=303, headers={"Location": "/backup"})
 
 
@@ -111,6 +120,7 @@ async def disk_restore(
     request: Request,
     name: str = Form(...),
     mode: str = Form("preview"),
+    passphrase: str = Form(""),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     applying = mode == "apply"
@@ -119,7 +129,9 @@ async def disk_restore(
     path = resolve_backup(_backup_dir(), name)
     if path is None:
         raise HTTPException(status_code=404, detail="Backup not found.")
-    result = await restore_from_path(session, path, dry_run=not applying)
+    # Fall back to the configured passphrase for scheduled (encrypted) disk backups.
+    passphrase = passphrase or get_settings().backup_passphrase
+    result = await restore_from_path(session, path, dry_run=not applying, passphrase=passphrase)
     return templates.TemplateResponse(
         request,
         "_restore_result.html",

@@ -1149,6 +1149,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#automatic-backups-to-a-folder-and-cross-device-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      Automatic backups to a folder (and cross-device sync)
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1333,6 +1342,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#automatic-backups-to-a-folder-and-cross-device-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      Automatic backups to a folder (and cross-device sync)
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1374,6 +1392,23 @@ good fit — and underpins the planned desktop app's backup story).</p>
 an ingest) are <strong>skipped</strong> and reported, rather than failing the whole restore — run an
 <a href="../../getting-started/self-hosting/">ingest</a>, then restore again. Restore is disabled on the
 read-only demo; the download still works.</p>
+<h2 id="automatic-backups-to-a-folder-and-cross-device-sync">Automatic backups to a folder (and cross-device sync)</h2>
+<p>Point scryme at a folder with <code>SCRYME_BACKUP_DIR</code> and the Backup page gains a <strong>Backups on disk</strong>
+section: a <strong>Back up now</strong> button, a list of the backups in that folder (each with download and a
+preview → restore), and — when <code>SCRYME_BACKUP_INTERVAL_HOURS</code> is set — <strong>scheduled</strong> backups.
+<code>SCRYME_BACKUP_KEEP</code> (default 14) bounds how many are kept; older ones are pruned automatically.</p>
+<p>If that folder is one your OS syncs (Dropbox, Google Drive, iCloud Drive, Syncthing…), this doubles
+as <strong>cross-device sync</strong>: each install writes backups into the shared folder, and another install
+restores from the latest. There's no merge — restore <strong>replaces</strong> local data, so it's
+last-writer-wins; treat one device as the source of truth at a time.</p>
+<p>From the command line:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>backup<span class="w"> </span>--dir<span class="w"> </span>/path/to/folder<span class="w">   </span><span class="c1"># write one now (honors SCRYME_BACKUP_DIR if unset)</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>restore<span class="w"> </span>backup.json<span class="w">            </span><span class="c1"># dry-run preview</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>restore<span class="w"> </span>backup.json<span class="w"> </span>--apply<span class="w">    </span><span class="c1"># replace your data</span>
+</code></pre></div>
+<p>This is the engine behind the planned <a href="https://github.com/Leyline-Coding/scryme/issues/49">desktop app</a>'s
+backup story. Encrypting backups with a passphrase is tracked separately
+(<a href="https://github.com/Leyline-Coding/scryme/issues/114">#114</a>).</p>
 
 
 

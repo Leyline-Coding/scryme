@@ -1403,6 +1403,21 @@ with <code>SCRYME_</code>.</p>
 <td><code>usd</code></td>
 <td>Default display currency for current values (<code>usd</code> or <code>eur</code>); visitors can override via the palette menu</td>
 </tr>
+<tr>
+<td><code>SCRYME_BACKUP_DIR</code></td>
+<td><em>(unset)</em></td>
+<td>Folder for <a href="../../features/backup/#automatic-backups-to-a-folder-and-cross-device-sync">on-disk backups</a>; enables Back up now, scheduled backups, and restore from disk</td>
+</tr>
+<tr>
+<td><code>SCRYME_BACKUP_INTERVAL_HOURS</code></td>
+<td><code>0</code></td>
+<td>Hours between scheduled backups to <code>SCRYME_BACKUP_DIR</code> (<code>0</code> disables scheduling)</td>
+</tr>
+<tr>
+<td><code>SCRYME_BACKUP_KEEP</code></td>
+<td><code>14</code></td>
+<td>How many on-disk backups to retain (older ones are pruned)</td>
+</tr>
 </tbody>
 </table>
 <h2 id="database-variables">Database variables</h2>

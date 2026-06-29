@@ -8,7 +8,7 @@
   [![License](https://img.shields.io/github/license/Leyline-Coding/scryme)](https://github.com/Leyline-Coding/scryme/blob/main/LICENSE)
   [![GitHub Stars](https://img.shields.io/github/stars/Leyline-Coding/scryme)](https://github.com/Leyline-Coding/scryme/stargazers)
   [![GitHub Issues](https://img.shields.io/github/issues/untraceablez/pantrie)](https://github.com/Leyline-Coding/scryme/issues)
-  [Public Demo](https://demo.scryme.app) · [Documentation](https://docs.scryme.app) · [Report Bug](https://github.com/Leyline-Coding/scryme/issues)
+<br>  [Public Demo](https://demo.scryme.app) · [Documentation](https://docs.scryme.app) · [Report Bug](https://github.com/Leyline-Coding/scryme/issues)
 </div>
 
 A localized, self-hostable implementation of [Scryfall](https://scryfall.com) for indexing and

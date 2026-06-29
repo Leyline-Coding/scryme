@@ -42,6 +42,17 @@ never need to re-run this manually.
     docker compose exec backend python -m src.cli backfill-images
     ```
 
+## Status & monitoring
+
+The **`/admin`** page is a status dashboard — card count, image cache size, last ingest, database
+size, and how much you've got in your collection / decks / wishlist / checklists, plus whether
+backups are configured.
+
+For monitoring, **`/metrics`** exposes the same figures in **Prometheus** text format
+(`scryme_cards_total`, `scryme_collection_value_usd`, `scryme_last_ingest_timestamp_seconds`, …),
+so you can scrape it into Prometheus/Grafana. Both endpoints are read-only; if your instance is
+public, put them behind your reverse proxy's auth.
+
 ## Upgrading
 
 ```bash

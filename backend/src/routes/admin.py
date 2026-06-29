@@ -4,17 +4,39 @@ Single-user deployment: the "admin" is simply the person running the instance, s
 auth. Mutating endpoints are disabled when the instance is in read-only (demo) mode.
 """
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse, PlainTextResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.admin_stats import collect_admin_stats, image_cache_disk, render_metrics
 from src.config import get_settings
-from src.db import SessionLocal
+from src.db import SessionLocal, get_session
 from src.models import IngestState
 from src.scryfall.ingest import BULK_TYPE, current_card_count, ingest_default_cards
+from src.templating import templates
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(tags=["admin"])
 
 
-@router.get("/status")
+@router.get("/admin", response_class=HTMLResponse)
+async def dashboard(
+    request: Request, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    stats = await collect_admin_stats(session)
+    img_count, img_bytes = image_cache_disk(get_settings().image_cache_dir)
+    return templates.TemplateResponse(
+        request, "admin.html",
+        {"stats": stats, "image_files": img_count, "image_bytes": img_bytes},
+    )
+
+
+@router.get("/metrics", response_class=PlainTextResponse)
+async def metrics(session: AsyncSession = Depends(get_session)) -> PlainTextResponse:
+    stats = await collect_admin_stats(session)
+    return PlainTextResponse(render_metrics(stats), media_type="text/plain; version=0.0.4")
+
+
+@router.get("/admin/status")
 async def status() -> dict:
     async with SessionLocal() as s:
         state = await s.get(IngestState, BULK_TYPE)
@@ -33,7 +55,7 @@ async def status() -> dict:
     }
 
 
-@router.post("/ingest", status_code=202)
+@router.post("/admin/ingest", status_code=202)
 async def trigger_ingest(background: BackgroundTasks, force: bool = False) -> dict:
     if get_settings().read_only:
         raise HTTPException(status_code=403, detail="Instance is read-only")

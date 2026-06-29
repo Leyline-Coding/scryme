@@ -12,13 +12,13 @@
         <meta name="author" content="Taylor Cohron">
       
       
-        <link rel="canonical" href="https://docs.scryme.app/getting-started/demo/">
+        <link rel="canonical" href="https://docs.scryme.app/development/api/">
       
       
-        <link rel="prev" href="../kubernetes/">
+        <link rel="prev" href="../architecture/">
       
       
-        <link rel="next" href="../../import/overview/">
+        <link rel="next" href="../contributing/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -26,7 +26,7 @@
     
     
       
-        <title>Public Demo - scryme Documentation</title>
+        <title>JSON API - scryme Documentation</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#public-demo" class="md-skip">
+        <a href="#json-api" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Public Demo
+              JSON API
             
           </span>
         </div>
@@ -236,13 +236,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../self-hosting/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../getting-started/self-hosting/" class="md-tabs__link">
           
   
     
@@ -335,11 +333,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../development/architecture/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../architecture/" class="md-tabs__link">
           
   
     
@@ -421,10 +421,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -443,12 +441,12 @@
       
       
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
@@ -462,7 +460,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             Getting Started
@@ -476,7 +474,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../self-hosting/" class="md-nav__link">
+      <a href="../../getting-started/self-hosting/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -497,7 +495,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+      <a href="../../getting-started/configuration/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -518,7 +516,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../kubernetes/" class="md-nav__link">
+      <a href="../../getting-started/kubernetes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -536,30 +534,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Public Demo
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../getting-started/demo/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -568,44 +546,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#steps-docker-compose" class="md-nav__link">
-    <span class="md-ellipsis">
-      Steps (Docker Compose)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-read-only-mode-does" class="md-nav__link">
-    <span class="md-ellipsis">
-      What read-only mode does
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1180,8 +1120,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1198,12 +1140,12 @@
       
       
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
@@ -1217,7 +1159,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             Development
@@ -1231,7 +1173,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/architecture/" class="md-nav__link">
+      <a href="../architecture/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1249,10 +1191,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../development/api/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    JSON API
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1261,6 +1223,53 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      Authentication
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Endpoints
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1273,7 +1282,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/contributing/" class="md-nav__link">
+      <a href="../contributing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1321,18 +1330,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#steps-docker-compose" class="md-nav__link">
+  <a href="#authentication" class="md-nav__link">
     <span class="md-ellipsis">
-      Steps (Docker Compose)
+      Authentication
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-read-only-mode-does" class="md-nav__link">
+  <a href="#endpoints" class="md-nav__link">
     <span class="md-ellipsis">
-      What read-only mode does
+      Endpoints
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
     </span>
   </a>
   
@@ -1356,43 +1374,80 @@
   
 
 
-<h1 id="public-demo">Public Demo</h1>
-<p>A shared, read-only instance is useful for showing scryme off without letting visitors modify the
-collection. The official public demo is live at <strong><a href="https://demo.scryme.app">demo.scryme.app</a></strong> —
-read-only, with a sample collection over the full Scryfall card database.</p>
-<p>The official demo runs on Kubernetes (k3s) behind a Cloudflare Tunnel; see
-<a href="../kubernetes/">Deploy on Kubernetes</a> for those manifests. The steps below set up the same
-read-only experience with Docker Compose.</p>
-<h2 id="steps-docker-compose">Steps (Docker Compose)</h2>
-<ol>
-<li>
-<p>Start the stack and ingest card data:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>backend<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>ingest
+<h1 id="json-api">JSON API</h1>
+<p>scryme exposes a small, versioned <strong>JSON API</strong> under <code>/api/v1</code> — the same services the web UI uses,
+so you can script it, build a mobile client, or drive it from another app. It's
+<a href="https://swagger.io/specification/">OpenAPI</a>-documented: browse and try it at <strong><code>/docs</code></strong> (Swagger
+UI), or fetch the schema from <strong><code>/openapi.json</code></strong>.</p>
+<h2 id="authentication">Authentication</h2>
+<p>By default the API is <strong>open</strong> — fine for a single-user instance on your own machine or LAN. If your
+instance is reachable by others, set <strong><code>SCRYME_API_TOKEN</code></strong> and every <code>/api/*</code> request must then
+include it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span>https://your-host/api/v1/stats
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># or:  -H &quot;X-API-Key: $TOKEN&quot;</span>
 </code></pre></div>
-</li>
-<li>
-<p>Seed a sample collection. This marks a number of already-ingested cards as owned so the demo
-   shows a populated, searchable collection:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>backend<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>seed-demo<span class="w"> </span>--limit<span class="w"> </span><span class="m">60</span>
+<p>Mutating endpoints additionally respect <code>SCRYME_READ_ONLY</code> (they return <code>403</code> on the demo).</p>
+<h2 id="endpoints">Endpoints</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/search</code></td>
+<td>Search (<code>q</code>, <code>scope</code>, <code>page</code>, <code>sort</code>, <code>dir</code>) — full <a href="../../search/syntax/">Scryfall syntax</a>. Returns cards with your owned quantity + tags.</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/cards/{id}</code></td>
+<td>One printing: details, your owned stacks, and tags.</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/stats</code></td>
+<td>Collection stats (<code>currency=usd|eur</code>).</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/decks</code> · <code>/api/v1/decks/{id}</code></td>
+<td>Decks list / one deck's coverage.</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/wishlist</code></td>
+<td>Wishlist with estimated cost.</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/collection</code></td>
+<td>Add/increment an owned stack (<code>scryfall_id</code>, <code>quantity</code>, <code>finish</code>, …).</td>
+</tr>
+<tr>
+<td><code>POST</code> / <code>DELETE</code></td>
+<td><code>/api/v1/cards/{id}/tags</code></td>
+<td>Add / remove a tag.</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/wishlist</code> · <code>DELETE</code> <code>/api/v1/wishlist/{id}</code></td>
+<td>Add / remove a wishlist entry.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="example">Example</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Search your collection for red instants under 3 mana</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/search?q=c:r+t:instant+mv&lt;=2&quot;</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Add four foil copies of a printing</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/api/v1/collection<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;content-type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;scryfall_id&quot;:&quot;...&quot;,&quot;quantity&quot;:4,&quot;finish&quot;:&quot;foil&quot;}&#39;</span>
 </code></pre></div>
-</li>
-<li>
-<p>Restart in read-only mode:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nv">SCRYME_READ_ONLY</span><span class="o">=</span><span class="nb">true</span><span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
-</code></pre></div>
-</li>
-</ol>
-<p>The official public demo runs this way at <strong><a href="https://demo.scryme.app">demo.scryme.app</a></strong>. To host
-your own at a custom domain, point the hostname at your server and terminate TLS at a reverse proxy
-in front of nginx (port <code>8080</code>).</p>
-<h2 id="what-read-only-mode-does">What read-only mode does</h2>
-<ul>
-<li>Shows a banner indicating the instance is a shared, read-only sandbox.</li>
-<li>Returns <code>403</code> from <code>POST /upload</code>, <code>POST /upload/confirm</code>, and <code>POST /admin/ingest</code>.</li>
-<li>Disables the scheduled bulk refresh.</li>
-</ul>
-<p>Searching, browsing, and the collection/all scope toggle all continue to work.</p>
 
 
 
@@ -1415,7 +1470,7 @@ in front of nginx (port <code>8080</code>).</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 25, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 29, 2026</span>
   </span>
 
     
@@ -1425,7 +1480,7 @@ in front of nginx (port <code>8080</code>).</p>
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3h-2Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 25, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 29, 2026</span>
   </span>
 
     
@@ -1460,7 +1515,7 @@ in front of nginx (port <code>8080</code>).</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../kubernetes/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Deploy on Kubernetes">
+          <a href="../architecture/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Architecture">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -1470,20 +1525,20 @@ in front of nginx (port <code>8080</code>).</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Deploy on Kubernetes
+                Architecture
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../import/overview/" class="md-footer__link md-footer__link--next" aria-label="Next: Overview">
+          <a href="../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Overview
+                Contributing
               </div>
             </div>
             <div class="md-footer__button md-icon">

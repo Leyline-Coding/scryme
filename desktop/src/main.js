@@ -6,7 +6,9 @@
 // stops the backend and the database. Everything lives under the user's data dir, so it can sit in
 // a synced folder (Dropbox/Drive) and be backed up.
 
-const { app, BrowserWindow, dialog, shell, Menu, globalShortcut } = require("electron");
+const {
+  app, BrowserWindow, dialog, shell, Menu, globalShortcut, Tray, nativeImage,
+} = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
@@ -23,6 +25,9 @@ const DB_NAME = "scryme";
 let pg = null;
 let backend = null;
 let mainWindow = null;
+let tray = null;
+let quitting = false;     // the user actually chose to quit (vs. closing to the tray)
+let didShutdown = false;  // PG + backend already stopped (cleanup is idempotent)
 
 function dataDir() {
   // Override with SCRYME_DESKTOP_DATA_DIR to point at e.g. a synced folder.
@@ -106,7 +111,7 @@ function startBackend(dir, backendPort, pgPort) {
   backend.stdout.on("data", (d) => process.stdout.write(`[backend] ${d}`));
   backend.stderr.on("data", (d) => process.stderr.write(`[backend] ${d}`));
   backend.on("exit", (code) => {
-    if (code !== 0 && code !== null && !app.isQuitting) {
+    if (code !== 0 && code !== null && !didShutdown) {
       dialog.showErrorBox("scryme", `The backend exited unexpectedly (code ${code}).`);
     }
   });
@@ -146,8 +151,70 @@ function createWindow(port) {
     return { action: "deny" };
   });
   mainWindow.loadURL(`http://127.0.0.1:${port}/`);
+  // Closing the window hides to the tray (so Postgres + backend keep running for a fast reopen)
+  // when a tray exists; otherwise let it close so the app stays quittable.
+  mainWindow.on("close", (e) => {
+    if (!quitting && tray) { e.preventDefault(); mainWindow.hide(); }
+  });
   mainWindow.on("closed", () => { mainWindow = null; });
   buildMenu(port);
+}
+
+function showWindow() {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function createTray(port) {
+  try {
+    let icon = nativeImage.createFromPath(path.join(__dirname, "..", "build", "icon.png"));
+    if (!icon.isEmpty()) icon = icon.resize({ width: 18, height: 18 });
+    tray = new Tray(icon);
+    tray.setToolTip("scryme");
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: "Show scryme", click: showWindow },
+      {
+        label: "Share on LAN…",
+        click: () => { showWindow(); if (mainWindow) mainWindow.loadURL(`http://127.0.0.1:${port}/lan`); },
+      },
+      { type: "separator" },
+      { label: "Quit", click: () => { quitting = true; app.quit(); } },
+    ]));
+    tray.on("click", showWindow);
+  } catch (_) {
+    tray = null; // no system tray (some Linux DEs) — app simply quits on window close instead
+  }
+}
+
+// In-app updates from GitHub Releases (production builds only). Best-effort: unpublished or
+// unsigned builds just log and carry on.
+function checkForUpdates() {
+  if (isDev) return;
+  let autoUpdater;
+  try {
+    ({ autoUpdater } = require("electron-updater"));
+  } catch (_) {
+    return;
+  }
+  autoUpdater.on("update-downloaded", async (info) => {
+    const { response } = await dialog.showMessageBox(mainWindow, {
+      type: "info",
+      buttons: ["Restart now", "Later"],
+      defaultId: 0,
+      message: `scryme ${info.version} is ready to install.`,
+      detail: "Restart to finish updating.",
+    });
+    if (response === 0) {
+      await shutdown();        // stop PG + backend cleanly before the updater relaunches
+      autoUpdater.quitAndInstall();
+    }
+  });
+  autoUpdater.on("error", (err) => {
+    process.stderr.write(`[updater] ${err && err.message ? err.message : err}\n`);
+  });
+  autoUpdater.checkForUpdates().catch(() => { /* best-effort */ });
 }
 
 function buildMenu(port) {
@@ -197,12 +264,16 @@ async function boot() {
     return;
   }
   createWindow(backendPort);
+  createTray(backendPort);
   registerShortcuts();
+  checkForUpdates();
 }
 
 async function shutdown() {
-  app.isQuitting = true;
+  if (didShutdown) return;
+  didShutdown = true;
   globalShortcut.unregisterAll();
+  if (tray) { tray.destroy(); tray = null; }
   if (backend && !backend.killed) {
     backend.kill();
   }
@@ -218,20 +289,19 @@ app.whenReady().then(() => {
     app.quit();
   });
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0 && mainWindow === null) {
-      // Window was closed but app still running; nothing to re-create without the port — quit.
-    }
+    // macOS dock click: re-show the hidden window if it still exists.
+    if (mainWindow) showWindow();
   });
 });
 
 app.on("window-all-closed", () => {
-  app.quit();
+  // With a tray the app keeps running in the background; without one, closing quits.
+  if (!tray) app.quit();
 });
 
-app.on("before-quit", async (e) => {
-  if (!app.isQuitting) {
-    e.preventDefault();
-    await shutdown();
-    app.quit();
-  }
+app.on("before-quit", (e) => {
+  quitting = true;
+  if (didShutdown) return;
+  e.preventDefault();
+  shutdown().then(() => app.quit());
 });

@@ -1,0 +1,52 @@
+name: Desktop release
+
+# Builds the desktop installers on each OS and publishes them (plus the electron-updater
+# latest*.yml manifests) to the GitHub Release, so the in-app auto-updater has a source.
+#
+# Triggered when a release is published, or manually. Code signing is optional: set the secrets
+# noted below and electron-builder will sign/notarize; without them it ships unsigned installers
+# (auto-update still works for the Linux AppImage and Windows NSIS; macOS users may need to allow
+# the app on first open).
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Freeze the backend (PyInstaller, native to this OS)
+        env:
+          SCRYME_BUILD_NO_DOCKER: "1"
+          SCRYME_BUILD_PYTHON: python
+        run: npm run build:backend
+
+      - name: Install desktop dependencies
+        run: npm ci
+
+      - name: Build and publish installers
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Don't attempt macOS signing unless certs are provided (keeps unsigned builds green).
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          # Optional signing/notarization — set these as repo secrets to enable:
+          #   Windows/macOS: CSC_LINK, CSC_KEY_PASSWORD
+          #   macOS notarize: APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
+        run: npx --no-install electron-builder --publish always

@@ -7,6 +7,13 @@ directories:
   output: release
   buildResources: build
 
+# Auto-update source. electron-updater pulls the latest release + the generated latest*.yml from
+# GitHub Releases. The desktop-release CI workflow publishes here on each tagged release.
+publish:
+  provider: github
+  owner: Leyline-Coding
+  repo: scryme
+
 # The frozen backend (built separately by `npm run build:backend`) ships as an extra resource so it
 # lands at resources/backend/ — where src/main.js looks for it. asar can't hold an executable, so it
 # stays unpacked.

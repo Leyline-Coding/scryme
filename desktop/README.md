@@ -68,6 +68,29 @@ PyInstaller output is platform-specific (no cross-compilation): the Docker path 
 binary; for **macOS/Windows** installers, run `build:backend` via the local path on a Mac/Windows
 host, then `npm run dist`.
 
+## Releases & auto-update
+
+The `.github/workflows/desktop-release.yml` workflow builds installers on macOS/Windows/Linux and
+publishes them — with the `electron-updater` `latest*.yml` manifests — to the GitHub Release. It runs
+when a release is **published** (or manually via *workflow_dispatch*). The app checks for updates on
+launch (production builds only) and offers to restart when one is downloaded; the bundled Postgres +
+backend are stopped cleanly before it relaunches.
+
+### Code signing (optional)
+
+Unsigned builds work but warn on first open (Windows SmartScreen / macOS Gatekeeper). To sign, set
+repo secrets and electron-builder picks them up:
+
+- **Windows / macOS:** `CSC_LINK` (base64 cert), `CSC_KEY_PASSWORD`
+- **macOS notarization:** `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`
+
+The workflow sets `CSC_IDENTITY_AUTO_DISCOVERY=false` so unsigned builds stay green until then.
+
+### Store distribution (follow-ups)
+
+Homebrew cask, winget, Flatpak, and AUR are not wired yet — they consume the published GitHub
+Release artifacts, so they can be added once releases are flowing. Tracked under #85.
+
 ## Notes & caveats
 
 - **The GUI must be smoke-tested on a real desktop** (it needs a display). The Linux build chain is

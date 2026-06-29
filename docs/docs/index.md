@@ -7,21 +7,23 @@ Lens, then search it with Scryfall syntax and regular expressions.
 ## Highlights
 
 - 🔎 **Scryfall-compatible search** with regex — scoped to your collection or all cards, with
-  sorting, **saved searches**, an **[advanced form builder](search/advanced.md)**, and CSV /
-  decklist / ManaBox **export**.
+  sorting, **clickable [facets](search/syntax.md)**, **"did you mean?"** suggestions, **saved
+  searches**, an **[advanced form builder](search/advanced.md)**, and CSV / decklist / ManaBox
+  **export**.
 - 🃏 **Rich card pages** — full oracle text, prices, legalities, printings, rulings, real
-  **mana & set symbols**, and **[tags](features/cards.md#tags)** you can search with `tag:`.
-- 🧰 **Collection tools** — a **[stats dashboard](features/stats.md)** (with a value-over-time
-  chart), **[price history](features/prices.md)** (value over time, movers, and acquisition
-  profit/loss), **[decks](features/decks.md)** with ownership coverage and legality checks,
-  **[set completion](features/sets.md)** tracking, a **[wishlist](features/wishlist.md)**, and
+  **mana & set symbols**, **[tags](features/cards.md#tags)** you can search with `tag:`, and inline
+  **[add/edit](features/cards.md#editing-your-collection)** (plus bulk edit from results).
+- 🧰 **Collection tools** — a **[stats dashboard](features/stats.md)** (value + growth over time),
+  **[price history](features/prices.md)** (movers + acquisition profit/loss),
+  **[decks](features/decks.md)** with coverage, legality, stats, and export,
+  **[set completion](features/sets.md)**, a **[wishlist](features/wishlist.md)**, and
   **[binder](features/binders.md)** browsing.
-- 📥 **Collection import** from ManaBox, Dragon Shield, and Delver Lens, with a preview step and
-  **replace / increment / per-card** merge strategies.
+- 📥 **Collection import** from ManaBox, Dragon Shield, and Delver Lens (preview → **replace /
+  increment / per-card** merge), and **[backup & restore](features/backup.md)** of all your data.
 - 🗃️ **Local card database + image cache** built from Scryfall bulk data — works offline and stays
   within [Scryfall's API policy](https://scryfall.com/docs/api).
-- 🎨 **Themeable UI** (preset themes + custom accent) and 🐳 **self-hostable via Docker**, with an
-  optional read-only public demo.
+- 🎨 **Themeable UI** (preset themes + custom accent), **USD/EUR** currency, and 🐳 **self-hostable
+  via Docker**, with an optional read-only public demo.
 
 See the **[roadmap](roadmap.md)** for what's shipped and what's planned.
 

@@ -67,3 +67,26 @@ jobs:
           #   Windows/macOS: CSC_LINK, CSC_KEY_PASSWORD
           #   macOS notarize: APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
         run: npx --no-install electron-builder --publish always ${{ matrix.ebargs }}
+
+  # electron-builder also uploads .blockmap files (delta-update helpers). Auto-update works fine
+  # without them (it falls back to a full download), so drop them to keep the release tidy. The
+  # latest*.yml feeds are kept — the in-app updater reads those from the release.
+  tidy:
+    name: Tidy release assets
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove .blockmap files from the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="v$(jq -r .version desktop/package.json)"
+          for a in $(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+                       --json assets -q '.assets[].name' | grep -E '\.blockmap$' || true); do
+            echo "deleting $a"
+            gh release delete-asset "$tag" "$a" --repo "$GITHUB_REPOSITORY" --yes
+          done

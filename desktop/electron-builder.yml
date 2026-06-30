@@ -60,8 +60,15 @@ win:
 linux:
   category: Utility
   target:
-    - AppImage
-    - deb
+    # AppImage builds for both arches; .deb is x64-only because electron-builder's bundled fpm is
+    # x86-only and can't run on the arm64 runner (Exec format error). arm64 users get the AppImage.
+    - target: AppImage
+      arch:
+        - x64
+        - arm64
+    - target: deb
+      arch:
+        - x64
   icon: build/icon.png
 
 nsis:

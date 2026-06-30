@@ -114,6 +114,11 @@ async def confirm_upload(
     decisions: dict[int, str] | None = None,
 ) -> MergeSummary:
     staging, matched = await _load_staged(session, token)
+    # Snapshot the collection before the merge so a bad import can be undone (#59). Part of the same
+    # transaction, so the snapshot and the merge commit (or roll back) together.
+    from src.import_undo import snapshot_collection
+
+    await snapshot_collection(session, f"{staging.source_format} import")
     summary = await apply_merge(
         session, matched, strategy, decisions=decisions, source_format=staging.source_format
     )

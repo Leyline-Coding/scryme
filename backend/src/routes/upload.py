@@ -28,10 +28,24 @@ def _guard_writable() -> None:
 
 
 @router.get("/upload", response_class=HTMLResponse)
-async def upload_form(request: Request) -> HTMLResponse:
+async def upload_form(
+    request: Request, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    from src.import_undo import latest_snapshot
+
+    snap = None if get_settings().read_only else await latest_snapshot(session)
     return templates.TemplateResponse(
-        request, "upload.html", {"read_only": get_settings().read_only}
+        request, "upload.html", {"read_only": get_settings().read_only, "undo": snap}
     )
+
+
+@router.post("/upload/undo")
+async def upload_undo(session: AsyncSession = Depends(get_session)):
+    _guard_writable()
+    from src.import_undo import undo_last
+
+    await undo_last(session)
+    return RedirectResponse(url="/collection?tab=stats", status_code=303)
 
 
 @router.post("/upload", response_class=HTMLResponse)

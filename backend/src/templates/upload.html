@@ -16,6 +16,21 @@
   </div>
   {% endif %}
 
+  {% if undo %}
+  <div class="mt-6 flex items-center justify-between gap-3 rounded-lg border border-edge bg-surface px-4 py-3">
+    <p class="text-sm text-muted">
+      Last import ({{ undo.label }}) can be undone — restores the
+      {{ undo.card_count }}-stack collection from just before it.
+    </p>
+    <form action="/upload/undo" method="post"
+          onsubmit="return confirm('Undo the last import? This restores the collection to its prior state.');">
+      <button class="rounded-lg border border-edge hover:border-accent px-4 py-2 text-sm font-medium">
+        Undo last import
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
   <form action="/upload" method="post" enctype="multipart/form-data" class="mt-6 space-y-4"
         x-data="{ busy: false }" @submit="busy = true">
     <input

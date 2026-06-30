@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import get_settings
 from src.currency import get_currency, info
 from src.db import get_session
+from src.deck_builder import BuildError, build_commander_deck, owned_commanders
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
 from src.decks import LEGALITY_FORMATS, create_deck, deck_coverage, deck_stats
 from src.models import Deck
@@ -47,6 +48,34 @@ async def create(
     _guard_writable()
     deck = await create_deck(session, name, decklist)
     return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
+
+
+@router.get("/decks/build", response_class=HTMLResponse)
+async def build_form(
+    request: Request, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    _guard_writable()
+    return templates.TemplateResponse(
+        request, "deck_build.html", {"commanders": await owned_commanders(session)}
+    )
+
+
+@router.post("/decks/build", response_class=HTMLResponse)
+async def build_preview(
+    request: Request,
+    commander: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    _guard_writable()
+    try:
+        built = await build_commander_deck(session, commander)
+    except BuildError as exc:
+        return templates.TemplateResponse(
+            request, "deck_build.html",
+            {"commanders": await owned_commanders(session), "error": exc.message,
+             "commander": commander},
+        )
+    return templates.TemplateResponse(request, "deck_build_result.html", {"built": built})
 
 
 @router.get("/decks/{deck_id}", response_class=HTMLResponse)

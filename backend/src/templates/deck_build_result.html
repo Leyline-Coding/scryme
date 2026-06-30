@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ built.commander }} — suggested deck · scryme{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-2">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold">Suggested deck</h1>
+    <a href="/decks/build" class="ml-auto text-sm text-muted hover:text-fg">← Build another</a>
+  </header>
+
+  <div class="mb-4">
+    <p class="text-xl font-semibold">{{ built.commander }}
+      <span class="ml-1 align-middle">
+        {%- for c in built.identity %}{{ ("{" ~ c ~ "}") | mana }}{% endfor -%}
+        {% if not built.identity %}<span class="text-muted text-sm">colorless</span>{% endif %}
+      </span>
+    </p>
+    <p class="text-sm text-muted">
+      {{ built.total }} cards · {{ built.owned_used }} from your collection
+      {% if built.basics_added %}· {{ built.basics_added }} basic lands added{% endif %}
+    </p>
+  </div>
+
+  {% if built.shortfalls %}
+  <div class="mb-4 rounded-lg border border-amber-800/50 bg-amber-950/30 px-4 py-3 text-amber-200 text-sm">
+    A few roles came up short from your collection — fill the gaps before playing:
+    {{ built.shortfalls | join(", ") }}.
+  </div>
+  {% endif %}
+
+  <p class="text-xs text-muted mb-4">
+    A heuristic starting point, not an optimised list — review the roles, then save and tune.
+  </p>
+
+  <div class="grid sm:grid-cols-2 gap-4 mb-6">
+    {% for g in built.groups %}
+    <div class="rounded-lg border border-edge bg-surface p-3">
+      <p class="text-sm font-semibold mb-2">
+        {{ g.name }}
+        <span class="text-muted font-normal">{{ g.cards | length }}{% if g.target %} / {{ g.target }}{% endif %}</span>
+      </p>
+      <ul class="text-sm space-y-0.5">
+        {% for name in g.cards %}<li class="truncate">{{ name }}</li>{% endfor %}
+        {% if not g.cards %}<li class="text-muted">— none owned —</li>{% endif %}
+      </ul>
+    </div>
+    {% endfor %}
+  </div>
+
+  <form action="/decks" method="post" class="space-y-3">
+    <label class="block">
+      <span class="text-sm">Deck name</span>
+      <input type="text" name="name" value="{{ built.commander }}"
+        class="mt-1 w-full rounded-lg bg-surface border border-edge px-3 py-2
+               focus:outline-none focus:ring-2 focus:ring-accent" />
+    </label>
+    <label class="block">
+      <span class="text-sm">Decklist <span class="text-muted">(edit before saving)</span></span>
+      <textarea name="decklist" rows="14"
+        class="mt-1 w-full rounded-lg bg-surface border border-edge px-3 py-2 font-mono text-xs
+               focus:outline-none focus:ring-2 focus:ring-accent">{{ built.decklist_text }}</textarea>
+    </label>
+    <div class="flex gap-3">
+      <button type="submit"
+        class="rounded-lg bg-accent text-accent-fg px-5 py-2.5 font-medium hover:opacity-90">
+        Save as deck
+      </button>
+      <a href="/decks/build" class="rounded-lg px-5 py-2.5 text-muted hover:text-fg">Start over</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

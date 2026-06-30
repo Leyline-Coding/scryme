@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Build a deck · scryme{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-4">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold">Build a deck from your collection</h1>
+    <a href="/collection?tab=decks" class="ml-auto text-sm text-muted hover:text-fg">Decks →</a>
+  </header>
+
+  <p class="text-sm text-muted mb-5">
+    Pick a <strong>commander</strong> you own. scryme suggests a 99-card singleton deck from cards in
+    your collection that fit its colour identity and are Commander-legal, balanced across roles and
+    topped up with basic lands. It's a <em>starting point</em> — you can edit it before saving.
+  </p>
+
+  {% if error %}
+  <div class="mb-4 rounded-lg border border-rose-700 bg-rose-950/50 px-4 py-3 text-rose-200">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <form action="/decks/build" method="post" class="space-y-4" x-data="{ busy: false }"
+        @submit="busy = true">
+    <label class="block">
+      <span class="text-sm">Commander</span>
+      <input type="text" name="commander" list="commander-list" required autofocus
+        value="{{ commander or '' }}" placeholder="e.g. Atraxa, Praetors' Voice"
+        class="mt-1 w-full rounded-lg bg-surface border border-edge px-3 py-2
+               focus:outline-none focus:ring-2 focus:ring-accent" />
+      <datalist id="commander-list">
+        {% for c in commanders %}<option value="{{ c }}"></option>{% endfor %}
+      </datalist>
+      <span class="mt-1 block text-xs text-muted">
+        {% if commanders %}Legendary creatures in your collection are suggested as you type.
+        {% else %}No legendary creatures in your collection yet — you can still type any commander's name.
+        {% endif %}
+      </span>
+    </label>
+    <button type="submit" :disabled="busy"
+      class="rounded-lg bg-accent text-accent-fg px-5 py-2.5 font-medium hover:opacity-90
+             disabled:opacity-60 disabled:cursor-wait">
+      <span x-show="!busy">Build deck</span>
+      <span x-show="busy" x-cloak>Building…</span>
+    </button>
+  </form>
+</div>
+{% endblock %}

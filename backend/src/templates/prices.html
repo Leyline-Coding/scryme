@@ -141,5 +141,39 @@
   <p class="text-sm text-muted">Two snapshots are needed to show movers — check back after the next price refresh.</p>
   {% endif %}
   {% endif %}
+
+  {# Price watchlist (#88) #}
+  <section class="mt-10">
+    <h2 class="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Price watchlist</h2>
+    {% if targets %}
+    <ul class="divide-y divide-edge rounded-lg border border-edge">
+      {% for t in targets %}
+      <li class="flex items-center justify-between gap-3 px-4 py-2 text-sm
+                 {% if t.triggered %}bg-accent/10{% endif %}">
+        <a href="/card/{{ t.scryfall_id }}" class="truncate hover:text-accent">{{ t.name }}</a>
+        <div class="flex items-center gap-3 shrink-0">
+          <span class="text-muted">
+            {{ "≤" if t.direction == "below" else "≥" }} ${{ "%.2f"|format(t.threshold) }}
+            · now ${{ "%.2f"|format(t.price) }}
+          </span>
+          {% if t.triggered %}
+          <span class="rounded-full bg-accent text-accent-fg text-xs px-2 py-0.5">target hit</span>
+          {% endif %}
+          {% if not read_only %}
+          <form action="/watch/{{ t.id }}/delete" method="post">
+            <button class="text-muted hover:text-rose-400">✕</button>
+          </form>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-muted">
+      No price targets yet. Open a card and set one under <em>Price watch</em> to get alerted when it
+      crosses your price.
+    </p>
+    {% endif %}
+  </section>
 </div>
 {% endblock %}

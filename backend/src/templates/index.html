@@ -122,6 +122,26 @@
     </ul>
   </div>
   {% endif %}
+
+  {% if price_alerts %}
+  <div class="mt-4 w-full max-w-2xl rounded-xl border border-edge bg-surface p-4">
+    <p class="text-sm font-semibold text-accent mb-2">💰 Price targets hit</p>
+    <ul class="divide-y divide-edge">
+      {% for t in price_alerts %}
+      <li>
+        <a href="/card/{{ t.scryfall_id }}"
+           class="flex items-center justify-between gap-3 py-2 px-1 hover:text-accent">
+          <span class="truncate">{{ t.name }}</span>
+          <span class="text-sm text-muted shrink-0">
+            {{ "≤" if t.direction == "below" else "≥" }} ${{ "%.2f"|format(t.threshold) }}
+            · now <b class="text-fg">${{ "%.2f"|format(t.price) }}</b></span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="mt-2 text-xs text-muted"><a href="/prices" class="underline">Manage watchlist</a></p>
+  </div>
+  {% endif %}
   {% else %}
   {# Empty collection: prompt the first upload (wired up in Phase 3). #}
   <div class="w-full max-w-lg text-center">

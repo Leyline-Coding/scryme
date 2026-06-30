@@ -18,6 +18,7 @@ from src.config import get_settings
 from src.currency import get_currency
 from src.db import get_session
 from src.models import Card, CollectionCard
+from src.price_watch import target_for
 from src.scryfall.client import ScryfallClient, ScryfallError
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
@@ -119,6 +120,8 @@ async def card_detail(
             "legality_rows": legality_rows,
             "tags": await card_tags(session, card.scryfall_id),
             "wishlisted": await is_wishlisted(session, card.scryfall_id),
+            "price_target": await target_for(session, str(card.scryfall_id)),
+            "card_usd": float((card.prices or {}).get("usd") or 0.0),
             "read_only": get_settings().read_only,
         },
     )

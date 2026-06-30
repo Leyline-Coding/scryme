@@ -29,6 +29,10 @@ async def _refresh_job() -> None:
         from src.saved_alerts import evaluate_alerts
 
         await evaluate_alerts()
+        # Re-evaluate price-watchlist targets against the refreshed prices (#88).
+        from src.price_watch import evaluate_targets
+
+        await evaluate_targets()
     except Exception as exc:  # noqa: BLE001 - never let a scheduled job crash the loop
         log.error("scryfall.refresh.failed", error=str(exc))
 

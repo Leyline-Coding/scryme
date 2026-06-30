@@ -28,10 +28,12 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)) 
     card_count = await session.scalar(select(func.count()).select_from(Card))
     needs_cards = not card_count and not settings.read_only
 
-    # Saved-search alerts: cards that newly match after a recent ingest (#58).
+    # Saved-search alerts (#58) + price-watch alerts (#88), surfaced on the home page.
+    from src.price_watch import triggered_targets
     from src.saved_alerts import searches_with_new
 
     alerts = [] if settings.read_only else await searches_with_new(session)
+    price_alerts = [] if settings.read_only else await triggered_targets(session)
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -40,5 +42,6 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)) 
             "read_only": settings.read_only,
             "needs_cards": needs_cards,
             "alerts": alerts,
+            "price_alerts": price_alerts,
         },
     )

@@ -79,6 +79,44 @@
       </div>
       {% endif %}
 
+      {# Price watch (#88) #}
+      {% if not read_only %}
+      <div class="rounded-lg border border-edge bg-surface p-3">
+        {% if price_target %}
+        <div class="flex items-center justify-between gap-3 text-sm">
+          <span>
+            Watching: alert when <b>{{ price_target.direction }}</b>
+            <b>${{ "%.2f"|format(price_target.threshold) }}</b>
+            {% if price_target.triggered_at %}
+            <span class="ml-1 rounded-full bg-accent text-accent-fg text-xs px-2 py-0.5">hitting target</span>
+            {% endif %}
+          </span>
+          <form action="/watch/{{ price_target.id }}/delete" method="post">
+            <button class="text-muted hover:text-rose-400 underline">Remove</button>
+          </form>
+        </div>
+        {% else %}
+        <form action="/watch/add" method="post" class="flex flex-wrap items-end gap-2 text-sm">
+          <input type="hidden" name="scryfall_id" value="{{ card.scryfall_id }}" />
+          <label class="flex flex-col">
+            <span class="text-xs text-muted">Alert me when price is</span>
+            <select name="direction" class="rounded-lg bg-surface-2 border border-edge px-2 py-1.5">
+              <option value="below">at or below</option>
+              <option value="above">at or above</option>
+            </select>
+          </label>
+          <label class="flex flex-col">
+            <span class="text-xs text-muted">USD</span>
+            <input type="number" name="threshold" step="0.01" min="0.01" required
+              value="{{ '%.2f'|format(card_usd) if card_usd else '' }}" placeholder="5.00"
+              class="w-24 rounded-lg bg-surface-2 border border-edge px-2 py-1.5" />
+          </label>
+          <button class="rounded-lg border border-edge hover:border-accent px-3 py-1.5">Watch price</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+
       {# Wishlist #}
       {% if not read_only or wishlisted %}
       {% set card_id = card.scryfall_id %}

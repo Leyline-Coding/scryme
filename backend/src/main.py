@@ -35,6 +35,7 @@ from src.routes import (
     stats,
     trade,
     upload,
+    watch,
     wishlist,
 )
 from src.scheduler import shutdown_scheduler, start_scheduler
@@ -110,6 +111,7 @@ def create_app() -> FastAPI:
     app.include_router(mycollection.router)
     app.include_router(api.router)
     app.include_router(lan.router)
+    app.include_router(watch.router)
 
     # Cached card images are served from the data volume.
     settings.image_cache_dir.mkdir(parents=True, exist_ok=True)

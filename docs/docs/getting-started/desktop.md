@@ -11,9 +11,15 @@ Grab the installer for your OS from the
 
 | OS | File |
 | --- | --- |
-| **Linux** | `scryme-<version>.AppImage` (portable) or `scryme-desktop_<version>_amd64.deb` |
-| **Windows** | `scryme-Setup-<version>.exe` |
-| **macOS** | `scryme-<version>-arm64-mac.zip` or `scryme-<version>-arm64.dmg` (Apple Silicon) |
+| **Linux x64** | `scryme-<version>.AppImage` or `scryme-desktop_<version>_amd64.deb` |
+| **Linux arm64** | `scryme-<version>-arm64.AppImage` (no `.deb` — see below) |
+| **Windows** | `scryme-Setup-<version>.exe` (x64; runs on Windows-on-ARM via emulation) |
+| **macOS (Apple Silicon)** | `scryme-<version>-arm64-mac.zip` or `scryme-<version>-arm64.dmg` |
+| **macOS (Intel)** | `scryme-<version>-mac.zip` or `scryme-<version>.dmg` |
+
+!!! note "arm64 Linux"
+    arm64 Linux ships as an **AppImage only** — electron-builder's bundled `.deb` tooling is
+    x86-only. The AppImage is portable and needs no install.
 
 !!! note "Unsigned installers"
     Builds are currently **unsigned**, so Windows SmartScreen and macOS Gatekeeper warn on first

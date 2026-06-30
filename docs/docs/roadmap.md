@@ -47,7 +47,9 @@ sharing, system notifications, and auto-update. Still on its roadmap:
   first open). The signing config is in place; it needs Windows/Apple certificates.
 - **Store distribution** — Homebrew cask, winget, Flatpak, and AUR (starter manifests exist under
   `desktop/packaging/`).
-- **Multi-arch builds** — currently x64 on Windows/Linux and arm64 on macOS.
+
+Builds are **multi-arch**: macOS (Apple Silicon + Intel), Windows x64, and Linux x64 + arm64
+(arm64 ships as an AppImage; the `.deb` is x64-only).
 
 ## Planned
 

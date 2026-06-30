@@ -15,7 +15,6 @@ Grab the installer for your OS from the
 | **Linux arm64** | `scryme-<version>-arm64.AppImage` (no `.deb` — see below) |
 | **Windows** | `scryme-Setup-<version>.exe` (x64; runs on Windows-on-ARM via emulation) |
 | **macOS (Apple Silicon)** | `scryme-<version>-arm64-mac.zip` or `scryme-<version>-arm64.dmg` |
-| **macOS (Intel)** | `scryme-<version>-mac.zip` or `scryme-<version>.dmg` |
 
 !!! note "arm64 Linux"
     arm64 Linux ships as an **AppImage only** — electron-builder's bundled `.deb` tooling is

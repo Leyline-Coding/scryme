@@ -48,8 +48,8 @@ sharing, system notifications, and auto-update. Still on its roadmap:
 - **Store distribution** — Homebrew cask, winget, Flatpak, and AUR (starter manifests exist under
   `desktop/packaging/`).
 
-Builds are **multi-arch**: macOS (Apple Silicon + Intel), Windows x64, and Linux x64 + arm64
-(arm64 ships as an AppImage; the `.deb` is x64-only).
+Builds are **multi-arch**: macOS (Apple Silicon), Windows x64, and Linux x64 + arm64 (arm64 ships as
+an AppImage; the `.deb` is x64-only).
 
 ## Planned
 

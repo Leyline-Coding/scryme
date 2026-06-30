@@ -87,11 +87,11 @@ Prefer a native app to Docker? The **scryme desktop app** bundles its own Postgr
 backend — no Docker, no setup. Download the installer for your OS from the
 [latest release](https://github.com/Leyline-Coding/scryme/releases/latest):
 
-| OS | File |
-| --- | --- |
-| **Linux** | `.AppImage` (portable) or `.deb` |
-| **Windows** | `.exe` installer |
-| **macOS** | `.zip` or `.dmg` (Apple Silicon) |
+| OS | File | Arch |
+| --- | --- | --- |
+| **Linux** | `.AppImage` (portable), or `.deb` (x64) | x64 + arm64 |
+| **Windows** | `.exe` installer | x64 (runs on ARM via emulation) |
+| **macOS** | `.zip` or `.dmg` | Apple Silicon + Intel |
 
 On first launch it downloads the card database (once), then it's the same app as the web version.
 All data lives in one folder you can back up or point at a synced drive. Highlights:

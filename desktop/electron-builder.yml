@@ -59,16 +59,11 @@ win:
 
 linux:
   category: Utility
+  # Default targets (x64 runner builds both). The arm64 runner overrides this with `--linux AppImage`
+  # in CI, because electron-builder's bundled fpm (for .deb) is x86-only and can't run on arm64.
   target:
-    # AppImage builds for both arches; .deb is x64-only because electron-builder's bundled fpm is
-    # x86-only and can't run on the arm64 runner (Exec format error). arm64 users get the AppImage.
-    - target: AppImage
-      arch:
-        - x64
-        - arm64
-    - target: deb
-      arch:
-        - x64
+    - AppImage
+    - deb
   icon: build/icon.png
 
 nsis:

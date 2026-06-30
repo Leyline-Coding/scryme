@@ -32,7 +32,8 @@ jobs:
           - { os: macos-14, label: macOS arm64 }
           - { os: windows-latest, label: Windows x64 }
           - { os: ubuntu-latest, label: Linux x64 }
-          - { os: ubuntu-24.04-arm, label: Linux arm64 }
+          # arm64 Linux: AppImage only — the bundled fpm (for .deb) is x86-only.
+          - { os: ubuntu-24.04-arm, label: Linux arm64, ebargs: "--linux AppImage" }
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -64,4 +65,4 @@ jobs:
           # Optional signing/notarization — set these as repo secrets to enable:
           #   Windows/macOS: CSC_LINK, CSC_KEY_PASSWORD
           #   macOS notarize: APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
-        run: npx --no-install electron-builder --publish always
+        run: npx --no-install electron-builder --publish always ${{ matrix.ebargs }}

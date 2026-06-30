@@ -28,7 +28,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-13, label: macOS x64 }
+          # macOS is Apple Silicon only — every Mac since 2023 is arm64, and the Intel (macos-13)
+          # runner is chronically slow to schedule on the free tier.
           - { os: macos-14, label: macOS arm64 }
           - { os: windows-latest, label: Windows x64 }
           - { os: ubuntu-latest, label: Linux x64 }

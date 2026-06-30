@@ -91,7 +91,7 @@ backend — no Docker, no setup. Download the installer for your OS from the
 | --- | --- | --- |
 | **Linux** | `.AppImage` (portable), or `.deb` (x64) | x64 + arm64 |
 | **Windows** | `.exe` installer | x64 (runs on ARM via emulation) |
-| **macOS** | `.zip` or `.dmg` | Apple Silicon + Intel |
+| **macOS** | `.zip` or `.dmg` | Apple Silicon |
 
 On first launch it downloads the card database (once), then it's the same app as the web version.
 All data lives in one folder you can back up or point at a synced drive. Highlights:

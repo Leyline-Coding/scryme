@@ -18,10 +18,21 @@ permissions:
 
 jobs:
   build:
+    # One runner per OS+arch — PyInstaller can't cross-compile the backend, and electron-builder
+    # builds for the host arch, so each arch is built natively. Windows stays x64 (embedded-postgres
+    # has no windows-arm64 binary; x64 runs on Windows-on-ARM via emulation). Each job produces
+    # arch-suffixed installers; the electron-updater latest*.yml is merged per platform as jobs
+    # publish.
+    name: ${{ matrix.label }}
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        include:
+          - { os: macos-13, label: macOS x64 }
+          - { os: macos-14, label: macOS arm64 }
+          - { os: windows-latest, label: Windows x64 }
+          - { os: ubuntu-latest, label: Linux x64 }
+          - { os: ubuntu-24.04-arm, label: Linux arm64 }
     runs-on: ${{ matrix.os }}
     defaults:
       run:

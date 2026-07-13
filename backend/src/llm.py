@@ -610,3 +610,50 @@ async def plan_upgrades(
         total += price
         items.append(UpgradeItem(card.name, str(card.scryfall_id), round(price, 2), reason))
     return UpgradePlan(items=items, total=round(total, 2), budget=budget, empty=not text.strip())
+
+
+# --- deck coaching chat (#172) ------------------------------------------------------------------
+
+async def deck_chat(
+    session: AsyncSession, deck, history: list[dict], user_message: str, client: ChatClient,
+) -> str:
+    """One turn of a coaching conversation, grounded in the deck's list + stats."""
+    cov = await deck_coverage(session, deck)
+    stats = await deck_stats(session, deck)
+    curve = ", ".join(f"{b.label}:{b.count}" for b in stats.mana_curve)
+    colors = ", ".join(f"{b.label}:{b.count}" for b in stats.by_color)
+    system = (
+        "You are a friendly, concise Magic: The Gathering deckbuilding coach for THIS deck. "
+        "Give specific, actionable advice; only reference real Magic cards. Keep replies short.\n"
+        f"Deck '{deck.name}':\n{_decklist_text(cov)}\n"
+        f"Mana curve (nonland): {curve or 'n/a'}\nColors: {colors or 'n/a'}"
+    )
+    messages = [{"role": "system", "content": system}]
+    messages += [{"role": m["role"], "content": m["content"]} for m in history]
+    messages.append({"role": "user", "content": user_message})
+    return await _chat_nonempty(client, messages, retries=2, temperature=0.5, max_tokens=2000)
+
+
+# --- rules Q&A (#175) ---------------------------------------------------------------------------
+
+async def answer_card_question(
+    card, rulings: list[str], question: str, client: ChatClient,
+) -> str:
+    """Answer a rules question using only the card's oracle text + official rulings (grounded)."""
+    ruling_text = "\n".join(f"- {r}" for r in rulings) if rulings else "(no official rulings found)"
+    context = (
+        f"Card: {card.name}\n"
+        f"Type: {card.type_line or ''}\n"
+        f"Oracle text:\n{card.oracle_text or '(none)'}\n\n"
+        f"Official rulings:\n{ruling_text}"
+    )
+    messages = [
+        {"role": "system", "content":
+            "You answer Magic: The Gathering rules questions about this card. Use its oracle "
+            "text, the official rulings provided, and well-established core Magic rules (e.g. "
+            "summoning sickness, the stack, targeting). Be concise and cite the relevant text or "
+            "ruling. Do NOT invent card-specific rulings; if it's a genuine corner case not "
+            "covered by the text, rulings, or basic rules, say so and suggest checking a judge."},
+        {"role": "user", "content": f"{context}\n\nQuestion: {question}"},
+    ]
+    return await _chat_nonempty(client, messages, retries=2, temperature=0.3, max_tokens=1500)

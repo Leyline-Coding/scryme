@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Coach · {{ deck.name }} · scryme{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-4">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold truncate">Coach: {{ deck.name }}</h1>
+    <a href="/decks/{{ deck.id }}" class="ml-auto text-sm text-muted hover:text-fg shrink-0">← Deck</a>
+  </header>
+
+  {% if not ai_ready %}
+  <div class="rounded-lg bg-surface-2 text-muted text-sm px-4 py-3">
+    AI isn't configured — set it up in <a href="/ai" class="text-accent hover:underline">Settings → AI</a>.
+  </div>
+  {% else %}
+  <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
+    <div id="chat-log" class="min-h-[8rem] mb-3">{% include "_deck_chat_log.html" %}</div>
+
+    <form hx-post="/decks/{{ deck.id }}/chat" hx-target="#chat-log" hx-swap="innerHTML"
+          hx-indicator="#chat-spin" hx-on::after-request="this.reset()" class="flex gap-2">
+      <input type="text" name="message" autofocus autocomplete="off"
+             placeholder="Ask the coach…"
+             class="flex-1 min-w-0 rounded-full bg-surface-2 border border-edge px-4 py-2 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-accent" />
+      <button type="submit"
+              class="shrink-0 rounded-full bg-accent text-white px-4 py-2 text-sm font-medium">Send</button>
+    </form>
+    <div class="mt-2 flex items-center gap-3 text-xs">
+      <span id="chat-spin" class="htmx-indicator text-muted">thinking…</span>
+      <form hx-post="/decks/{{ deck.id }}/chat/clear" hx-target="#chat-log" hx-swap="innerHTML"
+            class="ml-auto">
+        <button type="submit" class="text-muted hover:text-fg">Clear chat</button>
+      </form>
+    </div>
+    <p class="mt-2 text-[11px] text-muted">Sends this deck to your configured AI endpoint.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -18,6 +18,7 @@ from src.config import get_settings
 from src.currency import get_currency
 from src.db import get_session
 from src.embeddings import similar_to_oracle
+from src.llm import get_config
 from src.models import Card, CardEmbedding, CollectionCard
 from src.price_watch import target_for
 from src.scryfall.client import ScryfallClient, ScryfallError
@@ -132,6 +133,7 @@ async def card_detail(
             "card_usd": float((card.prices or {}).get("usd") or 0.0),
             "read_only": get_settings().read_only,
             "show_similar": show_similar,
+            "ai_ready": (await get_config(session)).ready,
         },
     )
 
@@ -197,13 +199,8 @@ async def delete_tag(
     return _tags_response(request, card.scryfall_id, tags)
 
 
-@router.get("/card/{scryfall_id}/rulings", response_class=HTMLResponse)
-async def card_rulings(
-    request: Request,
-    scryfall_id: str,
-    session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
-    card = await _load_card(session, scryfall_id)
+async def fetch_rulings(scryfall_id: str, card: Card) -> list[dict] | None:
+    """Rulings for a card from Scryfall, cached per printing (None if unavailable/offline)."""
     rulings: list[dict] | None = _rulings_cache.get(scryfall_id)
     if rulings is None:
         uri = card.raw.get("rulings_uri")
@@ -216,7 +213,17 @@ async def card_rulings(
             _rulings_cache[scryfall_id] = rulings
         except ScryfallError:
             rulings = None  # leave uncached so a later view can retry
+    return rulings
 
+
+@router.get("/card/{scryfall_id}/rulings", response_class=HTMLResponse)
+async def card_rulings(
+    request: Request,
+    scryfall_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    card = await _load_card(session, scryfall_id)
+    rulings = await fetch_rulings(scryfall_id, card)
     return templates.TemplateResponse(
         request, "_card_rulings.html", {"rulings": rulings}
     )

@@ -273,3 +273,61 @@ def test_clean_query_balances_and_unwraps():
     assert _clean_query('"c:r t:instant"') == 'c:r t:instant'  # whole query wrapped in quotes
     assert _clean_query('o:"counter target"') == 'o:"counter target"'  # already valid
     assert _clean_query("```\nc:u o:counter\n```") == 'c:u o:counter'  # code fence
+
+
+@pytest.mark.asyncio
+async def test_deck_chat_and_card_question_units(session):
+    from src.llm import answer_card_question, deck_chat
+    await _own(session, "Lightning Bolt")
+    deck = await create_deck(session, "D", "1 Lightning Bolt")
+    reply = await deck_chat(
+        session, deck,
+        [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hello"}],
+        "make it more aggressive", FakeChat(reply="Add more one-drops."),
+    )
+    assert "one-drops" in reply
+
+    card = await _seed(session, "Rules Card")
+    ans = await answer_card_question(
+        card, ["It works with indestructible."], "does it work?",
+        FakeChat(reply="Yes, per the ruling."),
+    )
+    assert "Yes" in ans
+
+
+@pytest.mark.asyncio
+async def test_deck_chat_routes(client, session, monkeypatch):
+    from sqlalchemy import func, select
+    from src.models import DeckChatMessage
+    await save_config(session, base_url="http://x/v1", api_key="k", chat_model="m",
+                      embed_model="e", enabled=True)
+    await _own(session, "Lightning Bolt")
+    deck = await create_deck(session, "D", "1 Lightning Bolt")
+    monkeypatch.setattr("src.routes.ai.ChatClient",
+                        lambda cfg: FakeChat(reply="Cut the five-drops."))
+
+    resp = await client.post(f"/decks/{deck.id}/chat", data={"message": "help me"})
+    assert resp.status_code == 200 and "Cut the five-drops." in resp.text and "help me" in resp.text
+    assert await session.scalar(select(func.count()).select_from(DeckChatMessage)) == 2
+
+    page = await client.get(f"/decks/{deck.id}/chat")
+    assert page.status_code == 200 and "Cut the five-drops." in page.text
+
+    clr = await client.post(f"/decks/{deck.id}/chat/clear")
+    assert clr.status_code == 200
+    assert await session.scalar(select(func.count()).select_from(DeckChatMessage)) == 0
+
+
+@pytest.mark.asyncio
+async def test_card_ask_route(client, session, monkeypatch):
+    await save_config(session, base_url="http://x/v1", api_key="k", chat_model="m",
+                      embed_model="e", enabled=True)
+    card = await _seed(session, "Rules Card")
+
+    async def no_rulings(sid, c):
+        return []
+    monkeypatch.setattr("src.routes.ai.fetch_rulings", no_rulings)
+    monkeypatch.setattr("src.routes.ai.ChatClient", lambda cfg: FakeChat(reply="Yes, it works."))
+
+    resp = await client.post(f"/card/{card.scryfall_id}/ask", data={"question": "does it work?"})
+    assert resp.status_code == 200 and "Yes, it works." in resp.text

@@ -1,0 +1,14 @@
+{# Deck coaching chat transcript (#172). #}
+{% if messages %}
+<div class="space-y-2">
+  {% for m in messages %}
+  {% if m.role == 'user' %}
+  <div class="ml-auto max-w-[85%] rounded-lg bg-accent/15 px-3 py-2 text-sm whitespace-pre-line">{{ m.content }}</div>
+  {% else %}
+  <div class="mr-auto max-w-[90%] rounded-lg bg-surface-2 px-3 py-2 text-sm whitespace-pre-line leading-relaxed">{{ m.content }}</div>
+  {% endif %}
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-sm text-muted">Ask about this deck — e.g. “make it more aggressive”, “what should I cut?”, “how's my mana base?”</p>
+{% endif %}

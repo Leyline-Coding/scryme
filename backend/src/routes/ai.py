@@ -9,6 +9,7 @@ from __future__ import annotations
 import httpx
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
@@ -16,7 +17,9 @@ from src.db import get_session
 from src.llm import (
     ChatClient,
     analyze_deck,
+    answer_card_question,
     build_from_prompt,
+    deck_chat,
     find_commanders,
     get_config,
     plan_upgrades,
@@ -24,7 +27,8 @@ from src.llm import (
     suggest_from_collection,
     test_connection,
 )
-from src.models import Deck
+from src.models import Deck, DeckChatMessage
+from src.routes.card import _load_card, fetch_rulings
 from src.templating import templates
 
 router = APIRouter(tags=["ai"])
@@ -169,3 +173,84 @@ async def deck_upgrade(
     if plan.empty:
         return templates.TemplateResponse(request, "_deck_ai_error.html", {"message": _EMPTY})
     return templates.TemplateResponse(request, "_deck_upgrade.html", {"plan": plan})
+
+
+# --- deck coaching chat (#172) ------------------------------------------------------------------
+
+async def _chat_history(session: AsyncSession, deck_id: int) -> list[DeckChatMessage]:
+    return list((await session.execute(
+        select(DeckChatMessage).where(DeckChatMessage.deck_id == deck_id)
+        .order_by(DeckChatMessage.id)
+    )).scalars().all())
+
+
+@router.get("/decks/{deck_id}/chat", response_class=HTMLResponse)
+async def deck_chat_page(
+    request: Request, deck_id: int, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    deck = await _load_deck(session, deck_id)
+    cfg = await get_config(session)
+    return templates.TemplateResponse(
+        request, "deck_chat.html",
+        {"deck": deck, "messages": await _chat_history(session, deck_id), "ai_ready": cfg.ready},
+    )
+
+
+@router.post("/decks/{deck_id}/chat", response_class=HTMLResponse)
+async def deck_chat_send(
+    request: Request, deck_id: int, message: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    deck = await _load_deck(session, deck_id)
+    cfg = await get_config(session)
+    text = message.strip()
+    if not cfg.ready or not text:
+        return templates.TemplateResponse(
+            request, "_deck_chat_log.html", {"messages": await _chat_history(session, deck_id)})
+    prior = await _chat_history(session, deck_id)
+    history = [{"role": m.role, "content": m.content} for m in prior]
+    try:
+        reply = await deck_chat(session, deck, history, text, ChatClient(cfg))
+    except (httpx.HTTPError, KeyError, IndexError, ValueError):
+        reply = ""
+    session.add(DeckChatMessage(deck_id=deck_id, role="user", content=text))
+    session.add(DeckChatMessage(deck_id=deck_id, role="assistant",
+                                content=reply or "(the AI endpoint didn't respond — try again)"))
+    await session.commit()
+    return templates.TemplateResponse(
+        request, "_deck_chat_log.html", {"messages": await _chat_history(session, deck_id)})
+
+
+@router.post("/decks/{deck_id}/chat/clear", response_class=HTMLResponse)
+async def deck_chat_clear(
+    request: Request, deck_id: int, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    await _load_deck(session, deck_id)
+    await session.execute(delete(DeckChatMessage).where(DeckChatMessage.deck_id == deck_id))
+    await session.commit()
+    return templates.TemplateResponse(request, "_deck_chat_log.html", {"messages": []})
+
+
+# --- card rules Q&A (#175) ----------------------------------------------------------------------
+
+@router.post("/card/{scryfall_id}/ask", response_class=HTMLResponse)
+async def card_ask(
+    request: Request, scryfall_id: str, question: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    card = await _load_card(session, scryfall_id)
+    cfg = await get_config(session)
+    if not cfg.ready or not question.strip():
+        return templates.TemplateResponse(
+            request, "_card_answer.html", {"answer": "", "message": _NOT_CONFIGURED})
+    raw_rulings = await fetch_rulings(scryfall_id, card) or []
+    rulings = [r.get("comment", "") for r in raw_rulings if r.get("comment")]
+    try:
+        answer = await answer_card_question(card, rulings, question.strip(), ChatClient(cfg))
+    except (httpx.HTTPError, KeyError, IndexError, ValueError):
+        return templates.TemplateResponse(
+            request, "_card_answer.html", {"answer": "", "message": _UNREACHABLE})
+    if not answer.strip():
+        return templates.TemplateResponse(
+            request, "_card_answer.html", {"answer": "", "message": _EMPTY})
+    return templates.TemplateResponse(request, "_card_answer.html", {"answer": answer})

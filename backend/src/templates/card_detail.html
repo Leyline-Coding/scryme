@@ -175,6 +175,24 @@
   </section>
   {% endif %}
 
+  {# Rules Q&A (#175): ask about this card, grounded in oracle text + rulings #}
+  {% if ai_ready %}
+  <section class="mt-8">
+    <h2 class="text-lg font-semibold mb-2">Ask a rules question</h2>
+    <form hx-post="/card/{{ card.scryfall_id }}/ask" hx-target="#card-answer" hx-swap="innerHTML"
+          hx-indicator="#ask-spin" hx-on::after-request="this.reset()" class="flex gap-2">
+      <input type="text" name="question" autocomplete="off"
+             placeholder="e.g. Does this work with indestructible? How does it interact with…"
+             class="flex-1 min-w-0 rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-accent" />
+      <button type="submit"
+              class="shrink-0 rounded-lg bg-accent text-white px-4 py-2 text-sm font-medium">Ask</button>
+    </form>
+    <span id="ask-spin" class="htmx-indicator text-xs text-muted">thinking…</span>
+    <div id="card-answer" class="mt-2"></div>
+  </section>
+  {% endif %}
+
   {# Similar cards (semantic, owned) — loaded lazily; only shown when embeddings exist (#176) #}
   {% if show_similar %}
   <section class="mt-10">

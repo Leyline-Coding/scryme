@@ -1,0 +1,19 @@
+{# Similar-cards grid, loaded into the card page by HTMX (#176). #}
+{% if items %}
+<div class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-8 gap-2">
+  {% for c, img in items %}
+  <a href="/card/{{ c.scryfall_id }}" class="block rounded-lg overflow-hidden ring-1 ring-edge hover:ring-accent transition"
+     title="{{ c.name }} — {{ c.set_name }} #{{ c.collector_number }}">
+    {% if img %}
+    <img src="{{ img }}" alt="{{ c.name }} ({{ c.set_code }})" loading="lazy" class="w-full aspect-[5/7] object-cover" />
+    {% else %}
+    <div class="w-full aspect-[5/7] flex items-center justify-center text-[10px] text-muted p-1 text-center">
+      {{ c.name }}
+    </div>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-xs text-muted">No similar cards found in your collection.</div>
+{% endif %}

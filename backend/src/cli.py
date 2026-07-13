@@ -53,6 +53,17 @@ async def _prune_digital() -> None:
     print(f"Removed {removed} digital-only (Arena/MTGO) card(s).")
 
 
+async def _backfill_embeddings(scope: str) -> None:
+    from src.embeddings import run_backfill
+
+    try:
+        count = await run_backfill(scope)
+    except RuntimeError as exc:
+        print(f"Error: {exc}")
+        return
+    print(f"Embedded {count} card(s) ({scope}).")
+
+
 async def _backup(directory: str | None, passphrase: str | None) -> None:
     from pathlib import Path
 
@@ -106,6 +117,11 @@ def main() -> None:
 
     sub.add_parser("prune-digital", help="Remove digital-only (Arena/MTGO) cards from the DB")
 
+    p_embed = sub.add_parser("backfill-embeddings",
+                             help="Compute card-text embeddings for semantic similarity")
+    p_embed.add_argument("--all", action="store_true",
+                         help="Embed every card (default: only owned cards)")
+
     p_backup = sub.add_parser("backup", help="Write a backup of your data to disk")
     p_backup.add_argument("--dir", help="Target directory (default: SCRYME_BACKUP_DIR)")
     p_backup.add_argument("--passphrase", help="Encrypt the backup with this passphrase")
@@ -127,6 +143,8 @@ def main() -> None:
         asyncio.run(_snapshot_prices())
     elif args.command == "prune-digital":
         asyncio.run(_prune_digital())
+    elif args.command == "backfill-embeddings":
+        asyncio.run(_backfill_embeddings("all" if args.all else "owned"))
     elif args.command == "backup":
         asyncio.run(_backup(args.dir, args.passphrase))
     elif args.command == "restore":

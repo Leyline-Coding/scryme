@@ -1,0 +1,7 @@
+{# Rules Q&A answer (#175). #}
+{% if answer %}
+<div class="rounded-lg bg-surface-2 p-3 text-sm whitespace-pre-line leading-relaxed">{{ answer }}</div>
+<p class="mt-1 text-[11px] text-muted">AI answer grounded in this card's oracle text + official rulings — verify for competitive play.</p>
+{% elif message %}
+<div class="rounded-lg bg-surface-2 text-muted text-sm px-3 py-2">{{ message }}</div>
+{% endif %}

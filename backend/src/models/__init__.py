@@ -4,6 +4,7 @@ from src.models.card import Card
 from src.models.checklist import Checklist, ChecklistItem
 from src.models.collection import CollectionCard
 from src.models.deck import Deck, DeckCard
+from src.models.deck_chat import DeckChatMessage
 from src.models.embedding import CardEmbedding
 from src.models.import_snapshot import ImportSnapshot
 from src.models.ingest import IngestState
@@ -16,6 +17,7 @@ from src.models.wishlist import WishlistItem
 
 __all__ = [
     "Card", "CardEmbedding", "CardPricePoint", "Checklist", "ChecklistItem", "CollectionCard",
-    "Deck", "DeckCard", "ImportSnapshot", "IngestState", "ImportStaging", "LLMSettings",
+    "Deck", "DeckCard", "DeckChatMessage", "ImportSnapshot", "IngestState", "ImportStaging",
+    "LLMSettings",
     "PriceSnapshot", "PriceTarget", "SavedSearch", "WishlistItem",
 ]

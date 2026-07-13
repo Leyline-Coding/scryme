@@ -984,6 +984,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#printings-language-proxies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Printings, language &amp; proxies
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#deck-stats" class="md-nav__link">
     <span class="md-ellipsis">
       Deck stats
@@ -1398,6 +1407,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#printings-language-proxies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Printings, language &amp; proxies
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#deck-stats" class="md-nav__link">
     <span class="md-ellipsis">
       Deck stats
@@ -1453,8 +1471,10 @@ missing?"</strong> — and to check <strong>format legality</strong>.</p>
 <li><code>#</code> / <code>//</code> lines are treated as comments.</li>
 </ul>
 <p>Each line is resolved to a card — preferring a printing you <strong>own</strong> (so the image and price match
-your copy), otherwise the most recent printing. Lines that don't match a known card are kept and
-flagged as <strong>unrecognized</strong>.</p>
+your copy), then a <strong>tournament-legal</strong> printing, then the most recent. That ordering keeps a line
+from silently landing on an art-series or oversized variant. Lines that don't match a known card
+are kept and flagged as <strong>unrecognized</strong>. You can change the printing per card afterward — see
+<a href="#printings-language-proxies">Printings, language &amp; proxies</a>.</p>
 <h2 id="ownership-coverage">Ownership coverage</h2>
 <p>The deck page shows how complete the deck is against your collection:</p>
 <ul>
@@ -1466,7 +1486,7 @@ flagged as <strong>unrecognized</strong>.</p>
 </ul>
 <h2 id="legality">Legality</h2>
 <p>Pick a format from the <strong>Legality</strong> dropdown (Standard, Pioneer, Modern, Legacy, Vintage,
-Commander, Pauper, Brawl, Historic, Oathbreaker). scryme reads each card's legalities and reports:</p>
+Commander, Pauper, Brawl, Historic, Oathbreaker). scryme reports:</p>
 <ul>
 <li><strong>✓ Legal</strong> in the chosen format, or</li>
 <li>the number of cards that are <strong>not legal</strong> (banned or not in the format), with each offending
@@ -1474,6 +1494,26 @@ Commander, Pauper, Brawl, Historic, Oathbreaker). scryme reads each card's legal
 <li><strong>can't confirm</strong> when the deck still has unrecognized lines.</li>
 </ul>
 <p><code>restricted</code> cards (e.g. in Vintage) count as legal.</p>
+<p>Legality is judged by the <strong>card</strong>, not the specific printing shown. Some printings — art-series
+cards, tokens, gold-bordered World Championship / Collector's Edition cards, oversized and acorn
+cards — are marked <em>not legal in every format</em> by Scryfall. scryme looks past those to a real
+printing of the same card, so a legal staple is never flagged just because of the printing (or a
+proxy) you're running.</p>
+<h2 id="printings-language-proxies">Printings, language &amp; proxies</h2>
+<p>Each card line shows the printing it represents as <strong><code>SET·NUMBER·LANG</code></strong> (e.g. <code>CMM·942·EN</code>) —
+the set code, collector number, and language. The printing follows what's in your collection when
+you own the card, otherwise a tournament-legal one.</p>
+<p>Click the <strong>✎</strong> on a line to change it (hidden on the read-only demo):</p>
+<ul>
+<li><strong>Printing</strong> — pick any printing of that card. Non-standard variants are tagged <em>non-standard</em> in
+  the list, but they're always available if that's what you run.</li>
+<li><strong>Language</strong> — the language you play the card in, defaulting to <strong>English</strong>. Because scryme's card
+  database is English-only per printing, the language is recorded on the deck line for reference
+  (prices stay the English printing's).</li>
+<li><strong>Proxy</strong> and <strong>Special</strong> — two independent markers. <strong>Proxy</strong> flags a printed proxy; <strong>Special</strong>
+  flags a genuine but non-standard copy (art card, alter, misprint). Each shows its own badge on the
+  card line and doesn't affect legality.</li>
+</ul>
 <h2 id="deck-stats">Deck stats</h2>
 <p>Each deck page shows a quick profile:</p>
 <ul>
@@ -1515,7 +1555,7 @@ Commander, Pauper, Brawl, Historic, Oathbreaker). scryme reads each card's legal
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 27, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">July 13, 2026</span>
   </span>
 
     

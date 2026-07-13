@@ -83,7 +83,9 @@ async def build_form(
 ) -> HTMLResponse:
     _guard_writable()
     return templates.TemplateResponse(
-        request, "deck_build.html", {"commanders": await owned_commanders(session)}
+        request, "deck_build.html",
+        {"commanders": await owned_commanders(session),
+         "ai_ready": (await get_config(session)).ready},
     )
 
 

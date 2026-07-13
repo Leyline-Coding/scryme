@@ -16,7 +16,10 @@ from src.db import get_session
 from src.llm import (
     ChatClient,
     analyze_deck,
+    build_from_prompt,
+    find_commanders,
     get_config,
+    plan_upgrades,
     save_config,
     suggest_from_collection,
     test_connection,
@@ -114,3 +117,55 @@ async def deck_suggest(
     if result.empty:
         return templates.TemplateResponse(request, "_deck_ai_error.html", {"message": _EMPTY})
     return templates.TemplateResponse(request, "_deck_suggest.html", {"result": result})
+
+
+@router.post("/decks/build/prompt", response_class=HTMLResponse)
+async def build_prompt(
+    request: Request, prompt: str = Form(""), session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    """Build a deck from a natural-language request, using owned cards (#170)."""
+    _guard_writable()
+    cfg = await get_config(session)
+    if not cfg.ready:
+        return templates.TemplateResponse(
+            request, "deck_build.html",
+            {"commanders": [], "error": _NOT_CONFIGURED, "ai_ready": False})
+    try:
+        built = await build_from_prompt(session, prompt.strip(), ChatClient(cfg))
+    except (httpx.HTTPError, KeyError, IndexError, ValueError):
+        return templates.TemplateResponse(
+            request, "deck_build.html", {"commanders": [], "error": _UNREACHABLE, "ai_ready": True})
+    return templates.TemplateResponse(request, "deck_build_prompt.html",
+                                      {"built": built, "prompt": prompt})
+
+
+@router.get("/ai/commanders", response_class=HTMLResponse)
+async def commander_finder(
+    request: Request, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    """Rank owned legendary creatures by how buildable they are from the collection (#173)."""
+    cfg = await get_config(session)
+    picks = await find_commanders(session, ChatClient(cfg) if cfg.ready else None)
+    return templates.TemplateResponse(
+        request, "commander_finder.html", {"picks": picks, "ai_ready": cfg.ready})
+
+
+@router.post("/decks/{deck_id}/upgrade", response_class=HTMLResponse)
+async def deck_upgrade(
+    request: Request, deck_id: int, budget: float = Form(50.0),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Suggest cards to buy (validated + priced) to improve a deck, within a budget (#174)."""
+    deck = await _load_deck(session, deck_id)
+    cfg = await get_config(session)
+    if not cfg.ready:
+        return templates.TemplateResponse(
+            request, "_deck_ai_error.html", {"message": _NOT_CONFIGURED})
+    try:
+        plan = await plan_upgrades(session, deck, max(0.0, budget), ChatClient(cfg))
+    except (httpx.HTTPError, KeyError, IndexError, ValueError):
+        return templates.TemplateResponse(
+            request, "_deck_ai_error.html", {"message": _UNREACHABLE})
+    if plan.empty:
+        return templates.TemplateResponse(request, "_deck_ai_error.html", {"message": _EMPTY})
+    return templates.TemplateResponse(request, "_deck_upgrade.html", {"plan": plan})

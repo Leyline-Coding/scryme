@@ -12,6 +12,7 @@ model names against the database, so a hallucinated card never reaches the UI.
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -345,3 +346,250 @@ async def nl_to_query(prompt: str, client: ChatClient) -> str:
         messages.append({"role": "user", "content":
             "That wasn't valid Scryfall syntax. Reply with ONLY a corrected single-line query."})
     return ""
+
+
+# --- build a deck from a prompt (#170) ----------------------------------------------------------
+
+_COLOR_KEYWORDS = {
+    "white": "W", "blue": "U", "black": "B", "red": "R", "green": "G",
+    "azorius": "WU", "dimir": "UB", "rakdos": "BR", "gruul": "RG", "selesnya": "GW",
+    "orzhov": "WB", "izzet": "UR", "golgari": "BG", "boros": "RW", "simic": "GU",
+    "mardu": "WBR", "jeskai": "WUR", "sultai": "UBG", "abzan": "WBG", "temur": "URG",
+    "bant": "WUG", "esper": "WUB", "grixis": "UBR", "jund": "BRG", "naya": "RGW",
+}
+_ALLOWED_LEGAL = {"legal", "restricted"}
+_QTY_LINE = re.compile(r"^\s*(\d+)\s*x?\s+(.+)$", re.IGNORECASE)
+
+
+def _colors_in(prompt: str) -> set[str]:
+    low = prompt.lower()
+    ident: set[str] = set()
+    for word, colors in _COLOR_KEYWORDS.items():
+        if re.search(rf"\b{word}\b", low):
+            ident.update(colors)
+    return ident
+
+
+@dataclass
+class BuildLine:
+    name: str
+    quantity: int
+    scryfall_id: str
+    price: float
+
+
+@dataclass
+class BuiltFromPrompt:
+    name: str = ""
+    decklist_text: str = ""
+    lines: list[BuildLine] = field(default_factory=list)
+    total_price: float = 0.0
+    considered: int = 0
+    empty: bool = False
+
+
+async def _owned_candidates(session: AsyncSession, identity: set[str]) -> dict[str, tuple]:
+    """Owned cards: lowercased name -> (name, scryfall_id, usd_price); filtered to *identity*."""
+    rows = (await session.execute(
+        select(Card.name, Card.oracle_id, Card.scryfall_id, Card.color_identity, Card.prices)
+        .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
+        .where(Card.oracle_id.is_not(None))
+        .distinct(Card.oracle_id)
+        .order_by(Card.oracle_id, Card.released_at.desc().nulls_last())
+    )).all()
+    out: dict[str, tuple] = {}
+    for name, _oracle, sid, ci, prices in rows:
+        if identity and not set(ci or []) <= identity:
+            continue
+        price = float((prices or {}).get("usd") or 0.0)
+        out.setdefault(name.lower(), (name, str(sid), price))
+    return out
+
+
+def _parse_decklines(text: str, pool: dict[str, tuple]) -> list[BuildLine]:
+    """Parse 'N Card Name' lines, keeping only cards present in the owned pool."""
+    out: list[BuildLine] = []
+    seen: set[str] = set()
+    for raw in text.splitlines():
+        line = raw.strip().lstrip("-*• \t").strip()
+        m = _QTY_LINE.match(line)
+        if not m:
+            continue
+        qty = max(1, min(int(m.group(1)), 99))
+        name = m.group(2).strip().strip("*_`\"'").strip()
+        # Drop a trailing "(SET) 123" printing hint if the model added one.
+        name = re.sub(r"\s*\([A-Za-z0-9]{2,6}\)\s*[A-Za-z0-9-]*$", "", name).strip()
+        key = name.lower()
+        entry = pool.get(key)
+        if entry and key not in seen:
+            seen.add(key)
+            out.append(BuildLine(name=entry[0], quantity=qty, scryfall_id=entry[1], price=entry[2]))
+    # Guard against the model numbering the lines (1 X, 2 Y, 3 Z …) instead of giving copy counts.
+    if len(out) >= 4 and all(ln.quantity == i + 1 for i, ln in enumerate(out)):
+        for ln in out:
+            ln.quantity = 1
+    return out
+
+
+async def build_from_prompt(
+    session: AsyncSession, prompt: str, client: ChatClient,
+) -> BuiltFromPrompt:
+    """Build a decklist from owned cards matching a natural-language request (validated)."""
+    identity = _colors_in(prompt)
+    pool = await _owned_candidates(session, identity)
+    if not pool:
+        return BuiltFromPrompt()
+    names = [n for (n, _s, _p) in list(pool.values())[:50]]
+    messages = [
+        {"role": "system", "content":
+            "Build a Magic deck using ONLY cards from the 'Owned cards' list (include lands). "
+            "Each line is '<copies> <Card Name>' — copies is how many to run (1 for most, up to 4 "
+            "for nonbasics, more for basics), e.g. '1 Sol Ring', '12 Mountain'. Do NOT number the "
+            "lines. Output only deck lines, no commentary."},
+        {"role": "user", "content": f"Request: {prompt}\n\nOwned cards:\n" + "\n".join(names)},
+    ]
+    text = await _chat_nonempty(client, messages, retries=3, temperature=0.4, max_tokens=8000)
+    lines = _parse_decklines(text, pool)
+    return BuiltFromPrompt(
+        name=(prompt.strip()[:60] or "AI deck"),
+        decklist_text="\n".join(f"{ln.quantity} {ln.name}" for ln in lines),
+        lines=lines, total_price=round(sum(ln.price * ln.quantity for ln in lines), 2),
+        considered=len(pool), empty=not text.strip(),
+    )
+
+
+# --- commander finder (#173) --------------------------------------------------------------------
+
+@dataclass
+class CommanderPick:
+    name: str
+    scryfall_id: str
+    identity: list[str]
+    owned_depth: int
+    pitch: str = ""
+
+
+async def find_commanders(
+    session: AsyncSession, client: ChatClient | None = None, limit: int = 6,
+) -> list[CommanderPick]:
+    """Rank owned legendary creatures by how many owned, in-identity, Commander-legal cards back
+    them; optionally add a one-line LLM pitch for the top picks."""
+    cmd_rows = (await session.execute(
+        select(Card.name, Card.oracle_id, Card.scryfall_id, Card.color_identity)
+        .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
+        .where(Card.type_line.ilike("legendary%creature%"))
+        .distinct(Card.oracle_id)
+        .order_by(Card.oracle_id, Card.released_at.desc().nulls_last())
+    )).all()
+    if not cmd_rows:
+        return []
+    owned = (await session.execute(
+        select(Card.oracle_id, Card.color_identity, Card.legalities)
+        .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
+        .where(Card.oracle_id.is_not(None))
+        .distinct(Card.oracle_id)
+        .order_by(Card.oracle_id, Card.released_at.desc().nulls_last())
+    )).all()
+    owned_ci = [(set(ci or []), (leg or {}).get("commander")) for _o, ci, leg in owned]
+
+    picks: list[CommanderPick] = []
+    for name, _oracle, sid, ci in cmd_rows:
+        ident = set(ci or [])
+        depth = sum(1 for oci, legal in owned_ci if legal in _ALLOWED_LEGAL and oci <= ident)
+        picks.append(CommanderPick(name, str(sid), sorted(ident), depth))
+    picks.sort(key=lambda p: p.owned_depth, reverse=True)
+    top = picks[:limit]
+
+    if client and top:
+        listing = "\n".join(
+            f"{p.name} ({''.join(p.identity) or 'C'}, {p.owned_depth} owned in-color cards)"
+            for p in top
+        )
+        messages = [
+            {"role": "system", "content":
+                "For each Magic commander listed, give a one-line pitch of its playstyle/strength. "
+                "Output only 'Commander Name - pitch' lines, one per commander."},
+            {"role": "user", "content": listing},
+        ]
+        try:
+            text = await _chat_nonempty(client, messages, retries=1, temperature=0.4)
+            pitches = {n.lower(): r for n, r in _parse_named_reasons(text)}
+            for p in top:
+                p.pitch = pitches.get(p.name.lower(), "")
+        except (httpx.HTTPError, KeyError, IndexError, ValueError):
+            pass
+    return top
+
+
+# --- upgrade planner (#174) ---------------------------------------------------------------------
+
+@dataclass
+class UpgradeItem:
+    name: str
+    scryfall_id: str
+    price: float
+    reason: str
+
+
+@dataclass
+class UpgradePlan:
+    items: list[UpgradeItem] = field(default_factory=list)
+    total: float = 0.0
+    budget: float = 0.0
+    empty: bool = False
+
+
+def _parse_named_reasons(text: str) -> list[tuple[str, str]]:
+    """Parse 'Name — reason' / 'Name - reason' lines into (name, reason), stripping list markers."""
+    out: list[tuple[str, str]] = []
+    for raw in text.splitlines():
+        line = raw.strip().lstrip("-*•·0123456789.) \t").strip()
+        if not line:
+            continue
+        name, reason = line, ""
+        for sep in (" — ", " - ", "—", " – ", ":"):
+            if sep in line:
+                name, reason = line.split(sep, 1)
+                break
+        name = name.strip().strip("*_`\"'.").strip()
+        if name:
+            out.append((name, reason.strip().strip("*_`").strip()))
+    return out
+
+
+async def plan_upgrades(
+    session: AsyncSession, deck, budget: float, client: ChatClient,
+) -> UpgradePlan:
+    """Suggest real cards to buy to improve a deck, validated to exist + priced + within budget."""
+    cov = await deck_coverage(session, deck)
+    stats = await deck_stats(session, deck)
+    curve = ", ".join(f"{b.label}:{b.count}" for b in stats.mana_curve)
+    owned_oracles = set((await session.execute(
+        select(Card.oracle_id)
+        .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
+    )).scalars().all())
+    messages = [
+        {"role": "system", "content":
+            "You are a Magic: The Gathering upgrade advisor. Suggest real cards to add that "
+            "improve the deck (fix ramp, card draw, removal, mana base, or win conditions). Output "
+            "up to 15 lines, each exactly 'Card Name - short reason'. Real card names only. No "
+            "preamble, no prices, no commentary."},
+        {"role": "user", "content":
+            f"Budget: ${budget:.0f}\nDeck '{deck.name}':\n{_decklist_text(cov)}\nCurve: {curve}"},
+    ]
+    text = await _chat_nonempty(client, messages, retries=2, temperature=0.4, max_tokens=3000)
+    items: list[UpgradeItem] = []
+    total = 0.0
+    for name, reason in _parse_named_reasons(text):
+        card = (await session.execute(
+            select(Card).where(func.lower(Card.name) == name.lower())
+            .order_by(Card.released_at.desc().nulls_last()).limit(1)
+        )).scalars().first()
+        if card is None or card.oracle_id in owned_oracles:  # not real, or already owned
+            continue
+        price = float((card.prices or {}).get("usd") or 0.0)
+        if price <= 0 or total + price > budget:
+            continue
+        total += price
+        items.append(UpgradeItem(card.name, str(card.scryfall_id), round(price, 2), reason))
+    return UpgradePlan(items=items, total=round(total, 2), budget=budget, empty=not text.strip())

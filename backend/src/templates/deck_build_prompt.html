@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Built from a prompt · scryme{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-2">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold">Deck from your prompt</h1>
+    <a href="/decks/build" class="ml-auto text-sm text-muted hover:text-fg">← Build another</a>
+  </header>
+
+  <p class="text-sm text-muted mb-1">Request: <span class="text-fg">“{{ prompt }}”</span></p>
+
+  {% if built.lines %}
+  <p class="text-sm text-muted mb-4">
+    {{ built.lines | map(attribute='quantity') | sum }} cards from your collection ·
+    ≈ ${{ '{:,.2f}'.format(built.total_price) }} · chosen from {{ built.considered }} owned candidates.
+  </p>
+  <p class="text-xs text-muted mb-4">
+    A starting point drawn only from cards you own — review and edit before saving.
+  </p>
+
+  <form action="/decks" method="post" class="space-y-3">
+    <label class="block">
+      <span class="text-sm">Deck name</span>
+      <input type="text" name="name" value="{{ built.name }}"
+        class="mt-1 w-full rounded-lg bg-surface border border-edge px-3 py-2
+               focus:outline-none focus:ring-2 focus:ring-accent" />
+    </label>
+    <label class="block">
+      <span class="text-sm">Decklist <span class="text-muted">(edit before saving)</span></span>
+      <textarea name="decklist" rows="16"
+        class="mt-1 w-full rounded-lg bg-surface border border-edge px-3 py-2 font-mono text-xs
+               focus:outline-none focus:ring-2 focus:ring-accent">{{ built.decklist_text }}</textarea>
+    </label>
+    <div class="flex gap-3">
+      <button type="submit"
+        class="rounded-lg bg-accent text-accent-fg px-5 py-2.5 font-medium hover:opacity-90">
+        Save as deck
+      </button>
+      <a href="/decks/build" class="rounded-lg px-5 py-2.5 text-muted hover:text-fg">Start over</a>
+    </div>
+  </form>
+  {% else %}
+  <div class="rounded-lg bg-surface-2 text-muted text-sm px-4 py-3">
+    Couldn't build a deck from your collection for that request. Try different colors/theme, or add
+    more cards to your collection.
+  </div>
+  <a href="/decks/build" class="mt-3 inline-block text-sm text-accent hover:underline">← Try again</a>
+  {% endif %}
+</div>
+{% endblock %}

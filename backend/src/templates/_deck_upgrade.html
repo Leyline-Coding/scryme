@@ -1,0 +1,24 @@
+{# Upgrade plan (#174): real cards to buy within budget, validated + priced. #}
+{% if plan.items %}
+<ul class="divide-y divide-edge rounded-lg bg-surface-2">
+  {% for it in plan.items %}
+  <li class="px-3 py-2 text-sm flex items-center gap-2">
+    <a href="/card/{{ it.scryfall_id }}" class="font-medium hover:text-accent shrink-0">{{ it.name }}</a>
+    {% if it.reason %}<span class="text-muted min-w-0 truncate"> — {{ it.reason }}</span>{% endif %}
+    <span class="ml-auto shrink-0 tabular-nums text-muted">${{ '{:,.2f}'.format(it.price) }}</span>
+    <form method="post" action="/wishlist" class="shrink-0">
+      <input type="hidden" name="scryfall_id" value="{{ it.scryfall_id }}" />
+      <button type="submit" title="Add to wishlist"
+              class="rounded bg-surface hover:bg-surface-3 px-1.5 py-0.5 text-xs">☆</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+<p class="mt-1.5 text-xs text-muted">
+  ≈ ${{ '{:,.2f}'.format(plan.total) }} of {{ '${:,.0f}'.format(plan.budget) }} budget · cards you don't own, priced in USD.
+</p>
+{% else %}
+<div class="rounded-lg bg-surface-2 text-muted text-sm px-3 py-2">
+  No upgrades found within ${{ '{:,.0f}'.format(plan.budget) }} — try a higher budget.
+</div>
+{% endif %}

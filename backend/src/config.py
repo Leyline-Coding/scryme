@@ -77,6 +77,13 @@ class Settings(BaseSettings):
     # an access code. Off by default, so the Docker/self-host deployment is unaffected.
     lan_guard: bool = False
 
+    # AI features: point at any OpenAI-API-compatible endpoint — OpenAI, OpenRouter, or a local
+    # Ollama / LM Studio server (e.g. http://localhost:11434/v1). Empty base URL disables AI. The
+    # embed model is used for semantic card similarity (#176). #163 layers in-app config on top.
+    llm_base_url: str = ""
+    llm_api_key: str = ""
+    llm_embed_model: str = "nomic-embed-text"
+
 
 @lru_cache
 def get_settings() -> Settings:

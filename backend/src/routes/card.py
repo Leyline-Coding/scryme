@@ -17,7 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import get_settings
 from src.currency import get_currency
 from src.db import get_session
-from src.models import Card, CollectionCard
+from src.embeddings import is_configured, similar_to_oracle
+from src.models import Card, CardEmbedding, CollectionCard
 from src.price_watch import target_for
 from src.scryfall.client import ScryfallClient, ScryfallError
 from src.scryfall.images import ImageCache
@@ -104,6 +105,13 @@ async def card_detail(
     legalities = card.legalities or {}
     legality_rows = [(fmt, legalities.get(fmt, "not_legal")) for fmt in LEGALITY_FORMATS]
 
+    # Show a "Similar cards" section only when embeddings exist for this card (#176).
+    show_similar = bool(
+        is_configured()
+        and card.oracle_id is not None
+        and await session.get(CardEmbedding, card.oracle_id) is not None
+    )
+
     return templates.TemplateResponse(
         request,
         "card_detail.html",
@@ -123,8 +131,34 @@ async def card_detail(
             "price_target": await target_for(session, str(card.scryfall_id)),
             "card_usd": float((card.prices or {}).get("usd") or 0.0),
             "read_only": get_settings().read_only,
+            "show_similar": show_similar,
         },
     )
+
+
+@router.get("/card/{scryfall_id}/similar", response_class=HTMLResponse)
+async def card_similar(
+    request: Request,
+    scryfall_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Lazily-loaded 'Similar cards' grid: nearest owned cards by oracle-text embedding (#176)."""
+    card = await _load_card(session, scryfall_id)
+    items: list[tuple[Card, str]] = []
+    if card.oracle_id is not None:
+        scored = await similar_to_oracle(session, card.oracle_id, limit=8, scope="owned")
+        oids = [oid for oid, _ in scored]
+        if oids:
+            rows = (
+                await session.execute(
+                    select(Card).where(Card.oracle_id.in_(oids)).distinct(Card.oracle_id)
+                    .order_by(Card.oracle_id, Card.released_at.desc().nulls_last())
+                )
+            ).scalars().all()
+            by_oracle = {c.oracle_id: c for c in rows}
+            items = [(by_oracle[oid], _image(by_oracle[oid], "small"))
+                     for oid, _ in scored if oid in by_oracle]
+    return templates.TemplateResponse(request, "_similar_cards.html", {"items": items})
 
 
 def _tags_response(request: Request, card_id: uuid.UUID, tags: list[str]) -> HTMLResponse:

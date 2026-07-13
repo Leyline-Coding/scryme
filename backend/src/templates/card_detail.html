@@ -174,5 +174,15 @@
     </div>
   </section>
   {% endif %}
+
+  {# Similar cards (semantic, owned) — loaded lazily; only shown when embeddings exist (#176) #}
+  {% if show_similar %}
+  <section class="mt-10">
+    <h2 class="text-lg font-semibold mb-3">Similar cards in your collection</h2>
+    <div hx-get="/card/{{ card.scryfall_id }}/similar" hx-trigger="load" hx-swap="innerHTML">
+      <div class="text-xs text-muted">Finding similar cards…</div>
+    </div>
+  </section>
+  {% endif %}
 </div>
 {% endblock %}

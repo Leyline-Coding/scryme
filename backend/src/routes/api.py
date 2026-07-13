@@ -24,6 +24,7 @@ from src.currency import normalize as normalize_currency
 from src.db import get_session
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
 from src.decks import apply_deck_card_edit, create_deck, deck_coverage
+from src.embeddings import similar_to_oracle
 from src.importers.base import UnknownFormatError
 from src.importers.merge import MergeStrategy
 from src.importers.service import confirm_upload, stage_upload
@@ -307,6 +308,52 @@ async def api_card(
                         finish=s.finish, condition=s.condition, language=s.language,
                         binder_name=s.binder_name, tags=s.tags) for s in owned],
     )
+
+
+class SimilarCardOut(CardOut):
+    score: float
+
+
+async def _representative_cards(session: AsyncSession, oracle_ids: list):
+    """Newest printing per oracle + owned quantity, for a list of oracle ids."""
+    if not oracle_ids:
+        return {}, {}
+    rows = (
+        await session.execute(
+            select(Card).where(Card.oracle_id.in_(oracle_ids)).distinct(Card.oracle_id)
+            .order_by(Card.oracle_id, Card.released_at.desc().nulls_last())
+        )
+    ).scalars().all()
+    owned = dict(
+        (await session.execute(
+            select(Card.oracle_id, func.sum(CollectionCard.quantity))
+            .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
+            .where(Card.oracle_id.in_(oracle_ids)).group_by(Card.oracle_id)
+        )).all()
+    )
+    return {c.oracle_id: c for c in rows}, owned
+
+
+@router.get("/cards/{scryfall_id}/similar", response_model=list[SimilarCardOut])
+async def api_similar(
+    scryfall_id: str, scope: str = "owned", limit: int = 12,
+    session: AsyncSession = Depends(get_session),
+) -> list[SimilarCardOut]:
+    card = await _get_card(session, scryfall_id)
+    if card.oracle_id is None:
+        return []
+    scored = await similar_to_oracle(
+        session, card.oracle_id, limit=min(max(1, limit), 50), scope=scope
+    )
+    by_oracle, owned = await _representative_cards(session, [oid for oid, _ in scored])
+    out: list[SimilarCardOut] = []
+    for oid, score in scored:
+        rep = by_oracle.get(oid)
+        if rep is None:
+            continue
+        base = _card_out(rep, int(owned.get(oid, 0) or 0))
+        out.append(SimilarCardOut(**base.model_dump(), score=round(score, 4)))
+    return out
 
 
 @router.get("/decks", response_model=list[DeckSummaryOut])

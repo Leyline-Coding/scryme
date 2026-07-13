@@ -15,17 +15,24 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from src.checklists import checklist_coverage
 from src.collection_edit import add_or_increment, delete_stack, update_stack
 from src.config import get_settings
 from src.currency import normalize as normalize_currency
 from src.db import get_session
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
 from src.decks import apply_deck_card_edit, create_deck, deck_coverage
-from src.models import Card, CollectionCard, Deck, DeckCard
+from src.importers.base import UnknownFormatError
+from src.importers.merge import MergeStrategy
+from src.importers.service import confirm_upload, stage_upload
+from src.models import Card, Checklist, ChecklistItem, CollectionCard, Deck, DeckCard, SavedSearch
+from src.prices import biggest_movers, collection_pl, value_series
 from src.scryfall.mapping import image_url
 from src.search import SearchError, SearchScope
 from src.search.engine import DEFAULT_SORT, SORT_KEYS, run_search
+from src.sets import set_detail, set_progress
 from src.stats import collection_stats
 from src.tags import add_card_tag, card_tags, remove_card_tag
 from src.wishlist import add_to_wishlist, list_wishlist, remove_from_wishlist
@@ -572,3 +579,292 @@ async def api_wishlist_remove(
     _guard_writable()
     await remove_from_wishlist(session, scryfall_id)
     return OkOut()
+
+
+# --- prices / sets / checklists / saved searches ------------------------------------------------
+
+class PricePointOut(BaseModel):
+    date: str
+    value: float
+
+
+class MoverOut(BaseModel):
+    name: str
+    set_code: str
+    scryfall_id: str
+    old: float
+    new: float
+    delta: float
+    pct: float
+
+
+class MoversOut(BaseModel):
+    gainers: list[MoverOut] = []
+    losers: list[MoverOut] = []
+
+
+class PLCardOut(BaseModel):
+    name: str
+    set_code: str
+    scryfall_id: str
+    finish: str
+    quantity: int
+    cost: float
+    market: float
+    total_delta: float
+    pct: float
+
+
+class ProfitLossOut(BaseModel):
+    cost_basis: float
+    market_value: float
+    unrealized: float
+    pct: float
+    winners: list[PLCardOut] = []
+    losers: list[PLCardOut] = []
+
+
+class PricesOut(BaseModel):
+    current_value: float
+    series: list[PricePointOut]
+    movers: MoversOut
+    profit_loss: ProfitLossOut
+
+
+def _mover_out(m) -> MoverOut:
+    return MoverOut(name=m.name, set_code=m.set_code, scryfall_id=m.scryfall_id,
+                    old=round(m.old, 2), new=round(m.new, 2), delta=round(m.delta, 2),
+                    pct=round(m.pct, 1))
+
+
+def _pl_out(c) -> PLCardOut:
+    return PLCardOut(name=c.name, set_code=c.set_code, scryfall_id=c.scryfall_id, finish=c.finish,
+                     quantity=c.quantity, cost=round(c.cost, 2), market=round(c.market, 2),
+                     total_delta=round(c.total_delta, 2), pct=round(c.pct, 1))
+
+
+@router.get("/prices", response_model=PricesOut)
+async def api_prices(session: AsyncSession = Depends(get_session)) -> PricesOut:
+    series = await value_series(session)
+    points = [PricePointOut(date=s.captured_at.date().isoformat(), value=round(s.total_usd, 2))
+              for s in series]
+    movers = await biggest_movers(session)
+    pl = await collection_pl(session)
+    return PricesOut(
+        current_value=points[-1].value if points else 0.0,
+        series=points,
+        movers=MoversOut(gainers=[_mover_out(m) for m in (movers.gainers or [])],
+                         losers=[_mover_out(m) for m in (movers.losers or [])]),
+        profit_loss=ProfitLossOut(
+            cost_basis=round(pl.cost_basis, 2), market_value=round(pl.market_value, 2),
+            unrealized=round(pl.unrealized, 2), pct=round(pl.pct, 1),
+            winners=[_pl_out(c) for c in pl.winners], losers=[_pl_out(c) for c in pl.losers]),
+    )
+
+
+class SetProgressOut(BaseModel):
+    code: str
+    name: str
+    set_type: str
+    released_at: str | None = None
+    total: int
+    owned: int
+    missing: int
+    pct: float
+    complete: bool
+
+
+class MissingCardOut(BaseModel):
+    scryfall_id: str
+    name: str
+    collector_number: str
+    rarity: str | None = None
+
+
+class SetDetailOut(BaseModel):
+    code: str
+    name: str
+    set_type: str
+    total: int
+    owned: int
+    missing: int
+    pct: float
+    missing_cards: list[MissingCardOut]
+
+
+@router.get("/sets", response_model=list[SetProgressOut])
+async def api_sets(session: AsyncSession = Depends(get_session)) -> list[SetProgressOut]:
+    return [
+        SetProgressOut(
+            code=s.code, name=s.name, set_type=s.set_type,
+            released_at=s.released_at.isoformat() if s.released_at else None,
+            total=s.total, owned=s.owned, missing=s.missing, pct=s.pct, complete=s.complete,
+        )
+        for s in await set_progress(session)
+    ]
+
+
+@router.get("/sets/{code}", response_model=SetDetailOut)
+async def api_set_detail(
+    code: str, session: AsyncSession = Depends(get_session)
+) -> SetDetailOut:
+    d = await set_detail(session, code)
+    if d is None:
+        raise HTTPException(status_code=404, detail="Set not found.")
+    return SetDetailOut(
+        code=d.code, name=d.name, set_type=d.set_type, total=d.total, owned=d.owned,
+        missing=d.missing, pct=d.pct,
+        missing_cards=[MissingCardOut(scryfall_id=m.scryfall_id, name=m.name,
+                                      collector_number=m.collector_number, rarity=m.rarity)
+                       for m in d.missing_cards],
+    )
+
+
+class ChecklistSummaryOut(BaseModel):
+    id: int
+    name: str
+    total: int
+
+
+class ChecklistRowOut(BaseModel):
+    name: str
+    scryfall_id: str | None = None
+    matched: bool
+    owned: bool
+
+
+class ChecklistDetailOut(BaseModel):
+    id: int
+    name: str
+    total: int
+    owned_count: int
+    unmatched: int
+    pct_complete: int
+    rows: list[ChecklistRowOut]
+
+
+@router.get("/checklists", response_model=list[ChecklistSummaryOut])
+async def api_checklists(session: AsyncSession = Depends(get_session)) -> list[ChecklistSummaryOut]:
+    rows = (
+        await session.execute(
+            select(Checklist.id, Checklist.name, func.count(ChecklistItem.id))
+            .outerjoin(ChecklistItem).group_by(Checklist.id).order_by(Checklist.created_at.desc())
+        )
+    ).all()
+    return [ChecklistSummaryOut(id=i, name=n, total=t) for i, n, t in rows]
+
+
+@router.get("/checklists/{checklist_id}", response_model=ChecklistDetailOut)
+async def api_checklist_detail(
+    checklist_id: int, session: AsyncSession = Depends(get_session)
+) -> ChecklistDetailOut:
+    cl = (
+        await session.execute(
+            select(Checklist).where(Checklist.id == checklist_id)
+            .options(selectinload(Checklist.items))
+        )
+    ).scalar_one_or_none()
+    if cl is None:
+        raise HTTPException(status_code=404, detail="Checklist not found.")
+    cov = await checklist_coverage(session, cl)
+    return ChecklistDetailOut(
+        id=cl.id, name=cl.name, total=cov.total, owned_count=cov.owned_count,
+        unmatched=cov.unmatched, pct_complete=cov.pct_complete,
+        rows=[ChecklistRowOut(name=r.name, scryfall_id=r.scryfall_id, matched=r.matched,
+                              owned=r.owned) for r in cov.rows],
+    )
+
+
+class SavedSearchOut(BaseModel):
+    id: int
+    name: str
+    query: str
+    scope: str
+    sort: str
+    direction: str
+    new_count: int
+
+
+@router.get("/saved", response_model=list[SavedSearchOut])
+async def api_saved(session: AsyncSession = Depends(get_session)) -> list[SavedSearchOut]:
+    rows = (
+        await session.execute(select(SavedSearch).order_by(SavedSearch.created_at.desc()))
+    ).scalars().all()
+    return [SavedSearchOut(id=s.id, name=s.name, query=s.query, scope=s.scope, sort=s.sort,
+                           direction=s.direction, new_count=len(s.new_ids or [])) for s in rows]
+
+
+# --- collection import (two-phase: stage -> confirm) --------------------------------------------
+
+class ImportIn(BaseModel):
+    text: str
+
+
+class ConflictOut(BaseModel):
+    index: int
+    name: str
+    finish: str
+    existing_qty: int
+    import_qty: int
+
+
+class ImportPreviewOut(BaseModel):
+    token: str
+    source_format: str
+    total_rows: int
+    matched_count: int
+    unmatched_count: int
+    new_stacks: int
+    unmatched_samples: list[str]
+    conflicts: list[ConflictOut]
+
+
+class ImportConfirmIn(BaseModel):
+    token: str
+    strategy: str = "increment"
+    decisions: dict[int, str] | None = None
+
+
+class ImportResultOut(BaseModel):
+    ok: bool = True
+    strategy: str
+    inserted: int
+    updated: int
+    total_quantity: int
+
+
+@router.post("/import", response_model=ImportPreviewOut)
+async def api_import_stage(
+    body: ImportIn, session: AsyncSession = Depends(get_session)
+) -> ImportPreviewOut:
+    _guard_writable()
+    try:
+        preview = await stage_upload(session, body.text)
+    except UnknownFormatError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return ImportPreviewOut(
+        token=preview.token, source_format=preview.source_format, total_rows=preview.total_rows,
+        matched_count=preview.matched_count, unmatched_count=preview.unmatched_count,
+        new_stacks=preview.new_stacks,
+        unmatched_samples=[r.name for r in preview.unmatched_samples],
+        conflicts=[ConflictOut(index=c.index, name=c.name, finish=c.finish,
+                               existing_qty=c.existing_qty, import_qty=c.import_qty)
+                   for c in preview.conflicts],
+    )
+
+
+@router.post("/import/confirm", response_model=ImportResultOut)
+async def api_import_confirm(
+    body: ImportConfirmIn, session: AsyncSession = Depends(get_session)
+) -> ImportResultOut:
+    _guard_writable()
+    try:
+        strat = MergeStrategy(body.strategy)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Unknown merge strategy.") from exc
+    try:
+        summary = await confirm_upload(session, body.token, strat, body.decisions)
+    except UnknownFormatError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return ImportResultOut(strategy=summary.strategy.value, inserted=summary.inserted,
+                           updated=summary.updated, total_quantity=summary.total_quantity)

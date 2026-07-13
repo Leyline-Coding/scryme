@@ -197,3 +197,83 @@ async def test_api_collection_list_update_delete(client, session):
     assert (await client.delete(f"/api/v1/collection/{row_id}")).status_code == 200
     assert (await client.get("/api/v1/collection")).json()["total"] == 1
     assert (await client.delete("/api/v1/collection/99999")).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_api_prices_empty(client, session):
+    r = await client.get("/api/v1/prices")
+    assert r.status_code == 200
+    d = r.json()
+    assert d["current_value"] == 0.0 and d["series"] == []
+    assert "gainers" in d["movers"] and "cost_basis" in d["profit_loss"]
+
+
+@pytest.mark.asyncio
+async def test_api_sets(client, session):
+    await _card(session, name="Card One", n=1, owned=1)
+    await _card(session, name="Card Two", n=2, owned=0)
+    listing = (await client.get("/api/v1/sets")).json()
+    tst = next(s for s in listing if s["code"] == "tst")
+    assert tst["total"] == 2 and tst["owned"] == 1 and tst["missing"] == 1
+    detail = (await client.get("/api/v1/sets/tst")).json()
+    assert detail["total"] == 2 and any(m["name"] == "Card Two" for m in detail["missing_cards"])
+    assert (await client.get("/api/v1/sets/zzz")).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_api_checklists(client, session):
+    from src.checklists import create_checklist
+    await _card(session, name="Owned Card", n=1, owned=1)
+    await create_checklist(session, "My List", "Owned Card\nMissing Card")
+    listing = (await client.get("/api/v1/checklists")).json()
+    assert len(listing) == 1 and listing[0]["total"] == 2
+    cid = listing[0]["id"]
+    detail = (await client.get(f"/api/v1/checklists/{cid}")).json()
+    assert detail["total"] == 2 and detail["owned_count"] == 1
+    assert any(r["owned"] for r in detail["rows"]) and any(not r["owned"] for r in detail["rows"])
+    assert (await client.get("/api/v1/checklists/9999")).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_api_saved(client, session):
+    from src.models import SavedSearch
+    session.add(SavedSearch(name="Reds", query="c:r", scope="all", sort="name", direction="asc"))
+    await session.commit()
+    rows = (await client.get("/api/v1/saved")).json()
+    assert len(rows) == 1 and rows[0]["name"] == "Reds" and rows[0]["query"] == "c:r"
+    assert rows[0]["new_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_api_import_stage_and_confirm(client, session):
+    from pathlib import Path
+    csv = (Path(__file__).parent / "fixtures" / "manabox_sample.csv").read_text()
+    for sid, name, setc, num in [
+        ("00000000-0000-0000-0000-0000000000b1", "Black Lotus", "lea", "232"),
+        ("00000000-0000-0000-0000-0000000000b2", "Lightning Bolt", "mh2", "122"),
+    ]:
+        session.add(Card(**card_to_columns(
+            {"id": sid, "oracle_id": str(uuid.uuid4()), "name": name, "set": setc,
+             "collector_number": num, "type_line": "X"}
+        )))
+    await session.commit()
+
+    preview = await client.post("/api/v1/import", json={"text": csv})
+    assert preview.status_code == 200
+    p = preview.json()
+    assert p["token"] and p["source_format"] and p["matched_count"] >= 2
+
+    confirm = await client.post(
+        "/api/v1/import/confirm", json={"token": p["token"], "strategy": "increment"}
+    )
+    assert confirm.status_code == 200 and confirm.json()["inserted"] >= 2
+    assert (await client.get("/api/v1/collection")).json()["total"] >= 2
+
+    # Unknown format -> 400; expired/invalid token -> 404; bad strategy -> 400.
+    assert (await client.post("/api/v1/import", json={"text": "just some text"})).status_code == 400
+    assert (await client.post(
+        "/api/v1/import/confirm", json={"token": "nope", "strategy": "increment"}
+    )).status_code == 404
+    assert (await client.post(
+        "/api/v1/import/confirm", json={"token": p["token"], "strategy": "bogus"}
+    )).status_code == 400

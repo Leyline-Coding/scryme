@@ -24,8 +24,10 @@ Sideboard
 - `#` / `//` lines are treated as comments.
 
 Each line is resolved to a card — preferring a printing you **own** (so the image and price match
-your copy), otherwise the most recent printing. Lines that don't match a known card are kept and
-flagged as **unrecognized**.
+your copy), then a **tournament-legal** printing, then the most recent. That ordering keeps a line
+from silently landing on an art-series or oversized variant. Lines that don't match a known card
+are kept and flagged as **unrecognized**. You can change the printing per card afterward — see
+[Printings, language & proxies](#printings-language-proxies).
 
 ## Ownership coverage
 
@@ -40,7 +42,7 @@ The deck page shows how complete the deck is against your collection:
 ## Legality
 
 Pick a format from the **Legality** dropdown (Standard, Pioneer, Modern, Legacy, Vintage,
-Commander, Pauper, Brawl, Historic, Oathbreaker). scryme reads each card's legalities and reports:
+Commander, Pauper, Brawl, Historic, Oathbreaker). scryme reports:
 
 - **✓ Legal** in the chosen format, or
 - the number of cards that are **not legal** (banned or not in the format), with each offending
@@ -48,6 +50,29 @@ Commander, Pauper, Brawl, Historic, Oathbreaker). scryme reads each card's legal
 - **can't confirm** when the deck still has unrecognized lines.
 
 `restricted` cards (e.g. in Vintage) count as legal.
+
+Legality is judged by the **card**, not the specific printing shown. Some printings — art-series
+cards, tokens, gold-bordered World Championship / Collector's Edition cards, oversized and acorn
+cards — are marked *not legal in every format* by Scryfall. scryme looks past those to a real
+printing of the same card, so a legal staple is never flagged just because of the printing (or a
+proxy) you're running.
+
+## Printings, language & proxies
+
+Each card line shows the printing it represents as **`SET·NUMBER·LANG`** (e.g. `CMM·942·EN`) —
+the set code, collector number, and language. The printing follows what's in your collection when
+you own the card, otherwise a tournament-legal one.
+
+Click the **✎** on a line to change it (hidden on the read-only demo):
+
+- **Printing** — pick any printing of that card. Non-standard variants are tagged *non-standard* in
+  the list, but they're always available if that's what you run.
+- **Language** — the language you play the card in, defaulting to **English**. Because scryme's card
+  database is English-only per printing, the language is recorded on the deck line for reference
+  (prices stay the English printing's).
+- **Proxy** and **Special** — two independent markers. **Proxy** flags a printed proxy; **Special**
+  flags a genuine but non-standard copy (art card, alter, misprint). Each shows its own badge on the
+  card line and doesn't affect legality.
 
 ## Deck stats
 

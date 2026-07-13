@@ -15,7 +15,9 @@ The MVP plus a steady stream of post-MVP features:
 - **Card detail pages** with art, oracle text, prices, legalities, rulings, and
   [mana/set symbols](features/cards.md).
 - **Decks** — paste a list for [ownership coverage, format legality, per-deck stats, and
-  export](features/decks.md) (text / Arena / Moxfield / MTGO).
+  export](features/decks.md) (text / Arena / Moxfield / MTGO). Legality is judged by the card (not
+  the printing, so non-standard variants never mis-flag a legal card), and each line has an
+  editable **printing + language** with **Proxy / Special** markers.
 - **Binders** — browse your collection by its import binders.
 - **[Set completion](features/sets.md)** — how much of each set you own, with the missing cards.
 - **[Price history](features/prices.md)** — value-over-time snapshots, biggest movers, and

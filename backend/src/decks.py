@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime
 import re
+import uuid
 from dataclasses import dataclass, field
 
 from sqlalchemy import func, select
@@ -217,6 +218,38 @@ async def _legalities_by_oracle(session: AsyncSession, oracles: set) -> dict:
         if oracle not in best or (_is_playable(legalities) and not _is_playable(best[oracle])):
             best[oracle] = legalities
     return best
+
+
+async def apply_deck_card_edit(
+    session: AsyncSession,
+    dc: DeckCard,
+    *,
+    scryfall_id=None,
+    language: str | None = None,
+    proxy: bool | None = None,
+    special: bool | None = None,
+) -> DeckCard:
+    """Apply a printing / language / proxy / special change to a deck card.
+
+    Shared by the HTML deck page and the JSON API. Only non-``None`` fields change; a new printing
+    is accepted only when it belongs to the same card (matching ``oracle_id``).
+    """
+    if scryfall_id:
+        try:
+            sid = scryfall_id if isinstance(scryfall_id, uuid.UUID) else uuid.UUID(str(scryfall_id))
+        except (ValueError, AttributeError):
+            sid = None
+        chosen = await session.get(Card, sid) if sid else None
+        if chosen is not None and chosen.oracle_id == dc.oracle_id:
+            dc.scryfall_id = chosen.scryfall_id
+    if language is not None:
+        dc.language = normalize_language(language)
+    if proxy is not None:
+        dc.proxy = bool(proxy)
+    if special is not None:
+        dc.special = bool(special)
+    await session.commit()
+    return dc
 
 
 async def deck_printings(session: AsyncSession, oracle_id) -> list[dict]:

@@ -11,16 +11,18 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.collection_edit import add_or_increment
+from src.collection_edit import add_or_increment, delete_stack, update_stack
 from src.config import get_settings
 from src.currency import normalize as normalize_currency
 from src.db import get_session
-from src.decks import deck_coverage
-from src.models import Card, CollectionCard, Deck
+from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
+from src.decks import apply_deck_card_edit, create_deck, deck_coverage
+from src.models import Card, CollectionCard, Deck, DeckCard
 from src.scryfall.mapping import image_url
 from src.search import SearchError, SearchScope
 from src.search.engine import DEFAULT_SORT, SORT_KEYS, run_search
@@ -99,12 +101,19 @@ class DeckSummaryOut(BaseModel):
 
 
 class DeckCardOut(BaseModel):
+    card_id: int
     name: str
     quantity: int
     board: str
     owned: int
     matched: bool
     scryfall_id: str | None = None
+    set_code: str | None = None
+    collector_number: str | None = None
+    language: str = "en"
+    proxy: bool = False
+    special: bool = False
+    legality: str | None = None
 
 
 class DeckDetailOut(BaseModel):
@@ -115,8 +124,60 @@ class DeckDetailOut(BaseModel):
     owned_count: int
     missing_count: int
     missing_cost: float
+    fmt: str | None = None
+    is_legal: bool | None = None
+    illegal_count: int = 0
     main: list[DeckCardOut]
     side: list[DeckCardOut]
+
+
+class DeckCreateIn(BaseModel):
+    name: str = ""
+    decklist: str = ""
+
+
+class DeckUpdateIn(BaseModel):
+    name: str | None = None
+
+
+class DeckCardUpdateIn(BaseModel):
+    scryfall_id: str | None = None
+    language: str | None = None
+    proxy: bool | None = None
+    special: bool | None = None
+
+
+class CollectionRowOut(BaseModel):
+    id: int
+    scryfall_id: str
+    name: str
+    set_code: str
+    collector_number: str
+    quantity: int
+    finish: str
+    condition: str | None = None
+    language: str
+    binder_name: str | None = None
+    tags: list[str] | None = None
+    price: float | None = None
+    image: str | None = None
+
+
+class CollectionListOut(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    items: list[CollectionRowOut]
+
+
+class StackUpdateIn(BaseModel):
+    quantity: int | None = None
+    finish: str | None = None
+    condition: str | None = None
+    language: str | None = None
+    binder: str | None = None
+    tags: list[str] | None = None
 
 
 class WishlistItemOut(BaseModel):
@@ -250,23 +311,96 @@ async def api_decks(session: AsyncSession = Depends(get_session)) -> list[DeckSu
     return [DeckSummaryOut(id=d.id, name=d.name, cards=n) for d, n in rows.all()]
 
 
-@router.get("/decks/{deck_id}", response_model=DeckDetailOut)
-async def api_deck(deck_id: int, session: AsyncSession = Depends(get_session)) -> DeckDetailOut:
-    deck = await session.get(Deck, deck_id)
-    if deck is None:
-        raise HTTPException(status_code=404, detail="Deck not found.")
-    cov = await deck_coverage(session, deck)
+def _deck_card_out(r) -> DeckCardOut:
+    return DeckCardOut(
+        card_id=r.card_id, name=r.name, quantity=r.quantity, board=r.board, owned=r.owned,
+        matched=r.matched, scryfall_id=r.scryfall_id, set_code=r.set_code,
+        collector_number=r.collector_number, language=r.language, proxy=r.proxy,
+        special=r.special, legality=r.legality,
+    )
 
-    def row(r) -> DeckCardOut:
-        return DeckCardOut(name=r.name, quantity=r.quantity, board=r.board, owned=r.owned,
-                           matched=r.matched, scryfall_id=r.scryfall_id)
 
+async def _deck_detail(session: AsyncSession, deck: Deck, fmt: str | None) -> DeckDetailOut:
+    cov = await deck_coverage(session, deck, fmt=fmt or None)
     return DeckDetailOut(
         id=deck.id, name=deck.name, pct_complete=cov.pct_complete,
         total_needed=cov.total_needed, owned_count=cov.owned_count,
         missing_count=cov.missing_count, missing_cost=round(cov.missing_cost, 2),
-        main=[row(r) for r in cov.main], side=[row(r) for r in cov.side],
+        fmt=cov.fmt, is_legal=cov.is_legal if cov.fmt else None, illegal_count=cov.illegal_count,
+        main=[_deck_card_out(r) for r in cov.main], side=[_deck_card_out(r) for r in cov.side],
     )
+
+
+async def _require_deck(session: AsyncSession, deck_id: int) -> Deck:
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail="Deck not found.")
+    return deck
+
+
+@router.get("/decks/{deck_id}", response_model=DeckDetailOut)
+async def api_deck(
+    deck_id: int, format: str = "", session: AsyncSession = Depends(get_session)
+) -> DeckDetailOut:
+    return await _deck_detail(session, await _require_deck(session, deck_id), format)
+
+
+@router.post("/decks", response_model=DeckDetailOut, status_code=201)
+async def api_deck_create(
+    body: DeckCreateIn, session: AsyncSession = Depends(get_session)
+) -> DeckDetailOut:
+    _guard_writable()
+    deck = await create_deck(session, body.name, body.decklist)
+    return await _deck_detail(session, deck, None)
+
+
+@router.patch("/decks/{deck_id}", response_model=DeckDetailOut)
+async def api_deck_update(
+    deck_id: int, body: DeckUpdateIn, session: AsyncSession = Depends(get_session)
+) -> DeckDetailOut:
+    _guard_writable()
+    deck = await _require_deck(session, deck_id)
+    if body.name is not None:
+        deck.name = body.name.strip()[:256] or deck.name
+    await session.commit()
+    return await _deck_detail(session, deck, None)
+
+
+@router.delete("/decks/{deck_id}", response_model=OkOut)
+async def api_deck_delete(deck_id: int, session: AsyncSession = Depends(get_session)) -> OkOut:
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is not None:
+        await session.delete(deck)
+        await session.commit()
+    return OkOut()
+
+
+@router.get("/decks/{deck_id}/export", response_class=PlainTextResponse)
+async def api_deck_export(
+    deck_id: int, fmt: str = "text", session: AsyncSession = Depends(get_session)
+) -> PlainTextResponse:
+    deck = await _require_deck(session, deck_id)
+    if fmt not in EXPORT_FORMATS:
+        fmt = "text"
+    cards = await collect_export_cards(session, deck)
+    return PlainTextResponse(render_deck(cards, fmt))
+
+
+@router.patch("/decks/{deck_id}/cards/{card_id}", response_model=OkOut)
+async def api_deck_card_update(
+    deck_id: int, card_id: int, body: DeckCardUpdateIn,
+    session: AsyncSession = Depends(get_session),
+) -> OkOut:
+    _guard_writable()
+    dc = await session.get(DeckCard, card_id)
+    if dc is None or dc.deck_id != deck_id:
+        raise HTTPException(status_code=404, detail="Card not found in this deck.")
+    await apply_deck_card_edit(
+        session, dc, scryfall_id=body.scryfall_id, language=body.language,
+        proxy=body.proxy, special=body.special,
+    )
+    return OkOut()
 
 
 @router.get("/wishlist", response_model=WishlistOut)
@@ -302,6 +436,48 @@ async def api_stats(
     )
 
 
+def _collection_row(s: CollectionCard, currency: str) -> CollectionRowOut:
+    prices = s.card.prices or {}
+    raw = prices.get("eur") if currency == "eur" else prices.get("usd")
+    return CollectionRowOut(
+        id=s.id, scryfall_id=str(s.scryfall_id), name=s.card.name, set_code=s.card.set_code,
+        collector_number=s.card.collector_number, quantity=s.quantity, finish=s.finish,
+        condition=s.condition, language=s.language, binder_name=s.binder_name, tags=s.tags,
+        price=float(raw) if raw else None, image=image_url(s.card.raw),
+    )
+
+
+@router.get("/collection", response_model=CollectionListOut)
+async def api_collection_list(
+    page: int = 1,
+    page_size: int = 50,
+    q: str = "",
+    binder: str = "",
+    currency: str = "usd",
+    session: AsyncSession = Depends(get_session),
+) -> CollectionListOut:
+    page = max(1, page)
+    page_size = min(max(1, page_size), 200)
+    cur = normalize_currency(currency) or "usd"
+    stmt = select(CollectionCard).join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
+    if q:
+        stmt = stmt.where(func.lower(Card.name).like(f"%{q.lower()}%"))
+    if binder:
+        stmt = stmt.where(CollectionCard.binder_name == binder)
+    total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    rows = (
+        await session.execute(
+            stmt.order_by(Card.name, CollectionCard.id)
+            .offset((page - 1) * page_size).limit(page_size)
+        )
+    ).scalars().all()
+    return CollectionListOut(
+        total=total, page=page, page_size=page_size,
+        total_pages=(total + page_size - 1) // page_size,
+        items=[_collection_row(s, cur) for s in rows],
+    )
+
+
 # --- mutations ----------------------------------------------------------------------------------
 
 class CollectionAddIn(BaseModel):
@@ -325,6 +501,29 @@ async def api_collection_add(
     if stack is None:
         raise HTTPException(status_code=404, detail="Unknown card.")
     return OkOut(quantity=stack.quantity)
+
+
+@router.patch("/collection/{row_id}", response_model=CollectionRowOut)
+async def api_collection_update(
+    row_id: int, body: StackUpdateIn, currency: str = "usd",
+    session: AsyncSession = Depends(get_session),
+) -> CollectionRowOut:
+    _guard_writable()
+    fields = body.model_dump(exclude_unset=True)
+    stack = await update_stack(session, row_id, **fields)
+    if stack is None:
+        raise HTTPException(status_code=404, detail="Stack not found.")
+    return _collection_row(stack, normalize_currency(currency) or "usd")
+
+
+@router.delete("/collection/{row_id}", response_model=OkOut)
+async def api_collection_delete(
+    row_id: int, session: AsyncSession = Depends(get_session)
+) -> OkOut:
+    _guard_writable()
+    if await delete_stack(session, row_id) is None:
+        raise HTTPException(status_code=404, detail="Stack not found.")
+    return OkOut()
 
 
 class TagIn(BaseModel):

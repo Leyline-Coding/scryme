@@ -93,6 +93,44 @@ async def adjust_quantity(session: AsyncSession, stack_id: int, delta: int):
     return sid
 
 
+_UNSET = object()
+
+
+async def update_stack(
+    session: AsyncSession,
+    stack_id: int,
+    *,
+    quantity: int | None = None,
+    finish: str | None = None,
+    condition=_UNSET,
+    language: str | None = None,
+    binder=_UNSET,
+    tags=_UNSET,
+):
+    """Update fields on a stack (any left unset stay put). Returns the stack, or None if missing.
+
+    ``quantity`` is clamped to >= 1 (use :func:`delete_stack` to remove a stack). ``condition`` /
+    ``binder`` / ``tags`` accept an explicit ``None`` to clear them, so they use a sentinel default.
+    """
+    stack = await session.get(CollectionCard, stack_id)
+    if stack is None:
+        return None
+    if quantity is not None:
+        stack.quantity = max(1, quantity)
+    if finish is not None:
+        stack.finish = finish
+    if language is not None:
+        stack.language = language or "en"
+    if condition is not _UNSET:
+        stack.condition = _clean(condition)
+    if binder is not _UNSET:
+        stack.binder_name = _clean(binder)
+    if tags is not _UNSET:
+        stack.tags = tags or None
+    await session.commit()
+    return stack
+
+
 async def delete_stack(session: AsyncSession, stack_id: int):
     """Delete a stack outright. Returns its scryfall_id (or None if it didn't exist)."""
     stack = await session.get(CollectionCard, stack_id)

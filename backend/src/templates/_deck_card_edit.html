@@ -1,0 +1,30 @@
+{# Inline editor for a deck line: choose the printing + mark it proxy/special.
+   Loaded via HTMX into #ed-<card_id>; saving refreshes the whole deck page (HX-Redirect). #}
+<form hx-post="/decks/{{ deck_id }}/card/{{ card_id }}" hx-swap="none"
+      class="flex flex-wrap items-center gap-2 rounded-lg bg-surface-2 p-2 text-xs">
+  <input type="hidden" name="format" value="{{ fmt }}">
+  <label class="text-muted">Printing</label>
+  <select name="scryfall_id"
+          class="max-w-[18rem] truncate rounded border border-edge bg-surface px-2 py-1">
+    {% for p in printings %}
+    <option value="{{ p.scryfall_id }}" {% if current_sid == p.scryfall_id %}selected{% endif %}>
+      {{ (p.set_code or '')|upper }} · {{ p.collector_number }} — {{ p.set_name or 'Unknown set' }}{% if not p.playable %} · non-standard{% endif %}
+    </option>
+    {% endfor %}
+  </select>
+  <label class="text-muted">Language</label>
+  <select name="language" class="rounded border border-edge bg-surface px-2 py-1 uppercase">
+    {% for code, name in languages %}
+    <option value="{{ code }}" {% if current_lang == code %}selected{% endif %}>{{ code|upper }} — {{ name }}</option>
+    {% endfor %}
+  </select>
+  <label class="flex items-center gap-1" title="A printed proxy copy">
+    <input type="checkbox" name="proxy" value="1" {% if proxy %}checked{% endif %}> Proxy
+  </label>
+  <label class="flex items-center gap-1" title="Art card, alter, misprint, or other genuine non-standard copy">
+    <input type="checkbox" name="special" value="1" {% if special %}checked{% endif %}> Special
+  </label>
+  <button type="submit" class="rounded bg-accent px-2 py-1 font-medium text-white">Save</button>
+  <button type="button" class="rounded bg-surface px-2 py-1 text-muted hover:text-fg"
+          @click="editing = false">Cancel</button>
+</form>

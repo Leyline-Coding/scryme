@@ -11,7 +11,7 @@ from __future__ import annotations
 import datetime
 import uuid
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, false, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -44,7 +44,14 @@ class DeckCard(Base):
     board: Mapped[str] = mapped_column(String(8), default="main")  # main | side
 
     # Resolved at import: representative printing (display) + oracle id (ownership matching).
+    # The printing prefers a copy you own, else a tournament-legal one; the user can override it.
     scryfall_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     oracle_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
+    # Non-standard-copy markers (independent): a printed proxy vs. a genuine special (art card,
+    # alter, misprint, …). Language is the copy's language (Scryfall code, English default) — the
+    # card DB is English-only per printing, so this is stored on the line rather than a card row.
+    proxy: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
+    special: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
+    language: Mapped[str] = mapped_column(String(8), nullable=False, server_default="en")
 
     deck: Mapped[Deck] = relationship(back_populates="cards")

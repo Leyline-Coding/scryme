@@ -107,6 +107,107 @@ async def test_legality_check(session):
     assert (await deck_coverage(session, deck, fmt="bogus")).fmt is None
 
 
+async def _seed_signet(session):
+    """A card with a tournament-legal printing and a NEWER non-playable variant (art-series style,
+    ``not_legal`` in every format) sharing one oracle id."""
+    oracle = str(uuid.uuid4())
+    legal = {"commander": "legal", "modern": "not_legal", "vintage": "legal"}
+    dead = {"commander": "not_legal", "modern": "not_legal", "vintage": "not_legal"}
+    playable = {"id": str(uuid.uuid4()), "oracle_id": oracle, "name": "Boros Signet",
+                "set": "CMM", "collector_number": "942", "rarity": "common", "cmc": 2,
+                "type_line": "Artifact", "colors": [], "color_identity": ["R", "W"],
+                "released_at": "2022-01-01", "prices": {"usd": "1.00"}, "legalities": legal}
+    variant = {"id": str(uuid.uuid4()), "oracle_id": oracle, "name": "Boros Signet",
+               "set": "AART", "collector_number": "5", "rarity": "common", "cmc": 2,
+               "type_line": "Artifact", "colors": [], "color_identity": ["R", "W"], "layout":
+               "art_series", "released_at": "2099-01-01", "prices": {"usd": "9.00"},
+               "legalities": dead}
+    cards = {}
+    for raw in (playable, variant):
+        c = Card(**card_to_columns(raw))
+        session.add(c)
+        cards[raw["set"]] = c
+    await session.commit()
+    return oracle, cards
+
+
+@pytest.mark.asyncio
+async def test_resolution_prefers_playable_over_newer_variant(session):
+    _oracle, cards = await _seed_signet(session)
+    deck = await create_deck(session, "C", "1 Boros Signet")
+    # The newer art-series variant is skipped for the tournament-legal printing.
+    assert str(deck.cards[0].scryfall_id) == str(cards["CMM"].scryfall_id)
+
+
+@pytest.mark.asyncio
+async def test_legality_by_oracle_ignores_nonplayable_printing(session):
+    _oracle, cards = await _seed_signet(session)
+    deck = await create_deck(session, "C", "1 Boros Signet")
+    # Force the line onto the non-playable printing (as pre-fix data / a manual pick would).
+    deck.cards[0].scryfall_id = cards["AART"].scryfall_id
+    await session.commit()
+    cov = await deck_coverage(session, deck, fmt="commander")
+    # Legality follows the card (oracle), not the printing -> still legal.
+    assert cov.illegal_count == 0 and cov.is_legal
+    # ...but the row still shows the chosen printing for display (set codes are stored lowercased).
+    assert cov.main[0].set_code == "aart"
+
+
+@pytest.mark.asyncio
+async def test_deck_printings_lists_playable_first(session):
+    from src.decks import deck_printings
+    oracle, _cards = await _seed_signet(session)
+    prints = await deck_printings(session, uuid.UUID(oracle))
+    assert prints[0]["playable"] is True
+    assert prints[-1]["playable"] is False
+
+
+def test_normalize_language():
+    from src.decks import normalize_language
+    assert normalize_language("JA") == "ja"
+    assert normalize_language(None) == "en"
+    assert normalize_language("klingon") == "en"
+
+
+@pytest.mark.asyncio
+async def test_update_deck_card_printing_language_and_flags(client, session):
+    _oracle, cards = await _seed_signet(session)
+    deck = await create_deck(session, "C", "1 Boros Signet")
+    dc = deck.cards[0]
+    resp = await client.post(
+        f"/decks/{deck.id}/card/{dc.id}",
+        data={"scryfall_id": str(cards["AART"].scryfall_id), "language": "JA",
+              "proxy": "1", "special": "1", "format": "commander"},
+    )
+    assert resp.status_code == 204
+    assert resp.headers["hx-redirect"] == f"/decks/{deck.id}?format=commander"
+    await session.refresh(dc)
+    assert str(dc.scryfall_id) == str(cards["AART"].scryfall_id)
+    assert dc.proxy is True and dc.special is True and dc.language == "ja"
+
+
+@pytest.mark.asyncio
+async def test_update_deck_card_rejects_foreign_printing(client, session):
+    _oracle, cards = await _seed_signet(session)
+    other = Card(**card_to_columns(
+        {"id": str(uuid.uuid4()), "oracle_id": str(uuid.uuid4()), "name": "Sol Ring",
+         "set": "CMM", "collector_number": "1", "legalities": {"commander": "legal"}}
+    ))
+    session.add(other)
+    await session.commit()
+    deck = await create_deck(session, "C", "1 Boros Signet")
+    dc = deck.cards[0]
+    original = str(dc.scryfall_id)
+    # A printing that belongs to a different card is ignored.
+    resp = await client.post(
+        f"/decks/{deck.id}/card/{dc.id}",
+        data={"scryfall_id": str(other.scryfall_id), "language": "en"},
+    )
+    assert resp.status_code == 204
+    await session.refresh(dc)
+    assert str(dc.scryfall_id) == original
+
+
 @pytest.mark.asyncio
 async def test_deck_routes_and_delete(client, session):
     await _seed_cards(session)

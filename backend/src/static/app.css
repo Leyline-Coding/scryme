@@ -122,3 +122,19 @@
   a { color: #000 !important; text-decoration: none !important; }
   .print-cols { columns: 2; }
 }
+
+/* Mana cost pips: center the glyph inside its colored circle on both axes.
+   The vendored mana.css centers via `text-align` + `line-height`, but Tailwind text-size
+   utilities (`text-lg`/`text-xl`, and the values inherited on card pages) set their own
+   line-height, which drops the glyph below center and can nudge it off-axis. Flexbox centering
+   is immune to that. The tag+double-class selector (plus !important on line-height) outranks both
+   mana.css `.ms-cost` and any equal-specificity Tailwind utility regardless of load order.
+   Hybrid/split pips render their glyphs via absolutely-positioned ::before/::after, which sit
+   outside flex flow and keep their own offsets — so they're unaffected. */
+i.ms.ms-cost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1 !important;
+  vertical-align: middle;
+}

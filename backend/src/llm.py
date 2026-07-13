@@ -296,30 +296,41 @@ async def has_config_row(session: AsyncSession) -> bool:
 
 _NL_SYSTEM = (
     "You translate a Magic: The Gathering search request into ONE Scryfall-syntax query. "
-    "Output only the query on a single line — no explanation, no code fences, no quotes.\n"
-    "Filters: bare words match the card name; c: or id: colors (w/u/b/r/g or a guild name); "
-    "t: type; o: oracle text; mv (or cmc), pow, tou, loy take a number with = < > <= >= or :; "
+    "Output only the query on a single line — no explanation, no code fences.\n"
+    "Filters: bare words match the card NAME (so put rules text under o:, never as loose words); "
+    "c: or id: colors (w/u/b/r/g or a guild name); t: type; o: oracle text; "
+    "mv (or cmc), pow, tou, loy take a number with = < > <= >= or :; "
     "r: rarity (common/uncommon/rare/mythic); s: set code; f: format legality "
     "(standard/pioneer/modern/legacy/vintage/commander/pauper/brawl); usd/eur price; kw: keyword; "
     "is: (e.g. is:foil); year:; combine with spaces (AND), OR, - for NOT, parentheses, and "
     "/regex/ on text fields.\n"
+    "Quote any multi-word value: o:\"counter target\" (or split into o:counter o:target); "
+    "t:\"legendary creature\". A bare multi-word phrase would wrongly match card names.\n"
     "Examples:\n"
     "cheap red removal that damages creatures -> c:r o:damage t:instant mv<=2\n"
     "blue fliers under five dollars -> c:u o:flying usd<5\n"
+    "two mana blue instants that counter spells -> c:u t:instant mv=2 o:\"counter target\"\n"
     "green ramp legal in commander -> c:g o:add f:commander\n"
     "legendary dragons -> t:legendary t:dragon"
 )
 
 
 def _clean_query(text: str) -> str:
-    """Extract a single query line from a model reply (strip code fences / 'query:' / quotes)."""
+    """Extract a single query line from a model reply (strip code fences / 'query:' wrapper)."""
     for line in text.splitlines():
         line = line.strip().strip("`").strip()
         if line.lower().startswith("query:"):
             line = line[6:].strip()
-        line = line.strip("`").strip('"').strip()
-        if line:
-            return line
+        line = line.strip("`").strip()
+        if not line:
+            continue
+        # Unwrap a whole query the model put in quotes (e.g. `"c:r t:instant"`).
+        if len(line) > 1 and line.startswith('"') and line.endswith('"'):
+            line = line[1:-1].strip()
+        # Close a dangling quote (small models sometimes emit o:"foo without the closing ").
+        if line.count('"') % 2 == 1:
+            line += '"'
+        return line
     return ""
 
 
@@ -337,7 +348,7 @@ async def nl_to_query(prompt: str, client: ChatClient) -> str:
     messages = [{"role": "system", "content": _NL_SYSTEM},
                 {"role": "user", "content": prompt}]
     for _ in range(2):
-        raw = await _chat_nonempty(client, messages, retries=1, temperature=0.1, max_tokens=1500)
+        raw = await _chat_nonempty(client, messages, retries=1, temperature=0.1, max_tokens=2500)
         query = _clean_query(raw)
         if query and validate_query(query):
             return query

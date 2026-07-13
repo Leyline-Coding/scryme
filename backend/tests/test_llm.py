@@ -265,3 +265,11 @@ async def test_build_prompt_and_upgrade_routes(client, session, monkeypatch):
 
     finder = await client.get("/ai/commanders")
     assert finder.status_code == 200
+
+
+def test_clean_query_balances_and_unwraps():
+    from src.llm import _clean_query
+    assert _clean_query('t:creature o:"draw a card') == 't:creature o:"draw a card"'  # dangling
+    assert _clean_query('"c:r t:instant"') == 'c:r t:instant'  # whole query wrapped in quotes
+    assert _clean_query('o:"counter target"') == 'o:"counter target"'  # already valid
+    assert _clean_query("```\nc:u o:counter\n```") == 'c:u o:counter'  # code fence

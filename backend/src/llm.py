@@ -304,12 +304,13 @@ _NL_SYSTEM = (
     "(standard/pioneer/modern/legacy/vintage/commander/pauper/brawl); usd/eur price; kw: keyword; "
     "is: (e.g. is:foil); year:; combine with spaces (AND), OR, - for NOT, parentheses, and "
     "/regex/ on text fields.\n"
-    "Quote any multi-word value: o:\"counter target\" (or split into o:counter o:target); "
-    "t:\"legendary creature\". A bare multi-word phrase would wrongly match card names.\n"
+    "For multi-word rules text, use a SEPARATE o: for EACH significant word — o:counter o:spell, "
+    "NOT a quoted phrase like o:\"counter spell\". Bare words match the card NAME, so always put "
+    "rules-text words under their own o:.\n"
     "Examples:\n"
     "cheap red removal that damages creatures -> c:r o:damage t:instant mv<=2\n"
     "blue fliers under five dollars -> c:u o:flying usd<5\n"
-    "two mana blue instants that counter spells -> c:u t:instant mv=2 o:\"counter target\"\n"
+    "blue instants that counter spells -> c:u t:instant o:counter o:spell\n"
     "green ramp legal in commander -> c:g o:add f:commander\n"
     "legendary dragons -> t:legendary t:dragon"
 )
@@ -343,6 +344,11 @@ def validate_query(query: str) -> bool:
         return False
 
 
+def _looks_useful(query: str) -> bool:
+    """Reject a degenerate reply (e.g. a lone 'c') that validates but searches nothing useful."""
+    return ":" in query or "/" in query or len(query) >= 4
+
+
 async def nl_to_query(prompt: str, client: ChatClient) -> str:
     """Translate a natural-language request into a validated Scryfall query, or '' on failure."""
     messages = [{"role": "system", "content": _NL_SYSTEM},
@@ -350,7 +356,7 @@ async def nl_to_query(prompt: str, client: ChatClient) -> str:
     for _ in range(2):
         raw = await _chat_nonempty(client, messages, retries=1, temperature=0.1, max_tokens=2500)
         query = _clean_query(raw)
-        if query and validate_query(query):
+        if query and _looks_useful(query) and validate_query(query):
             return query
         # Feed the failure back and ask for a correction.
         messages.append({"role": "assistant", "content": raw})

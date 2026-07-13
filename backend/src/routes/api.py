@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import uuid
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
@@ -28,6 +29,7 @@ from src.embeddings import similar_to_oracle
 from src.importers.base import UnknownFormatError
 from src.importers.merge import MergeStrategy
 from src.importers.service import confirm_upload, stage_upload
+from src.llm import ChatClient, get_config, nl_to_query
 from src.models import Card, Checklist, ChecklistItem, CollectionCard, Deck, DeckCard, SavedSearch
 from src.prices import biggest_movers, collection_pl, value_series
 from src.scryfall.mapping import image_url
@@ -276,6 +278,26 @@ async def api_search(
     ]
     return SearchOut(total=result.total, page=result.page, page_size=result.page_size,
                      total_pages=result.total_pages, cards=cards)
+
+
+class NLSearchOut(BaseModel):
+    query: str
+    ok: bool
+
+
+@router.get("/search/nl", response_model=NLSearchOut)
+async def api_search_nl(
+    q: str = "", session: AsyncSession = Depends(get_session)
+) -> NLSearchOut:
+    """Translate a plain-English request into a validated Scryfall query (#171)."""
+    cfg = await get_config(session)
+    if not cfg.ready or not q.strip():
+        return NLSearchOut(query="", ok=False)
+    try:
+        query = await nl_to_query(q.strip(), ChatClient(cfg))
+    except (httpx.HTTPError, KeyError, IndexError, ValueError):
+        query = ""
+    return NLSearchOut(query=query, ok=bool(query))
 
 
 async def _get_card(session: AsyncSession, scryfall_id: str) -> Card:

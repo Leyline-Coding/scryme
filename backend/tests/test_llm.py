@@ -121,3 +121,64 @@ async def test_ai_feature_hidden_when_not_configured(client, session):
     deck = await create_deck(session, "Empty", "1 Nonexistent")
     resp = await client.post(f"/decks/{deck.id}/analyze")
     assert resp.status_code == 200 and "configured" in resp.text  # apostrophe is HTML-escaped
+
+
+class SeqChat:
+    """Returns a scripted sequence of replies across successive .chat() calls."""
+
+    def __init__(self, replies):
+        self.replies = list(replies)
+        self.i = 0
+
+    async def chat(self, messages, **kwargs):
+        reply = self.replies[min(self.i, len(self.replies) - 1)]
+        self.i += 1
+        return reply
+
+
+@pytest.mark.asyncio
+async def test_nl_to_query_validates_and_retries():
+    from src.llm import nl_to_query, validate_query
+    assert validate_query("c:r mv<=2") and not validate_query("bogusfield:x")
+    # Valid on the first try.
+    assert await nl_to_query("cheap red removal", SeqChat(["c:r t:instant mv<=2"])) \
+        == "c:r t:instant mv<=2"
+    # Invalid then corrected on retry.
+    assert await nl_to_query("blue fliers", SeqChat(["notafilter:zzz", "c:u o:flying"])) \
+        == "c:u o:flying"
+    # Never valid -> empty (caller falls back).
+    assert await nl_to_query("gibberish", SeqChat(["notafilter:zzz"])) == ""
+
+
+@pytest.mark.asyncio
+async def test_search_nl_route_translates_and_falls_back(client, session, monkeypatch):
+    async def fake_nl(text, cl):
+        return "c:r"
+    monkeypatch.setattr("src.routes.search.nl_to_query", fake_nl)
+
+    # Not configured -> fall back to the raw text as the query.
+    off = await client.post("/search/nl", data={"q": "lightning bolt", "scope": "collection"},
+                            follow_redirects=False)
+    assert off.status_code == 303 and "q=lightning" in off.headers["location"].lower()
+
+    # Configured -> translated query + nl passthrough.
+    await save_config(session, base_url="http://x/v1", api_key="k", chat_model="m",
+                      embed_model="e", enabled=True)
+    on = await client.post("/search/nl", data={"q": "red cards", "scope": "all"},
+                           follow_redirects=False)
+    loc = on.headers["location"]
+    assert on.status_code == 303 and "q=c%3Ar" in loc and "scope=all" in loc and "nl=" in loc
+
+
+@pytest.mark.asyncio
+async def test_api_search_nl(client, session, monkeypatch):
+    off = await client.get("/api/v1/search/nl?q=dragons")
+    assert off.json() == {"query": "", "ok": False}
+
+    async def fake_nl(text, cl):
+        return "t:dragon"
+    monkeypatch.setattr("src.routes.api.nl_to_query", fake_nl)
+    await save_config(session, base_url="http://x/v1", api_key="k", chat_model="m",
+                      embed_model="e", enabled=True)
+    on = await client.get("/api/v1/search/nl?q=dragons")
+    assert on.status_code == 200 and on.json() == {"query": "t:dragon", "ok": True}

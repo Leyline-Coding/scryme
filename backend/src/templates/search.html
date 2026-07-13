@@ -43,6 +43,23 @@
         <option value="desc" {% if dir == 'desc' %}selected{% endif %}>Desc ↓</option>
       </select>
     </form>
+    {% if ai_ready %}
+    {# Natural-language search (#171): translated to Scryfall syntax, then shown editable above. #}
+    <form method="post" action="/search/nl" class="order-last w-full flex gap-2">
+      <input type="hidden" name="scope" value="{{ scope }}" />
+      <input type="text" name="q"
+             placeholder="✨ Ask in plain English — e.g. cheap red removal that hits creatures"
+             class="flex-1 min-w-0 rounded-full bg-surface-2 border border-edge px-5 py-2.5 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-accent" />
+      <button type="submit"
+              class="shrink-0 rounded-full bg-accent text-white px-4 py-2.5 text-sm font-medium">Ask</button>
+    </form>
+    {% endif %}
+    {% if nl %}
+    <p class="order-last w-full text-xs text-muted">
+      Interpreted <span class="text-fg">“{{ nl }}”</span> as the query above — edit it to refine.
+    </p>
+    {% endif %}
     {% if not read_only %}
     {# Saved searches: run a saved one (link), delete it, or save the current live query. #}
     <div class="ml-auto shrink-0 relative" x-data="savedMenu()">

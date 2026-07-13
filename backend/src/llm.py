@@ -24,6 +24,7 @@ from src import __version__
 from src.config import get_settings
 from src.decks import deck_coverage, deck_stats
 from src.models import Card, CollectionCard, LLMSettings
+from src.search import SearchError, build_search
 
 _UA = f"scryme/{__version__} (+https://github.com/Leyline-Coding/scryme)"
 
@@ -288,3 +289,59 @@ async def suggest_from_collection(
 
 async def has_config_row(session: AsyncSession) -> bool:
     return (await session.scalar(select(func.count()).select_from(LLMSettings))) > 0
+
+
+# --- natural language -> Scryfall search syntax (#171) ------------------------------------------
+
+_NL_SYSTEM = (
+    "You translate a Magic: The Gathering search request into ONE Scryfall-syntax query. "
+    "Output only the query on a single line — no explanation, no code fences, no quotes.\n"
+    "Filters: bare words match the card name; c: or id: colors (w/u/b/r/g or a guild name); "
+    "t: type; o: oracle text; mv (or cmc), pow, tou, loy take a number with = < > <= >= or :; "
+    "r: rarity (common/uncommon/rare/mythic); s: set code; f: format legality "
+    "(standard/pioneer/modern/legacy/vintage/commander/pauper/brawl); usd/eur price; kw: keyword; "
+    "is: (e.g. is:foil); year:; combine with spaces (AND), OR, - for NOT, parentheses, and "
+    "/regex/ on text fields.\n"
+    "Examples:\n"
+    "cheap red removal that damages creatures -> c:r o:damage t:instant mv<=2\n"
+    "blue fliers under five dollars -> c:u o:flying usd<5\n"
+    "green ramp legal in commander -> c:g o:add f:commander\n"
+    "legendary dragons -> t:legendary t:dragon"
+)
+
+
+def _clean_query(text: str) -> str:
+    """Extract a single query line from a model reply (strip code fences / 'query:' / quotes)."""
+    for line in text.splitlines():
+        line = line.strip().strip("`").strip()
+        if line.lower().startswith("query:"):
+            line = line[6:].strip()
+        line = line.strip("`").strip('"').strip()
+        if line:
+            return line
+    return ""
+
+
+def validate_query(query: str) -> bool:
+    """True if *query* parses/compiles as Scryfall syntax (does not execute it)."""
+    try:
+        build_search(query)
+        return True
+    except SearchError:
+        return False
+
+
+async def nl_to_query(prompt: str, client: ChatClient) -> str:
+    """Translate a natural-language request into a validated Scryfall query, or '' on failure."""
+    messages = [{"role": "system", "content": _NL_SYSTEM},
+                {"role": "user", "content": prompt}]
+    for _ in range(2):
+        raw = await _chat_nonempty(client, messages, retries=1, temperature=0.1, max_tokens=1500)
+        query = _clean_query(raw)
+        if query and validate_query(query):
+            return query
+        # Feed the failure back and ask for a correction.
+        messages.append({"role": "assistant", "content": raw})
+        messages.append({"role": "user", "content":
+            "That wasn't valid Scryfall syntax. Reply with ONLY a corrected single-line query."})
+    return ""

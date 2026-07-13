@@ -82,6 +82,7 @@ class Settings(BaseSettings):
     # embed model is used for semantic card similarity (#176). #163 layers in-app config on top.
     llm_base_url: str = ""
     llm_api_key: str = ""
+    llm_chat_model: str = "llama3.1"
     llm_embed_model: str = "nomic-embed-text"
 
 

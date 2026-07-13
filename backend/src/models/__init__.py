@@ -7,6 +7,7 @@ from src.models.deck import Deck, DeckCard
 from src.models.embedding import CardEmbedding
 from src.models.import_snapshot import ImportSnapshot
 from src.models.ingest import IngestState
+from src.models.llm_settings import LLMSettings
 from src.models.price import CardPricePoint, PriceSnapshot
 from src.models.price_target import PriceTarget
 from src.models.saved_search import SavedSearch
@@ -15,6 +16,6 @@ from src.models.wishlist import WishlistItem
 
 __all__ = [
     "Card", "CardEmbedding", "CardPricePoint", "Checklist", "ChecklistItem", "CollectionCard",
-    "Deck", "DeckCard", "ImportSnapshot", "IngestState", "ImportStaging", "PriceSnapshot",
-    "PriceTarget", "SavedSearch", "WishlistItem",
+    "Deck", "DeckCard", "ImportSnapshot", "IngestState", "ImportStaging", "LLMSettings",
+    "PriceSnapshot", "PriceTarget", "SavedSearch", "WishlistItem",
 ]

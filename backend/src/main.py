@@ -16,6 +16,7 @@ from src.config import get_settings
 from src.lan import access_decision, lan_state
 from src.routes import (
     admin,
+    ai,
     api,
     backup,
     binders,
@@ -112,6 +113,7 @@ def create_app() -> FastAPI:
     app.include_router(api.router)
     app.include_router(lan.router)
     app.include_router(watch.router)
+    app.include_router(ai.router)
 
     # Cached card images are served from the data volume.
     settings.image_cache_dir.mkdir(parents=True, exist_ok=True)

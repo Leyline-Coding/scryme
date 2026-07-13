@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}AI settings · scryme{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-6">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold">AI settings</h1>
+    <a href="/" class="ml-auto text-sm text-muted hover:text-fg">← Home</a>
+  </header>
+
+  <p class="text-sm text-muted mb-4">
+    Connect any <strong>OpenAI-compatible</strong> endpoint — OpenAI, OpenRouter, or a local
+    <strong>Ollama</strong> / <strong>LM Studio</strong> server (e.g.
+    <code class="text-xs">http://localhost:11434/v1</code>). Used for deck analysis, card
+    suggestions, and semantic similarity.
+  </p>
+
+  <div class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-600 mb-5">
+    <strong>Privacy:</strong> when you use an AI feature, the relevant deck and owned-card data is
+    sent to the endpoint you configure here. A local endpoint keeps everything on your machine.
+  </div>
+
+  {% if saved %}
+  <div class="rounded-lg bg-emerald-500/10 text-emerald-600 text-sm px-3 py-2 mb-4">Settings saved.</div>
+  {% endif %}
+
+  <form method="post" action="/ai" class="space-y-4">
+    <label class="flex items-center gap-2 text-sm">
+      <input type="checkbox" name="enabled" value="1" {% if cfg.enabled %}checked{% endif %}>
+      <span>Enable AI features</span>
+    </label>
+
+    <div>
+      <label class="block text-sm text-muted mb-1">Endpoint base URL</label>
+      <input type="url" name="base_url" value="{{ cfg.base_url }}" placeholder="http://localhost:11434/v1"
+             class="w-full rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
+    </div>
+
+    <div>
+      <label class="block text-sm text-muted mb-1">API key
+        {% if has_key %}<span class="text-emerald-500">(set)</span>{% endif %}</label>
+      <input type="password" name="api_key" autocomplete="off"
+             placeholder="{{ 'leave blank to keep current key' if has_key else 'optional for local servers' }}"
+             class="w-full rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm text-muted mb-1">Chat model</label>
+        <input type="text" name="chat_model" value="{{ cfg.chat_model }}" placeholder="llama3.1"
+               class="w-full rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <label class="block text-sm text-muted mb-1">Embedding model</label>
+        <input type="text" name="embed_model" value="{{ cfg.embed_model }}" placeholder="nomic-embed-text"
+               class="w-full rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 pt-1">
+      <button type="submit" {% if read_only %}disabled{% endif %}
+              class="rounded-lg bg-accent text-white px-4 py-2 text-sm font-medium disabled:opacity-50">Save</button>
+      <button type="button" hx-post="/ai/test" hx-target="#ai-test-result" hx-swap="innerHTML"
+              class="rounded-lg border border-edge hover:border-accent px-4 py-2 text-sm">Test connection</button>
+      <span id="ai-test-result" class="text-sm"></span>
+    </div>
+  </form>
+</div>
+{% endblock %}

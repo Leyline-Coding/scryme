@@ -24,11 +24,6 @@ from src.models import Card, CardEmbedding, CollectionCard
 _UA = f"scryme/{__version__} (+https://github.com/Leyline-Coding/scryme)"
 
 
-def is_configured() -> bool:
-    """True when an embeddings endpoint is configured (AI features are opt-in)."""
-    return bool(get_settings().llm_base_url)
-
-
 def _text_for(name: str, type_line: str | None, oracle_text: str | None) -> str:
     """The document embedded for a card: name, type line, then rules text."""
     return "\n".join(p for p in (name, type_line, oracle_text) if p).strip()
@@ -140,8 +135,14 @@ async def embedding_count(session: AsyncSession) -> int:
 
 
 async def run_backfill(scope: str = "owned") -> int:
-    """CLI/admin entry point: open a session and backfill embeddings."""
-    if not is_configured():
-        raise RuntimeError("No embeddings endpoint configured (set SCRYME_LLM_BASE_URL).")
+    """CLI/admin entry point: resolve config, open a session, and backfill embeddings."""
+    from src.llm import get_config
+
     async with SessionLocal() as session:
-        return await backfill_embeddings(session, scope=scope)
+        cfg = await get_config(session)
+        if not cfg.base_url:
+            raise RuntimeError(
+                "No embeddings endpoint configured (set it in Settings -> AI, or SCRYME_LLM_*)."
+            )
+        client = EmbeddingClient(base_url=cfg.base_url, api_key=cfg.api_key, model=cfg.embed_model)
+        return await backfill_embeddings(session, scope=scope, client=client)

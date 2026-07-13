@@ -80,43 +80,59 @@ async def _owned_by_oracle(session: AsyncSession) -> dict:
     return {o: int(q) for o, q in rows.all() if o}
 
 
+def _is_playable(legalities: dict | None) -> bool:
+    """True for a real, tournament-usable printing.
+
+    Scryfall marks non-playable variants (art-series, tokens, gold-bordered World Championship /
+    Collector's Edition, oversized, acorn un-cards) as ``not_legal`` in *every* format, so a
+    printing counts as playable when it is legal/restricted/banned in at least one format.
+    """
+    return bool(legalities) and any(v != "not_legal" for v in legalities.values())
+
+
 async def _resolve_names(session: AsyncSession, names: list[str], owned_sids: set) -> dict:
-    """Map each lowercased name -> (oracle_id, scryfall_id), preferring an owned/latest printing."""
+    """Map each lowercased name -> (oracle_id, scryfall_id).
+
+    Prefers a printing the user owns (collection alignment), then a tournament-legal printing, then
+    the newest — so a deck line never silently resolves to an art-series / oversized variant that
+    Scryfall reports as illegal in every format.
+    """
     wanted = {n.lower() for n in names}
     if not wanted:
         return {}
     rows = (
         await session.execute(
-            select(Card.name, Card.oracle_id, Card.scryfall_id, Card.released_at).where(
-                func.lower(Card.name).in_(wanted)
-            )
+            select(
+                Card.name, Card.oracle_id, Card.scryfall_id, Card.released_at, Card.legalities
+            ).where(func.lower(Card.name).in_(wanted))
         )
     ).all()
     by_name: dict[str, list] = {}
-    for name, oracle, sid, released in rows:
-        by_name.setdefault(name.lower(), []).append((oracle, sid, released))
+    for name, oracle, sid, released, legalities in rows:
+        by_name.setdefault(name.lower(), []).append((oracle, sid, released, legalities))
 
     resolved: dict[str, tuple] = {}
     for low, cands in by_name.items():
-        # Prefer a printing the user actually owns (nicer image/price), else the newest.
+        # Owned first (nicer image/price + collection alignment), then playable, then newest.
         cands.sort(
-            key=lambda c: (c[1] in owned_sids, c[2] or datetime.date.min),
+            key=lambda c: (c[1] in owned_sids, _is_playable(c[3]), c[2] or datetime.date.min),
             reverse=True,
         )
         resolved[low] = (cands[0][0], cands[0][1])
 
-    # Fallback: match the front face of split / double-faced cards ("Name // Other").
+    # Fallback: match the front face of split / double-faced cards ("Name // Other"). Prefer a
+    # playable printing so we don't land on an art-series card, which is also named "Name // Name".
     for low in wanted - set(resolved):
-        row = (
+        cands = (
             await session.execute(
-                select(Card.oracle_id, Card.scryfall_id)
+                select(Card.oracle_id, Card.scryfall_id, Card.released_at, Card.legalities)
                 .where(func.lower(Card.name).like(low + " //%"))
                 .order_by(Card.released_at.desc().nulls_last())
-                .limit(1)
             )
-        ).first()
-        if row:
-            resolved[low] = (row[0], row[1])
+        ).all()
+        if cands:
+            best = max(cands, key=lambda c: (_is_playable(c[3]), c[2] or datetime.date.min))
+            resolved[low] = (best[0], best[1])
     return resolved
 
 
@@ -146,6 +162,21 @@ LEGALITY_FORMATS = [
 # A card is allowed in a deck when legal (restricted = legal but limited to one copy).
 _ALLOWED_LEGALITIES = {"legal", "restricted"}
 
+# Languages a physical printing can be in (Scryfall codes). English is the default; the card DB is
+# English-only per printing, so a deck line just records the language it's played in.
+DECK_LANGUAGES = [
+    ("en", "English"), ("es", "Spanish"), ("fr", "French"), ("de", "German"),
+    ("it", "Italian"), ("pt", "Portuguese"), ("ja", "Japanese"), ("ko", "Korean"),
+    ("ru", "Russian"), ("zhs", "Chinese (S)"), ("zht", "Chinese (T)"), ("ph", "Phyrexian"),
+]
+_LANGUAGE_CODES = {code for code, _ in DECK_LANGUAGES}
+
+
+def normalize_language(code: str | None) -> str:
+    """Clamp a language code to one we offer, defaulting to English."""
+    code = (code or "").strip().lower()
+    return code if code in _LANGUAGE_CODES else "en"
+
 
 @dataclass
 class CardRow:
@@ -156,6 +187,57 @@ class CardRow:
     matched: bool
     scryfall_id: str | None
     legality: str | None = None     # status in the selected format, or None when no format chosen
+    card_id: int = 0                # deck_card row id (for editing the printing)
+    set_code: str | None = None     # representative printing shown for this line
+    set_name: str | None = None
+    collector_number: str | None = None
+    proxy: bool = False             # printed proxy
+    special: bool = False           # art card / alter / other genuine non-standard copy
+    language: str = "en"            # language the copy is played in (Scryfall code)
+
+
+async def _legalities_by_oracle(session: AsyncSession, oracles: set) -> dict:
+    """Legalities per oracle id, taken from a *playable* printing.
+
+    Legality is a property of the card, not of whichever printing a deck line resolved to, so we
+    ignore non-playable variants (all ``not_legal``) when a real printing of the same card exists.
+    """
+    ids = [o for o in oracles if o]
+    if not ids:
+        return {}
+    rows = (
+        await session.execute(
+            select(Card.oracle_id, Card.legalities).where(Card.oracle_id.in_(ids))
+        )
+    ).all()
+    best: dict = {}
+    for oracle, legalities in rows:
+        legalities = legalities or {}
+        # Keep the first printing seen, but upgrade to a playable one as soon as we find it.
+        if oracle not in best or (_is_playable(legalities) and not _is_playable(best[oracle])):
+            best[oracle] = legalities
+    return best
+
+
+async def deck_printings(session: AsyncSession, oracle_id) -> list[dict]:
+    """Every printing of a card, newest first with playable printings ahead of variants."""
+    rows = (
+        await session.execute(
+            select(
+                Card.scryfall_id, Card.set_code, Card.set_name,
+                Card.collector_number, Card.legalities, Card.released_at,
+            )
+            .where(Card.oracle_id == oracle_id)
+            .order_by(Card.released_at.desc().nulls_last())
+        )
+    ).all()
+    out = [
+        {"scryfall_id": str(sid), "set_code": sc, "set_name": sn,
+         "collector_number": cn, "playable": _is_playable(leg)}
+        for sid, sc, sn, cn, leg, _rel in rows
+    ]
+    out.sort(key=lambda p: not p["playable"])  # stable: playable first, newest order kept within
+    return out
 
 
 @dataclass
@@ -192,20 +274,25 @@ async def deck_coverage(
 
     sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
     price_by_sid: dict[str, dict] = {}
-    legal_by_oracle: dict = {}
+    print_by_sid: dict[str, tuple] = {}   # sid -> (set_code, set_name, collector_number)
     oracle_sid: dict = {}
     if sids:
         rows = (
             await session.execute(
-                select(Card.scryfall_id, Card.oracle_id, Card.prices, Card.legalities).where(
-                    Card.scryfall_id.in_(sids)
-                )
+                select(
+                    Card.scryfall_id, Card.oracle_id, Card.prices,
+                    Card.set_code, Card.set_name, Card.collector_number,
+                ).where(Card.scryfall_id.in_(sids))
             )
         ).all()
-        for sid, oracle, prices, legalities in rows:
+        for sid, oracle, prices, set_code, set_name, collector in rows:
             price_by_sid[str(sid)] = prices or {}
-            legal_by_oracle[oracle] = legalities or {}
+            print_by_sid[str(sid)] = (set_code, set_name, collector)
             oracle_sid[oracle] = str(sid)
+    # Legality is judged per oracle from a playable printing, independent of the line's printing.
+    legal_by_oracle = await _legalities_by_oracle(
+        session, {c.oracle_id for c in deck.cards if c.oracle_id}
+    ) if fmt else {}
 
     # Needed totals per oracle across both boards (ownership is shared between main + side).
     needed_by_oracle: dict = {}
@@ -221,12 +308,16 @@ async def deck_coverage(
             legality = legal_by_oracle.get(c.oracle_id, {}).get(fmt, "not_legal")
             if legality not in _ALLOWED_LEGALITIES:
                 illegal_oracles.add(c.oracle_id)
+        set_code, set_name, collector = print_by_sid.get(str(c.scryfall_id), (None, None, None))
         row = CardRow(
             name=c.name, quantity=c.quantity, board=c.board,
             owned=owned.get(c.oracle_id, 0) if c.oracle_id else 0,
             matched=c.oracle_id is not None,
             scryfall_id=str(c.scryfall_id) if c.scryfall_id else None,
             legality=legality,
+            card_id=c.id,
+            set_code=set_code, set_name=set_name, collector_number=collector,
+            proxy=c.proxy, special=c.special, language=c.language,
         )
         (cov.main if c.board == "main" else cov.side).append(row)
         cov.total_needed += c.quantity

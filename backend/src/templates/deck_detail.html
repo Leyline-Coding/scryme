@@ -24,26 +24,48 @@
 {% macro rows(cards) %}
   <ul class="divide-y divide-edge">
     {% for r in cards %}
-    <li class="py-1.5 flex items-center gap-2 text-sm
-               {% if not r.matched %}text-amber-500{% endif %}">
-      <span class="w-8 shrink-0 text-right text-muted tabular-nums">{{ r.quantity }}×</span>
-      {% if r.scryfall_id %}
-      <a href="/card/{{ r.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">{{ r.name }}</a>
-      {% else %}
-      <span class="flex-1 min-w-0 truncate" title="Not found in the card database">{{ r.name }}</span>
-      {% endif %}
-      {% if r.legality and r.legality not in ('legal', 'restricted') %}
-      <span class="shrink-0 text-xs text-rose-500 capitalize" title="Not legal in {{ cov.fmt }}">{{ r.legality.replace('_', ' ') }}</span>
-      {% elif r.legality == 'restricted' %}
-      <span class="shrink-0 text-xs text-amber-500">restricted</span>
-      {% endif %}
-      {% if not r.matched %}
-      <span class="shrink-0 text-xs">unrecognized</span>
-      {% elif r.owned >= r.quantity %}
-      <span class="shrink-0 text-xs text-emerald-500" title="You own enough">✓ own {{ r.owned }}</span>
-      {% else %}
-      <span class="shrink-0 text-xs text-muted">own {{ r.owned }}/{{ r.quantity }}</span>
-      {% endif %}
+    <li class="py-1.5 text-sm" x-data="{ editing: false }">
+      <div class="flex items-center gap-2 {% if not r.matched %}text-amber-500{% endif %}">
+        <span class="w-8 shrink-0 text-right text-muted tabular-nums">{{ r.quantity }}×</span>
+        {% if r.scryfall_id %}
+        <a href="/card/{{ r.scryfall_id }}" class="min-w-0 truncate hover:text-accent">{{ r.name }}</a>
+        {% else %}
+        <span class="min-w-0 truncate" title="Not found in the card database">{{ r.name }}</span>
+        {% endif %}
+        {% if r.set_code %}
+        <span class="shrink-0 text-[10px] uppercase tracking-wide text-muted"
+              title="{{ r.set_name }} · #{{ r.collector_number }} · {{ r.language|upper }}">{{ r.set_code }}·{{ r.collector_number }}·{{ r.language|upper }}</span>
+        {% endif %}
+        {% if r.proxy %}
+        <span class="shrink-0 rounded bg-surface-2 px-1 text-[10px] font-medium text-accent"
+              title="Printed proxy">PROXY</span>
+        {% endif %}
+        {% if r.special %}
+        <span class="shrink-0 rounded bg-surface-2 px-1 text-[10px] font-medium text-amber-500"
+              title="Art card / alter / other non-standard copy">SPECIAL</span>
+        {% endif %}
+        <span class="flex-1"></span>
+        {% if r.legality and r.legality not in ('legal', 'restricted') %}
+        <span class="shrink-0 text-xs text-rose-500 capitalize" title="Not legal in {{ cov.fmt }}">{{ r.legality.replace('_', ' ') }}</span>
+        {% elif r.legality == 'restricted' %}
+        <span class="shrink-0 text-xs text-amber-500">restricted</span>
+        {% endif %}
+        {% if not r.matched %}
+        <span class="shrink-0 text-xs">unrecognized</span>
+        {% elif r.owned >= r.quantity %}
+        <span class="shrink-0 text-xs text-emerald-500" title="You own enough">✓ own {{ r.owned }}</span>
+        {% else %}
+        <span class="shrink-0 text-xs text-muted">own {{ r.owned }}/{{ r.quantity }}</span>
+        {% endif %}
+        {% if not read_only and r.matched %}
+        <button type="button" title="Change printing / mark as proxy"
+                class="shrink-0 text-xs text-muted hover:text-accent"
+                @click="editing = !editing"
+                hx-get="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/edit?format={{ cov.fmt or '' }}"
+                hx-target="#ed-{{ r.card_id }}" hx-swap="innerHTML">✎</button>
+        {% endif %}
+      </div>
+      <div id="ed-{{ r.card_id }}" x-show="editing" x-cloak class="mt-1.5 pl-10"></div>
     </li>
     {% endfor %}
   </ul>

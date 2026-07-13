@@ -5,8 +5,10 @@ Mutations are blocked in read-only (demo) mode, mirroring uploads.
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
@@ -15,8 +17,16 @@ from src.db import get_session
 from src.deck_builder import BuildError, build_commander_deck, owned_commanders
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
 from src.deck_import import SUPPORTED, DeckImportError, fetch_deck_from_url
-from src.decks import LEGALITY_FORMATS, create_deck, deck_coverage, deck_stats
-from src.models import Deck
+from src.decks import (
+    DECK_LANGUAGES,
+    LEGALITY_FORMATS,
+    create_deck,
+    deck_coverage,
+    deck_printings,
+    deck_stats,
+    normalize_language,
+)
+from src.models import Card, Deck, DeckCard
 from src.templating import templates
 from src.wishlist import add_deck_missing
 
@@ -120,6 +130,74 @@ async def view_deck(
             "read_only": get_settings().read_only,
         },
     )
+
+
+async def _get_deck_card(session: AsyncSession, deck_id: int, card_id: int) -> DeckCard:
+    dc = await session.get(DeckCard, card_id)
+    if dc is None or dc.deck_id != deck_id:
+        raise HTTPException(status_code=404, detail="Card not found in this deck.")
+    return dc
+
+
+@router.get("/decks/{deck_id}/card/{card_id}/edit", response_class=HTMLResponse)
+async def edit_deck_card(
+    request: Request,
+    deck_id: int,
+    card_id: int,
+    format: str = "",
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Inline editor for a deck line's printing + proxy/special flag."""
+    _guard_writable()
+    dc = await _get_deck_card(session, deck_id, card_id)
+    if dc.oracle_id is None:
+        raise HTTPException(status_code=404, detail="This line has no matched card to edit.")
+    return templates.TemplateResponse(
+        request,
+        "_deck_card_edit.html",
+        {
+            "deck_id": deck_id,
+            "card_id": card_id,
+            "printings": await deck_printings(session, dc.oracle_id),
+            "current_sid": str(dc.scryfall_id) if dc.scryfall_id else "",
+            "languages": DECK_LANGUAGES,
+            "current_lang": dc.language,
+            "proxy": dc.proxy,
+            "special": dc.special,
+            "fmt": format if format in LEGALITY_FORMATS else "",
+        },
+    )
+
+
+@router.post("/decks/{deck_id}/card/{card_id}")
+async def update_deck_card(
+    deck_id: int,
+    card_id: int,
+    scryfall_id: str = Form(""),
+    language: str = Form("en"),
+    proxy: str | None = Form(None),
+    special: str | None = Form(None),
+    format: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Set the printing/language for a deck line and toggle its proxy/special flags."""
+    _guard_writable()
+    dc = await _get_deck_card(session, deck_id, card_id)
+    if scryfall_id:
+        try:
+            chosen = await session.get(Card, uuid.UUID(scryfall_id))
+        except ValueError:
+            chosen = None
+        # Only accept a printing of the same card.
+        if chosen is not None and chosen.oracle_id == dc.oracle_id:
+            dc.scryfall_id = chosen.scryfall_id
+    dc.language = normalize_language(language)
+    dc.proxy = proxy is not None
+    dc.special = special is not None
+    await session.commit()
+    url = f"/decks/{deck_id}" + (f"?format={format}" if format in LEGALITY_FORMATS else "")
+    # HTMX form post -> refresh the whole deck page (coverage + legality change).
+    return Response(status_code=204, headers={"HX-Redirect": url})
 
 
 def _slug(name: str) -> str:

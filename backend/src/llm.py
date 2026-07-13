@@ -1,0 +1,290 @@
+"""LLM integration (#163): config, an OpenAI-compatible chat client, and grounded deck features.
+
+Config is stored in-app (:class:`~src.models.LLMSettings`, single row) with the API key encrypted
+at rest (Fernet, key file in the data dir); it falls back to ``SCRYME_LLM_*`` env vars. Works with
+any OpenAI ``/chat/completions``-compatible endpoint — OpenAI, OpenRouter, or a local Ollama /
+LM Studio server. The HTTP client is injectable so tests use a deterministic fake (no network).
+
+Grounding: features feed the model the user's real deck + owned cards and **validate** any card the
+model names against the database, so a hallucinated card never reaches the UI.
+"""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import httpx
+from cryptography.fernet import Fernet, InvalidToken
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src import __version__
+from src.config import get_settings
+from src.decks import deck_coverage, deck_stats
+from src.models import Card, CollectionCard, LLMSettings
+
+_UA = f"scryme/{__version__} (+https://github.com/Leyline-Coding/scryme)"
+
+
+# --- secret store (encrypt the API key at rest) -------------------------------------------------
+
+def _fernet() -> Fernet:
+    """Load (or lazily create) the data-dir Fernet key used to encrypt the stored API key."""
+    path = Path(get_settings().data_dir) / "llm.key"
+    if path.exists():
+        key = path.read_bytes()
+    else:
+        key = Fernet.generate_key()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(key)
+        os.chmod(path, 0o600)
+    return Fernet(key)
+
+
+def encrypt_secret(value: str) -> str:
+    return _fernet().encrypt(value.encode("utf-8")).decode("ascii")
+
+
+def decrypt_secret(token: str | None) -> str:
+    if not token:
+        return ""
+    try:
+        return _fernet().decrypt(token.encode("ascii")).decode("utf-8")
+    except (InvalidToken, ValueError):
+        return ""  # key rotated / corrupt — user must re-enter
+
+
+# --- config -------------------------------------------------------------------------------------
+
+@dataclass
+class LLMConfig:
+    base_url: str = ""
+    api_key: str = ""
+    chat_model: str = ""
+    embed_model: str = ""
+    enabled: bool = False
+
+    @property
+    def ready(self) -> bool:
+        return self.enabled and bool(self.base_url)
+
+
+async def get_config(session: AsyncSession) -> LLMConfig:
+    """Resolve LLM config: the in-app row if present, else the SCRYME_LLM_* environment."""
+    s = get_settings()
+    row = await session.get(LLMSettings, 1)
+    if row is None:
+        return LLMConfig(
+            base_url=s.llm_base_url, api_key=s.llm_api_key, chat_model=s.llm_chat_model,
+            embed_model=s.llm_embed_model, enabled=bool(s.llm_base_url),
+        )
+    return LLMConfig(
+        base_url=row.base_url, api_key=decrypt_secret(row.api_key_enc),
+        chat_model=row.chat_model or s.llm_chat_model,
+        embed_model=row.embed_model or s.llm_embed_model, enabled=row.enabled,
+    )
+
+
+async def save_config(
+    session: AsyncSession, *, base_url: str, api_key: str | None,
+    chat_model: str, embed_model: str, enabled: bool,
+) -> None:
+    """Upsert the config row. A blank ``api_key`` keeps the existing key (so it isn't wiped)."""
+    row = await session.get(LLMSettings, 1)
+    if row is None:
+        row = LLMSettings(id=1)
+        session.add(row)
+    row.base_url = (base_url or "").strip()
+    if api_key:
+        row.api_key_enc = encrypt_secret(api_key)
+    row.chat_model = (chat_model or "").strip()
+    row.embed_model = (embed_model or "").strip()
+    row.enabled = enabled
+    await session.commit()
+
+
+# --- chat client --------------------------------------------------------------------------------
+
+class ChatClient:
+    """Minimal OpenAI-compatible chat client."""
+
+    def __init__(self, cfg: LLMConfig):
+        self.cfg = cfg
+
+    async def chat(self, messages: list[dict], temperature: float = 0.4,
+                   max_tokens: int = 2000) -> str:
+        # Note: reasoning models (e.g. Gemma QAT) spend part of this budget on hidden reasoning
+        # before emitting `content`, so keep max_tokens generous or `content` can come back empty.
+        headers = {"User-Agent": _UA, "Content-Type": "application/json"}
+        if self.cfg.api_key:
+            headers["Authorization"] = f"Bearer {self.cfg.api_key}"
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.post(
+                f"{self.cfg.base_url.rstrip('/')}/chat/completions",
+                headers=headers,
+                json={"model": self.cfg.chat_model, "messages": messages,
+                      "temperature": temperature, "max_tokens": max_tokens, "stream": False},
+            )
+            resp.raise_for_status()
+            return resp.json()["choices"][0]["message"]["content"].strip()
+
+
+async def test_connection(cfg: LLMConfig, client: ChatClient | None = None) -> tuple[bool, str]:
+    """Round-trip a tiny prompt. Returns (ok, human-readable message)."""
+    if not cfg.base_url:
+        return False, "No endpoint URL set."
+    client = client or ChatClient(cfg)
+    try:
+        await client.chat([{"role": "user", "content": "Reply with: ok"}], max_tokens=5)
+    except httpx.HTTPStatusError as exc:
+        return False, f"HTTP {exc.response.status_code} from the endpoint."
+    except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
+        return False, f"Could not reach the endpoint: {exc}"
+    return True, f"Connected to {cfg.base_url} ({cfg.chat_model})."
+
+
+# --- grounded deck features ---------------------------------------------------------------------
+
+def _decklist_text(cov) -> str:
+    lines = [f"{r.quantity} {r.name}" for r in cov.main]
+    return "\n".join(lines)
+
+
+async def _chat_nonempty(client: ChatClient, messages: list[dict], retries: int = 2, **kw) -> str:
+    """Call chat, retrying on an empty reply. Reasoning models sometimes spend the whole token
+    budget on hidden reasoning and return empty ``content``; a retry usually succeeds."""
+    text = ""
+    for _ in range(retries + 1):
+        text = await client.chat(messages, **kw)
+        if text.strip():
+            break
+    return text
+
+
+async def analyze_deck(session: AsyncSession, deck, client: ChatClient) -> str:
+    """Return a prose analysis of the deck, grounded in its list + computed stats."""
+    cov = await deck_coverage(session, deck)
+    stats = await deck_stats(session, deck)
+    curve = ", ".join(f"{b.label}:{b.count}" for b in stats.mana_curve)
+    colors = ", ".join(f"{b.label}:{b.count}" for b in stats.by_color)
+    context = (
+        f"Deck name: {deck.name}\n"
+        f"Cards (mainboard): {sum(r.quantity for r in cov.main)}\n"
+        f"Mana curve (nonland): {curve or 'n/a'}\n"
+        f"Colors: {colors or 'n/a'}\n\n"
+        f"Decklist:\n{_decklist_text(cov)}"
+    )
+    messages = [
+        {"role": "system", "content":
+            "You are a concise Magic: The Gathering deckbuilding coach. Analyze the deck's "
+            "strengths, weaknesses, mana curve, and missing roles (ramp, card draw, removal, "
+            "win conditions). Be specific and brief. Do not invent cards that aren't real."},
+        {"role": "user", "content": context},
+    ]
+    return await _chat_nonempty(client, messages, retries=1, temperature=0.5)
+
+
+@dataclass
+class Suggestion:
+    name: str
+    scryfall_id: str
+    reason: str
+
+
+@dataclass
+class SuggestResult:
+    suggestions: list[Suggestion] = field(default_factory=list)
+    considered: int = 0  # size of the owned candidate pool shown to the model
+    empty: bool = False  # the model returned no usable text (e.g. reasoning ate the token budget)
+
+
+async def _candidate_pool(session: AsyncSession, deck) -> dict[str, tuple[str, str]]:
+    """Owned cards (by lowercased name) not already in the deck and within its color identity.
+
+    Returns name_lower -> (display_name, scryfall_id).
+    """
+    deck_sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
+    deck_oracles = {c.oracle_id for c in deck.cards if c.oracle_id}
+    identity: set[str] = set()
+    if deck_sids:
+        for (ci,) in (await session.execute(
+            select(Card.color_identity).where(Card.scryfall_id.in_(deck_sids))
+        )).all():
+            identity.update(ci or [])
+
+    rows = (await session.execute(
+        select(Card.name, Card.oracle_id, Card.scryfall_id, Card.color_identity)
+        .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
+        .where(Card.oracle_id.is_not(None))
+        .distinct(Card.oracle_id)
+        .order_by(Card.oracle_id, Card.released_at.desc().nulls_last())
+    )).all()
+
+    pool: dict[str, tuple[str, str]] = {}
+    for name, oracle_id, sid, ci in rows:
+        if oracle_id in deck_oracles:
+            continue
+        if identity and not set(ci or []).issubset(identity):
+            continue
+        pool.setdefault(name.lower(), (name, str(sid)))
+    return pool
+
+
+def _parse_suggestions(text: str, pool: dict[str, tuple[str, str]]) -> list[Suggestion]:
+    """Keep only 'Name — reason' lines whose card is actually in the owned candidate pool.
+
+    Names are normalized (list markers + markdown emphasis stripped) before the exact-match check,
+    so a card is only ever suggested if the model named a real card the user owns.
+    """
+    out: list[Suggestion] = []
+    seen: set[str] = set()
+    for raw in text.splitlines():
+        line = raw.strip().lstrip("-*•·0123456789.) \t").strip()
+        if not line:
+            continue
+        for sep in (" — ", " - ", "—", " – ", ":"):
+            if sep in line:
+                name, reason = line.split(sep, 1)
+                break
+        else:
+            name, reason = line, ""
+        key = name.strip().strip("*_`\"'.").strip().lower()
+        entry = pool.get(key)
+        if entry and key not in seen:
+            seen.add(key)
+            out.append(Suggestion(name=entry[0], scryfall_id=entry[1],
+                                  reason=reason.strip().strip("*_`").strip()))
+    return out
+
+
+async def suggest_from_collection(
+    session: AsyncSession, deck, client: ChatClient, limit: int = 10,
+) -> SuggestResult:
+    """Suggest owned cards to add, chosen from a validated candidate pool (no hallucinations)."""
+    pool = await _candidate_pool(session, deck)
+    if not pool:
+        return SuggestResult(considered=0)
+    cov = await deck_coverage(session, deck)
+    # Keep the candidate list small: reasoning models spend tokens proportional to input size, and
+    # too large a list leaves no budget for the actual answer.
+    candidate_names = [display for (display, _sid) in list(pool.values())[:60]]
+    messages = [
+        {"role": "system", "content":
+            "You are a Magic: The Gathering deckbuilding assistant. Suggest cards to add to the "
+            "deck, chosen ONLY from the provided 'Owned candidates' list — never suggest a card "
+            "not in that list. Prefer cards that fill weak roles (ramp, draw, removal, win "
+            f"conditions). Return at most {limit} lines, each exactly 'Card Name - reason'. "
+            "No preamble or extra text."},
+        {"role": "user", "content":
+            f"Deck '{deck.name}':\n{_decklist_text(cov)}\n\n"
+            f"Owned candidates (choose only from these):\n" + "\n".join(candidate_names)},
+    ]
+    text = await _chat_nonempty(client, messages, retries=2, temperature=0.3, max_tokens=4000)
+    return SuggestResult(suggestions=_parse_suggestions(text, pool)[:limit],
+                         considered=len(pool), empty=not text.strip())
+
+
+async def has_config_row(session: AsyncSession) -> bool:
+    return (await session.scalar(select(func.count()).select_from(LLMSettings))) > 0

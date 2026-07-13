@@ -1,0 +1,16 @@
+{# Owned-card suggestions (#163), validated against the collection. #}
+{% if result.suggestions %}
+<ul class="divide-y divide-edge rounded-lg bg-surface-2">
+  {% for s in result.suggestions %}
+  <li class="px-3 py-2 text-sm">
+    <a href="/card/{{ s.scryfall_id }}" class="font-medium hover:text-accent">{{ s.name }}</a>
+    {% if s.reason %}<span class="text-muted"> — {{ s.reason }}</span>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+<p class="mt-1.5 text-xs text-muted">Chosen from {{ result.considered }} owned card(s) in your deck's colors.</p>
+{% else %}
+<div class="rounded-lg bg-surface-2 text-muted text-sm px-3 py-2">
+  No suggestions{% if result.considered %} from your {{ result.considered }} in-color owned cards{% endif %} — try adding more cards to your collection.
+</div>
+{% endif %}

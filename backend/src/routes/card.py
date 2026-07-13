@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import get_settings
 from src.currency import get_currency
 from src.db import get_session
-from src.embeddings import is_configured, similar_to_oracle
+from src.embeddings import similar_to_oracle
 from src.models import Card, CardEmbedding, CollectionCard
 from src.price_watch import target_for
 from src.scryfall.client import ScryfallClient, ScryfallError
@@ -105,10 +105,10 @@ async def card_detail(
     legalities = card.legalities or {}
     legality_rows = [(fmt, legalities.get(fmt, "not_legal")) for fmt in LEGALITY_FORMATS]
 
-    # Show a "Similar cards" section only when embeddings exist for this card (#176).
+    # Show a "Similar cards" section only when embeddings exist for this card (#176). This is a
+    # local vector query, so it doesn't require the AI endpoint to be reachable/enabled.
     show_similar = bool(
-        is_configured()
-        and card.oracle_id is not None
+        card.oracle_id is not None
         and await session.get(CardEmbedding, card.oracle_id) is not None
     )
 

@@ -24,6 +24,7 @@ from src.decks import (
     deck_printings,
     deck_stats,
 )
+from src.llm import get_config
 from src.models import Deck, DeckCard
 from src.templating import templates
 from src.wishlist import add_deck_missing
@@ -126,6 +127,7 @@ async def view_deck(
             "export_formats": EXPORT_FORMATS,
             "cur": info(currency),
             "read_only": get_settings().read_only,
+            "ai_ready": (await get_config(session)).ready,
         },
     )
 

@@ -101,6 +101,10 @@
 /* Hide x-cloak elements until Alpine initializes (avoids a flash of the busy state). */
 [x-cloak] { display: none !important; }
 
+/* HTMX request indicator (shown only while a request tagged with hx-indicator is in flight). */
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline; }
+
 /* Indeterminate progress bar used by _busy_bar.html during uploads. */
 @keyframes busy-slide {
   0%   { transform: translateX(-110%); }

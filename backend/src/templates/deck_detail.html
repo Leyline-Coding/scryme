@@ -139,6 +139,24 @@
          class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">{{ meta[2] }}</a>
       {% endfor %}
     </div>
+
+    {# AI assist #}
+    {% if ai_ready %}
+    <div class="mt-3 pt-3 border-t border-edge text-sm">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-muted">✨ AI:</span>
+        <button hx-post="/decks/{{ cov.deck.id }}/analyze" hx-target="#ai-out" hx-swap="innerHTML"
+                hx-indicator="#ai-spin"
+                class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Analyze deck</button>
+        <button hx-post="/decks/{{ cov.deck.id }}/suggest" hx-target="#ai-out" hx-swap="innerHTML"
+                hx-indicator="#ai-spin"
+                class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Suggest from collection</button>
+        <span id="ai-spin" class="htmx-indicator text-xs text-muted">thinking…</span>
+      </div>
+      <div id="ai-out" class="mt-2"></div>
+      <p class="mt-1 text-[11px] text-muted">Sends this deck + your owned cards to your configured AI endpoint.</p>
+    </div>
+    {% endif %}
   </div>
 
   {# Per-deck stats #}

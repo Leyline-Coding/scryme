@@ -151,6 +151,14 @@
         <button hx-post="/decks/{{ cov.deck.id }}/suggest" hx-target="#ai-out" hx-swap="innerHTML"
                 hx-indicator="#ai-spin"
                 class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Suggest from collection</button>
+        <form hx-post="/decks/{{ cov.deck.id }}/upgrade" hx-target="#ai-out" hx-swap="innerHTML"
+              hx-indicator="#ai-spin" class="flex items-center gap-1">
+          <span class="text-muted text-xs">Upgrade $</span>
+          <input type="number" name="budget" value="50" min="1" step="5"
+                 class="w-16 rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs" />
+          <button type="submit"
+                  class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Plan</button>
+        </form>
         <span id="ai-spin" class="htmx-indicator text-xs text-muted">thinking…</span>
       </div>
       <div id="ai-out" class="mt-2"></div>

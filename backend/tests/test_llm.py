@@ -182,3 +182,86 @@ async def test_api_search_nl(client, session, monkeypatch):
                       embed_model="e", enabled=True)
     on = await client.get("/api/v1/search/nl?q=dragons")
     assert on.status_code == 200 and on.json() == {"query": "t:dragon", "ok": True}
+
+
+async def _seed(session, name, ci=("R",), usd="1.00", owned=True, legal=True,
+                type_line="Creature"):
+    legalities = {"commander": "legal" if legal else "not_legal"}
+    c = Card(**card_to_columns(
+        {"id": str(uuid.uuid4()), "oracle_id": str(uuid.uuid4()), "name": name, "set": "tst",
+         "collector_number": str(abs(hash(name)) % 9999), "type_line": type_line,
+         "color_identity": list(ci), "prices": {"usd": usd}, "legalities": legalities}
+    ))
+    session.add(c)
+    await session.flush()
+    if owned:
+        session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=4))
+    await session.commit()
+    return c
+
+
+@pytest.mark.asyncio
+async def test_build_from_prompt_uses_only_owned_in_color(session):
+    from src.llm import build_from_prompt
+    await _seed(session, "Lightning Bolt", ci=("R",), usd="5.00", type_line="Instant")
+    await _seed(session, "Shock", ci=("R",), usd="0.50", type_line="Instant")
+    await _seed(session, "Mountain", ci=(), usd="0.10", type_line="Basic Land")
+    await _seed(session, "Counterspell", ci=("U",), usd="1.00")  # blue -> excluded by "red"
+    reply = "4 Lightning Bolt\n4 Shock\n20 Mountain\n3 Counterspell\n1 Totally Fake Card"
+    built = await build_from_prompt(session, "a red aggro deck", FakeChat(reply=reply))
+    names = {ln.name for ln in built.lines}
+    assert names == {"Lightning Bolt", "Shock", "Mountain"}   # blue + hallucination dropped
+    assert built.considered == 3
+    assert built.total_price == round(4 * 5.0 + 4 * 0.5 + 20 * 0.1, 2)
+
+
+@pytest.mark.asyncio
+async def test_find_commanders_ranks_by_owned_depth(session):
+    from src.llm import find_commanders
+    await _seed(session, "Kaalia", ci=("W", "B", "R"), type_line="Legendary Creature — Angel")
+    await _seed(session, "Talrand", ci=("U",), type_line="Legendary Creature — Wizard")
+    await _seed(session, "Mardu One", ci=("R", "W"))
+    await _seed(session, "Mardu Two", ci=("B",))
+    await _seed(session, "Blue Thing", ci=("U",))
+    picks = await find_commanders(session, client=None)
+    assert picks[0].name == "Kaalia"
+    kaalia = next(p for p in picks if p.name == "Kaalia")
+    talrand = next(p for p in picks if p.name == "Talrand")
+    assert kaalia.owned_depth > talrand.owned_depth
+    # With a client, pitches are attached.
+    picks2 = await find_commanders(session, client=FakeChat(reply="Kaalia - aggressive angels"))
+    assert next(p for p in picks2 if p.name == "Kaalia").pitch == "aggressive angels"
+
+
+@pytest.mark.asyncio
+async def test_plan_upgrades_validates_price_and_budget(session):
+    from src.llm import plan_upgrades
+    await _seed(session, "In Deck Card", ci=("R",), type_line="Instant")
+    deck = await create_deck(session, "D", "1 In Deck Card")
+    await _seed(session, "Sol Ring", ci=(), usd="2.00", owned=False, type_line="Artifact")
+    await _seed(session, "Rhystic Study", ci=("U",), usd="30.00", owned=False)
+    await _seed(session, "Owned Extra", ci=("R",), usd="1.00", owned=True)
+    reply = ("Sol Ring - ramp\nRhystic Study - card draw\n"
+             "Owned Extra - you already own this\nMade Up Card - not real")
+    plan = await plan_upgrades(session, deck, budget=10.0, client=FakeChat(reply=reply))
+    names = [it.name for it in plan.items]
+    assert names == ["Sol Ring"]      # Rhystic over budget, Owned skipped, fake dropped
+    assert plan.total == 2.0 and plan.budget == 10.0
+
+
+@pytest.mark.asyncio
+async def test_build_prompt_and_upgrade_routes(client, session, monkeypatch):
+    await save_config(session, base_url="http://x/v1", api_key="k", chat_model="m",
+                      embed_model="e", enabled=True)
+    await _seed(session, "Lightning Bolt", ci=("R",), type_line="Instant")
+    deck = await create_deck(session, "D", "1 Lightning Bolt")
+
+    monkeypatch.setattr("src.routes.ai.ChatClient", lambda cfg: FakeChat(reply="4 Lightning Bolt"))
+    built = await client.post("/decks/build/prompt", data={"prompt": "red deck"})
+    assert built.status_code == 200 and "Lightning Bolt" in built.text
+
+    up = await client.post(f"/decks/{deck.id}/upgrade", data={"budget": "25"})
+    assert up.status_code == 200  # renders a partial (no upgrades needed is fine)
+
+    finder = await client.get("/ai/commanders")
+    assert finder.status_code == 200

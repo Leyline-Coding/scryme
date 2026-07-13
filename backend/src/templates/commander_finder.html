@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Commander finder · scryme{% endblock %}
+{% set _PIPS = {"W":"w","U":"u","B":"b","R":"r","G":"g"} %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-2">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold">What can I build?</h1>
+    <a href="/decks/build" class="ml-auto text-sm text-muted hover:text-fg">← Build a deck</a>
+  </header>
+  <p class="text-sm text-muted mb-5">
+    Legendary creatures you own, ranked by how many owned, in-color, Commander-legal cards back them.
+  </p>
+
+  {% if picks %}
+  <ul class="space-y-2">
+    {% for p in picks %}
+    <li class="rounded-lg border border-edge bg-surface p-3">
+      <div class="flex items-center gap-2">
+        <a href="/card/{{ p.scryfall_id }}" class="font-medium hover:text-accent">{{ p.name }}</a>
+        <span class="align-middle">
+          {%- for c in p.identity %}<i class="ms ms-cost ms-{{ _PIPS.get(c,'c') }}"></i>{% endfor -%}
+          {% if not p.identity %}<span class="text-xs text-muted">colorless</span>{% endif %}
+        </span>
+        <span class="ml-auto text-sm text-muted">{{ p.owned_depth }} in-color owned</span>
+      </div>
+      {% if p.pitch %}<p class="mt-1 text-sm text-muted">{{ p.pitch }}</p>{% endif %}
+      <a href="/decks/build?commander={{ p.name | urlencode }}"
+         class="mt-1.5 inline-block text-xs text-accent hover:underline">Build this deck →</a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="rounded-lg bg-surface-2 text-muted text-sm px-4 py-3">
+    No legendary creatures in your collection yet — import some cards, then check back.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

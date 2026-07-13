@@ -5,8 +5,6 @@ Mutations are blocked in read-only (demo) mode, mirroring uploads.
 
 from __future__ import annotations
 
-import uuid
-
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,13 +18,13 @@ from src.deck_import import SUPPORTED, DeckImportError, fetch_deck_from_url
 from src.decks import (
     DECK_LANGUAGES,
     LEGALITY_FORMATS,
+    apply_deck_card_edit,
     create_deck,
     deck_coverage,
     deck_printings,
     deck_stats,
-    normalize_language,
 )
-from src.models import Card, Deck, DeckCard
+from src.models import Deck, DeckCard
 from src.templating import templates
 from src.wishlist import add_deck_missing
 
@@ -183,18 +181,13 @@ async def update_deck_card(
     """Set the printing/language for a deck line and toggle its proxy/special flags."""
     _guard_writable()
     dc = await _get_deck_card(session, deck_id, card_id)
-    if scryfall_id:
-        try:
-            chosen = await session.get(Card, uuid.UUID(scryfall_id))
-        except ValueError:
-            chosen = None
-        # Only accept a printing of the same card.
-        if chosen is not None and chosen.oracle_id == dc.oracle_id:
-            dc.scryfall_id = chosen.scryfall_id
-    dc.language = normalize_language(language)
-    dc.proxy = proxy is not None
-    dc.special = special is not None
-    await session.commit()
+    await apply_deck_card_edit(
+        session, dc,
+        scryfall_id=scryfall_id or None,
+        language=language,
+        proxy=proxy is not None,
+        special=special is not None,
+    )
     url = f"/decks/{deck_id}" + (f"?format={format}" if format in LEGALITY_FORMATS else "")
     # HTMX form post -> refresh the whole deck page (coverage + legality change).
     return Response(status_code=204, headers={"HX-Redirect": url})

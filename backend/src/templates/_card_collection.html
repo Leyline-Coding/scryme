@@ -8,7 +8,8 @@
   {% if owned %}
   <ul class="text-sm divide-y divide-edge">
     {% for s in owned %}
-    <li class="py-1.5 flex items-center gap-2">
+    <li class="py-1.5" x-data="{ g: false }">
+      <div class="flex items-center gap-2">
       {% if not read_only %}
       <span class="inline-flex items-center rounded-full bg-surface-2 overflow-hidden shrink-0">
         <button type="button" title="Remove one" class="px-2 leading-none hover:bg-surface-3"
@@ -26,6 +27,14 @@
       {% if s.condition %}<span class="text-muted">· {{ s.condition }}</span>{% endif %}
       <span class="text-muted uppercase">· {{ s.language }}</span>
       {% if s.binder_name %}<span class="text-muted">· {{ s.binder_name }}</span>{% endif %}
+      {% if s.grade_company %}
+      <span class="rounded bg-amber-500/15 text-amber-500 text-xs font-semibold px-1.5 py-0.5"
+            title="{{ s.grade_company }} {{ s.grade }}{% if s.cert_number %} · cert {{ s.cert_number }}{% endif %}{% if s.value_override %} · ${{ '%.2f'|format(s.value_override) }}{% endif %}">
+        🏅 {{ s.grade_company }} {{ s.grade }}</span>
+      {% endif %}
+      {% if not read_only %}
+      <button type="button" @click="g = !g" title="Grading" class="shrink-0 text-muted hover:text-fg">🏅</button>
+      {% endif %}
       {% if read_only %}
       {% if s.location %}<span class="text-accent" title="Storage location">· 📍{{ s.location }}</span>{% endif %}
       {% else %}
@@ -65,6 +74,54 @@
               hx-post="/collection/stack/{{ s.id }}/delete"
               hx-target="#card-collection" hx-swap="outerHTML"
               hx-confirm="Delete this stack?">✕</button>
+      {% endif %}
+      </div>{# /flex row #}
+
+      {# Grade photo (both modes when present) #}
+      {% if s.grade_photo %}
+      <a href="/grades/{{ s.grade_photo }}" target="_blank" rel="noopener" class="inline-block mt-2">
+        <img src="/grades/{{ s.grade_photo }}" alt="Graded {{ s.grade_company }} {{ s.grade }}"
+             class="h-24 rounded ring-1 ring-edge object-cover" />
+      </a>
+      {% endif %}
+
+      {# Grading editor (#179) — toggled #}
+      {% if not read_only %}
+      <div x-show="g" x-cloak class="mt-2 rounded-lg bg-surface-2 p-2">
+        <form hx-post="/collection/stack/{{ s.id }}/grade" hx-encoding="multipart/form-data"
+              hx-target="#card-collection" hx-swap="outerHTML"
+              class="flex flex-wrap items-end gap-1.5 text-xs">
+          <label class="flex flex-col">Company
+            <select name="company" class="rounded bg-surface border border-edge px-1.5 py-1">
+              <option value="">—</option>
+              {% for co in ["PSA", "BGS", "CGC", "SGC"] %}
+              <option value="{{ co }}" {% if s.grade_company == co %}selected{% endif %}>{{ co }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="flex flex-col">Grade
+            <input name="grade" value="{{ s.grade or '' }}" placeholder="10" size="4"
+                   class="w-14 rounded bg-surface border border-edge px-1.5 py-1" /></label>
+          <label class="flex flex-col">Cert #
+            <input name="cert" value="{{ s.cert_number or '' }}" placeholder="cert"
+                   class="w-24 rounded bg-surface border border-edge px-1.5 py-1" /></label>
+          <label class="flex flex-col">Value $
+            <input name="value_override" type="number" step="0.01" min="0"
+                   value="{{ '%.2f'|format(s.value_override) if s.value_override else '' }}"
+                   placeholder="override"
+                   class="w-24 rounded bg-surface border border-edge px-1.5 py-1" /></label>
+          <label class="flex flex-col">Photo
+            <input name="photo" type="file" accept="image/*"
+                   class="w-40 text-[11px] file:mr-1 file:rounded file:border-0 file:bg-surface-3 file:px-1.5 file:py-0.5" /></label>
+          <button type="submit" class="rounded bg-accent text-accent-fg px-2.5 py-1 font-medium">Save</button>
+          {% if s.grade_company or s.grade_photo %}
+          <button type="button" class="rounded bg-surface hover:bg-surface-3 px-2 py-1 text-muted"
+                  hx-post="/collection/stack/{{ s.id }}/grade/clear"
+                  hx-target="#card-collection" hx-swap="outerHTML"
+                  hx-confirm="Remove grading + photo from this stack?">Clear</button>
+          {% endif %}
+        </form>
+      </div>
       {% endif %}
     </li>
     {% endfor %}

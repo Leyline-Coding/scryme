@@ -96,7 +96,7 @@ id:wubrg       five-color identity
 | `cn:` | `number:` | `cn:122` | collector number |
 | `f:` | `format:`, `legal:` | `f:modern` | legal or restricted in that format |
 | `lang:` | `language:` | `lang:ja` | |
-| `is:` | — | `is:foil`, `is:transform` | layout (split/flip/transform/mdfc/dfc/meld/leveler/saga/adventure) or a boolean flag on the card |
+| `is:` | — | `is:foil`, `is:transform`, `is:graded` | layout (split/flip/transform/mdfc/dfc/meld/leveler/saga/adventure), `graded` (an owned [graded copy](../features/grading.md)), or a boolean flag on the card |
 | `layout:` | — | `layout:saga` | |
 | `border:` | — | `border:black` | |
 | `frame:` | — | `frame:2015` | |

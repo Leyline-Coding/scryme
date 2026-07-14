@@ -10,8 +10,8 @@ from __future__ import annotations
 import uuid
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,6 +35,7 @@ from src.collection_edit import (
 from src.config import get_settings
 from src.db import get_session
 from src.decks import add_card_to_deck
+from src.grading import clear_grade, safe_photo_path, save_grade_photo, set_grade
 from src.models import Card, CollectionCard, Deck
 from src.tags import card_tags
 from src.templating import templates
@@ -161,6 +162,54 @@ async def locate_stack(
     else:  # "" / "none" → unfile from any box
         await update_stack(session, stack_id, location=None)
     return await _collection_partial(request, session, sid)
+
+
+@router.post("/collection/stack/{stack_id}/grade", response_class=HTMLResponse)
+async def grade_stack(
+    request: Request,
+    stack_id: int,
+    company: str = Form(""),
+    grade: str = Form(""),
+    cert: str = Form(""),
+    value_override: str = Form(""),
+    photo: UploadFile | None = File(None),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Set graded-card metadata (+ optional photo) on a stack (#179)."""
+    _guard_writable()
+    stack = await session.get(CollectionCard, stack_id)
+    if stack is None:
+        raise HTTPException(status_code=404, detail="Stack not found.")
+    try:
+        override = float(value_override) if value_override.strip() else None
+    except ValueError:
+        override = None
+    await set_grade(session, stack_id, company=company, grade=grade, cert=cert,
+                    value_override=override)
+    if photo is not None and photo.filename:
+        await save_grade_photo(session, stack_id, photo)
+    return await _collection_partial(request, session, stack.scryfall_id)
+
+
+@router.post("/collection/stack/{stack_id}/grade/clear", response_class=HTMLResponse)
+async def grade_clear(
+    request: Request, stack_id: int, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    _guard_writable()
+    stack = await session.get(CollectionCard, stack_id)
+    if stack is None:
+        raise HTTPException(status_code=404, detail="Stack not found.")
+    sid = stack.scryfall_id
+    await clear_grade(session, stack_id)
+    return await _collection_partial(request, session, sid)
+
+
+@router.get("/grades/{filename}")
+async def grade_photo(filename: str) -> FileResponse:
+    path = safe_photo_path(filename)
+    if path is None:
+        raise HTTPException(status_code=404, detail="Photo not found.")
+    return FileResponse(path)
 
 
 @router.post("/collection/bulk")

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Set release calendar · scryme{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-4">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold">Set release calendar</h1>
+    <a href="/collection?tab=stats&view=sets" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Set completion →</a>
+  </header>
+
+  {% macro set_row(s, upcoming) %}
+  <li class="flex items-center gap-3 px-3 py-2 text-sm">
+    <span class="text-lg leading-none">{{ set_symbol(s.code) }}</span>
+    <a href="/sets/{{ s.code }}" class="font-medium truncate hover:text-accent">{{ s.name }}</a>
+    <span class="text-xs text-muted uppercase shrink-0">{{ s.code }}</span>
+    <span class="ml-auto text-right shrink-0">
+      <span class="tabular-nums">{{ s.released_at }}</span>
+      {% if upcoming %}
+      {% set days = (s.released_at - today).days %}
+      <span class="ml-1 rounded-full bg-accent text-accent-fg text-xs px-2 py-0.5">
+        {% if days == 0 %}today{% elif days == 1 %}tomorrow{% else %}in {{ days }} days{% endif %}
+      </span>
+      {% endif %}
+    </span>
+  </li>
+  {% endmacro %}
+
+  <section class="mb-8">
+    <h2 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">Upcoming</h2>
+    {% if cal.upcoming %}
+    <ul class="divide-y divide-edge rounded-xl border border-edge bg-surface">
+      {% for s in cal.upcoming %}{{ set_row(s, True) }}{% endfor %}
+    </ul>
+    {% else %}
+    <div class="rounded-xl border border-edge bg-surface p-6 text-center text-muted">
+      No announced upcoming sets{% if not cal.synced_at %} — the calendar syncs from Scryfall on first
+      view (needs a network connection){% endif %}.
+    </div>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">Recently released</h2>
+    {% if cal.recent %}
+    <ul class="divide-y divide-edge rounded-xl border border-edge bg-surface">
+      {% for s in cal.recent %}{{ set_row(s, False) }}{% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-muted">Nothing yet.</p>
+    {% endif %}
+  </section>
+
+  {% if cal.synced_at %}
+  <p class="mt-4 text-xs text-muted">Synced from Scryfall · {{ cal.synced_at.strftime('%Y-%m-%d %H:%M UTC') }}</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -83,10 +83,12 @@ nav:
       - AI Assistant: features/ai.md
       - Binders: features/binders.md
       - Storage Locations: features/locations.md
-      - Set Completion: features/sets.md
+      - Set Completion & Calendar: features/sets.md
+      - Graded Cards: features/grading.md
       - Checklists: features/checklists.md
       - Wishlist: features/wishlist.md
       - Trade Binder: features/trade.md
+      - Sell List & Valuation: features/sell.md
       - Collection Stats: features/stats.md
       - Price History: features/prices.md
       - Theming: features/theming.md

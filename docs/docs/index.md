@@ -16,8 +16,10 @@ Lens, then search it with Scryfall syntax and regular expressions.
 - 🧰 **Collection tools** — a **[stats dashboard](features/stats.md)** (value + growth over time,
   with click-through breakdowns), **[price history](features/prices.md)** (movers + acquisition
   profit/loss), **[decks](features/decks.md)** with coverage, legality, stats, and export,
-  **[set completion](features/sets.md)**, **[custom checklists](features/checklists.md)**, a
-  **[wishlist](features/wishlist.md)**, and a **[trade binder](features/trade.md)**.
+  **[set completion](features/sets.md)** + a **[release calendar](features/sets.md#set-release-calendar)**,
+  **[custom checklists](features/checklists.md)**, a **[wishlist](features/wishlist.md)**, a
+  **[trade binder](features/trade.md)**, a **[sell list + valuation report](features/sell.md)**, and
+  **[graded-card](features/grading.md)** tracking.
 - 🗂️ **Organize your way** — **[custom binders](features/binders.md)**, physical
   **[storage locations](features/locations.md)** (boxes / binders / decks), and overlapping
   **[tags](features/cards.md#tags)** you can search with `tag:`.

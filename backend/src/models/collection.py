@@ -46,6 +46,14 @@ class CollectionCard(Base):
     # User-defined labels (e.g. "for-trade", "deck:goblins"), searchable via `tag:`.
     tags: Mapped[list[str] | None] = mapped_column(ARRAY(String(64)))
 
+    # Grading / slabbing (#179): a graded copy is metadata + a manual value (graded prices aren't in
+    # Scryfall). ``grade_photo`` is a filename under ``<data_dir>/grades``.
+    grade_company: Mapped[str | None] = mapped_column(String(16))  # PSA | BGS | CGC | SGC | …
+    grade: Mapped[str | None] = mapped_column(String(16))          # "10", "9.5", …
+    cert_number: Mapped[str | None] = mapped_column(String(32))
+    grade_photo: Mapped[str | None] = mapped_column(String(128))
+    value_override: Mapped[float | None] = mapped_column(Float)    # manual USD value for this stack
+
     added_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

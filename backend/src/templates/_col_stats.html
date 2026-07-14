@@ -45,6 +45,9 @@
 
 {% if view == 'sets' %}
 {# Set completion #}
+<div class="flex justify-end mb-2">
+  <a href="/calendar" class="text-xs text-muted hover:text-fg">📅 Set release calendar →</a>
+</div>
 {% if sets %}
 <p class="text-sm text-muted mb-4">
   How many distinct printings you own of each set you have cards from — most complete first.
@@ -82,6 +85,9 @@
 {% else %}
 
 {# Summary tiles #}
+<div class="flex justify-end mb-2">
+  <a href="/valuation" class="text-xs text-muted hover:text-fg">🖨 Valuation report →</a>
+</div>
 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
   <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
     <div class="text-xs text-muted">Total cards</div>

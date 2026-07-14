@@ -154,6 +154,126 @@ def _decklist_text(cov) -> str:
     return "\n".join(lines)
 
 
+# Distilled deckbuilding guidance (paraphrased from established sources) that grounds the deck AI
+# features so advice follows accepted ratios/archetypes instead of being generic.
+_DECKBUILD_GUIDE = (
+    "Deckbuilding guidance:\n"
+    "- Commander (100-card singleton) target mix: ~1 commander, 36-38 lands, 10-12 ramp, 8-10 card "
+    "draw, 8-10 removal (mostly spot removal plus a few board wipes), 7-10 win conditions, and "
+    "15-20 synergy/theme cards. Aim for an average mana value around 2.5-3.5, and let roughly 30% "
+    "of nonland cards be interaction or card draw. More colors -> run more ramp and fixing.\n"
+    "- 60-card constructed: ~17-18 lands for aggro up to 24-26 for control, a low focused curve, "
+    "usually 4 copies of key cards, and one clear game plan.\n"
+    "- Archetypes: aggro (cheap threats, race, reach), control (removal + wraths + card advantage, "
+    "few win conditions), midrange (efficient threats plus interaction), combo (a 2-3 card engine "
+    "with tutors and protection).\n"
+    "- Prefer repeatable effects over one-shots, run multiple win-condition paths, and make every "
+    "card advance the deck's plan and synergize with the commander / theme."
+)
+
+_THEME_TEXT_SIGNALS = {
+    "+1/+1 counters": "+1/+1 counter", "tokens": "token", "sacrifice": "sacrifice",
+    "graveyard recursion": "from your graveyard", "lifegain": "gain life",
+    "spellslinger": "instant or sorcery", "mill": "mill",
+}
+
+
+@dataclass
+class DeckContext:
+    name: str
+    identity: set[str] = field(default_factory=set)  # color identity (union of the deck's cards)
+    is_commander: bool = False
+    commander: str = ""
+    commander_text: str = ""
+    commanders: list[str] = field(default_factory=list)  # all legendary creatures (ambiguous which)
+    decklist: str = ""
+    curve: str = ""
+    colors: str = ""
+    themes: list[str] = field(default_factory=list)
+    key_cards: list[str] = field(default_factory=list)
+
+    @property
+    def identity_str(self) -> str:
+        return "".join(c for c in "WUBRG" if c in self.identity) or "colorless"
+
+    @property
+    def format_note(self) -> str:
+        return (f"Commander (color identity {self.identity_str})" if self.is_commander
+                else f"color identity {self.identity_str}")
+
+    def block(self) -> str:
+        """Grounded context block for a prompt."""
+        lines = [f"Deck '{self.name}' — {self.format_note}."]
+        if len(self.commanders) > 1:
+            lines.append("Possible commanders (deck has several legendary creatures): "
+                         + ", ".join(self.commanders))
+        elif self.commander:
+            lines.append(f"Commander: {self.commander} — {self.commander_text}")
+        lines.append(f"Mana curve (nonland): {self.curve or 'n/a'}")
+        lines.append(f"Colors: {self.colors or 'n/a'}")
+        if self.themes:
+            lines.append("Themes/keywords: " + ", ".join(self.themes))
+        if self.key_cards:
+            lines.append("Notable cards: " + ", ".join(self.key_cards))
+        lines.append(f"Decklist:\n{self.decklist}")
+        return "\n".join(lines)
+
+    def identity_rule(self) -> str:
+        return (f"Only recommend cards within the deck's color identity ({self.identity_str}) "
+                "and legal in its format — never cards of other colors.")
+
+
+async def deck_ai_context(session: AsyncSession, deck) -> DeckContext:
+    """Rich grounded context for the AI deck features: identity, commander, themes, key cards."""
+    from collections import Counter
+
+    cov = await deck_coverage(session, deck)
+    stats = await deck_stats(session, deck)
+    curve = ", ".join(f"{b.label}:{b.count}" for b in stats.mana_curve)
+    colors = ", ".join(f"{b.label}:{b.count}" for b in stats.by_color)
+
+    sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
+    info: dict = {}
+    if sids:
+        for row in (await session.execute(
+            select(Card.scryfall_id, Card.name, Card.type_line, Card.color_identity,
+                   Card.oracle_text, Card.keywords, Card.prices).where(Card.scryfall_id.in_(sids))
+        )).all():
+            info[row[0]] = row[1:]
+
+    identity: set[str] = set()
+    kw_counts: Counter = Counter()
+    text_cards: list[str] = []
+    valued: list[tuple[float, str, str]] = []  # (usd, name, type_line)
+    commander = commander_text = ""
+    commanders: list[str] = []
+    for _sid, (name, type_line, ci, oracle, keywords, prices) in info.items():
+        identity.update(ci or [])
+        for k in (keywords or []):
+            kw_counts[k] += 1
+        text_cards.append((oracle or "").lower())
+        tl = (type_line or "").lower()
+        if "legendary" in tl and "creature" in tl:
+            commanders.append(name)
+            if not commander:
+                commander, commander_text = name, (oracle or "").split("\n")[0][:160]
+        if "land" not in tl:
+            valued.append((float((prices or {}).get("usd") or 0.0), name, tl))
+
+    themes = [k for k, n in kw_counts.most_common(5) if n >= 2]
+    for label, sig in _THEME_TEXT_SIGNALS.items():
+        if label not in themes and sum(1 for t in text_cards if sig in t) >= 4:
+            themes.append(label)
+    key_cards = [n for _v, n, _t in sorted(valued, reverse=True)[:5]]
+
+    return DeckContext(
+        name=deck.name, identity=identity, is_commander=bool(commander),
+        commander=commander, commander_text=commander_text, commanders=commanders[:4],
+        decklist=_decklist_text(cov), curve=curve, colors=colors,
+        themes=themes[:6], key_cards=key_cards,
+    )
+
+
 async def _chat_nonempty(client: ChatClient, messages: list[dict], retries: int = 2, **kw) -> str:
     """Call chat, retrying on an empty reply. Reasoning models sometimes spend the whole token
     budget on hidden reasoning and return empty ``content``; a retry usually succeeds."""
@@ -166,24 +286,16 @@ async def _chat_nonempty(client: ChatClient, messages: list[dict], retries: int 
 
 
 async def analyze_deck(session: AsyncSession, deck, client: ChatClient) -> str:
-    """Return a prose analysis of the deck, grounded in its list + computed stats."""
-    cov = await deck_coverage(session, deck)
-    stats = await deck_stats(session, deck)
-    curve = ", ".join(f"{b.label}:{b.count}" for b in stats.mana_curve)
-    colors = ", ".join(f"{b.label}:{b.count}" for b in stats.by_color)
-    context = (
-        f"Deck name: {deck.name}\n"
-        f"Cards (mainboard): {sum(r.quantity for r in cov.main)}\n"
-        f"Mana curve (nonland): {curve or 'n/a'}\n"
-        f"Colors: {colors or 'n/a'}\n\n"
-        f"Decklist:\n{_decklist_text(cov)}"
-    )
+    """Return a prose analysis of the deck, grounded in its list, identity, themes, and stats."""
+    ctx = await deck_ai_context(session, deck)
     messages = [
         {"role": "system", "content":
-            "You are a concise Magic: The Gathering deckbuilding coach. Analyze the deck's "
-            "strengths, weaknesses, mana curve, and missing roles (ramp, card draw, removal, "
-            "win conditions). Be specific and brief. Do not invent cards that aren't real."},
-        {"role": "user", "content": context},
+            "You are a concise Magic: The Gathering deckbuilding coach. Analyze THIS deck's "
+            "strengths, weaknesses, mana curve, and missing roles (ramp, card draw, removal, win "
+            "conditions) against the guidance below, and comment on how well it supports its "
+            "commander/theme. Be specific and brief. Do not invent cards that aren't real. "
+            + ctx.identity_rule() + "\n\n" + _DECKBUILD_GUIDE},
+        {"role": "user", "content": ctx.block()},
     ]
     return await _chat_nonempty(client, messages, retries=1, temperature=0.5)
 
@@ -268,20 +380,21 @@ async def suggest_from_collection(
     pool = await _candidate_pool(session, deck)
     if not pool:
         return SuggestResult(considered=0)
-    cov = await deck_coverage(session, deck)
+    ctx = await deck_ai_context(session, deck)
     # Keep the candidate list small: reasoning models spend tokens proportional to input size, and
-    # too large a list leaves no budget for the actual answer.
+    # too large a list leaves no budget for the actual answer. (The pool is already color-legal.)
     candidate_names = [display for (display, _sid) in list(pool.values())[:60]]
     messages = [
         {"role": "system", "content":
-            "You are a Magic: The Gathering deckbuilding assistant. Suggest cards to add to the "
-            "deck, chosen ONLY from the provided 'Owned candidates' list — never suggest a card "
-            "not in that list. Prefer cards that fill weak roles (ramp, draw, removal, win "
-            f"conditions). Return at most {limit} lines, each exactly 'Card Name - reason'. "
-            "No preamble or extra text."},
+            "You are a Magic: The Gathering deckbuilding assistant. Suggest cards to add, chosen "
+            "ONLY from the provided 'Owned candidates' list — never suggest a card not in that "
+            "list. Prefer cards that fill weak roles (ramp, draw, removal, win conditions) AND "
+            "synergize with the commander/theme. Reason should say what role it fills or how it "
+            f"synergizes. Return at most {limit} lines, each exactly 'Card Name - reason'. No "
+            "preamble.\n\n" + _DECKBUILD_GUIDE},
         {"role": "user", "content":
-            f"Deck '{deck.name}':\n{_decklist_text(cov)}\n\n"
-            f"Owned candidates (choose only from these):\n" + "\n".join(candidate_names)},
+            ctx.block() + "\n\nOwned candidates (choose only from these):\n"
+            + "\n".join(candidate_names)},
     ]
     text = await _chat_nonempty(client, messages, retries=2, temperature=0.3, max_tokens=4000)
     return SuggestResult(suggestions=_parse_suggestions(text, pool)[:limit],
@@ -578,9 +691,7 @@ async def plan_upgrades(
     session: AsyncSession, deck, budget: float, client: ChatClient,
 ) -> UpgradePlan:
     """Suggest real cards to buy to improve a deck, validated to exist + priced + within budget."""
-    cov = await deck_coverage(session, deck)
-    stats = await deck_stats(session, deck)
-    curve = ", ".join(f"{b.label}:{b.count}" for b in stats.mana_curve)
+    ctx = await deck_ai_context(session, deck)
     owned_oracles = set((await session.execute(
         select(Card.oracle_id)
         .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
@@ -588,11 +699,11 @@ async def plan_upgrades(
     messages = [
         {"role": "system", "content":
             "You are a Magic: The Gathering upgrade advisor. Suggest real cards to add that "
-            "improve the deck (fix ramp, card draw, removal, mana base, or win conditions). Output "
-            "up to 15 lines, each exactly 'Card Name - short reason'. Real card names only. No "
-            "preamble, no prices, no commentary."},
-        {"role": "user", "content":
-            f"Budget: ${budget:.0f}\nDeck '{deck.name}':\n{_decklist_text(cov)}\nCurve: {curve}"},
+            "improve the deck (ramp, card draw, removal, mana base, win conditions) and fit its "
+            "commander/theme. " + ctx.identity_rule() + " Output up to 15 lines, each exactly "
+            "'Card Name - short reason'. Real card names only. No preamble, no prices.\n\n"
+            + _DECKBUILD_GUIDE},
+        {"role": "user", "content": f"Budget: ${budget:.0f}\n{ctx.block()}"},
     ]
     text = await _chat_nonempty(client, messages, retries=2, temperature=0.4, max_tokens=3000)
     items: list[UpgradeItem] = []
@@ -603,6 +714,11 @@ async def plan_upgrades(
             .order_by(Card.released_at.desc().nulls_last()).limit(1)
         )).scalars().first()
         if card is None or card.oracle_id in owned_oracles:  # not real, or already owned
+            continue
+        # Enforce the deck's color identity + format legality (#192): drop off-identity / illegal.
+        if ctx.identity and not set(card.color_identity or []).issubset(ctx.identity):
+            continue
+        if ctx.is_commander and (card.legalities or {}).get("commander") not in _ALLOWED_LEGAL:
             continue
         price = float((card.prices or {}).get("usd") or 0.0)
         if price <= 0 or total + price > budget:
@@ -617,16 +733,13 @@ async def plan_upgrades(
 async def deck_chat(
     session: AsyncSession, deck, history: list[dict], user_message: str, client: ChatClient,
 ) -> str:
-    """One turn of a coaching conversation, grounded in the deck's list + stats."""
-    cov = await deck_coverage(session, deck)
-    stats = await deck_stats(session, deck)
-    curve = ", ".join(f"{b.label}:{b.count}" for b in stats.mana_curve)
-    colors = ", ".join(f"{b.label}:{b.count}" for b in stats.by_color)
+    """One turn of a coaching conversation, grounded in the deck's list, identity, and themes."""
+    ctx = await deck_ai_context(session, deck)
     system = (
-        "You are a friendly, concise Magic: The Gathering deckbuilding coach for THIS deck. "
-        "Give specific, actionable advice; only reference real Magic cards. Keep replies short.\n"
-        f"Deck '{deck.name}':\n{_decklist_text(cov)}\n"
-        f"Mana curve (nonland): {curve or 'n/a'}\nColors: {colors or 'n/a'}"
+        "You are a friendly, concise Magic: The Gathering deckbuilding coach for THIS deck. Give "
+        "specific, actionable advice that fits its commander/theme; only reference real Magic "
+        "cards. " + ctx.identity_rule() + " Keep replies short.\n\n"
+        + _DECKBUILD_GUIDE + "\n\n" + ctx.block()
     )
     messages = [{"role": "system", "content": system}]
     messages += [{"role": m["role"], "content": m["content"]} for m in history]

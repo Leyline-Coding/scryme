@@ -37,3 +37,8 @@ deploy/k8s/**/secret.yaml
 .vscode/
 .DS_Store
 *.swp
+
+# AI knowledge source files (distilled into code / ingested; not committed verbatim)
+/building_standard_decks.txt
+/wiki_deck_types.txt
+/mtg_comprehensive_rules.txt

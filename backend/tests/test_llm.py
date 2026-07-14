@@ -331,3 +331,30 @@ async def test_card_ask_route(client, session, monkeypatch):
 
     resp = await client.post(f"/card/{card.scryfall_id}/ask", data={"question": "does it work?"})
     assert resp.status_code == 200 and "Yes, it works." in resp.text
+
+
+@pytest.mark.asyncio
+async def test_deck_ai_context_detects_commander_and_identity(session):
+    from src.llm import deck_ai_context
+    await _seed(session, "Kaalia", ci=("W", "B", "R"), type_line="Legendary Creature — Angel")
+    await _seed(session, "Some Red Card", ci=("R",))
+    deck = await create_deck(session, "Mardu", "1 Kaalia\n1 Some Red Card")
+    ctx = await deck_ai_context(session, deck)
+    assert ctx.identity == {"W", "B", "R"} and ctx.is_commander and ctx.commander == "Kaalia"
+    assert ctx.identity_str == "WBR" and "Commander" in ctx.format_note
+
+
+@pytest.mark.asyncio
+async def test_plan_upgrades_enforces_color_identity(session):
+    from src.llm import plan_upgrades
+    # Mono-red Commander deck.
+    await _seed(session, "Red Legend", ci=("R",), type_line="Legendary Creature")
+    deck = await create_deck(session, "Mono Red", "1 Red Legend")
+    await _seed(session, "Sol Ring", ci=(), usd="2.00", owned=False, type_line="Artifact")
+    await _seed(session, "Blue Bolt", ci=("U",), usd="1.00", owned=False, type_line="Instant")
+    await _seed(session, "Red Ramp", ci=("R",), usd="1.00", owned=False)
+    reply = "Blue Bolt - draw\nRed Ramp - ramp\nSol Ring - ramp"
+    plan = await plan_upgrades(session, deck, budget=100.0, client=FakeChat(reply=reply))
+    names = [it.name for it in plan.items]
+    assert "Blue Bolt" not in names                      # off-color-identity -> dropped (#192)
+    assert "Red Ramp" in names and "Sol Ring" in names   # in-identity + colorless kept

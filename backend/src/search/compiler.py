@@ -250,6 +250,12 @@ def _is(term: Term) -> ColumnElement:
     val = term.value.lower()
     if val in _IS_LAYOUTS:
         return Card.layout.in_(_IS_LAYOUTS[val])
+    if val == "graded":
+        # Owned copies with grading metadata (#179).
+        graded = select(CollectionCard.scryfall_id).where(
+            CollectionCard.grade_company.isnot(None)
+        )
+        return Card.scryfall_id.in_(graded)
     # Fall back to a boolean flag on the raw card object (foil, promo, reserved, reprint, ...).
     return Card.raw[val].astext == "true"
 

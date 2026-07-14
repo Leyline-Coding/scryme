@@ -58,7 +58,7 @@ async def valuation_report(
     rows = (
         await session.execute(
             select(
-                CollectionCard.quantity, CollectionCard.finish,
+                CollectionCard.quantity, CollectionCard.finish, CollectionCard.value_override,
                 Card.rarity, Card.set_code, Card.set_name, Card.prices,
                 Card.name, Card.oracle_id, Card.scryfall_id,
             ).join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
@@ -72,10 +72,16 @@ async def valuation_report(
     oracles: set = set()
     best: dict[str, ValuedCard] = {}               # per printing, its highest-unit stack
 
-    for qty, finish, rarity, set_code, set_name, prices, name, oracle_id, sid in rows:
+    for qty, finish, override, rarity, set_code, set_name, prices, name, oracle_id, sid in rows:
         qty = qty or 0
-        unit = unit_price(prices, finish, currency)
-        value = qty * unit
+        # A graded card carries a manual value (graded prices aren't in Scryfall); it overrides the
+        # market price for the whole stack.
+        if override is not None:
+            unit = override / qty if qty else override
+            value = override
+        else:
+            unit = unit_price(prices, finish, currency)
+            value = qty * unit
         r.total_cards += qty
         r.total_value += value
         printings.add(sid)

@@ -21,6 +21,9 @@ from src.collection_edit import (
     bulk_add_tag,
     bulk_add_to_collection,
     delete_stack,
+    find_duplicate_stacks,
+    merge_all_duplicates,
+    merge_duplicate_group,
 )
 from src.config import get_settings
 from src.db import get_session
@@ -128,3 +131,36 @@ async def bulk(
             await bulk_add_to_collection(session, scryfall_ids, 1)
     params = urlencode({"q": q, "scope": scope, "sort": sort, "dir": dir})
     return RedirectResponse(url=f"/search?{params}", status_code=303)
+
+
+@router.get("/collection/duplicates", response_class=HTMLResponse)
+async def duplicates(
+    request: Request, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    """List duplicate stacks (same card across multiple rows) and offer to merge them (#101)."""
+    return templates.TemplateResponse(
+        request, "collection_duplicates.html",
+        {"groups": await find_duplicate_stacks(session), "read_only": get_settings().read_only},
+    )
+
+
+@router.post("/collection/duplicates/merge")
+async def merge_duplicates(
+    scryfall_id: str = Form(""),
+    finish: str = Form("normal"),
+    condition: str = Form(""),
+    language: str = Form("en"),
+    session: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    _guard_writable()
+    await merge_duplicate_group(session, scryfall_id, finish, condition.strip() or None, language)
+    return RedirectResponse(url="/collection/duplicates", status_code=303)
+
+
+@router.post("/collection/duplicates/merge-all")
+async def merge_duplicates_all(
+    session: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    _guard_writable()
+    await merge_all_duplicates(session)
+    return RedirectResponse(url="/collection/duplicates", status_code=303)

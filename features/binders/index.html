@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://docs.scryme.app/features/binders/">
       
       
-        <link rel="prev" href="../decks/">
+        <link rel="prev" href="../ai/">
       
       
-        <link rel="next" href="../sets/">
+        <link rel="next" href="../locations/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -850,6 +850,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -929,6 +933,27 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -941,6 +966,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Binders
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -951,6 +987,64 @@
 
       </a>
       
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#creating-and-managing-binders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating and managing binders
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-cards-to-a-binder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding cards to a binder
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../locations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Storage Locations
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -1289,6 +1383,32 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#creating-and-managing-binders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating and managing binders
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-cards-to-a-binder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding cards to a binder
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1306,20 +1426,33 @@
 
 
 <h1 id="binders">Binders</h1>
-<p>Binders let you browse your owned collection grouped by the <strong>binder</strong> each card was imported
-into. Open <strong>Binders</strong> from the header (or <code>/binders</code>).</p>
+<p>Binders are <strong>custom, named groups of cards you own</strong> — organize them however you like: "Ramp",
+"Removal", "Cats", "Orzhov", "Foils". Open the <strong>Binders</strong> tab on the <em>My Collection</em> page.</p>
+<h2 id="creating-and-managing-binders">Creating and managing binders</h2>
 <ul>
-<li>Imports that carry a binder/folder column (e.g. ManaBox's <em>Binder Name</em>) populate these groups
-  automatically.</li>
-<li>Cards with no binder are grouped under <strong>Unsorted</strong>.</li>
+<li><strong>Add binder</strong> — create a new binder by name from the Binders tab.</li>
+<li>Open a binder to see its cards as a grid, each linking to its <a href="../cards/">detail page</a>.</li>
+<li>From a binder's page you can <strong>rename</strong> it, <strong>delete</strong> it, or <strong>remove</strong> individual cards.</li>
 </ul>
-<p>The binder list shows each binder's total card count and distinct-card count. Open a binder to see
-its cards as a grid — image, owned quantity, and set symbol — with each card linking to its
-<a href="../cards/">detail page</a>.</p>
+<p>Binders hold <strong>cards you own</strong> (membership is by printing), and a card can be in more than one
+binder.</p>
+<h2 id="adding-cards-to-a-binder">Adding cards to a binder</h2>
+<ul>
+<li><strong>From a card page</strong> — the <em>Binders</em> control lists your binders; add or remove the card with one
+  click.</li>
+<li><strong>From search results</strong> — select cards with the checkboxes, then use <strong>Add to binder</strong> in the
+  bulk toolbar to file many at once.</li>
+</ul>
 <div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>Binder assignments come from the import file. Re-importing with a different binder layout
-updates the grouping the next time you browse.</p>
+<p class="admonition-title">Binders, boxes, and tags</p>
+<p>A binder is one of the three <a href="../locations/">physical location</a> kinds (alongside <strong>boxes</strong> and
+<strong>decks</strong>). If you want overlapping, non-physical labels instead — themes, roles, projects — use
+<a href="../cards/#tags">tags</a>, which a card can carry many of.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Imported binder names</p>
+<p>If your import file carried a <em>Binder Name</em> / folder column (e.g. ManaBox), that value is kept
+on each stack and is searchable, separate from these custom binders.</p>
 </div>
 
 
@@ -1343,7 +1476,7 @@ updates the grouping the next time you browse.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 26, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">July 14, 2026</span>
   </span>
 
     
@@ -1388,7 +1521,7 @@ updates the grouping the next time you browse.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../decks/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Decks">
+          <a href="../ai/" class="md-footer__link md-footer__link--prev" aria-label="Previous: AI Assistant">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -1398,20 +1531,20 @@ updates the grouping the next time you browse.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Decks
+                AI Assistant
               </div>
             </div>
           </a>
         
         
           
-          <a href="../sets/" class="md-footer__link md-footer__link--next" aria-label="Next: Set Completion">
+          <a href="../locations/" class="md-footer__link md-footer__link--next" aria-label="Next: Storage Locations">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Set Completion
+                Storage Locations
               </div>
             </div>
             <div class="md-footer__button md-icon">

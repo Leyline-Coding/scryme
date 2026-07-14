@@ -108,6 +108,28 @@
       + Upload
     </a>
   </header>
+
+  {# Universal search filter indicator (#143): always-on syntax applied to every query. #}
+  {% if universal %}
+  <div class="mb-4 flex items-center gap-2 text-sm">
+    <span class="text-muted">Always applied:</span>
+    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5
+      {% if universal_error %}bg-rose-500/15 text-rose-500{% else %}bg-surface-2{% endif %}">
+      <code>{{ universal }}</code>
+      <button type="button" onclick="clearUniversalFilter()" title="Clear universal filter"
+              class="text-muted hover:text-fg">✕</button>
+    </span>
+    {% if universal_error %}<span class="text-rose-500 text-xs">invalid — ignored for this search</span>
+    {% else %}<span class="text-xs text-muted">edit in Settings ⚙</span>{% endif %}
+  </div>
+  <script>
+    function clearUniversalFilter() {
+      document.cookie = "scryme_search_filter=;path=/;max-age=0;samesite=lax";
+      window.location.reload();
+    }
+  </script>
+  {% endif %}
+
   <script>
     // Facet click: set the query input to the toggled query and re-run the search (via the form's
     // existing "change" hx-trigger), so the query string stays the single source of truth.

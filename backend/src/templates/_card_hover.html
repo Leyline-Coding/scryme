@@ -1,0 +1,56 @@
+{# Card-image hover preview (#143 follow-on).
+
+   Shows a floating card image when hovering any card-name *link* (`a[href="/card/<id>"]`) that is
+   text, not already a thumbnail. Because card names in oracle text are rendered as plain text (no
+   link), they're naturally excluded. Desktop-only (driven by mouse events). #}
+<div id="card-hover" aria-hidden="true"
+     class="pointer-events-none fixed z-[60] hidden print:hidden">
+  <img alt="" class="w-[220px] max-w-[46vw] rounded-xl ring-1 ring-black/30 shadow-2xl bg-surface" />
+</div>
+<script>
+(function () {
+  var box = document.getElementById("card-hover");
+  if (!box) return;
+  var img = box.querySelector("img");
+  var current = null;
+
+  // Match /card/<uuid> only (not /card/<id>/edit, /rulings, …).
+  var RE = /^\/card\/([0-9a-fA-F-]{36})(?:[?#]|$)/;
+
+  function target(el) {
+    var a = el.closest && el.closest('a[href^="/card/"]');
+    if (!a || a.querySelector("img")) return null;   // skip thumbnail links
+    var m = (a.getAttribute("href") || "").match(RE);
+    return m ? m[1] : null;
+  }
+
+  function place(e) {
+    var pad = 16, w = box.offsetWidth || 220, h = box.offsetHeight || 300;
+    var x = e.clientX + pad, y = e.clientY + pad;
+    if (x + w > window.innerWidth) x = e.clientX - w - pad;
+    if (y + h > window.innerHeight) y = Math.max(4, window.innerHeight - h - 4);
+    box.style.left = x + "px";
+    box.style.top = y + "px";
+  }
+
+  function show(id, e) {
+    if (id === current) { place(e); return; }
+    current = id;
+    img.src = "/card/" + id + "/image";
+    box.classList.remove("hidden");
+    place(e);
+  }
+  function hide() { current = null; box.classList.add("hidden"); img.removeAttribute("src"); }
+
+  document.addEventListener("mouseover", function (e) {
+    var id = target(e.target);
+    if (id) show(id, e); else if (current) hide();
+  });
+  document.addEventListener("mousemove", function (e) {
+    if (current && target(e.target)) place(e); else if (current) hide();
+  });
+  document.addEventListener("mouseout", function (e) { if (!target(e.relatedTarget)) hide(); });
+  window.addEventListener("scroll", hide, true);
+  document.addEventListener("click", hide);
+})();
+</script>

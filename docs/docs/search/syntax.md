@@ -138,6 +138,22 @@ Use the **Sort** and direction dropdowns next to the search bar (or the `sort` a
 parameters) to order results by **name**, **mana value**, **price (USD)**, **set**, **rarity**, or
 **release date**, ascending or descending. Cards without a value (e.g. no price) always sort last.
 
+## Universal filter (always applied)
+
+Set a **universal search filter** in **Settings (⚙) → Universal search filter** — any Scryfall
+syntax there is ANDed into *every* search automatically. Handy for always hiding cards you don't
+care about or restricting to a format, e.g. `-is:ub` or `legal:commander`.
+
+It's saved in your browser and shown as an **Always applied** chip above the results (with a ✕ to
+clear it). A universal filter that doesn't parse is ignored for that search (and flagged) rather
+than breaking every query.
+
+## Card previews
+
+Hovering a card **name link** anywhere in the app — search results, decks, tables, printings —
+pops up a preview of that card's image. (Card names inside oracle text are plain text, so they're
+excluded.)
+
 ## Saved searches
 
 Save a query you run often from the **Saved** menu: it stores the query along with its scope, sort,

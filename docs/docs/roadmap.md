@@ -9,7 +9,9 @@ not a commitment to dates or order. Have an idea? [Open an issue](https://github
 The MVP plus a steady stream of post-MVP features:
 
 - **Search engine** — full Scryfall-style syntax, regex, boolean logic, and a
-  [form-based advanced search](search/advanced.md). Collection-scoped by default.
+  [form-based advanced search](search/advanced.md). Collection-scoped by default, with a
+  [universal always-applied filter](search/syntax.md#universal-filter-always-applied) and
+  [card-image hover previews](search/syntax.md#card-previews).
 - **Collection import** — ManaBox, Dragon Shield, and Delver Lens, with a
   [preview → confirm merge](import/merge.md) flow.
 - **Card detail pages** with art, oracle text, prices, legalities, rulings, and

@@ -29,6 +29,7 @@ from src.llm import (
 )
 from src.models import Deck, DeckChatMessage
 from src.routes.card import _load_card, fetch_rulings
+from src.rules_rag import rules_for_question
 from src.templating import templates
 
 router = APIRouter(tags=["ai"])
@@ -245,8 +246,10 @@ async def card_ask(
             request, "_card_answer.html", {"answer": "", "message": _NOT_CONFIGURED})
     raw_rulings = await fetch_rulings(scryfall_id, card) or []
     rulings = [r.get("comment", "") for r in raw_rulings if r.get("comment")]
+    rules_context = await rules_for_question(session, question.strip())
     try:
-        answer = await answer_card_question(card, rulings, question.strip(), ChatClient(cfg))
+        answer = await answer_card_question(
+            card, rulings, question.strip(), ChatClient(cfg), rules_context=rules_context)
     except (httpx.HTTPError, KeyError, IndexError, ValueError):
         return templates.TemplateResponse(
             request, "_card_answer.html", {"answer": "", "message": _UNREACHABLE})

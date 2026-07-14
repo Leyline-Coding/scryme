@@ -11,6 +11,7 @@ from src.models.ingest import IngestState
 from src.models.llm_settings import LLMSettings
 from src.models.price import CardPricePoint, PriceSnapshot
 from src.models.price_target import PriceTarget
+from src.models.rules_chunk import RulesChunk
 from src.models.saved_search import SavedSearch
 from src.models.staging import ImportStaging
 from src.models.wishlist import WishlistItem
@@ -19,5 +20,5 @@ __all__ = [
     "Card", "CardEmbedding", "CardPricePoint", "Checklist", "ChecklistItem", "CollectionCard",
     "Deck", "DeckCard", "DeckChatMessage", "ImportSnapshot", "IngestState", "ImportStaging",
     "LLMSettings",
-    "PriceSnapshot", "PriceTarget", "SavedSearch", "WishlistItem",
+    "PriceSnapshot", "PriceTarget", "RulesChunk", "SavedSearch", "WishlistItem",
 ]

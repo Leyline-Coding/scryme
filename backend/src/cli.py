@@ -64,6 +64,17 @@ async def _backfill_embeddings(scope: str) -> None:
     print(f"Embedded {count} card(s) ({scope}).")
 
 
+async def _backfill_rules(file_path: str | None) -> None:
+    from src.rules_rag import run_backfill_rules
+
+    try:
+        count = await run_backfill_rules(file_path)
+    except RuntimeError as exc:
+        print(f"Error: {exc}")
+        return
+    print(f"Embedded {count} comprehensive-rules chunk(s).")
+
+
 async def _backup(directory: str | None, passphrase: str | None) -> None:
     from pathlib import Path
 
@@ -122,6 +133,10 @@ def main() -> None:
     p_embed.add_argument("--all", action="store_true",
                          help="Embed every card (default: only owned cards)")
 
+    p_rules = sub.add_parser("backfill-rules",
+                             help="Embed the comprehensive rules for grounded rules Q&A")
+    p_rules.add_argument("--file", help="Path to the comprehensive rules .txt (default: bundled)")
+
     p_backup = sub.add_parser("backup", help="Write a backup of your data to disk")
     p_backup.add_argument("--dir", help="Target directory (default: SCRYME_BACKUP_DIR)")
     p_backup.add_argument("--passphrase", help="Encrypt the backup with this passphrase")
@@ -145,6 +160,8 @@ def main() -> None:
         asyncio.run(_prune_digital())
     elif args.command == "backfill-embeddings":
         asyncio.run(_backfill_embeddings("all" if args.all else "owned"))
+    elif args.command == "backfill-rules":
+        asyncio.run(_backfill_rules(args.file))
     elif args.command == "backup":
         asyncio.run(_backup(args.dir, args.passphrase))
     elif args.command == "restore":

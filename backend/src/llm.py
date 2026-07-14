@@ -751,8 +751,10 @@ async def deck_chat(
 
 async def answer_card_question(
     card, rulings: list[str], question: str, client: ChatClient,
+    rules_context: list[str] | None = None,
 ) -> str:
-    """Answer a rules question using only the card's oracle text + official rulings (grounded)."""
+    """Answer a rules question grounded in the card's oracle text, official rulings, and (when
+    available) relevant excerpts retrieved from the Comprehensive Rules."""
     ruling_text = "\n".join(f"- {r}" for r in rulings) if rulings else "(no official rulings found)"
     context = (
         f"Card: {card.name}\n"
@@ -760,13 +762,15 @@ async def answer_card_question(
         f"Oracle text:\n{card.oracle_text or '(none)'}\n\n"
         f"Official rulings:\n{ruling_text}"
     )
+    if rules_context:
+        context += "\n\nRelevant Comprehensive Rules:\n" + "\n\n".join(rules_context)
     messages = [
         {"role": "system", "content":
-            "You answer Magic: The Gathering rules questions about this card. Use its oracle "
-            "text, the official rulings provided, and well-established core Magic rules (e.g. "
-            "summoning sickness, the stack, targeting). Be concise and cite the relevant text or "
-            "ruling. Do NOT invent card-specific rulings; if it's a genuine corner case not "
-            "covered by the text, rulings, or basic rules, say so and suggest checking a judge."},
+            "You answer Magic: The Gathering rules questions about this card. Use its oracle text, "
+            "the official rulings, the Comprehensive Rules excerpts provided, and well-established "
+            "core Magic rules. Be concise and cite the relevant rule number or ruling. Do NOT "
+            "invent card-specific rulings; if it's a genuine corner case not covered, say so and "
+            "suggest checking a judge."},
         {"role": "user", "content": f"{context}\n\nQuestion: {question}"},
     ]
     return await _chat_nonempty(client, messages, retries=2, temperature=0.3, max_tokens=1500)

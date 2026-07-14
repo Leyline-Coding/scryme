@@ -17,11 +17,13 @@ import random
 from pathlib import Path
 
 import structlog
-from sqlalchemy import Float, and_, cast, func, select, update
+from sqlalchemy import Float, and_, cast, func, select, text, update
 
+from src.checklists import create_checklist
 from src.db import SessionLocal
 from src.decks import create_deck
-from src.models import Box, Card, CardPricePoint, CollectionCard, Deck, PriceSnapshot
+from src.models import Box, Card, CardPricePoint, Checklist, CollectionCard, Deck, PriceSnapshot
+from src.wishlist import add_to_wishlist
 
 log = structlog.get_logger()
 
@@ -50,6 +52,23 @@ IMPORT_YEAR = 2019
 _SEED_GUARD = 5000  # consider the demo already built when this many demo cards exist
 
 _USD = cast(Card.prices["usd"].astext, Float)
+
+# Showcase data seeded on a fresh demo build (in addition to cards/decks/boxes).
+_TRADE_TAG_COUNT = 40  # how many owned cards to flag "for-trade" so the Trade tab is populated
+_WISHLIST_COUNT = 8    # how many pricey unowned cards to put on the wishlist
+# Oracle-text → tag rules the user asked to showcase.
+_ORACLE_TAGS = [("removal", "%destroy target%"), ("boardwipe", "%destroy all%")]
+_DEMO_CHECKLISTS = {
+    "Commander Staples": (
+        "Sol Ring\nArcane Signet\nCommand Tower\nSwiftfoot Boots\nLightning Greaves\n"
+        "Cultivate\nKodama's Reach\nCounterspell\nSwords to Plowshares\nBeast Within\n"
+        "Rhystic Study\nSmothering Tithe\nCyclonic Rift\nPath to Exile\nFellwar Stone"
+    ),
+    "Original Dual Lands": (
+        "Tundra\nUnderground Sea\nBadlands\nTaiga\nSavannah\n"
+        "Scrubland\nVolcanic Island\nBayou\nPlateau\nTropical Island"
+    ),
+}
 
 
 async def _take(session, where, count: int, used: set, out: list) -> None:
@@ -167,6 +186,56 @@ async def _seed_price_history(session, cards: list, rng: random.Random) -> None:
             )
 
 
+async def _seed_showcase(session) -> None:
+    """Demo-only showcase data: oracle-text tags, a trade list, a wishlist, and checklists.
+
+    Runs only on a fresh build (its caller is past the already-seeded guard). Every step is
+    idempotent — array tags de-dupe, wishlist adds are upserts, and checklists skip existing names.
+    """
+    # Oracle-text tags the user asked for: 'removal' on "destroy target", 'boardwipe' on
+    # "destroy all". De-duped so a re-run can't stack copies.
+    for tag, pattern in _ORACLE_TAGS:
+        await session.execute(
+            text(
+                "UPDATE collection_card cc "
+                "SET tags = (SELECT array_agg(DISTINCT t) "
+                "            FROM unnest(coalesce(cc.tags, '{}') || ARRAY[:tag]) AS t) "
+                "FROM cards c "
+                "WHERE c.scryfall_id = cc.scryfall_id AND c.oracle_text ILIKE :pat"
+            ),
+            {"tag": tag, "pat": pattern},
+        )
+    # Trade list: flag a deterministic slice of owned cards "for-trade" to populate the Trade tab.
+    await session.execute(
+        text(
+            "UPDATE collection_card "
+            "SET tags = (SELECT array_agg(DISTINCT t) "
+            "            FROM unnest(coalesce(tags, '{}') || ARRAY['for-trade']) AS t) "
+            "WHERE id IN (SELECT id FROM collection_card ORDER BY scryfall_id LIMIT :n)"
+        ),
+        {"n": _TRADE_TAG_COUNT},
+    )
+    await session.commit()
+
+    # Wishlist: a handful of the priciest cards you don't own.
+    unowned = (
+        await session.execute(
+            select(Card.scryfall_id)
+            .where(Card.scryfall_id.notin_(select(CollectionCard.scryfall_id)), _USD.isnot(None))
+            .order_by(_USD.desc())
+            .limit(_WISHLIST_COUNT)
+        )
+    ).scalars().all()
+    for sid in unowned:
+        await add_to_wishlist(session, sid, note="On my radar")
+
+    # Checklists (skip any that already exist by name).
+    existing = set(await session.scalars(select(Checklist.name)))
+    for name, cards in _DEMO_CHECKLISTS.items():
+        if name not in existing:
+            await create_checklist(session, name, cards)
+
+
 async def seed_demo(limit: int = DEFAULT_LIMIT) -> int:
     """Build the curated demo collection. Idempotent: skips when already populated."""
     rng = random.Random(IMPORT_YEAR)  # deterministic selection/dates
@@ -230,6 +299,7 @@ async def seed_demo(limit: int = DEFAULT_LIMIT) -> int:
                 .values(location=box_name)
             )
         await session.commit()
+        await _seed_showcase(session)
         total = await session.scalar(select(func.count()).select_from(CollectionCard))
     log.info("demo.seeded", added=len(out), collection_size=total)
     return len(out)

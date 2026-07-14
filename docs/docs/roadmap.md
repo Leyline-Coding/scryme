@@ -26,7 +26,12 @@ The MVP plus a steady stream of post-MVP features:
   LM Studio, or hosted OpenAI / Claude / Gemini / Perplexity) for grounded deck analysis, upgrade
   planning, coaching chat, build-from-prompt, a commander finder, plain-English → Scryfall search,
   semantic "similar cards", and card rules Q&A.
-- **[Set completion](features/sets.md)** — how much of each set you own, with the missing cards.
+- **[Set completion](features/sets.md)** — how much of each set you own, with the missing cards,
+  plus a **release calendar** of upcoming and recent sets.
+- **[Sell list + valuation report](features/sell.md)** — a priced sell list (export CSV/text) and a
+  printable collection valuation for insurance/records.
+- **[Graded cards](features/grading.md)** — grade company/number, a condition photo, a manual value
+  override, and `is:graded` search.
 - **[Price history](features/prices.md)** — value-over-time snapshots, biggest movers, and
   acquisition profit/loss.
 - **[Collection stats](features/stats.md)** — colors, rarity, types, mana curve, top sets, and a
@@ -75,10 +80,7 @@ Tracked as open issues — roughly in priority order:
 | --- | --- |
 | [#68](https://github.com/Leyline-Coding/scryme/issues/68) | Mobile-responsive pass |
 | [#80](https://github.com/Leyline-Coding/scryme/issues/80) | Read-only share links for decks/binders |
-| [#97](https://github.com/Leyline-Coding/scryme/issues/97) | Sell list + valuation report |
 | [#100](https://github.com/Leyline-Coding/scryme/issues/100) | Deck diff / versions |
-| [#178](https://github.com/Leyline-Coding/scryme/issues/178) | Set-release calendar |
-| [#179](https://github.com/Leyline-Coding/scryme/issues/179) | Card grading / condition photos |
 
 See the [architecture notes](development/architecture.md) and
 [contributing guide](development/contributing.md) if you'd like to help build any of it.

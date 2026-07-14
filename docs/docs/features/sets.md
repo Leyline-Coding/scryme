@@ -20,3 +20,12 @@ The **Sets** page (header link or `/sets`) tracks how much of each set you've co
   Owning multiple copies, or a foil, still counts the printing once.
 - The page is built from the cards you own, so it's empty until you
   [import a collection](../import/overview.md).
+
+## Set release calendar
+
+The **[release calendar](../features/sets.md)** at **`/calendar`** (linked from the Sets view) shows
+**upcoming** sets — with a countdown to each release — and **recently released** ones. The list
+syncs from Scryfall's set catalog (cached for 24 hours, so it works offline after the first view),
+and covers all paper sets regardless of whether you own any of their cards yet.
+
+Refresh it manually with `python -m src.cli refresh-sets`.

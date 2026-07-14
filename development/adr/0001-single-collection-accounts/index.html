@@ -12,28 +12,26 @@
         <meta name="author" content="Taylor Cohron">
       
       
-        <link rel="canonical" href="https://docs.scryme.app/development/contributing/">
+        <link rel="canonical" href="https://docs.scryme.app/development/adr/0001-single-collection-accounts/">
       
       
-        <link rel="prev" href="../api/">
+        <link rel="prev" href="../../contributing/">
       
       
-        <link rel="next" href="../adr/0001-single-collection-accounts/">
       
-      
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.3">
     
     
       
-        <title>Contributing - scryme Documentation</title>
+        <title>Single collection, no accounts - scryme Documentation</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.50c56a3b.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.50c56a3b.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -52,7 +50,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -78,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#contributing" class="md-skip">
+        <a href="#adr-0001-single-collection-no-accounts-with-a-forward-compat-hedge" class="md-skip">
           Skip to content
         </a>
       
@@ -92,7 +90,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="scryme Documentation" class="md-header__button md-logo" aria-label="scryme Documentation" data-md-component="logo">
+    <a href="../../.." title="scryme Documentation" class="md-header__button md-logo" aria-label="scryme Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -112,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Contributing
+              Single collection, no accounts
             
           </span>
         </div>
@@ -221,7 +219,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
+      <a href="../../.." class="md-tabs__link">
         
   
     
@@ -240,7 +238,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../getting-started/self-hosting/" class="md-tabs__link">
+        <a href="../../../getting-started/self-hosting/" class="md-tabs__link">
           
   
     
@@ -260,7 +258,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../import/overview/" class="md-tabs__link">
+        <a href="../../../import/overview/" class="md-tabs__link">
           
   
     
@@ -280,7 +278,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../search/syntax/" class="md-tabs__link">
+        <a href="../../../search/syntax/" class="md-tabs__link">
           
   
     
@@ -300,7 +298,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../features/cards/" class="md-tabs__link">
+        <a href="../../../features/cards/" class="md-tabs__link">
           
   
     
@@ -318,7 +316,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../roadmap/" class="md-tabs__link">
+      <a href="../../../roadmap/" class="md-tabs__link">
         
   
     
@@ -339,7 +337,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../architecture/" class="md-tabs__link">
+        <a href="../../architecture/" class="md-tabs__link">
           
   
     
@@ -374,7 +372,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="scryme Documentation" class="md-nav__button md-logo" aria-label="scryme Documentation" data-md-component="logo">
+    <a href="../../.." title="scryme Documentation" class="md-nav__button md-logo" aria-label="scryme Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -404,7 +402,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -476,7 +474,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/self-hosting/" class="md-nav__link">
+      <a href="../../../getting-started/self-hosting/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -497,7 +495,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/desktop/" class="md-nav__link">
+      <a href="../../../getting-started/desktop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -518,7 +516,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/configuration/" class="md-nav__link">
+      <a href="../../../getting-started/configuration/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -539,7 +537,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/kubernetes/" class="md-nav__link">
+      <a href="../../../getting-started/kubernetes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -560,7 +558,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/demo/" class="md-nav__link">
+      <a href="../../../getting-started/demo/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -636,7 +634,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../import/overview/" class="md-nav__link">
+      <a href="../../../import/overview/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -657,7 +655,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../import/formats/" class="md-nav__link">
+      <a href="../../../import/formats/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -678,7 +676,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../import/merge/" class="md-nav__link">
+      <a href="../../../import/merge/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -754,7 +752,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/syntax/" class="md-nav__link">
+      <a href="../../../search/syntax/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -775,7 +773,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/regex/" class="md-nav__link">
+      <a href="../../../search/regex/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -796,7 +794,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/advanced/" class="md-nav__link">
+      <a href="../../../search/advanced/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -892,7 +890,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/cards/" class="md-nav__link">
+      <a href="../../../features/cards/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -913,7 +911,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/decks/" class="md-nav__link">
+      <a href="../../../features/decks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -934,7 +932,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/ai/" class="md-nav__link">
+      <a href="../../../features/ai/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -955,7 +953,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/binders/" class="md-nav__link">
+      <a href="../../../features/binders/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -976,7 +974,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/locations/" class="md-nav__link">
+      <a href="../../../features/locations/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -997,7 +995,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/sets/" class="md-nav__link">
+      <a href="../../../features/sets/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1018,7 +1016,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/checklists/" class="md-nav__link">
+      <a href="../../../features/checklists/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1039,7 +1037,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/wishlist/" class="md-nav__link">
+      <a href="../../../features/wishlist/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1060,7 +1058,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/trade/" class="md-nav__link">
+      <a href="../../../features/trade/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1081,7 +1079,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/stats/" class="md-nav__link">
+      <a href="../../../features/stats/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1102,7 +1100,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/prices/" class="md-nav__link">
+      <a href="../../../features/prices/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1123,7 +1121,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/theming/" class="md-nav__link">
+      <a href="../../../features/theming/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1144,7 +1142,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/backup/" class="md-nav__link">
+      <a href="../../../features/backup/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1172,7 +1170,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../roadmap/" class="md-nav__link">
+      <a href="../../../roadmap/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1244,7 +1242,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
+      <a href="../../architecture/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1265,7 +1263,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../api/" class="md-nav__link">
+      <a href="../../api/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1278,6 +1276,73 @@
   
 
               
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+    
+      
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7_4" id="__nav_7_4_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Decision Records
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7_4">
+            <span class="md-nav__icon md-icon"></span>
+            Decision Records
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
             
               
                 
@@ -1299,7 +1364,7 @@
           
   
   <span class="md-ellipsis">
-    Contributing
+    Single collection, no accounts
   </span>
   
 
@@ -1310,7 +1375,7 @@
         
   
   <span class="md-ellipsis">
-    Contributing
+    Single collection, no accounts
   </span>
   
 
@@ -1332,45 +1397,75 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#local-setup" class="md-nav__link">
+  <a href="#context" class="md-nav__link">
     <span class="md-ellipsis">
-      Local setup
+      Context
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Context">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-reframe" class="md-nav__link">
+    <span class="md-ellipsis">
+      The reframe
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-shared-collection-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      The shared-collection case
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#options-considered" class="md-nav__link">
+    <span class="md-ellipsis">
+      Options considered
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#triggers-to-revisit-a-b" class="md-nav__link">
+    <span class="md-ellipsis">
+      Triggers to revisit (A → B)
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#tests-and-linting" class="md-nav__link">
+  <a href="#consequences" class="md-nav__link">
     <span class="md-ellipsis">
-      Tests and linting
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      Workflow
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#extending-scryme" class="md-nav__link">
-    <span class="md-ellipsis">
-      Extending scryme
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Documentation
+      Consequences
     </span>
   </a>
   
@@ -1380,71 +1475,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    
-    
-      
-        
-      
-    
-    
-    
-    
-      
-      
-    
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_4" >
-        
-          
-          <label class="md-nav__link" for="__nav_7_4" id="__nav_7_4_label" tabindex="">
-            
-  
-  <span class="md-ellipsis">
-    Decision Records
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7_4">
-            <span class="md-nav__icon md-icon"></span>
-            Decision Records
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../adr/0001-single-collection-accounts/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Single collection, no accounts
-  </span>
-  
-
-      </a>
     </li>
   
 
@@ -1492,45 +1522,75 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#local-setup" class="md-nav__link">
+  <a href="#context" class="md-nav__link">
     <span class="md-ellipsis">
-      Local setup
+      Context
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Context">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-reframe" class="md-nav__link">
+    <span class="md-ellipsis">
+      The reframe
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-shared-collection-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      The shared-collection case
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#options-considered" class="md-nav__link">
+    <span class="md-ellipsis">
+      Options considered
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#triggers-to-revisit-a-b" class="md-nav__link">
+    <span class="md-ellipsis">
+      Triggers to revisit (A → B)
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#tests-and-linting" class="md-nav__link">
+  <a href="#consequences" class="md-nav__link">
     <span class="md-ellipsis">
-      Tests and linting
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#workflow" class="md-nav__link">
-    <span class="md-ellipsis">
-      Workflow
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#extending-scryme" class="md-nav__link">
-    <span class="md-ellipsis">
-      Extending scryme
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Documentation
+      Consequences
     </span>
   </a>
   
@@ -1554,44 +1614,123 @@
   
 
 
-<h1 id="contributing">Contributing</h1>
-<h2 id="local-setup">Local setup</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Leyline-Coding/scryme.git
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>scryme
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.dev.yml<span class="w"> </span>up<span class="w">   </span><span class="c1"># backend on http://localhost:8000 with hot reload</span>
-</code></pre></div>
-<h2 id="tests-and-linting">Tests and linting</h2>
-<p>The backend test suite runs against PostgreSQL. Point <code>SCRYME_DATABASE_URL</code> at a reachable
-database (the dev compose Postgres works) and run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">cd</span><span class="w"> </span>backend
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>pytest<span class="w"> </span>tests/<span class="w">         </span><span class="c1"># tests + coverage (writes coverage.xml)</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>ruff<span class="w"> </span>check<span class="w"> </span>src<span class="w"> </span>tests<span class="w">  </span><span class="c1"># lint</span>
-</code></pre></div>
-<p>CI (GitHub Actions) runs the same checks on every pull request and must pass before merge.</p>
-<h2 id="workflow">Workflow</h2>
+<h1 id="adr-0001-single-collection-no-accounts-with-a-forward-compat-hedge">ADR 0001 — Single collection, no accounts (with a forward-compat hedge)</h1>
 <ul>
-<li>Branch per change: <code>feat/*</code> → pull request into <code>main</code>.</li>
-<li>Keep tests green and <code>ruff</code> clean; add tests for new behavior.</li>
-<li>Searchable card attributes get promoted to indexed columns; everything else reads from
-  <code>cards.raw</code>. Add an Alembic migration when promoting a new field.</li>
-<li><strong>Never commit personal collection data.</strong> <code>tests/fixtures/*_full.csv</code> is gitignored; commit only
-  small redacted <code>*_sample.csv</code> fixtures.</li>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Deciders:</strong> scryme maintainers</li>
+<li><strong>Related issues:</strong> <a href="https://github.com/Leyline-Coding/scryme/issues/205">#205</a> (decision spike),
+  <a href="https://github.com/Leyline-Coding/scryme/issues/202">#202</a>–<a href="https://github.com/Leyline-Coding/scryme/issues/204">#204</a>
+  (settings + device tokens)</li>
 </ul>
-<h2 id="extending-scryme">Extending scryme</h2>
+<h2 id="context">Context</h2>
+<p>scryme's founding constraint is <strong>single-user, no auth — one implicit collection per
+deployment</strong> (see the README, <code>CLAUDE.md</code>, and <code>src/config.py</code>). Two forces put pressure on that
+constraint:</p>
+<ol>
+<li><strong>Mobile-app integration.</strong> Two sibling apps are planned (a scanner, per
+   <a href="https://github.com/Leyline-Coding/scryme/issues/164">#164</a>–<a href="https://github.com/Leyline-Coding/scryme/issues/168">#168</a>,
+   and a browser app). They need to authenticate to an instance and sync against a collection.</li>
+<li><strong>Settings sprawl.</strong> Configuration lives in three unrelated places — environment variables
+   (<code>config.py</code>), a single DB row (<code>LLMSettings</code>, <code>id == 1</code>), and client-side <code>localStorage</code>/cookies
+   — with no clear line between "operator configures the server" and "user sets their preferences."</li>
+</ol>
+<p>The instinctive fix — "add accounts" — is the heaviest possible answer, and it is paid for by the
+99% case that scryme is explicitly built for: <strong>one person, one collection</strong>.</p>
+<h3 id="the-reframe">The reframe</h3>
+<p>"Accounts" bundles three separable concerns. Only the third is actually about accounts:</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>What it really needs</th>
+<th>Requires accounts?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Client/device authorization</td>
+<td>A revocable per-app credential (<a href="https://github.com/Leyline-Coding/scryme/issues/204">#204</a>)</td>
+<td><strong>No</strong></td>
+</tr>
+<tr>
+<td>Preferences grouping</td>
+<td>A per-collection preferences store (<a href="https://github.com/Leyline-Coding/scryme/issues/203">#203</a>, <a href="https://github.com/Leyline-Coding/scryme/issues/202">#202</a>)</td>
+<td><strong>No</strong></td>
+</tr>
+<tr>
+<td>Multi-tenant identity</td>
+<td>Real human accounts + per-user collection isolation</td>
+<td><strong>Yes</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Nothing shipped or currently planned requires the third row. The mobile apps need <em>device
+authorization</em>, not identity; the settings work needs a <em>preferences store</em>, not identity.</p>
+<h3 id="the-shared-collection-case">The shared-collection case</h3>
+<p>A real, common scenario informed this decision: a household (e.g. a partner who does
+organization/input and another who builds decks and manages trade/sell binders) shares <strong>one</strong>
+physical collection. This is still <strong>one collection</strong> — it argues <em>against</em> per-user identity, not
+for it. What it genuinely requires is that two people editing the same collection at the same time
+cannot silently clobber each other's changes. That is a concurrency-safety problem, not an
+identity problem (see Consequences).</p>
+<h2 id="decision">Decision</h2>
+<p><strong>Option A — stay single-collection, with a forward-compat hedge.</strong></p>
 <ul>
-<li><strong>New import format</strong> — add a parser in <code>backend/src/importers/</code> (<code>detect</code> + <code>parse</code>, decorated
-  with <code>@register</code>) and import it in <code>importers/__init__.py</code>. See
-  <a href="../../import/formats/">Supported Formats</a>.</li>
-<li><strong>New search filter</strong> — add an alias in <code>search/parser.py</code> and a handler in <code>search/compiler.py</code>,
-  then cover it with tests.</li>
+<li>Keep one implicit collection per deployment. Do <strong>not</strong> build human accounts, login, sessions, or
+  per-user data isolation.</li>
+<li>Serve mobile integration with revocable per-device tokens
+  (<a href="https://github.com/Leyline-Coding/scryme/issues/204">#204</a>).</li>
+<li>Serve settings/preferences with a per-collection preferences singleton
+  (<a href="https://github.com/Leyline-Coding/scryme/issues/203">#203</a>) surfaced in a unified settings page
+  (<a href="https://github.com/Leyline-Coding/scryme/issues/202">#202</a>).</li>
+<li><strong>Hedge:</strong> add a nullable <code>owner_id</code> / <code>collection_id</code> column to collection-scoped and
+  new settings/token tables now. It is <strong>always <code>NULL</code></strong> today and unused by any query. Its only
+  job is to make a future reversal to multi-collection an <strong>additive migration</strong> rather than a
+  schema-wide rewrite.</li>
 </ul>
-<h2 id="documentation">Documentation</h2>
-<p>These docs are built with <a href="https://squidfunk.github.io/mkdocs-material/">MkDocs Material</a> and
-deployed to <a href="https://docs.scryme.app">docs.scryme.app</a> from the <code>docs/</code> directory on every push to
-<code>main</code>. To preview locally:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>docs/docs-requirements.txt
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">cd</span><span class="w"> </span>docs<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>mkdocs<span class="w"> </span>serve<span class="w">   </span><span class="c1"># http://127.0.0.1:8001</span>
-</code></pre></div>
+<h3 id="options-considered">Options considered</h3>
+<p><strong>Option A — single-collection + hedge (chosen).</strong></p>
+<ul>
+<li>Pro: no auth/session/password-reset/tenant-isolation tax; matches the stated 1 person : 1
+  collection reality; self-hosters need nothing more; mobile + settings both unblocked.</li>
+<li>Con: a hosted multi-user SaaS would require future work (bounded by the hedge).</li>
+</ul>
+<p><strong>Option B — build multi-user accounts now (rejected).</strong></p>
+<ul>
+<li>Pro: enables a hosted SaaS / cloud sync / multiple humans with isolated collections on one box.</li>
+<li>Con: large surface area (auth, sessions, isolation, migrating every collection-scoped query),
+  paid for by the overwhelmingly common single-user case, to serve demand that does not exist yet.</li>
+</ul>
+<h2 id="triggers-to-revisit-a-b">Triggers to revisit (A → B)</h2>
+<p>Reopen this decision only when one of these becomes real. Until then, "should we do accounts?" is a
+lookup against this list, not a fresh debate:</p>
+<ul>
+<li>A <strong>hosted, multi-user SaaS</strong> offering (many users' data on infrastructure the maintainers run).</li>
+<li><strong>Cloud sync</strong> of many users' collections through a single deployment.</li>
+<li>Genuine <strong>multiple humans with separate collections</strong> on one self-hosted box — distinct from a
+  household sharing a single collection, which Option A already serves.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li><strong>The <code>owner_id</code> hedge is a standing convention.</strong> New collection-scoped tables and the
+  settings/token tables carry a nullable <code>owner_id</code>/<code>collection_id</code>, defaulting to <code>NULL</code>. Reviewers
+  should expect it; leaving it off a new mutable table is the thing to catch.</li>
+<li><strong>Shared editing must be made safe.</strong> Because one collection is deliberately shared by more than
+  one person, scryme takes on responsibility for <strong>concurrent-edit safety</strong> — two simultaneous
+  editors must not silently overwrite each other. The chosen approach is <strong>optimistic concurrency
+  control</strong> (a version/<code>updated_at</code> guard on mutable rows → HTTP 409 + a "this changed since you
+  loaded it" merge prompt, rather than last-write-wins) plus <strong>live sync</strong> so both people see
+  changes as they happen. The live-sync stream generalizes the SSE work already proposed for
+  scanning (<a href="https://github.com/Leyline-Coding/scryme/issues/166">#166</a>) into a collection-events
+  stream. Full Google-Docs-style character-level co-editing (OT/CRDT) is explicitly <strong>out of
+  scope</strong>: collection edits act on discrete stacks (quantity, tags, location, condition), so
+  row-level optimistic locking is sufficient. Tracked in
+  <a href="https://github.com/Leyline-Coding/scryme/issues/207">#207</a>.</li>
+<li><strong>No user attribution by default.</strong> Since there are no accounts, changes are not attributed to a
+  named person. If "who changed this" becomes desirable for shared households, it can be layered on
+  via the device-token label (<a href="https://github.com/Leyline-Coding/scryme/issues/204">#204</a>) without
+  introducing identity — a deliberately lighter step than accounts.</li>
+</ul>
 
 
 
@@ -1614,7 +1753,7 @@ deployed to <a href="https://docs.scryme.app">docs.scryme.app</a> from the <code
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 29, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">July 14, 2026</span>
   </span>
 
     
@@ -1624,7 +1763,7 @@ deployed to <a href="https://docs.scryme.app">docs.scryme.app</a> from the <code
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3h-2Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 25, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">July 14, 2026</span>
   </span>
 
     
@@ -1659,7 +1798,7 @@ deployed to <a href="https://docs.scryme.app">docs.scryme.app</a> from the <code
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../api/" class="md-footer__link md-footer__link--prev" aria-label="Previous: JSON API">
+          <a href="../../contributing/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Contributing">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -1669,27 +1808,11 @@ deployed to <a href="https://docs.scryme.app">docs.scryme.app</a> from the <code
                 Previous
               </span>
               <div class="md-ellipsis">
-                JSON API
+                Contributing
               </div>
             </div>
           </a>
         
-        
-          
-          <a href="../adr/0001-single-collection-accounts/" class="md-footer__link md-footer__link--next" aria-label="Next: Single collection, no accounts">
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              <div class="md-ellipsis">
-                Single collection, no accounts
-              </div>
-            </div>
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
-            </div>
-          </a>
         
       </nav>
     
@@ -1731,10 +1854,10 @@ deployed to <a href="https://docs.scryme.app">docs.scryme.app</a> from the <code
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.footer", "navigation.indexes", "navigation.tracking", "search.suggest", "search.highlight", "toc.follow", "content.code.copy", "content.code.annotate", "content.tooltips"], "search": "../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.footer", "navigation.indexes", "navigation.tracking", "search.suggest", "search.highlight", "toc.follow", "content.code.copy", "content.code.annotate", "content.tooltips"], "search": "../../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7c377c4.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7c377c4.min.js"></script>
       
     
   </body>

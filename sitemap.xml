@@ -26,6 +26,11 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://docs.scryme.app/development/adr/0001-single-collection-accounts/</loc>
+         <lastmod>2026-07-14</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://docs.scryme.app/features/ai/</loc>
          <lastmod>2026-07-14</lastmod>
          <changefreq>daily</changefreq>

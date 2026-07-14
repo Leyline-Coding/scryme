@@ -30,10 +30,13 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)) 
 
     # Saved-search alerts (#58) + price-watch alerts (#88), surfaced on the home page.
     from src.price_watch import triggered_targets
+    from src.prices import collection_digest
     from src.saved_alerts import searches_with_new
 
     alerts = [] if settings.read_only else await searches_with_new(session)
     price_alerts = [] if settings.read_only else await triggered_targets(session)
+    # Weekly movers digest (#177) — a passive summary, shown even in read-only demo mode.
+    digest = await collection_digest(session) if count else None
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -43,5 +46,6 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)) 
             "needs_cards": needs_cards,
             "alerts": alerts,
             "price_alerts": price_alerts,
+            "digest": digest,
         },
     )

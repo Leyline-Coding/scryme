@@ -8,6 +8,7 @@ recent snapshots to find the cards whose price changed most.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import timedelta
 
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -186,19 +187,10 @@ class Movers:
         return bool(self.gainers) or bool(self.losers)
 
 
-async def biggest_movers(session: AsyncSession, limit: int = 10) -> Movers:
-    """Compare the two most recent snapshots and return top gainers/losers by absolute change."""
-    snaps = (
-        await session.execute(
-            select(PriceSnapshot.id, PriceSnapshot.captured_at)
-            .order_by(desc(PriceSnapshot.captured_at))
-            .limit(2)
-        )
-    ).all()
-    if len(snaps) < 2:
-        return Movers(gainers=[], losers=[])
-    (latest_id, latest_at), (prev_id, prev_at) = snaps[0], snaps[1]
-
+async def _movers_between(
+    session: AsyncSession, prev_id: int, latest_id: int, limit: int,
+) -> tuple[list[Mover], list[Mover]]:
+    """Top gainers/losers between two snapshots, by absolute USD change."""
     def points(sid):
         return select(CardPricePoint.scryfall_id, CardPricePoint.usd).where(
             CardPricePoint.snapshot_id == sid
@@ -208,8 +200,7 @@ async def biggest_movers(session: AsyncSession, limit: int = 10) -> Movers:
     prev = {s: u for s, u in (await session.execute(points(prev_id))).all()}
     shared = [s for s in latest if s in prev and latest[s] != prev[s]]
     if not shared:
-        return Movers(previous_at=prev_at, latest_at=latest_at, gainers=[], losers=[])
-
+        return [], []
     names = {
         sid: (name, set_code)
         for sid, name, set_code in (
@@ -227,8 +218,73 @@ async def biggest_movers(session: AsyncSession, limit: int = 10) -> Movers:
                             scryfall_id=str(sid), old=prev[sid], new=latest[sid]))
     gainers = sorted([m for m in movers if m.delta > 0], key=lambda m: m.delta, reverse=True)
     losers = sorted([m for m in movers if m.delta < 0], key=lambda m: m.delta)
-    return Movers(previous_at=prev_at, latest_at=latest_at,
-                  gainers=gainers[:limit], losers=losers[:limit])
+    return gainers[:limit], losers[:limit]
+
+
+async def biggest_movers(session: AsyncSession, limit: int = 10) -> Movers:
+    """Compare the two most recent snapshots and return top gainers/losers by absolute change."""
+    snaps = (
+        await session.execute(
+            select(PriceSnapshot.id, PriceSnapshot.captured_at)
+            .order_by(desc(PriceSnapshot.captured_at))
+            .limit(2)
+        )
+    ).all()
+    if len(snaps) < 2:
+        return Movers(gainers=[], losers=[])
+    (latest_id, latest_at), (prev_id, prev_at) = snaps[0], snaps[1]
+    gainers, losers = await _movers_between(session, prev_id, latest_id, limit)
+    return Movers(previous_at=prev_at, latest_at=latest_at, gainers=gainers, losers=losers)
+
+
+@dataclass
+class Digest:
+    """Period-over-period collection summary for the home 'movers' panel."""
+
+    available: bool = False
+    latest_at: object = None
+    baseline_at: object = None
+    start_value: float = 0.0
+    end_value: float = 0.0
+    gainers: list = field(default_factory=list)
+    losers: list = field(default_factory=list)
+
+    @property
+    def delta(self) -> float:
+        return round(self.end_value - self.start_value, 2)
+
+    @property
+    def pct(self) -> float:
+        return round(100 * (self.end_value - self.start_value) / self.start_value, 1) \
+            if self.start_value else 0.0
+
+
+async def collection_digest(session: AsyncSession, days: int = 7, limit: int = 5) -> Digest:
+    """Value change + top movers since ~`days` ago (or the previous snapshot if sparse)."""
+    latest = (await session.execute(
+        select(PriceSnapshot).order_by(desc(PriceSnapshot.captured_at)).limit(1)
+    )).scalars().first()
+    if latest is None:
+        return Digest()
+    cutoff = latest.captured_at - timedelta(days=days)
+    baseline = (await session.execute(
+        select(PriceSnapshot)
+        .where(PriceSnapshot.captured_at <= cutoff, PriceSnapshot.id != latest.id)
+        .order_by(desc(PriceSnapshot.captured_at)).limit(1)
+    )).scalars().first()
+    if baseline is None:  # not enough history for the window — fall back to the previous snapshot
+        baseline = (await session.execute(
+            select(PriceSnapshot).where(PriceSnapshot.id != latest.id)
+            .order_by(desc(PriceSnapshot.captured_at)).limit(1)
+        )).scalars().first()
+    if baseline is None:
+        return Digest()
+    gainers, losers = await _movers_between(session, baseline.id, latest.id, limit)
+    return Digest(
+        available=True, latest_at=latest.captured_at, baseline_at=baseline.captured_at,
+        start_value=float(baseline.total_usd or 0), end_value=float(latest.total_usd or 0),
+        gainers=gainers, losers=losers,
+    )
 
 
 @dataclass

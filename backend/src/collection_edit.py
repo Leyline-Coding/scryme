@@ -9,8 +9,9 @@ printings selected in the results grid.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Card, CollectionCard
@@ -161,3 +162,95 @@ async def bulk_add_tag(session: AsyncSession, scryfall_ids: list, tag: str) -> i
         if result:
             tagged += 1
     return tagged
+
+
+# --- duplicate stacks (#101) --------------------------------------------------------------------
+
+@dataclass
+class DuplicateGroup:
+    scryfall_id: str
+    name: str
+    set_code: str
+    collector_number: str
+    finish: str
+    condition: str | None
+    language: str
+    count: int              # how many stack rows
+    total_quantity: int     # summed quantity across them
+    binders: list[str]      # binder names involved
+
+
+async def find_duplicate_stacks(session: AsyncSession) -> list[DuplicateGroup]:
+    """Groups of stack rows for the same card (scryfall_id + finish + condition + language) that are
+    split across more than one row — e.g. the same card recorded in different binders."""
+    rows = (await session.execute(
+        select(
+            CollectionCard.scryfall_id, CollectionCard.finish, CollectionCard.condition,
+            CollectionCard.language, func.count().label("n"),
+            func.sum(CollectionCard.quantity).label("qty"),
+            func.array_agg(
+                func.coalesce(CollectionCard.binder_name, "(no binder)")
+            ).label("binders"),
+        )
+        .group_by(CollectionCard.scryfall_id, CollectionCard.finish,
+                  CollectionCard.condition, CollectionCard.language)
+        .having(func.count() > 1)
+    )).all()
+    if not rows:
+        return []
+    sids = {r[0] for r in rows}
+    cards = {
+        c.scryfall_id: c for c in
+        (await session.execute(select(Card).where(Card.scryfall_id.in_(sids)))).scalars().all()
+    }
+    groups = []
+    for sid, finish, condition, language, n, qty, binders in rows:
+        card = cards.get(sid)
+        groups.append(DuplicateGroup(
+            scryfall_id=str(sid), name=card.name if card else "Unknown card",
+            set_code=(card.set_code if card else "") or "",
+            collector_number=(card.collector_number if card else "") or "",
+            finish=finish, condition=condition, language=language,
+            count=int(n), total_quantity=int(qty or 0), binders=list(binders or []),
+        ))
+    groups.sort(key=lambda g: g.name.lower())
+    return groups
+
+
+async def merge_duplicate_group(
+    session: AsyncSession, scryfall_id, finish: str, condition: str | None, language: str,
+):
+    """Merge all rows for one (card, finish, condition, language) into a single stack.
+
+    The earliest row survives with the summed quantity and the union of tags; the rest are deleted.
+    """
+    rows = (await session.execute(
+        select(CollectionCard).where(
+            CollectionCard.scryfall_id == _as_uuid(scryfall_id),
+            CollectionCard.finish == finish,
+            _eq_or_null(CollectionCard.condition, condition),
+            CollectionCard.language == language,
+        ).order_by(CollectionCard.id)
+    )).scalars().all()
+    if len(rows) < 2:
+        return rows[0] if rows else None
+    survivor = rows[0]
+    tags: list[str] = []
+    for r in rows:
+        for t in (r.tags or []):
+            if t not in tags:
+                tags.append(t)
+    survivor.quantity = sum(r.quantity for r in rows)
+    survivor.tags = tags or None
+    for r in rows[1:]:
+        await session.delete(r)
+    await session.commit()
+    return survivor
+
+
+async def merge_all_duplicates(session: AsyncSession) -> int:
+    """Merge every duplicate group. Returns how many groups were merged."""
+    groups = await find_duplicate_stacks(session)
+    for g in groups:
+        await merge_duplicate_group(session, g.scryfall_id, g.finish, g.condition, g.language)
+    return len(groups)

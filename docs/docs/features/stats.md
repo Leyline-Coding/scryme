@@ -11,7 +11,9 @@ The **Stats** page (header link or `/stats`) is a visual overview of your owned 
   month, from when each card entered your collection. Shows the most recent 12 active months;
   the header totals cover your whole history.
 - **Breakdowns** as bar charts — by color (mono / multicolor / colorless), rarity, card type, mana
-  curve (0–6 and 7+), and your top sets.
+  curve (0–6 and 7+), and your top sets. **Every bar is a click-through**: clicking *Green* runs
+  `ci=g` on your collection, *mythic* runs `r=mythic`, a set runs `s:<code>`, and so on — a fast way
+  to jump from a breakdown into the actual cards.
 - **Most valuable** — your ten priciest owned cards, each linking to its
   [detail page](cards.md).
 

@@ -8,8 +8,9 @@ Lens, then search it with Scryfall syntax and regular expressions.
 
 - 🔎 **Scryfall-compatible search** with regex — scoped to your collection or all cards, with
   sorting, a **grid / table** toggle, **clickable [facets](search/syntax.md)**, **"did you mean?"**
-  suggestions, **saved searches**, an **[advanced form builder](search/advanced.md)**, and CSV /
-  decklist / ManaBox **export**.
+  suggestions, **saved searches**, a **[universal always-applied filter](search/syntax.md#universal-filter-always-applied)**,
+  **[card-image hover previews](search/syntax.md#card-previews)**, an
+  **[advanced form builder](search/advanced.md)**, and CSV / decklist / ManaBox **export**.
 - 🃏 **Rich card pages** — full oracle text, prices, legalities, printings, rulings, real
   **mana & set symbols**, **[tags](features/cards.md#tags)** you can search with `tag:`, and inline
   **[add/edit](features/cards.md#editing-your-collection)** (plus bulk edit from results).

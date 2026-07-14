@@ -41,6 +41,7 @@ async def add_or_increment(
     condition: str | None = None,
     language: str = "en",
     binder: str | None = None,
+    location: str | None = None,
     purchase_price: float | None = None,
 ) -> CollectionCard | None:
     """Add a printing to the collection, incrementing the matching stack if it exists.
@@ -52,7 +53,7 @@ async def add_or_increment(
         return None
     quantity = max(1, quantity)
     finish = finish if finish in ("normal", "foil", "etched") else "normal"
-    condition, binder = _clean(condition), _clean(binder)
+    condition, binder, location = _clean(condition), _clean(binder), _clean(location)
     language = (language or "en").strip().lower() or "en"
 
     stack = (
@@ -63,6 +64,7 @@ async def add_or_increment(
                 CollectionCard.language == language,
                 _eq_or_null(CollectionCard.condition, condition),
                 _eq_or_null(CollectionCard.binder_name, binder),
+                _eq_or_null(CollectionCard.location, location),
             )
         )
     ).scalar_one_or_none()
@@ -70,8 +72,8 @@ async def add_or_increment(
     if stack is None:
         stack = CollectionCard(
             scryfall_id=sid, quantity=quantity, finish=finish, condition=condition,
-            language=language, binder_name=binder, purchase_price=purchase_price,
-            source_format="manual",
+            language=language, binder_name=binder, location=location,
+            purchase_price=purchase_price, source_format="manual",
         )
         session.add(stack)
     else:
@@ -106,12 +108,13 @@ async def update_stack(
     condition=_UNSET,
     language: str | None = None,
     binder=_UNSET,
+    location=_UNSET,
     tags=_UNSET,
 ):
     """Update fields on a stack (any left unset stay put). Returns the stack, or None if missing.
 
     ``quantity`` is clamped to >= 1 (use :func:`delete_stack` to remove a stack). ``condition`` /
-    ``binder`` / ``tags`` accept an explicit ``None`` to clear them, so they use a sentinel default.
+    ``binder`` / ``location`` / ``tags`` take an explicit ``None`` to clear them (sentinel default).
     """
     stack = await session.get(CollectionCard, stack_id)
     if stack is None:
@@ -126,6 +129,8 @@ async def update_stack(
         stack.condition = _clean(condition)
     if binder is not _UNSET:
         stack.binder_name = _clean(binder)
+    if location is not _UNSET:
+        stack.location = _clean(location)
     if tags is not _UNSET:
         stack.tags = tags or None
     await session.commit()
@@ -254,3 +259,67 @@ async def merge_all_duplicates(session: AsyncSession) -> int:
     for g in groups:
         await merge_duplicate_group(session, g.scryfall_id, g.finish, g.condition, g.language)
     return len(groups)
+
+
+# --- organize by color identity (#160) ----------------------------------------------------------
+
+_MONO = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"}
+_GUILDS = {
+    "WU": "Azorius", "WB": "Orzhov", "WR": "Boros", "WG": "Selesnya", "UB": "Dimir",
+    "UR": "Izzet", "UG": "Simic", "BR": "Rakdos", "BG": "Golgari", "RG": "Gruul",
+}
+_SHARDS = {
+    "WUB": "Esper", "WUR": "Jeskai", "WUG": "Bant", "WBR": "Mardu", "WBG": "Abzan",
+    "WRG": "Naya", "UBR": "Grixis", "UBG": "Sultai", "URG": "Temur", "BRG": "Jund",
+}
+
+
+def color_identity_group(color_identity: list[str] | None) -> str:
+    """Name of the color-identity binder a card belongs in (mono/guild/shard/…)."""
+    key = "".join(c for c in "WUBRG" if c in set(color_identity or []))
+    if not key:
+        return "Colorless"
+    if len(key) == 1:
+        return _MONO[key]
+    if len(key) == 2:
+        return _GUILDS[key]
+    if len(key) == 3:
+        return _SHARDS[key]
+    return "Four-color" if len(key) == 4 else "Five-color"
+
+
+async def organize_by_color_identity(session: AsyncSession) -> int:
+    """Set every owned stack's ``location`` to its card's color-identity group. Returns rows set."""
+    from sqlalchemy import update
+
+    rows = (await session.execute(
+        select(CollectionCard.id, Card.color_identity)
+        .join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
+    )).all()
+    buckets: dict[str, list[int]] = {}
+    for stack_id, ci in rows:
+        buckets.setdefault(color_identity_group(ci), []).append(stack_id)
+    for name, ids in buckets.items():
+        await session.execute(
+            update(CollectionCard).where(CollectionCard.id.in_(ids)).values(location=name)
+        )
+    await session.commit()
+    return sum(len(ids) for ids in buckets.values())
+
+
+@dataclass
+class LocationSummary:
+    location: str | None
+    stacks: int
+    quantity: int
+
+
+async def location_summary(session: AsyncSession) -> list[LocationSummary]:
+    """Card counts per physical location (None = unfiled), for the locations page."""
+    rows = (await session.execute(
+        select(CollectionCard.location, func.count(),
+               func.sum(CollectionCard.quantity))
+        .group_by(CollectionCard.location)
+        .order_by(CollectionCard.location.nulls_last())
+    )).all()
+    return [LocationSummary(loc, int(n), int(q or 0)) for loc, n, q in rows]

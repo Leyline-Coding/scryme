@@ -26,6 +26,7 @@
       {% if s.condition %}<span class="text-muted">· {{ s.condition }}</span>{% endif %}
       <span class="text-muted uppercase">· {{ s.language }}</span>
       {% if s.binder_name %}<span class="text-muted">· {{ s.binder_name }}</span>{% endif %}
+      {% if s.location %}<span class="text-accent" title="Storage location">· 📍{{ s.location }}</span>{% endif %}
       {% if not read_only %}
       <button type="button" title="Delete this stack"
               class="ml-auto shrink-0 text-muted hover:text-rose-500"
@@ -60,6 +61,8 @@
       <option value="etched">etched</option>
     </select>
     <input type="text" name="binder" placeholder="binder" title="Binder (optional)"
+           class="w-24 rounded bg-surface-2 px-2 py-1" />
+    <input type="text" name="location" placeholder="location" title="Storage location (optional)"
            class="w-24 rounded bg-surface-2 px-2 py-1" />
     <button type="submit"
             class="rounded bg-accent text-accent-fg px-3 py-1 font-medium">+ Add</button>

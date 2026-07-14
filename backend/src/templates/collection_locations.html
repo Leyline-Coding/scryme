@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Storage locations · scryme{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-4">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold">Storage locations</h1>
+    <a href="/collection" class="ml-auto text-sm text-muted hover:text-fg shrink-0">← Collection</a>
+  </header>
+
+  <p class="text-sm text-muted mb-4">
+    Where your cards physically live. Search a location with <code class="text-xs">loc:</code>
+    (e.g. <code class="text-xs">loc:orzhov</code>), or auto-file everything by color identity below.
+  </p>
+
+  {% if not read_only %}
+  <form method="post" action="/collection/organize-by-identity" class="mb-5"
+        onsubmit="return confirm('Set every card\'s location to its color-identity group? This overwrites current locations.')">
+    <button type="submit" class="rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium">
+      ✨ Organize by color identity
+    </button>
+    <span class="ml-2 text-xs text-muted">Files each card into White / Azorius / Orzhov / … / Colorless / Five-color.</span>
+  </form>
+  {% endif %}
+
+  {% if locations %}
+  <ul class="divide-y divide-edge rounded-xl border border-edge bg-surface">
+    {% for l in locations %}
+    <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+      {% if l.location %}
+      <a href="/search?q={{ ('loc:\"' ~ l.location ~ '\"') | urlencode }}&scope=collection"
+         class="font-medium hover:text-accent">📍 {{ l.location }}</a>
+      {% else %}
+      <span class="text-muted italic">Unfiled</span>
+      {% endif %}
+      <span class="text-muted tabular-nums shrink-0">{{ l.quantity }} cards · {{ l.stacks }} stacks</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="rounded-xl border border-edge bg-surface p-6 text-center text-muted">
+    No cards yet.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

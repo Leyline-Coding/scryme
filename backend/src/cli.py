@@ -75,6 +75,15 @@ async def _backfill_rules(file_path: str | None) -> None:
     print(f"Embedded {count} comprehensive-rules chunk(s).")
 
 
+async def _organize_locations() -> None:
+    from src.collection_edit import organize_by_color_identity
+    from src.db import SessionLocal
+
+    async with SessionLocal() as session:
+        n = await organize_by_color_identity(session)
+    print(f"Filed {n} stack(s) into color-identity locations.")
+
+
 async def _backup(directory: str | None, passphrase: str | None) -> None:
     from pathlib import Path
 
@@ -137,6 +146,9 @@ def main() -> None:
                              help="Embed the comprehensive rules for grounded rules Q&A")
     p_rules.add_argument("--file", help="Path to the comprehensive rules .txt (default: bundled)")
 
+    sub.add_parser("organize-locations",
+                   help="Set each card's storage location to its color-identity group")
+
     p_backup = sub.add_parser("backup", help="Write a backup of your data to disk")
     p_backup.add_argument("--dir", help="Target directory (default: SCRYME_BACKUP_DIR)")
     p_backup.add_argument("--passphrase", help="Encrypt the backup with this passphrase")
@@ -162,6 +174,8 @@ def main() -> None:
         asyncio.run(_backfill_embeddings("all" if args.all else "owned"))
     elif args.command == "backfill-rules":
         asyncio.run(_backfill_rules(args.file))
+    elif args.command == "organize-locations":
+        asyncio.run(_organize_locations())
     elif args.command == "backup":
         asyncio.run(_backup(args.dir, args.passphrase))
     elif args.command == "restore":

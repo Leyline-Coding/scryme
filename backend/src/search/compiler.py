@@ -224,6 +224,15 @@ def _tag(term: Term) -> ColumnElement:
     return Card.scryfall_id.in_(tagged)
 
 
+def _location(term: Term) -> ColumnElement:
+    # Physical storage location lives on collection_card; match printings with a stack there
+    # (case-insensitive substring, so `loc:box` matches "Box A").
+    located = select(CollectionCard.scryfall_id).where(
+        CollectionCard.location.ilike(f"%{term.value}%")
+    )
+    return Card.scryfall_id.in_(located)
+
+
 _IS_LAYOUTS = {
     "split": ["split"],
     "flip": ["flip"],
@@ -305,6 +314,7 @@ _HANDLERS: dict[str, Callable[[Term], ColumnElement]] = {
     "stamp": _stamp,
     "game": _game,
     "tag": _tag,
+    "location": _location,
 }
 
 

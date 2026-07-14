@@ -48,6 +48,7 @@ FIELD_ALIASES = {
     "st": "set_type", "settype": "set_type",
     "stamp": "stamp",
     "tag": "tag", "tags": "tag",
+    "loc": "location", "location": "location",
 }
 
 _TWO_CHAR_OPS = ("!=", ">=", "<=")

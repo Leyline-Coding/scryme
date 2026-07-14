@@ -192,11 +192,14 @@ async def seed_demo(limit: int = DEFAULT_LIMIT) -> int:
         used: set = {oracle or sid for oracle, sid in owned}
         out: list = []
 
+        # Bucket by color IDENTITY (includes mana symbols in rules text / kicker), not cast-cost
+        # colors — so e.g. Phyrexian Warhorse ({3}{B} + Kicker {W}) is Orzhov, not mono-black.
         for color, target in MONO_COLORS.items():
-            await _take(session, Card.colors == [color], target, used, out)
-        await _take(session, func.coalesce(func.array_length(Card.colors, 1), 0) == 0,
+            await _take(session, Card.color_identity == [color], target, used, out)
+        await _take(session, func.coalesce(func.array_length(Card.color_identity, 1), 0) == 0,
                     COLORLESS_TARGET, used, out)
-        await _take(session, func.array_length(Card.colors, 1) >= 2, MULTI_TARGET, used, out)
+        await _take(session, func.array_length(Card.color_identity, 1) >= 2,
+                    MULTI_TARGET, used, out)
 
         for fmt in BANNED_FORMATS:
             await _ensure_status(session, fmt, "banned", MIN_BANNED, used, out)
@@ -213,6 +216,9 @@ async def seed_demo(limit: int = DEFAULT_LIMIT) -> int:
         await session.flush()
         await _seed_price_history(session, out, rng)
         await session.commit()
+        # Showcase storage locations (#160): file the demo collection by color identity.
+        from src.collection_edit import organize_by_color_identity
+        await organize_by_color_identity(session)
         total = await session.scalar(select(func.count()).select_from(CollectionCard))
     log.info("demo.seeded", added=len(out), collection_size=total)
     return len(out)

@@ -22,8 +22,10 @@ from src.collection_edit import (
     bulk_add_to_collection,
     delete_stack,
     find_duplicate_stacks,
+    location_summary,
     merge_all_duplicates,
     merge_duplicate_group,
+    organize_by_color_identity,
 )
 from src.config import get_settings
 from src.db import get_session
@@ -76,12 +78,13 @@ async def add(
     condition: str = Form(""),
     language: str = Form("en"),
     binder: str = Form(""),
+    location: str = Form(""),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     _guard_writable()
     sid = uuid.UUID(scryfall_id)
     await add_or_increment(session, sid, quantity, finish=finish, condition=condition,
-                           language=language, binder=binder)
+                           language=language, binder=binder, location=location)
     return await _collection_partial(request, session, sid)
 
 
@@ -164,3 +167,23 @@ async def merge_duplicates_all(
     _guard_writable()
     await merge_all_duplicates(session)
     return RedirectResponse(url="/collection/duplicates", status_code=303)
+
+
+@router.get("/collection/locations", response_class=HTMLResponse)
+async def locations(
+    request: Request, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    """Physical storage locations overview + the color-identity organizer (#160)."""
+    return templates.TemplateResponse(
+        request, "collection_locations.html",
+        {"locations": await location_summary(session), "read_only": get_settings().read_only},
+    )
+
+
+@router.post("/collection/organize-by-identity")
+async def organize_locations(
+    session: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    _guard_writable()
+    await organize_by_color_identity(session)
+    return RedirectResponse(url="/collection/locations", status_code=303)

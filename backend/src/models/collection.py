@@ -40,6 +40,7 @@ class CollectionCard(Base):
     language: Mapped[str] = mapped_column(String(8), default="en")
     purchase_price: Mapped[float | None] = mapped_column(Float)
     binder_name: Mapped[str | None] = mapped_column(String(256))
+    location: Mapped[str | None] = mapped_column(String(256))  # physical storage place
     source_format: Mapped[str | None] = mapped_column(String(32))  # manabox | dragonshield | delver
 
     # User-defined labels (e.g. "for-trade", "deck:goblins"), searchable via `tag:`.
@@ -58,6 +59,7 @@ class CollectionCard(Base):
             "condition",
             "language",
             "binder_name",
+            "location",
             name="uq_collection_stack",
         ),
         Index("ix_collection_card_tags_gin", "tags", postgresql_using="gin"),

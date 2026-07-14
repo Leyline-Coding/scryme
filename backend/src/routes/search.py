@@ -42,6 +42,18 @@ class CardView:
     tags: list[str]
 
 
+def _apply_universal(q: str, universal: str) -> str:
+    """AND a universal filter into a query. Scryfall syntax is implicitly AND, so both are wrapped
+    in parentheses to keep top-level ``OR`` in either side from leaking across."""
+    q = (q or "").strip()
+    universal = (universal or "").strip()
+    if not universal:
+        return q
+    if not q:
+        return universal
+    return f"({universal}) ({q})"
+
+
 def _to_views(result) -> list[CardView]:
     views = []
     for card in result.cards:
@@ -111,21 +123,40 @@ async def search(
     sort = sort if sort in SORT_KEYS else DEFAULT_SORT
     descending = dir == "desc"
     view = "list" if request.cookies.get("scryme_view") == "list" else "grid"
+    # Universal search filter (#143): extra Scryfall syntax the user always wants applied
+    # (e.g. -is:ub, legal:commander), saved in a browser cookie and ANDed into every query.
+    universal = (request.cookies.get("scryme_search_filter") or "").strip()
+    effective_q = _apply_universal(q, universal)
     ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir,
                  "read_only": get_settings().read_only, "view": view, "nl": nl,
-                 "cur": info(get_currency(request))}
+                 "universal": universal, "cur": info(get_currency(request))}
     try:
         result = await run_search(
-            session, q, scope=scope_enum, page=page, sort=sort, descending=descending
+            session, effective_q, scope=scope_enum, page=page, sort=sort, descending=descending
         )
         ctx["result"] = result
         ctx["views"] = _to_views(result)
         if result.total:
-            ctx["facets"] = await compute_facets(session, q, scope_enum)
+            ctx["facets"] = await compute_facets(session, effective_q, scope_enum)
         else:
             ctx["suggestions"] = await name_suggestions(session, q, scope_enum)
     except SearchError as exc:
-        ctx["error"] = str(exc)
+        # If the universal filter is what broke the query, fall back to the bare query so a bad
+        # saved filter can't wedge every search — and flag it.
+        if universal:
+            try:
+                result = await run_search(
+                    session, q, scope=scope_enum, page=page, sort=sort, descending=descending
+                )
+                ctx["result"] = result
+                ctx["views"] = _to_views(result)
+                ctx["universal_error"] = True
+                if not result.total:
+                    ctx["suggestions"] = await name_suggestions(session, q, scope_enum)
+            except SearchError:
+                ctx["error"] = str(exc)
+        else:
+            ctx["error"] = str(exc)
 
     # HTMX swaps just the results; a normal navigation gets the whole page (with the saved-search
     # menu + read-only flag, which the partial doesn't render).

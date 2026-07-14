@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -146,6 +146,22 @@ async def card_detail(
             ],
         },
     )
+
+
+@router.get("/card/{scryfall_id}/image")
+async def card_image(
+    scryfall_id: str, session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    """Redirect to the card's image (cached copy if present, else Scryfall CDN).
+
+    Used by the hover-preview on card-name links (#143 follow-on). A redirect keeps it cheap and
+    lets the browser cache the image.
+    """
+    card = await _load_card(session, scryfall_id)
+    target = _image(card, "normal")
+    if not target:
+        raise HTTPException(status_code=404, detail="No image.")
+    return RedirectResponse(target, status_code=307)
 
 
 @router.get("/card/{scryfall_id}/similar", response_class=HTMLResponse)

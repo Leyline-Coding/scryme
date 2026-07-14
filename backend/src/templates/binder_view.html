@@ -23,7 +23,7 @@
   {% endif %}
 
   {% if views %}
-  <div class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-2">
+  <div class="card-grid-sm">
     {% for c, img in views %}
     <div class="relative group">
       <a href="/card/{{ c.scryfall_id }}" class="block rounded-lg overflow-hidden ring-1 ring-edge hover:ring-accent">

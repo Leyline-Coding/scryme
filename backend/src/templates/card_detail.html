@@ -158,7 +158,7 @@
   {% if printings %}
   <section class="mt-10">
     <h2 class="text-lg font-semibold mb-3">Other printings ({{ printings|length }})</h2>
-    <div class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-8 gap-2">
+    <div class="card-grid-sm">
       {% for p, img in printings %}
       <a href="/card/{{ p.scryfall_id }}" class="block rounded-lg overflow-hidden ring-1 ring-edge hover:ring-accent transition"
          title="{{ p.set_name }} #{{ p.collector_number }}">

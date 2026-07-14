@@ -26,7 +26,7 @@ Once configured, these appear across the app:
 | **Suggest from collection** | a deck page → *Suggest* | Recommends cards **you already own** that fit the deck. |
 | **Build from a prompt** | Decks tab → *Build from collection* → *build from a prompt* | Turn a plain-English request ("aggressive red goblins") into a starting decklist from owned cards. |
 | **Commander finder** | `/ai/commanders` | Ranks the legendary creatures you own by how buildable a deck around them is from your collection. |
-| **Natural-language search** | search bar → *Ask in plain English* | Converts "blue instants that counter spells" into `c:u t:instant o:counter o:spell`. |
+| **Natural-language search** | search bar → *✨ AI* toggle | Flip the search bar from Scryfall syntax to plain English — "blue instants that counter spells" becomes `c:u t:instant o:counter o:spell`, shown editable so you can refine it. |
 | **Card rules Q&A** | a card page → *Ask a rules question* | Answers interaction questions, grounded in the card's oracle text, rulings, and the Comprehensive Rules. |
 | **Similar cards** | a card page | Finds semantically similar cards you own (needs the embedding model + a one-time backfill). |
 

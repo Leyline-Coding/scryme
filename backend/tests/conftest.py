@@ -67,6 +67,7 @@ async def _clean_tables():
         await conn.execute(text("TRUNCATE binder_card RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE binder RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE box RESTART IDENTITY CASCADE"))
+        await conn.execute(text("TRUNCATE set_release RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE cards CASCADE"))
 
 

@@ -84,6 +84,15 @@ async def _organize_locations() -> None:
     print(f"Filed {n} stack(s) into color-identity locations.")
 
 
+async def _refresh_sets() -> None:
+    from src.db import SessionLocal
+    from src.set_calendar import refresh_sets
+
+    async with SessionLocal() as session:
+        n = await refresh_sets(session, force=True)
+    print(f"Synced {n} set(s) for the release calendar.")
+
+
 async def _backup(directory: str | None, passphrase: str | None) -> None:
     from pathlib import Path
 
@@ -149,6 +158,8 @@ def main() -> None:
     sub.add_parser("organize-locations",
                    help="Set each card's storage location to its color-identity group")
 
+    sub.add_parser("refresh-sets", help="Sync the set-release calendar from Scryfall")
+
     p_backup = sub.add_parser("backup", help="Write a backup of your data to disk")
     p_backup.add_argument("--dir", help="Target directory (default: SCRYME_BACKUP_DIR)")
     p_backup.add_argument("--passphrase", help="Encrypt the backup with this passphrase")
@@ -176,6 +187,8 @@ def main() -> None:
         asyncio.run(_backfill_rules(args.file))
     elif args.command == "organize-locations":
         asyncio.run(_organize_locations())
+    elif args.command == "refresh-sets":
+        asyncio.run(_refresh_sets())
     elif args.command == "backup":
         asyncio.run(_backup(args.dir, args.passphrase))
     elif args.command == "restore":

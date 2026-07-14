@@ -72,5 +72,6 @@ async def test_organize_route(client, session):
     await _own(session, "WB Card", ("W", "B"))
     resp = await client.post("/collection/organize-by-identity", follow_redirects=False)
     assert resp.status_code == 303
-    page = await client.get("/collection/locations")
+    # Color-identity strings now surface as ad-hoc "other" locations on the Locations tab.
+    page = await client.get("/collection?tab=locations")
     assert page.status_code == 200 and "Orzhov" in page.text

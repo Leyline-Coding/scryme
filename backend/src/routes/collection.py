@@ -12,17 +12,15 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.binder_service import add_card as binder_add_card
-from src.binder_service import all_binders, binder_summaries, bulk_add_to_binder
+from src.binder_service import all_binders, bulk_add_to_binder
 from src.box_service import (
     all_boxes,
-    box_summaries,
     create_box,
     delete_box,
-    other_locations,
     rename_box,
 )
 from src.collection_edit import (
@@ -225,23 +223,10 @@ async def merge_duplicates_all(
     return RedirectResponse(url="/collection/duplicates", status_code=303)
 
 
-@router.get("/collection/locations", response_class=HTMLResponse)
-async def locations(
-    request: Request, session: AsyncSession = Depends(get_session)
-) -> HTMLResponse:
-    """Storage hub (#160): boxes (physical), with binders and decks as the other two kinds."""
-    decks = (await session.execute(
-        select(Deck, func.count()).outerjoin(Deck.cards)
-        .group_by(Deck.id).order_by(Deck.name)
-    )).all()
-    return templates.TemplateResponse(
-        request, "collection_locations.html",
-        {"boxes": await box_summaries(session),
-         "others": await other_locations(session),
-         "binders": await binder_summaries(session),
-         "decks": [(d, n) for d, n in decks],
-         "read_only": get_settings().read_only},
-    )
+@router.get("/collection/locations")
+async def locations() -> RedirectResponse:
+    # The storage hub is now the collection Locations tab.
+    return RedirectResponse(url="/collection?tab=locations", status_code=307)
 
 
 @router.post("/collection/boxes/new")
@@ -250,7 +235,7 @@ async def new_box(
 ) -> RedirectResponse:
     _guard_writable()
     await create_box(session, name)
-    return RedirectResponse(url="/collection/locations", status_code=303)
+    return RedirectResponse(url="/collection?tab=locations", status_code=303)
 
 
 @router.post("/collection/boxes/{box_id}/rename")
@@ -259,7 +244,7 @@ async def rename_box_route(
 ) -> RedirectResponse:
     _guard_writable()
     await rename_box(session, box_id, name)
-    return RedirectResponse(url="/collection/locations", status_code=303)
+    return RedirectResponse(url="/collection?tab=locations", status_code=303)
 
 
 @router.post("/collection/boxes/{box_id}/delete")
@@ -268,7 +253,7 @@ async def delete_box_route(
 ) -> RedirectResponse:
     _guard_writable()
     await delete_box(session, box_id)
-    return RedirectResponse(url="/collection/locations", status_code=303)
+    return RedirectResponse(url="/collection?tab=locations", status_code=303)
 
 
 @router.post("/collection/organize-by-identity")
@@ -277,4 +262,4 @@ async def organize_locations(
 ) -> RedirectResponse:
     _guard_writable()
     await organize_by_color_identity(session)
-    return RedirectResponse(url="/collection/locations", status_code=303)
+    return RedirectResponse(url="/collection?tab=locations", status_code=303)

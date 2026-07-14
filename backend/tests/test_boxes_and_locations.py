@@ -117,8 +117,15 @@ async def test_tag_summaries_and_tab(client, session):
 
 
 @pytest.mark.asyncio
-async def test_locations_hub_page(client, session):
+async def test_locations_hub_tab(client, session):
     await create_box(session, "Bulk")
-    resp = await client.get("/collection/locations")
+    resp = await client.get("/collection?tab=locations")
     assert resp.status_code == 200
     assert "Bulk" in resp.text and "Boxes" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_locations_path_redirects_to_tab(client, session):
+    resp = await client.get("/collection/locations", follow_redirects=False)
+    assert resp.status_code == 307
+    assert resp.headers["location"] == "/collection?tab=locations"

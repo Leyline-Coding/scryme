@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.binder_service import binder_summaries
+from src.box_service import box_summaries, other_locations
 from src.checklists import Checklist
 from src.config import get_settings
 from src.currency import get_currency, info
@@ -31,8 +32,9 @@ router = APIRouter(tags=["collection"])
 
 TABS = [
     ("stats", "Stats"),
-    ("decks", "Decks"),
+    ("locations", "Locations"),
     ("binders", "Binders"),
+    ("decks", "Decks"),
     ("tags", "Tags"),
     ("wishlist", "Wishlist"),
     ("checklists", "Checklists"),
@@ -68,6 +70,15 @@ async def collection(
             .group_by(Deck.id).order_by(Deck.created_at.desc())
         )
         ctx["decks"] = [(d, n) for d, n in rows.all()]
+    elif tab == "locations":
+        decks = await session.execute(
+            select(Deck, func.count()).outerjoin(Deck.cards)
+            .group_by(Deck.id).order_by(Deck.name)
+        )
+        ctx["boxes"] = await box_summaries(session)
+        ctx["others"] = await other_locations(session)
+        ctx["loc_binders"] = await binder_summaries(session)
+        ctx["loc_decks"] = [(d, n) for d, n in decks.all()]
     elif tab == "binders":
         ctx["binders"] = await binder_summaries(session)
     elif tab == "tags":

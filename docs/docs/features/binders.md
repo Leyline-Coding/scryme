@@ -1,16 +1,29 @@
 # Binders
 
-Binders let you browse your owned collection grouped by the **binder** each card was imported
-into. Open **Binders** from the header (or `/binders`).
+Binders are **custom, named groups of cards you own** — organize them however you like: "Ramp",
+"Removal", "Cats", "Orzhov", "Foils". Open the **Binders** tab on the *My Collection* page.
 
-- Imports that carry a binder/folder column (e.g. ManaBox's *Binder Name*) populate these groups
-  automatically.
-- Cards with no binder are grouped under **Unsorted**.
+## Creating and managing binders
 
-The binder list shows each binder's total card count and distinct-card count. Open a binder to see
-its cards as a grid — image, owned quantity, and set symbol — with each card linking to its
-[detail page](cards.md).
+- **Add binder** — create a new binder by name from the Binders tab.
+- Open a binder to see its cards as a grid, each linking to its [detail page](cards.md).
+- From a binder's page you can **rename** it, **delete** it, or **remove** individual cards.
 
-!!! tip
-    Binder assignments come from the import file. Re-importing with a different binder layout
-    updates the grouping the next time you browse.
+Binders hold **cards you own** (membership is by printing), and a card can be in more than one
+binder.
+
+## Adding cards to a binder
+
+- **From a card page** — the *Binders* control lists your binders; add or remove the card with one
+  click.
+- **From search results** — select cards with the checkboxes, then use **Add to binder** in the
+  bulk toolbar to file many at once.
+
+!!! tip "Binders, boxes, and tags"
+    A binder is one of the three [physical location](locations.md) kinds (alongside **boxes** and
+    **decks**). If you want overlapping, non-physical labels instead — themes, roles, projects — use
+    [tags](cards.md#tags), which a card can carry many of.
+
+!!! note "Imported binder names"
+    If your import file carried a *Binder Name* / folder column (e.g. ManaBox), that value is kept
+    on each stack and is searchable, separate from these custom binders.

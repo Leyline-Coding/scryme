@@ -13,12 +13,17 @@ Lens, then search it with Scryfall syntax and regular expressions.
 - 🃏 **Rich card pages** — full oracle text, prices, legalities, printings, rulings, real
   **mana & set symbols**, **[tags](features/cards.md#tags)** you can search with `tag:`, and inline
   **[add/edit](features/cards.md#editing-your-collection)** (plus bulk edit from results).
-- 🧰 **Collection tools** — a **[stats dashboard](features/stats.md)** (value + growth over time),
-  **[price history](features/prices.md)** (movers + acquisition profit/loss),
-  **[decks](features/decks.md)** with coverage, legality, stats, and export,
+- 🧰 **Collection tools** — a **[stats dashboard](features/stats.md)** (value + growth over time,
+  with click-through breakdowns), **[price history](features/prices.md)** (movers + acquisition
+  profit/loss), **[decks](features/decks.md)** with coverage, legality, stats, and export,
   **[set completion](features/sets.md)**, **[custom checklists](features/checklists.md)**, a
-  **[wishlist](features/wishlist.md)**, a **[trade binder](features/trade.md)**, and
-  **[binder](features/binders.md)** browsing.
+  **[wishlist](features/wishlist.md)**, and a **[trade binder](features/trade.md)**.
+- 🗂️ **Organize your way** — **[custom binders](features/binders.md)**, physical
+  **[storage locations](features/locations.md)** (boxes / binders / decks), and overlapping
+  **[tags](features/cards.md#tags)** you can search with `tag:`.
+- 🤖 **Optional [AI assistant](features/ai.md)** — connect any OpenAI-compatible endpoint (local
+  **Ollama** / **LM Studio**, or hosted **OpenAI** / **Claude** / **Gemini** / **Perplexity**) for
+  grounded deck analysis, upgrade planning, coaching chat, plain-English search, and card rules Q&A.
 - 📥 **Collection import** from ManaBox, Dragon Shield, Delver Lens, Moxfield, and Archidekt — or
   **any CSV** via the column-mapping wizard (preview → **replace / increment / per-card** merge),
   and **[backup & restore](features/backup.md)** of all your data — including scheduled on-disk

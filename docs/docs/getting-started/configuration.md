@@ -18,6 +18,19 @@ with `SCRYME_`.
 | `SCRYME_BACKUP_PASSPHRASE` | _(unset)_ | If set, scheduled/on-disk backups are [encrypted](../features/backup.md#encrypted-backups) with this passphrase (restore needs it) |
 | `SCRYME_API_TOKEN` | _(unset)_ | If set, the [JSON API](../development/api.md) requires this token (`Authorization: Bearer …` / `X-API-Key`); empty = open |
 
+## AI assistant variables
+
+Optional — power the [AI features](../features/ai.md) by pointing at any OpenAI-API-compatible
+endpoint (local Ollama / LM Studio, or a hosted provider). All AI is off until a base URL is set,
+and the in-app **Settings → AI** page overrides these.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SCRYME_LLM_BASE_URL` | _(unset)_ | OpenAI-compatible API root (e.g. `http://localhost:11434/v1`); empty disables AI |
+| `SCRYME_LLM_API_KEY` | _(unset)_ | API key (optional for local servers); stored encrypted when set in-app |
+| `SCRYME_LLM_CHAT_MODEL` | `llama3.1` | Chat/completions model for analysis, chat, and suggestions |
+| `SCRYME_LLM_EMBED_MODEL` | `nomic-embed-text` | Embeddings model for *Similar cards* + rules Q&A |
+
 ## Database variables
 
 Provide the connection as **discrete parts** (recommended) and scryme assembles the URL with the

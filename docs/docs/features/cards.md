@@ -46,6 +46,11 @@ On a card you own, the detail page has a **Tags** editor: add free-form labels l
 
 Find tagged cards with the [`tag:` search filter](../search/syntax.md) — e.g. `tag:for-trade` or
 `-tag:for-trade` to exclude. Tags also show as small chips under each card in the results grid.
+The **Tags** tab on the *My Collection* page lists every tag in use with its card count — click one
+to jump straight to that `tag:` search.
+
+Tags are the flexible, overlapping counterpart to a card's single physical
+[location](locations.md): a card can carry as many tags as you like.
 
 Tags are normalized (trimmed and lower-cased), so `For Trade` and `for trade` are the same tag.
 

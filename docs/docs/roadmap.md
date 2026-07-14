@@ -18,13 +18,21 @@ The MVP plus a steady stream of post-MVP features:
   export](features/decks.md) (text / Arena / Moxfield / MTGO). Legality is judged by the card (not
   the printing, so non-standard variants never mis-flag a legal card), and each line has an
   editable **printing + language** with **Proxy / Special** markers.
-- **Binders** — browse your collection by its import binders.
+- **[Custom binders](features/binders.md)** — named, user-defined groups of owned cards, with
+  add-to-binder from card pages and in bulk from search results.
+- **[Storage locations](features/locations.md)** — file each card into one physical place (a box you
+  create, a binder, or a deck) with a unified picker; boxes are searchable with `loc:`.
+- **[AI assistant](features/ai.md)** — connect any OpenAI-compatible endpoint (local Ollama /
+  LM Studio, or hosted OpenAI / Claude / Gemini / Perplexity) for grounded deck analysis, upgrade
+  planning, coaching chat, build-from-prompt, a commander finder, plain-English → Scryfall search,
+  semantic "similar cards", and card rules Q&A.
 - **[Set completion](features/sets.md)** — how much of each set you own, with the missing cards.
 - **[Price history](features/prices.md)** — value-over-time snapshots, biggest movers, and
   acquisition profit/loss.
 - **[Collection stats](features/stats.md)** — colors, rarity, types, mana curve, top sets, and a
-  value-over-time chart.
-- **[Tags](features/cards.md#tags)** — label owned cards and find them with `tag:`.
+  value-over-time chart, with **click-through breakdowns** into the matching search.
+- **[Tags](features/cards.md#tags)** — label owned cards, browse them on the Tags tab, and find them
+  with `tag:`.
 - **[Wishlist](features/wishlist.md)** — a want list, including "add a deck's missing cards".
 - **[Theming](features/theming.md)** + **[currency](features/theming.md#display-currency)** (USD/EUR),
   result **sort**, result **export** (CSV / decklist / ManaBox), and **saved searches**.
@@ -69,7 +77,8 @@ Tracked as open issues — roughly in priority order:
 | [#80](https://github.com/Leyline-Coding/scryme/issues/80) | Read-only share links for decks/binders |
 | [#97](https://github.com/Leyline-Coding/scryme/issues/97) | Sell list + valuation report |
 | [#100](https://github.com/Leyline-Coding/scryme/issues/100) | Deck diff / versions |
-| [#101](https://github.com/Leyline-Coding/scryme/issues/101) | Duplicate / merge stacks |
+| [#178](https://github.com/Leyline-Coding/scryme/issues/178) | Set-release calendar |
+| [#179](https://github.com/Leyline-Coding/scryme/issues/179) | Card grading / condition photos |
 
 See the [architecture notes](development/architecture.md) and
 [contributing guide](development/contributing.md) if you'd like to help build any of it.

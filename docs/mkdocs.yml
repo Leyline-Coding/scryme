@@ -80,7 +80,9 @@ nav:
   - Features:
       - Card Details & Symbols: features/cards.md
       - Decks: features/decks.md
+      - AI Assistant: features/ai.md
       - Binders: features/binders.md
+      - Storage Locations: features/locations.md
       - Set Completion: features/sets.md
       - Checklists: features/checklists.md
       - Wishlist: features/wishlist.md

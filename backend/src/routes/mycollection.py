@@ -12,16 +12,18 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.binder_service import binder_summaries
+from src.box_service import box_summaries, other_locations
 from src.checklists import Checklist
 from src.config import get_settings
 from src.currency import get_currency, info
 from src.db import get_session
-from src.models import CollectionCard, Deck
+from src.models import Deck
 from src.prices import build_value_chart, value_series
-from src.routes.binders import NONE_SENTINEL
 from src.routes.wishlist import _image as wishlist_image
 from src.sets import set_progress
 from src.stats import collection_growth, collection_stats
+from src.tags import tag_summaries
 from src.templating import templates
 from src.trade import trade_binder
 from src.wishlist import list_wishlist
@@ -30,8 +32,10 @@ router = APIRouter(tags=["collection"])
 
 TABS = [
     ("stats", "Stats"),
-    ("decks", "Decks"),
+    ("locations", "Locations"),
     ("binders", "Binders"),
+    ("decks", "Decks"),
+    ("tags", "Tags"),
     ("wishlist", "Wishlist"),
     ("checklists", "Checklists"),
     ("trade", "Trade"),
@@ -66,20 +70,19 @@ async def collection(
             .group_by(Deck.id).order_by(Deck.created_at.desc())
         )
         ctx["decks"] = [(d, n) for d, n in rows.all()]
-    elif tab == "binders":
-        rows = await session.execute(
-            select(
-                CollectionCard.binder_name,
-                func.sum(CollectionCard.quantity),
-                func.count(func.distinct(CollectionCard.scryfall_id)),
-            ).group_by(CollectionCard.binder_name)
-            .order_by(func.sum(CollectionCard.quantity).desc())
+    elif tab == "locations":
+        decks = await session.execute(
+            select(Deck, func.count()).outerjoin(Deck.cards)
+            .group_by(Deck.id).order_by(Deck.name)
         )
-        ctx["binders"] = [
-            {"key": name if name else NONE_SENTINEL, "label": name or "Unsorted",
-             "name": name, "quantity": int(qty), "distinct": int(distinct)}
-            for name, qty, distinct in rows.all()
-        ]
+        ctx["boxes"] = await box_summaries(session)
+        ctx["others"] = await other_locations(session)
+        ctx["loc_binders"] = await binder_summaries(session)
+        ctx["loc_decks"] = [(d, n) for d, n in decks.all()]
+    elif tab == "binders":
+        ctx["binders"] = await binder_summaries(session)
+    elif tab == "tags":
+        ctx["tags"] = await tag_summaries(session)
     elif tab == "wishlist":
         wl = await list_wishlist(session, currency)
         ctx["view_obj"] = wl

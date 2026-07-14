@@ -1,0 +1,25 @@
+{# Tags index: every tag in use, linking to its cards. Tags are the logical, overlapping layer
+   (a card can carry many) — physical location lives on the Locations page. #}
+<p class="text-sm text-muted mb-4">
+  Tags are flexible, overlapping labels for organizing cards however you think about them — a card
+  can carry as many as you like. Add them from any card's page; click one to see its cards.
+</p>
+
+{% if tags %}
+<ul class="flex flex-wrap gap-2">
+  {% for t in tags %}
+  <li>
+    <a href="/search?q={{ ('tag:' ~ t.name) | urlencode }}&scope=collection"
+       class="inline-flex items-center gap-2 rounded-full bg-surface ring-1 ring-edge px-3 py-1.5
+              text-sm hover:ring-accent transition">
+      <span class="font-medium">{{ t.name }}</span>
+      <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(t.quantity) }}</span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="text-muted py-16 text-center">
+  No tags yet. Add tags from a card's page or in bulk from search results.
+</div>
+{% endif %}

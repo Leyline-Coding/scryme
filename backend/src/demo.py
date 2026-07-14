@@ -17,11 +17,11 @@ import random
 from pathlib import Path
 
 import structlog
-from sqlalchemy import Float, and_, cast, func, select
+from sqlalchemy import Float, and_, cast, func, select, update
 
 from src.db import SessionLocal
 from src.decks import create_deck
-from src.models import Card, CardPricePoint, CollectionCard, Deck, PriceSnapshot
+from src.models import Box, Card, CardPricePoint, CollectionCard, Deck, PriceSnapshot
 
 log = structlog.get_logger()
 
@@ -215,10 +215,21 @@ async def seed_demo(limit: int = DEFAULT_LIMIT) -> int:
             )
         await session.flush()
         await _seed_price_history(session, out, rng)
+        # Showcase storage boxes (#160): two physical boxes, filed by rarity (idempotent).
+        existing_boxes = set(await session.scalars(select(Box.name)))
+        for name in ("Rares & Mythics", "Bulk Box"):
+            if name not in existing_boxes:
+                session.add(Box(name=name))
+        for box_name, rarities in [("Rares & Mythics", ["rare", "mythic"]),
+                                   ("Bulk Box", ["common", "uncommon"])]:
+            await session.execute(
+                update(CollectionCard)
+                .where(CollectionCard.scryfall_id.in_(
+                    select(Card.scryfall_id).where(Card.rarity.in_(rarities))
+                ))
+                .values(location=box_name)
+            )
         await session.commit()
-        # Showcase storage locations (#160): file the demo collection by color identity.
-        from src.collection_edit import organize_by_color_identity
-        await organize_by_color_identity(session)
         total = await session.scalar(select(func.count()).select_from(CollectionCard))
     log.info("demo.seeded", added=len(out), collection_size=total)
     return len(out)

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ binder.name }} · Binders · scryme{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-4">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold truncate">{{ binder.name }}</h1>
+    <a href="/binders" class="ml-auto text-sm text-muted hover:text-fg shrink-0">← Binders</a>
+  </header>
+
+  {% if not read_only %}
+  <div class="flex flex-wrap items-center gap-2 mb-5 text-sm">
+    <form method="post" action="/binders/{{ binder.id }}/rename" class="flex gap-1">
+      <input type="text" name="name" value="{{ binder.name }}"
+             class="rounded bg-surface-2 border border-edge px-2 py-1" />
+      <button class="rounded bg-surface-2 hover:bg-surface-3 px-2 py-1">Rename</button>
+    </form>
+    <form method="post" action="/binders/{{ binder.id }}/delete" class="ml-auto"
+          onsubmit="return confirm('Delete binder {{ binder.name }}?')">
+      <button class="rounded bg-surface-2 hover:bg-surface-3 px-2 py-1 text-rose-500">Delete binder</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if views %}
+  <div class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-2">
+    {% for c, img in views %}
+    <div class="relative group">
+      <a href="/card/{{ c.scryfall_id }}" class="block rounded-lg overflow-hidden ring-1 ring-edge hover:ring-accent">
+        {% if img %}<img src="{{ img }}" alt="{{ c.name }}" loading="lazy" class="w-full aspect-[5/7] object-cover" />
+        {% else %}<div class="w-full aspect-[5/7] flex items-center justify-center text-[10px] text-muted p-1 text-center">{{ c.name }}</div>{% endif %}
+      </a>
+      {% if not read_only %}
+      <form method="post" action="/binders/{{ binder.id }}/remove-card" class="absolute top-1 right-1">
+        <input type="hidden" name="scryfall_id" value="{{ c.scryfall_id }}" />
+        <button title="Remove from binder" class="rounded bg-black/60 text-white text-xs px-1.5 leading-5 opacity-0 group-hover:opacity-100">✕</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="rounded-xl border border-edge bg-surface p-6 text-center text-muted">
+    Empty binder. Add cards from any owned card's page.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

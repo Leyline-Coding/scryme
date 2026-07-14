@@ -3,7 +3,9 @@
   <div class="space-y-1.5">
     {% for b in group %}
     <div class="flex items-center gap-2 text-sm">
-      <span class="w-28 shrink-0 truncate capitalize" title="{{ b.label }}">{{ b.label }}</span>
+      <span class="w-28 shrink-0 truncate capitalize" title="{{ b.label }}">
+        {%- if b.query %}<a href="/search?q={{ b.query | urlencode }}&scope=collection" class="hover:text-accent hover:underline">{{ b.label }}</a>{% else %}{{ b.label }}{% endif -%}
+      </span>
       <div class="flex-1 bg-surface-2 rounded h-4 overflow-hidden">
         <div class="h-full bg-accent rounded" style="width: {{ (b.count / m * 100) | round(1) }}%"></div>
       </div>
@@ -22,7 +24,7 @@
     <div class="flex items-center gap-2 text-sm">
       <span class="w-28 shrink-0 truncate flex items-center gap-1.5" title="{{ b.label }}">
         {% if _COLOR_PIPS.get(b.label) %}<i class="ms ms-cost ms-{{ _COLOR_PIPS[b.label] }}"></i>{% endif %}
-        {{ b.label }}
+        {%- if b.query %}<a href="/search?q={{ b.query | urlencode }}&scope=collection" class="hover:text-accent hover:underline">{{ b.label }}</a>{% else %}{{ b.label }}{% endif -%}
       </span>
       <div class="flex-1 bg-surface-2 rounded h-4 overflow-hidden">
         <div class="h-full bg-accent rounded" style="width: {{ (b.count / m * 100) | round(1) }}%"></div>

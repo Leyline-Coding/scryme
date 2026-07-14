@@ -26,6 +26,14 @@ _MAX_MV_BUCKET = 7  # 7+ collapses into one bucket
 class Bar:
     label: str
     count: int
+    query: str | None = None  # collection search this bar links to (#206)
+
+
+# Color-bucket label -> the search that reproduces it on the collection.
+_COLOR_QUERIES = {
+    "White": "ci=w", "Blue": "ci=u", "Black": "ci=b", "Red": "ci=r", "Green": "ci=g",
+    "Colorless": "ci=c", "Multicolor": "ci:m",
+}
 
 
 @dataclass
@@ -74,15 +82,25 @@ def _color_bucket(color_identity: list[str] | None) -> str:
 
 
 def _bars(
-    counts: dict[str, int], order: list[str] | None = None, top: int | None = None
+    counts: dict[str, int], order: list[str] | None = None, top: int | None = None,
+    query_for=None,
 ) -> list[Bar]:
     items = counts.items()
     if order is not None:
         items = sorted(items, key=lambda kv: order.index(kv[0]) if kv[0] in order else len(order))
     else:
         items = sorted(items, key=lambda kv: kv[1], reverse=True)
-    bars = [Bar(label=k, count=v) for k, v in items if v]
+    bars = [Bar(label=k, count=v, query=query_for(k) if query_for else None)
+            for k, v in items if v]
     return bars[:top] if top else bars
+
+
+def _type_query(label: str) -> str | None:
+    return f"t:{label.lower()}" if label != "Other" else None
+
+
+def _curve_query(label: str) -> str:
+    return f"cmc>={_MAX_MV_BUCKET}" if label.endswith("+") else f"cmc={label}"
 
 
 @dataclass
@@ -164,7 +182,8 @@ async def collection_stats(session: AsyncSession, currency: str = "usd") -> Coll
     colors: dict[str, int] = {}
     rarities: dict[str, int] = {}
     types: dict[str, int] = {}
-    sets: dict[str, int] = {}
+    sets: dict[str, int] = {}          # set_code -> qty
+    set_names: dict[str, str] = {}     # set_code -> display name
     curve: dict[str, int] = {}
     printings: set = set()
     oracles: set = set()
@@ -185,8 +204,8 @@ async def collection_stats(session: AsyncSession, currency: str = "usd") -> Coll
         if rarity:
             rarities[rarity] = rarities.get(rarity, 0) + qty
         types[_primary_type(type_line)] = types.get(_primary_type(type_line), 0) + qty
-        label = (set_name or set_code.upper())
-        sets[label] = sets.get(label, 0) + qty
+        sets[set_code] = sets.get(set_code, 0) + qty
+        set_names[set_code] = set_name or set_code.upper()
         bucket = f"{_MAX_MV_BUCKET}+" if (cmc or 0) >= _MAX_MV_BUCKET else str(int(cmc or 0))
         curve[bucket] = curve.get(bucket, 0) + qty
 
@@ -196,11 +215,13 @@ async def collection_stats(session: AsyncSession, currency: str = "usd") -> Coll
 
     s.printings = len(printings)
     s.distinct_cards = len(oracles)
-    s.by_color = _bars(colors)
-    s.by_rarity = _bars(rarities, order=_RARITY_ORDER)
-    s.by_type = _bars(types)
-    s.by_set = _bars(sets, top=10)
+    s.by_color = _bars(colors, query_for=_COLOR_QUERIES.get)
+    s.by_rarity = _bars(rarities, order=_RARITY_ORDER, query_for=lambda r: f"r={r}")
+    s.by_type = _bars(types, query_for=_type_query)
+    top_sets = sorted(sets.items(), key=lambda kv: kv[1], reverse=True)[:10]
+    s.by_set = [Bar(label=set_names[code], count=qty, query=f"s:{code}")
+                for code, qty in top_sets if qty]
     curve_order = [str(i) for i in range(_MAX_MV_BUCKET)] + [f"{_MAX_MV_BUCKET}+"]
-    s.mana_curve = _bars(curve, order=curve_order)
+    s.mana_curve = _bars(curve, order=curve_order, query_for=_curve_query)
     s.most_valuable = sorted(valued.values(), key=lambda v: v.usd, reverse=True)[:10]
     return s

@@ -1,17 +1,31 @@
+{# Custom binders index (#206): flat, user-named binders of owned cards. #}
+<p class="text-sm text-muted mb-4">
+  Custom binders group cards however you like — "Ramp", "Removal", "Cats", "Orzhov". Add cards from
+  any owned card's page or in bulk from search results.
+</p>
+
+{% if not read_only %}
+<form method="post" action="/binders/new" class="flex gap-2 mb-5 max-w-md">
+  <input type="text" name="name" required placeholder="New binder name"
+         class="flex-1 min-w-0 rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
+  <button class="rounded-lg bg-accent text-accent-fg px-3 py-2 text-sm font-medium">Add binder</button>
+</form>
+{% endif %}
+
 {% if binders %}
-<ul class="grid sm:grid-cols-2 gap-3">
+<ul class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
   {% for b in binders %}
   <li>
-    <a href="/binders/cards?name={{ b.key | urlencode }}"
+    <a href="/binders/view/{{ b.id }}"
        class="block rounded-xl bg-surface ring-1 ring-edge px-4 py-3 hover:ring-accent transition">
-      <div class="font-medium truncate {% if not b.name %}text-muted italic{% endif %}">{{ b.label }}</div>
-      <div class="text-xs text-muted">{{ '{:,}'.format(b.quantity) }} cards · {{ '{:,}'.format(b.distinct) }} distinct</div>
+      <div class="font-medium truncate">{{ b.name }}</div>
+      <div class="text-xs text-muted">{{ '{:,}'.format(b.count) }} card{{ '' if b.count == 1 else 's' }}</div>
     </a>
   </li>
   {% endfor %}
 </ul>
 {% else %}
 <div class="text-muted py-16 text-center">
-  No collection yet. <a href="/upload" class="underline">Upload one</a> to organize it into binders.
+  No binders yet.{% if not read_only %} Create one above to start organizing your cards.{% endif %}
 </div>
 {% endif %}

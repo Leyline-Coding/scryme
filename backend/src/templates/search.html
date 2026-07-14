@@ -174,6 +174,13 @@
       <input name="tag" placeholder="tag" class="rounded bg-surface-2 px-2 py-1 w-28" />
       <button type="button" onclick="bulkSubmit('tag')"
         class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Add tag</button>
+      {% if binders %}
+      <select name="binder_id" class="rounded bg-surface-2 px-2 py-1">
+        {% for b in binders %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+      </select>
+      <button type="button" onclick="bulkSubmit('binder')"
+        class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Add to binder</button>
+      {% endif %}
       <button type="button" onclick="bulkSubmit('add')"
         class="rounded bg-accent text-accent-fg px-2.5 py-1">+1 to collection</button>
       <button type="button" onclick="bulkClear()" class="ml-auto text-muted hover:text-fg">Clear</button>

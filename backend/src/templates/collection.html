@@ -5,9 +5,7 @@
   <header class="flex items-center gap-3 mb-4">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold">My Collection</h1>
-    <a href="/collection/locations" class="ml-auto text-sm text-muted hover:text-fg">Locations</a>
-    <a href="/collection/duplicates" class="text-sm text-muted hover:text-fg">Merge duplicates</a>
-    <a href="/search" class="text-sm text-muted hover:text-fg">Search →</a>
+    <a href="/search" class="ml-auto text-sm text-muted hover:text-fg">Search →</a>
   </header>
 
   <nav class="flex flex-wrap gap-1 border-b border-edge mb-6">
@@ -21,8 +19,10 @@
   </nav>
 
   {% if tab == 'stats' %}{% include "_col_stats.html" %}
+  {% elif tab == 'locations' %}{% include "_col_locations.html" %}
   {% elif tab == 'decks' %}{% include "_col_decks.html" %}
   {% elif tab == 'binders' %}{% include "_col_binders.html" %}
+  {% elif tab == 'tags' %}{% include "_col_tags.html" %}
   {% elif tab == 'wishlist' %}{% include "_col_wishlist.html" %}
   {% elif tab == 'checklists' %}{% include "_col_checklists.html" %}
   {% elif tab == 'trade' %}{% include "_col_trade.html" %}

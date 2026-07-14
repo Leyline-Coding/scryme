@@ -142,6 +142,38 @@
     <p class="mt-2 text-xs text-muted"><a href="/prices" class="underline">Manage watchlist</a></p>
   </div>
   {% endif %}
+
+  {% if digest and digest.available and (digest.delta != 0 or digest.gainers or digest.losers) %}
+  <div class="mt-4 w-full max-w-2xl rounded-xl border border-edge bg-surface p-4">
+    <div class="flex items-baseline justify-between gap-3 mb-2">
+      <p class="text-sm font-semibold text-accent">📈 Collection movers</p>
+      <p class="text-sm">
+        {% if digest.delta >= 0 %}<span class="text-emerald-500 font-semibold">▲ +${{ '{:,.2f}'.format(digest.delta) }}</span>
+        {% else %}<span class="text-rose-500 font-semibold">▼ -${{ '{:,.2f}'.format(-digest.delta) }}</span>{% endif %}
+        <span class="text-muted">({{ '{:+.1f}'.format(digest.pct) }}%)</span>
+      </p>
+    </div>
+    <p class="text-xs text-muted mb-2">Since {{ digest.baseline_at.strftime('%b %-d') }}
+      · now ${{ '{:,.2f}'.format(digest.end_value) }}</p>
+    {% if digest.gainers or digest.losers %}
+    <div class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+      {% for m in digest.gainers[:5] %}
+      <a href="/card/{{ m.scryfall_id }}" class="flex items-center justify-between gap-2 hover:text-accent">
+        <span class="truncate">{{ m.name }} <span class="text-[10px] text-muted uppercase">{{ m.set_code }}</span></span>
+        <span class="text-emerald-500 shrink-0 tabular-nums">+${{ '{:,.2f}'.format(m.delta) }}</span>
+      </a>
+      {% endfor %}
+      {% for m in digest.losers[:5] %}
+      <a href="/card/{{ m.scryfall_id }}" class="flex items-center justify-between gap-2 hover:text-accent">
+        <span class="truncate">{{ m.name }} <span class="text-[10px] text-muted uppercase">{{ m.set_code }}</span></span>
+        <span class="text-rose-500 shrink-0 tabular-nums">${{ '{:,.2f}'.format(m.delta) }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <p class="mt-2 text-xs text-muted"><a href="/prices" class="underline">Price history</a></p>
+  </div>
+  {% endif %}
   {% else %}
   {# Empty collection: prompt the first upload (wired up in Phase 3). #}
   <div class="w-full max-w-lg text-center">

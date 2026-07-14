@@ -189,3 +189,37 @@ async def test_stats_route_shows_value_chart(client, session):
     assert resp.status_code == 200
     assert "Value over time" in resp.text
     assert "<polyline" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_collection_digest_week_over_week(session):
+    from datetime import timedelta
+
+    from src.models import CardPricePoint, PriceSnapshot
+    from src.prices import collection_digest
+    ca, cb = await _seed(session)
+    now = datetime.datetime(2026, 6, 15, tzinfo=datetime.UTC)
+    old = PriceSnapshot(captured_at=now - timedelta(days=7), total_usd=100.0, card_count=2)
+    new = PriceSnapshot(captured_at=now, total_usd=130.0, card_count=2)
+    session.add_all([old, new])
+    await session.flush()
+    session.add_all([
+        CardPricePoint(snapshot_id=old.id, scryfall_id=ca.scryfall_id, usd=5.0),
+        CardPricePoint(snapshot_id=new.id, scryfall_id=ca.scryfall_id, usd=20.0),   # +15 gain
+        CardPricePoint(snapshot_id=old.id, scryfall_id=cb.scryfall_id, usd=30.0),
+        CardPricePoint(snapshot_id=new.id, scryfall_id=cb.scryfall_id, usd=10.0),   # -20 loss
+    ])
+    await session.commit()
+
+    d = await collection_digest(session, days=7)
+    assert d.available and d.start_value == 100.0 and d.end_value == 130.0
+    assert d.delta == 30.0 and d.pct == 30.0
+    assert [m.name for m in d.gainers] == ["Aaa"] and [m.name for m in d.losers] == ["Bbb"]
+
+
+@pytest.mark.asyncio
+async def test_collection_digest_needs_two_snapshots(session):
+    from src.prices import collection_digest
+    await _seed(session)
+    await snapshot_prices(session)  # only one snapshot
+    assert not (await collection_digest(session)).available

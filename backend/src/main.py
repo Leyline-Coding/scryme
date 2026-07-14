@@ -32,6 +32,7 @@ from src.routes import (
     prices,
     saved,
     search,
+    sell,
     sets,
     stats,
     trade,
@@ -108,6 +109,7 @@ def create_app() -> FastAPI:
     app.include_router(collection.router)
     app.include_router(backup.router)
     app.include_router(trade.router)
+    app.include_router(sell.router)
     app.include_router(checklists.router)
     app.include_router(mycollection.router)
     app.include_router(api.router)

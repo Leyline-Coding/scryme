@@ -1,0 +1,59 @@
+{# Sell list (#97): cards you've flagged for-sale, priced, with a running total. #}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <p class="text-sm text-muted">
+    Cards tagged <code class="text-xs">for-sale</code> — flag them from a card's page or in bulk from
+    search results. Also see the
+    <a href="/valuation" class="underline hover:text-fg">valuation report</a>.
+  </p>
+  {% if sell.cards %}
+  <div class="flex items-center gap-3 text-sm shrink-0">
+    <span class="text-muted">{{ '{:,}'.format(sell.total_cards) }} cards ·
+      <b>{{ cur.symbol }}{{ '{:,.2f}'.format(sell.total_value) }}</b></span>
+    <a href="/sell/export?fmt=txt" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.txt</a>
+    <a href="/sell/export?fmt=csv" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.csv</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if sell.cards %}
+<div class="overflow-x-auto rounded-xl ring-1 ring-edge">
+  <table class="w-full text-sm">
+    <thead class="text-xs text-muted text-left bg-surface-2">
+      <tr>
+        <th class="py-2 px-2">Card</th>
+        <th class="px-2">Set</th>
+        <th class="px-2 text-right">Qty</th>
+        <th class="px-2 text-right">{{ cur.symbol }} ea</th>
+        <th class="px-2 text-right">{{ cur.symbol }} total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in sell.cards %}
+      <tr class="border-t border-edge hover:bg-surface-2">
+        <td class="py-1.5 px-2">
+          <a href="/card/{{ c.scryfall_id }}" class="hover:text-accent">{{ c.name }}</a>
+        </td>
+        <td class="px-2 whitespace-nowrap">{{ set_symbol(c.set_code, c.rarity) }}
+          <span class="text-muted uppercase text-xs">{{ c.set_code }}</span></td>
+        <td class="px-2 text-right tabular-nums">{{ c.quantity }}</td>
+        <td class="px-2 text-right tabular-nums text-muted">{{ cur.symbol }}{{ '{:,.2f}'.format(c.unit) }}</td>
+        <td class="px-2 text-right tabular-nums">{{ cur.symbol }}{{ '{:,.2f}'.format(c.value) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="border-t-2 border-edge font-semibold">
+        <td class="py-2 px-2" colspan="2">Total</td>
+        <td class="px-2 text-right tabular-nums">{{ '{:,}'.format(sell.total_cards) }}</td>
+        <td></td>
+        <td class="px-2 text-right tabular-nums">{{ cur.symbol }}{{ '{:,.2f}'.format(sell.total_value) }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% else %}
+<div class="text-muted py-16 text-center">
+  Nothing flagged to sell yet. Tag cards <code class="text-xs">for-sale</code> to build a priced
+  sell list.
+</div>
+{% endif %}

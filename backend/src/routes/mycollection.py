@@ -21,6 +21,7 @@ from src.db import get_session
 from src.models import Deck
 from src.prices import build_value_chart, value_series
 from src.routes.wishlist import _image as wishlist_image
+from src.sell import sell_list
 from src.sets import set_progress
 from src.stats import collection_growth, collection_stats
 from src.tags import tag_summaries
@@ -39,6 +40,7 @@ TABS = [
     ("wishlist", "Wishlist"),
     ("checklists", "Checklists"),
     ("trade", "Trade"),
+    ("sell", "Sell"),
 ]
 _TAB_KEYS = {t for t, _ in TABS}
 
@@ -95,5 +97,7 @@ async def collection(
         ctx["checklists"] = [(c, n) for c, n in rows.all()]
     elif tab == "trade":
         ctx["binder"] = await trade_binder(session, currency, keep=keep)
+    elif tab == "sell":
+        ctx["sell"] = await sell_list(session, currency)
 
     return templates.TemplateResponse(request, "collection.html", ctx)

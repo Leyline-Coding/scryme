@@ -12,13 +12,13 @@
         <meta name="author" content="Taylor Cohron">
       
       
-        <link rel="canonical" href="https://docs.scryme.app/getting-started/kubernetes/">
+        <link rel="canonical" href="https://docs.scryme.app/features/sell/">
       
       
-        <link rel="prev" href="../configuration/">
+        <link rel="prev" href="../trade/">
       
       
-        <link rel="next" href="../demo/">
+        <link rel="next" href="../stats/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -26,7 +26,7 @@
     
     
       
-        <title>Deploy on Kubernetes - scryme Documentation</title>
+        <title>Sell List & Valuation - scryme Documentation</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#deploy-on-kubernetes" class="md-skip">
+        <a href="#sell-list-valuation" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Deploy on Kubernetes
+              Sell List & Valuation
             
           </span>
         </div>
@@ -236,13 +236,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../self-hosting/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../getting-started/self-hosting/" class="md-tabs__link">
           
   
     
@@ -298,11 +296,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../features/cards/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../cards/" class="md-tabs__link">
           
   
     
@@ -421,10 +421,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -445,12 +443,12 @@
       
       
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
@@ -464,7 +462,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             Getting Started
@@ -478,7 +476,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../self-hosting/" class="md-nav__link">
+      <a href="../../getting-started/self-hosting/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -499,7 +497,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../desktop/" class="md-nav__link">
+      <a href="../../getting-started/desktop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -520,7 +518,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+      <a href="../../getting-started/configuration/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -538,30 +536,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Deploy on Kubernetes
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../getting-started/kubernetes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -570,71 +548,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-gets-deployed" class="md-nav__link">
-    <span class="md-ellipsis">
-      What gets deployed
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      Prerequisites
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#deploy" class="md-nav__link">
-    <span class="md-ellipsis">
-      Deploy
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#expose-with-cloudflare-tunnel" class="md-nav__link">
-    <span class="md-ellipsis">
-      Expose with Cloudflare Tunnel
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pin-a-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      Pin a version
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -647,7 +560,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../demo/" class="md-nav__link">
+      <a href="../../getting-started/demo/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -908,8 +821,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -950,12 +865,12 @@
       
       
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
@@ -969,7 +884,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             Features
@@ -983,7 +898,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/cards/" class="md-nav__link">
+      <a href="../cards/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1004,7 +919,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/decks/" class="md-nav__link">
+      <a href="../decks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1025,7 +940,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/ai/" class="md-nav__link">
+      <a href="../ai/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1046,7 +961,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/binders/" class="md-nav__link">
+      <a href="../binders/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1067,7 +982,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/locations/" class="md-nav__link">
+      <a href="../locations/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1088,7 +1003,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/sets/" class="md-nav__link">
+      <a href="../sets/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1109,7 +1024,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/grading/" class="md-nav__link">
+      <a href="../grading/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1130,7 +1045,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/checklists/" class="md-nav__link">
+      <a href="../checklists/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1151,7 +1066,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/wishlist/" class="md-nav__link">
+      <a href="../wishlist/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1172,7 +1087,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/trade/" class="md-nav__link">
+      <a href="../trade/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1190,10 +1105,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../features/sell/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Sell List & Valuation
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1202,6 +1137,44 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#sell-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sell list
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#valuation-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      Valuation report
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1214,7 +1187,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/stats/" class="md-nav__link">
+      <a href="../stats/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1235,7 +1208,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/prices/" class="md-nav__link">
+      <a href="../prices/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1256,7 +1229,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/theming/" class="md-nav__link">
+      <a href="../theming/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1277,7 +1250,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/backup/" class="md-nav__link">
+      <a href="../backup/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1538,45 +1511,18 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-gets-deployed" class="md-nav__link">
+  <a href="#sell-list" class="md-nav__link">
     <span class="md-ellipsis">
-      What gets deployed
+      Sell list
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
+  <a href="#valuation-report" class="md-nav__link">
     <span class="md-ellipsis">
-      Prerequisites
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#deploy" class="md-nav__link">
-    <span class="md-ellipsis">
-      Deploy
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#expose-with-cloudflare-tunnel" class="md-nav__link">
-    <span class="md-ellipsis">
-      Expose with Cloudflare Tunnel
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pin-a-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      Pin a version
+      Valuation report
     </span>
   </a>
   
@@ -1600,70 +1546,33 @@
   
 
 
-<h1 id="deploy-on-kubernetes">Deploy on Kubernetes</h1>
-<p>The official demo at <strong><a href="https://demo.scryme.app">demo.scryme.app</a></strong> runs on k3s, fronted by an
-in-cluster Cloudflare Tunnel. The manifests live in the repo under
-<a href="https://github.com/Leyline-Coding/scryme/tree/main/deploy/k8s/demo"><code>deploy/k8s/demo/</code></a> and are
-bundled with kustomize.</p>
-<h2 id="what-gets-deployed">What gets deployed</h2>
+<h1 id="sell-list-valuation">Sell List &amp; Valuation</h1>
+<p>Two money-out views for your collection: a working <strong>sell list</strong> and a printable <strong>valuation
+report</strong>.</p>
+<h2 id="sell-list">Sell list</h2>
+<p>The <strong>Sell</strong> tab lists every card you've flagged to sell, priced with a running total.</p>
 <ul>
-<li><strong>PostgreSQL</strong> — a Deployment with a PVC.</li>
-<li><strong>scryme</strong> — a Deployment that pulls the published image
-  <code>ghcr.io/leyline-coding/scryme</code> and persists card data on a PVC.</li>
-<li>An <strong>init container</strong> that, on first boot, waits for Postgres, runs migrations, ingests the
-  Scryfall bulk file, and seeds a sample collection (<code>alembic upgrade</code> → <code>ingest</code> → <code>seed-demo</code>).
-  Persistent Postgres + the 24h cache guard make later restarts fast.</li>
-<li>The backend runs with <code>SCRYME_READ_ONLY=true</code>, so uploads and admin mutations are disabled and
-  the demo banner is shown.</li>
+<li><strong>Flagging</strong> — tag a card <code>for-sale</code> (also <code>for sale</code> / <code>sale</code>) from its
+  <a href="../cards/#tags">card page</a> or in bulk from <a href="../../search/syntax/">search results</a>.</li>
+<li>The tab shows quantity, price each, and line total, sorted most-valuable first, with a grand
+  total.</li>
+<li><strong>Export</strong> — download the list as <strong>CSV</strong> (with a totals row) or <strong>text</strong> from the tab.</li>
 </ul>
-<h2 id="prerequisites">Prerequisites</h2>
+<p>It mirrors the <a href="../trade/">trade binder</a>, but where trade shows your <em>surplus</em>, the sell list is
+whatever you've explicitly flagged.</p>
+<h2 id="valuation-report">Valuation report</h2>
+<p>A printable summary for insurance or records, at <strong><code>/valuation</code></strong> (linked from the Stats tab).</p>
 <ul>
-<li>A default StorageClass supporting <code>ReadWriteOnce</code> (k3s <code>local-path</code> works).</li>
-<li>
-<p>The published image. Make the <code>ghcr.io/leyline-coding/scryme</code> package <strong>public</strong>, or create a pull
-  secret named <code>ghcr-pull</code> from a <code>read:packages</code> token:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>scryme-demo<span class="w"> </span>create<span class="w"> </span>secret<span class="w"> </span>docker-registry<span class="w"> </span>ghcr-pull<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>--docker-server<span class="o">=</span>ghcr.io<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>--docker-username<span class="o">=</span>&lt;you&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span>--docker-password<span class="o">=</span>&lt;read:packages<span class="w"> </span>PAT&gt;
-</code></pre></div>
-</li>
+<li><strong>Totals</strong> — estimated value, total cards, distinct printings, and distinct cards.</li>
+<li><strong>Value by rarity</strong> and <strong>top sets by value</strong>.</li>
+<li><strong>Top cards by value</strong> with per-copy and total value.</li>
+<li>Dated, with a print button (<code>Ctrl/Cmd+P</code> also works).</li>
 </ul>
-<h2 id="deploy">Deploy</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/k8s/demo/namespace.yaml
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># One password, used by Postgres and by the app (which URL-encodes it).</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>cp<span class="w"> </span>deploy/k8s/demo/examples/secret.example.yaml<span class="w"> </span>deploy/k8s/demo/secret.yaml
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nv">$EDITOR</span><span class="w"> </span>deploy/k8s/demo/secret.yaml<span class="w">          </span><span class="c1"># set POSTGRES_PASSWORD</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>deploy/k8s/demo/secret.yaml
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-k<span class="w"> </span>deploy/k8s/demo<span class="w">             </span><span class="c1"># use -k (kustomize), not -f</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>scryme-demo<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>deploy/scryme-demo<span class="w"> </span>-c<span class="w"> </span>ingest-and-seed
-</code></pre></div>
 <div class="admonition note">
-<p class="admonition-title">Pod runs as non-root</p>
-<p>The Deployment sets <code>securityContext.fsGroup: 1000</code> so the non-root container can write the
-<code>/data</code> PVC. The DB password is supplied as a discrete part (<code>SCRYME_DB_PASSWORD</code>), so it may
-contain any characters — see <a href="../configuration/">Configuration</a>.</p>
+<p class="admonition-title">Graded cards</p>
+<p>A <a href="../grading/">graded card's</a> manual value override replaces its market price in the valuation
+report — so slabs are valued at what you say they're worth.</p>
 </div>
-<h2 id="expose-with-cloudflare-tunnel">Expose with Cloudflare Tunnel</h2>
-<p>Add an ingress rule pointing at the Service, then publish the DNS route:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">ingress</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">demo.scryme.app</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://scryme-demo.scryme-demo.svc.cluster.local:8000</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http_status:404</span>
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cloudflared<span class="w"> </span>tunnel<span class="w"> </span>route<span class="w"> </span>dns<span class="w"> </span>&lt;your-tunnel&gt;<span class="w"> </span>demo.scryme.app
-</code></pre></div>
-<p>Cloudflare terminates TLS at the edge, so the tunnel targets the Service over plain HTTP.</p>
-<h2 id="pin-a-version">Pin a version</h2>
-<p><code>kustomization.yaml</code> tracks the <code>latest</code> tag. To pin a release, set <code>newTag</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">images</span><span class="p">:</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/leyline-coding/scryme</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="nt">newTag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v0.1.0</span>
-</code></pre></div>
-<p>See the <a href="https://github.com/Leyline-Coding/scryme/blob/main/deploy/k8s/demo/README.md">deploy README</a>
-for troubleshooting (including resetting the database volume).</p>
 
 
 
@@ -1686,7 +1595,7 @@ for troubleshooting (including resetting the database volume).</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 26, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">July 14, 2026</span>
   </span>
 
     
@@ -1696,7 +1605,7 @@ for troubleshooting (including resetting the database volume).</p>
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3h-2Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 25, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">July 14, 2026</span>
   </span>
 
     
@@ -1731,7 +1640,7 @@ for troubleshooting (including resetting the database volume).</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../configuration/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Configuration">
+          <a href="../trade/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Trade Binder">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -1741,20 +1650,20 @@ for troubleshooting (including resetting the database volume).</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Configuration
+                Trade Binder
               </div>
             </div>
           </a>
         
         
           
-          <a href="../demo/" class="md-footer__link md-footer__link--next" aria-label="Next: Public Demo">
+          <a href="../stats/" class="md-footer__link md-footer__link--next" aria-label="Next: Collection Stats">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Public Demo
+                Collection Stats
               </div>
             </div>
             <div class="md-footer__button md-icon">

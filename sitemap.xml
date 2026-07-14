@@ -61,12 +61,22 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://docs.scryme.app/features/grading/</loc>
+         <lastmod>2026-07-14</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://docs.scryme.app/features/locations/</loc>
          <lastmod>2026-07-14</lastmod>
          <changefreq>daily</changefreq>
     </url>
     <url>
          <loc>https://docs.scryme.app/features/prices/</loc>
+         <lastmod>2026-07-14</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://docs.scryme.app/features/sell/</loc>
          <lastmod>2026-07-14</lastmod>
          <changefreq>daily</changefreq>
     </url>

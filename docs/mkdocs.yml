@@ -96,6 +96,8 @@ nav:
       - Architecture: development/architecture.md
       - JSON API: development/api.md
       - Contributing: development/contributing.md
+      - Decision Records:
+          - Single collection, no accounts: development/adr/0001-single-collection-accounts.md
 
 plugins:
   - search

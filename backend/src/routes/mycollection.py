@@ -12,13 +12,13 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.binder_service import binder_summaries
 from src.checklists import Checklist
 from src.config import get_settings
 from src.currency import get_currency, info
 from src.db import get_session
-from src.models import CollectionCard, Deck
+from src.models import Deck
 from src.prices import build_value_chart, value_series
-from src.routes.binders import NONE_SENTINEL
 from src.routes.wishlist import _image as wishlist_image
 from src.sets import set_progress
 from src.stats import collection_growth, collection_stats
@@ -67,19 +67,7 @@ async def collection(
         )
         ctx["decks"] = [(d, n) for d, n in rows.all()]
     elif tab == "binders":
-        rows = await session.execute(
-            select(
-                CollectionCard.binder_name,
-                func.sum(CollectionCard.quantity),
-                func.count(func.distinct(CollectionCard.scryfall_id)),
-            ).group_by(CollectionCard.binder_name)
-            .order_by(func.sum(CollectionCard.quantity).desc())
-        )
-        ctx["binders"] = [
-            {"key": name if name else NONE_SENTINEL, "label": name or "Unsorted",
-             "name": name, "quantity": int(qty), "distinct": int(distinct)}
-            for name, qty, distinct in rows.all()
-        ]
+        ctx["binders"] = await binder_summaries(session)
     elif tab == "wishlist":
         wl = await list_wishlist(session, currency)
         ctx["view_obj"] = wl

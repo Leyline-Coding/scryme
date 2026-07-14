@@ -1,7 +1,8 @@
-"""Binder browsing: view the owned collection grouped by its `binder_name`.
+"""Custom binders (#206): a binder's card view + create/rename/delete + card-page add/remove.
 
-Binder names come from imports (e.g. ManaBox "Binder Name"); cards with no binder are grouped
-under "Unsorted" (sentinel ``__none__``).
+The binder *index* lives on the collection page's Binders tab (``/collection?tab=binders``); the
+legacy import-``binder_name`` browse (``/binders/cards``) is kept for cards imported with a binder
+column.
 """
 
 from __future__ import annotations
@@ -19,14 +20,9 @@ from src.binder_service import (
     binder_cards,
     binders_for_card,
     create_binder,
-    create_group,
     delete_binder,
-    delete_group,
-    grouped_binders,
     remove_card,
     rename_binder,
-    rename_group,
-    set_binder_group,
 )
 from src.config import get_settings
 from src.db import get_session
@@ -60,14 +56,10 @@ class CardView:
 
 # --- custom binders (#206) ----------------------------------------------------------------------
 
-@router.get("/binders", response_class=HTMLResponse)
-async def binders_home(
-    request: Request, session: AsyncSession = Depends(get_session)
-) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request, "binders_home.html",
-        {"groups": await grouped_binders(session), "read_only": get_settings().read_only},
-    )
+@router.get("/binders")
+async def binders_home() -> RedirectResponse:
+    # The binder index lives on the collection Binders tab.
+    return RedirectResponse(url="/collection?tab=binders", status_code=307)
 
 
 @router.get("/binders/view/{binder_id}", response_class=HTMLResponse)
@@ -87,13 +79,11 @@ async def binder_view(
 
 @router.post("/binders/new")
 async def new_binder(
-    name: str = Form(""), group_id: str = Form(""),
-    session: AsyncSession = Depends(get_session),
+    name: str = Form(""), session: AsyncSession = Depends(get_session)
 ) -> RedirectResponse:
     _guard_writable()
-    if name.strip():
-        await create_binder(session, name, int(group_id) if group_id.strip() else None)
-    return RedirectResponse(url="/binders", status_code=303)
+    await create_binder(session, name)
+    return RedirectResponse(url="/collection?tab=binders", status_code=303)
 
 
 @router.post("/binders/{binder_id}/rename")
@@ -102,16 +92,7 @@ async def rename_binder_route(
 ) -> RedirectResponse:
     _guard_writable()
     await rename_binder(session, binder_id, name)
-    return RedirectResponse(url="/binders", status_code=303)
-
-
-@router.post("/binders/{binder_id}/group")
-async def set_group_route(
-    binder_id: int, group_id: str = Form(""), session: AsyncSession = Depends(get_session)
-) -> RedirectResponse:
-    _guard_writable()
-    await set_binder_group(session, binder_id, int(group_id) if group_id.strip() else None)
-    return RedirectResponse(url="/binders", status_code=303)
+    return RedirectResponse(url=f"/binders/view/{binder_id}", status_code=303)
 
 
 @router.post("/binders/{binder_id}/delete")
@@ -120,7 +101,7 @@ async def delete_binder_route(
 ) -> RedirectResponse:
     _guard_writable()
     await delete_binder(session, binder_id)
-    return RedirectResponse(url="/binders", status_code=303)
+    return RedirectResponse(url="/collection?tab=binders", status_code=303)
 
 
 @router.post("/binders/{binder_id}/remove-card")
@@ -130,34 +111,6 @@ async def remove_card_route(
     _guard_writable()
     await remove_card(session, binder_id, scryfall_id)
     return RedirectResponse(url=f"/binders/view/{binder_id}", status_code=303)
-
-
-@router.post("/binder-groups/new")
-async def new_group(
-    name: str = Form(""), session: AsyncSession = Depends(get_session)
-) -> RedirectResponse:
-    _guard_writable()
-    if name.strip():
-        await create_group(session, name)
-    return RedirectResponse(url="/binders", status_code=303)
-
-
-@router.post("/binder-groups/{group_id}/rename")
-async def rename_group_route(
-    group_id: int, name: str = Form(""), session: AsyncSession = Depends(get_session)
-) -> RedirectResponse:
-    _guard_writable()
-    await rename_group(session, group_id, name)
-    return RedirectResponse(url="/binders", status_code=303)
-
-
-@router.post("/binder-groups/{group_id}/delete")
-async def delete_group_route(
-    group_id: int, session: AsyncSession = Depends(get_session)
-) -> RedirectResponse:
-    _guard_writable()
-    await delete_group(session, group_id)
-    return RedirectResponse(url="/binders", status_code=303)
 
 
 # Add/remove a card to/from a binder from the card detail page (HTMX-swaps the control).

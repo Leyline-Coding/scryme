@@ -1,4 +1,8 @@
-"""Custom binders + binder groups: CRUD and owned-card membership (#206)."""
+"""Custom binders: CRUD and owned-card membership (#206).
+
+Flat, user-named binders of owned cards. Membership is by printing (``scryfall_id``); a card can
+only be added if it is in the collection.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +12,7 @@ from dataclasses import dataclass
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import Binder, BinderCard, BinderGroup, Card, CollectionCard
+from src.models import Binder, BinderCard, Card, CollectionCard
 
 
 def _as_uuid(value) -> uuid.UUID:
@@ -16,18 +20,10 @@ def _as_uuid(value) -> uuid.UUID:
 
 
 @dataclass
-class BinderView:
+class BinderSummary:
     id: int
     name: str
-    group_id: int | None
     count: int
-
-
-@dataclass
-class GroupView:
-    id: int | None
-    name: str
-    binders: list[BinderView]
 
 
 async def _counts(session: AsyncSession) -> dict[int, int]:
@@ -37,31 +33,25 @@ async def _counts(session: AsyncSession) -> dict[int, int]:
     return {bid: int(n) for bid, n in rows}
 
 
-async def grouped_binders(session: AsyncSession) -> list[GroupView]:
-    """All binders organized by group (ungrouped binders come last under a null group)."""
-    counts = await _counts(session)
-    groups = (await session.execute(
-        select(BinderGroup).order_by(BinderGroup.name)
-    )).scalars().all()
-    binders = (await session.execute(select(Binder).order_by(Binder.name))).scalars().all()
-
-    by_group: dict[int | None, list[BinderView]] = {}
-    for b in binders:
-        by_group.setdefault(b.group_id, []).append(
-            BinderView(b.id, b.name, b.group_id, counts.get(b.id, 0))
-        )
-    out = [GroupView(g.id, g.name, by_group.get(g.id, [])) for g in groups]
-    if by_group.get(None):
-        out.append(GroupView(None, "Ungrouped", by_group[None]))
-    return out
-
-
 async def all_binders(session: AsyncSession) -> list[Binder]:
     return list((await session.execute(select(Binder).order_by(Binder.name))).scalars().all())
 
 
-async def create_binder(session: AsyncSession, name: str, group_id: int | None = None) -> Binder:
-    binder = Binder(name=name.strip()[:128], group_id=group_id)
+async def binder_summaries(session: AsyncSession) -> list[BinderSummary]:
+    """Every binder with its card count, for the Binders tab."""
+    counts = await _counts(session)
+    binders = (await session.execute(select(Binder).order_by(Binder.name))).scalars().all()
+    return [BinderSummary(b.id, b.name, counts.get(b.id, 0)) for b in binders]
+
+
+async def create_binder(session: AsyncSession, name: str) -> Binder | None:
+    """Create a binder; returns None if the name is blank or already taken."""
+    name = name.strip()[:128]
+    if not name:
+        return None
+    if await session.scalar(select(Binder.id).where(Binder.name == name)):
+        return None
+    binder = Binder(name=name)
     session.add(binder)
     await session.commit()
     return binder
@@ -74,39 +64,10 @@ async def rename_binder(session: AsyncSession, binder_id: int, name: str) -> Non
         await session.commit()
 
 
-async def set_binder_group(session: AsyncSession, binder_id: int, group_id: int | None) -> None:
-    binder = await session.get(Binder, binder_id)
-    if binder:
-        binder.group_id = group_id
-        await session.commit()
-
-
 async def delete_binder(session: AsyncSession, binder_id: int) -> None:
     binder = await session.get(Binder, binder_id)
     if binder:
         await session.delete(binder)
-        await session.commit()
-
-
-async def create_group(session: AsyncSession, name: str) -> BinderGroup:
-    group = BinderGroup(name=name.strip()[:128])
-    session.add(group)
-    await session.commit()
-    return group
-
-
-async def rename_group(session: AsyncSession, group_id: int, name: str) -> None:
-    group = await session.get(BinderGroup, group_id)
-    if group and name.strip():
-        group.name = name.strip()[:128]
-        await session.commit()
-
-
-async def delete_group(session: AsyncSession, group_id: int) -> None:
-    """Delete a group; its binders survive (become ungrouped via ON DELETE SET NULL)."""
-    group = await session.get(BinderGroup, group_id)
-    if group:
-        await session.delete(group)
         await session.commit()
 
 
@@ -130,6 +91,31 @@ async def add_card(session: AsyncSession, binder_id: int, scryfall_id) -> bool:
     session.add(BinderCard(binder_id=binder_id, scryfall_id=sid))
     await session.commit()
     return True
+
+
+async def bulk_add_to_binder(session: AsyncSession, binder_id: int, scryfall_ids) -> int:
+    """Add many owned printings to a binder; returns how many were newly added."""
+    if await session.get(Binder, binder_id) is None:
+        return 0
+    sids = {_as_uuid(s) for s in scryfall_ids}
+    if not sids:
+        return 0
+    owned = set((await session.execute(
+        select(CollectionCard.scryfall_id).where(CollectionCard.scryfall_id.in_(sids))
+    )).scalars().all())
+    already = set((await session.execute(
+        select(BinderCard.scryfall_id).where(
+            BinderCard.binder_id == binder_id, BinderCard.scryfall_id.in_(sids)
+        )
+    )).scalars().all())
+    added = 0
+    for sid in sids:
+        if sid in owned and sid not in already:
+            session.add(BinderCard(binder_id=binder_id, scryfall_id=sid))
+            added += 1
+    if added:
+        await session.commit()
+    return added
 
 
 async def remove_card(session: AsyncSession, binder_id: int, scryfall_id) -> None:

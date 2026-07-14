@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.binder_service import all_binders
 from src.config import get_settings
 from src.currency import get_currency, info
 from src.db import get_session
@@ -135,4 +136,5 @@ async def search(
     ctx["saved_searches"] = await list_saved(session)
     ctx["read_only"] = get_settings().read_only
     ctx["ai_ready"] = (await get_config(session)).ready
+    ctx["binders"] = await all_binders(session)
     return templates.TemplateResponse(request, "search.html", ctx)

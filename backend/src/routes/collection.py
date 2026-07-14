@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.binder_service import bulk_add_to_binder
 from src.collection_edit import (
     add_or_increment,
     adjust_quantity,
@@ -120,6 +121,7 @@ async def bulk(
     bulk_action: str = Form(...),
     scryfall_ids: list[str] = Form(default=[]),
     tag: str = Form(""),
+    binder_id: str = Form(""),
     q: str = Form(""),
     scope: str = Form("collection"),
     sort: str = Form("name"),
@@ -130,6 +132,8 @@ async def bulk(
     if scryfall_ids:
         if bulk_action == "tag" and tag.strip():
             await bulk_add_tag(session, scryfall_ids, tag)
+        elif bulk_action == "binder" and binder_id.strip():
+            await bulk_add_to_binder(session, int(binder_id), scryfall_ids)
         elif bulk_action == "add":
             await bulk_add_to_collection(session, scryfall_ids, 1)
     params = urlencode({"q": q, "scope": scope, "sort": sort, "dir": dir})

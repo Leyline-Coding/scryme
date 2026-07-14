@@ -1,4 +1,4 @@
-"""Binder browsing tests: grouping by binder_name and the per-binder card view."""
+"""Binder tests: legacy import-`binder_name` browse + first-class custom binders (#206)."""
 
 import uuid
 
@@ -18,15 +18,6 @@ async def _seed(session):
         await session.flush()
         session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=2, binder_name=binder))
     await session.commit()
-
-
-@pytest.mark.asyncio
-async def test_list_binders(client, session):
-    await _seed(session)
-    resp = await client.get("/collection?tab=binders")
-    assert resp.status_code == 200
-    assert "Reds" in resp.text
-    assert "Unsorted" in resp.text  # the null-binder group
 
 
 @pytest.mark.asyncio
@@ -52,14 +43,13 @@ async def test_view_unsorted_binder(client, session):
 from src.binder_service import (  # noqa: E402
     add_card,
     binder_cards,
+    binder_summaries,
     binders_for_card,
+    bulk_add_to_binder,
     create_binder,
-    create_group,
-    delete_group,
-    grouped_binders,
+    delete_binder,
     remove_card,
     rename_binder,
-    set_binder_group,
 )
 
 
@@ -77,13 +67,13 @@ async def _own_card(session, name="Sol Ring", owned=True):
 
 
 @pytest.mark.asyncio
-async def test_create_group_and_binder_and_grouping(session):
-    g = await create_group(session, "Staples")
-    b = await create_binder(session, "Ramp", g.id)
-    groups = await grouped_binders(session)
-    named = {gv.name: [bv.name for bv in gv.binders] for gv in groups}
-    assert "Ramp" in named.get("Staples", [])
-    assert b.group_id == g.id
+async def test_create_binder_unique_and_summaries(session):
+    assert await create_binder(session, "Ramp") is not None
+    assert await create_binder(session, "  ") is None          # blank
+    assert await create_binder(session, "Ramp") is None        # duplicate name
+    sums = await binder_summaries(session)
+    assert [s.name for s in sums] == ["Ramp"]
+    assert sums[0].count == 0
 
 
 @pytest.mark.asyncio
@@ -99,12 +89,29 @@ async def test_add_owned_card_only(session):
     cards = await binder_cards(session, b.id)
     assert [c.name for c in cards] == ["Sol Ring"]
     assert await binders_for_card(session, str(owned.scryfall_id)) == {b.id}
+    assert (await binder_summaries(session))[0].count == 1
 
 
 @pytest.mark.asyncio
-async def test_remove_card_and_rename_and_regroup(session):
-    g = await create_group(session, "Staples")
-    b = await create_binder(session, "Ramp", g.id)
+async def test_bulk_add_to_binder_owned_only(session):
+    b = await create_binder(session, "Staples")
+    a = await _own_card(session, "Sol Ring", owned=True)
+    c = await _own_card(session, "Arcane Signet", owned=True)
+    unowned = await _own_card(session, "Mana Crypt", owned=False)
+
+    added = await bulk_add_to_binder(
+        session, b.id, [str(a.scryfall_id), str(c.scryfall_id), str(unowned.scryfall_id)]
+    )
+    assert added == 2  # unowned skipped
+    # re-adding is idempotent
+    assert await bulk_add_to_binder(session, b.id, [str(a.scryfall_id)]) == 0
+    names = {card.name for card in await binder_cards(session, b.id)}
+    assert names == {"Sol Ring", "Arcane Signet"}
+
+
+@pytest.mark.asyncio
+async def test_remove_card_rename_delete(session):
+    b = await create_binder(session, "Ramp")
     owned = await _own_card(session)
     await add_card(session, b.id, str(owned.scryfall_id))
 
@@ -112,19 +119,10 @@ async def test_remove_card_and_rename_and_regroup(session):
     assert await binder_cards(session, b.id) == []
 
     await rename_binder(session, b.id, "Fast Mana")
-    await set_binder_group(session, b.id, None)
-    groups = await grouped_binders(session)
-    ungrouped = next(gv for gv in groups if gv.name == "Ungrouped")
-    assert "Fast Mana" in [bv.name for bv in ungrouped.binders]
+    assert (await binder_summaries(session))[0].name == "Fast Mana"
 
-
-@pytest.mark.asyncio
-async def test_delete_group_keeps_binders(session):
-    g = await create_group(session, "Staples")
-    b = await create_binder(session, "Ramp", g.id)
-    await delete_group(session, g.id)
-    refreshed = await session.get(type(b), b.id)
-    assert refreshed is not None and refreshed.group_id is None
+    await delete_binder(session, b.id)
+    assert await binder_summaries(session) == []
 
 
 @pytest.mark.asyncio
@@ -144,13 +142,14 @@ async def test_card_page_binder_routes(client, session):
 
 
 @pytest.mark.asyncio
-async def test_binders_home_and_view_pages(client, session):
+async def test_binders_tab_and_view_pages(client, session):
     b = await create_binder(session, "Removal")
     owned = await _own_card(session, "Swords to Plowshares")
     await add_card(session, b.id, str(owned.scryfall_id))
 
-    home = await client.get("/binders")
-    assert home.status_code == 200 and "Removal" in home.text
+    # /binders redirects to the collection Binders tab, which lists custom binders.
+    tab = await client.get("/collection?tab=binders")
+    assert tab.status_code == 200 and "Removal" in tab.text
 
     view = await client.get(f"/binders/view/{b.id}")
     assert view.status_code == 200 and "Swords to Plowshares" in view.text
@@ -158,7 +157,20 @@ async def test_binders_home_and_view_pages(client, session):
 
 @pytest.mark.asyncio
 async def test_new_binder_route_creates(client, session):
-    resp = await client.post("/binders/new", data={"name": "Cats", "group_id": ""},
-                             follow_redirects=False)
+    resp = await client.post("/binders/new", data={"name": "Cats"}, follow_redirects=False)
     assert resp.status_code == 303
-    assert any(bv.name == "Cats" for gv in await grouped_binders(session) for bv in gv.binders)
+    assert any(s.name == "Cats" for s in await binder_summaries(session))
+
+
+@pytest.mark.asyncio
+async def test_bulk_binder_action_from_search(client, session):
+    b = await create_binder(session, "Staples")
+    owned = await _own_card(session, "Sol Ring")
+    resp = await client.post(
+        "/collection/bulk",
+        data={"bulk_action": "binder", "binder_id": str(b.id),
+              "scryfall_ids": [str(owned.scryfall_id)], "q": "", "scope": "collection"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert await binders_for_card(session, str(owned.scryfall_id)) == {b.id}

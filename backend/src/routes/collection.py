@@ -12,10 +12,19 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.binder_service import bulk_add_to_binder
+from src.binder_service import add_card as binder_add_card
+from src.binder_service import all_binders, binder_summaries, bulk_add_to_binder
+from src.box_service import (
+    all_boxes,
+    box_summaries,
+    create_box,
+    delete_box,
+    other_locations,
+    rename_box,
+)
 from src.collection_edit import (
     add_or_increment,
     adjust_quantity,
@@ -23,14 +32,15 @@ from src.collection_edit import (
     bulk_add_to_collection,
     delete_stack,
     find_duplicate_stacks,
-    location_summary,
     merge_all_duplicates,
     merge_duplicate_group,
     organize_by_color_identity,
+    update_stack,
 )
 from src.config import get_settings
 from src.db import get_session
-from src.models import CollectionCard
+from src.decks import add_card_to_deck
+from src.models import Card, CollectionCard, Deck
 from src.tags import card_tags
 from src.templating import templates
 
@@ -66,8 +76,19 @@ async def _collection_partial(
             "owned_total": sum(s.quantity for s in owned),
             "tags": await card_tags(session, scryfall_id),
             "read_only": get_settings().read_only,
+            **await location_choices(session),
         },
     )
+
+
+async def location_choices(session: AsyncSession) -> dict:
+    """Boxes / binders / decks offered by the unified location picker (#160)."""
+    decks = (await session.execute(select(Deck).order_by(Deck.name))).scalars().all()
+    return {
+        "boxes": await all_boxes(session),
+        "picker_binders": await all_binders(session),
+        "decks": [(d.id, d.name) for d in decks],
+    }
 
 
 @router.post("/collection/add", response_class=HTMLResponse)
@@ -113,6 +134,37 @@ async def remove_stack(
     sid = await delete_stack(session, stack_id)
     if sid is None:
         raise HTTPException(status_code=404, detail="Stack not found.")
+    return await _collection_partial(request, session, sid)
+
+
+@router.post("/collection/stack/{stack_id}/locate", response_class=HTMLResponse)
+async def locate_stack(
+    request: Request,
+    stack_id: int,
+    location_choice: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Unified location picker (#160): file a stack into a box, binder, or deck.
+
+    ``location_choice`` is ``box:<name>`` / ``binder:<id>`` / ``deck:<id>`` / ``""`` (unfile).
+    Boxes set the stack's physical ``location``; binders/decks add the printing to that container.
+    """
+    _guard_writable()
+    stack = await session.get(CollectionCard, stack_id)
+    if stack is None:
+        raise HTTPException(status_code=404, detail="Stack not found.")
+    sid = stack.scryfall_id
+    kind, _, ref = location_choice.partition(":")
+    if kind == "box":
+        await update_stack(session, stack_id, location=ref or None)
+    elif kind == "binder" and ref.isdigit():
+        await binder_add_card(session, int(ref), sid)
+    elif kind == "deck" and ref.isdigit():
+        card = await session.get(Card, sid)
+        if card is not None:
+            await add_card_to_deck(session, int(ref), card)
+    else:  # "" / "none" → unfile from any box
+        await update_stack(session, stack_id, location=None)
     return await _collection_partial(request, session, sid)
 
 
@@ -177,11 +229,46 @@ async def merge_duplicates_all(
 async def locations(
     request: Request, session: AsyncSession = Depends(get_session)
 ) -> HTMLResponse:
-    """Physical storage locations overview + the color-identity organizer (#160)."""
+    """Storage hub (#160): boxes (physical), with binders and decks as the other two kinds."""
+    decks = (await session.execute(
+        select(Deck, func.count()).outerjoin(Deck.cards)
+        .group_by(Deck.id).order_by(Deck.name)
+    )).all()
     return templates.TemplateResponse(
         request, "collection_locations.html",
-        {"locations": await location_summary(session), "read_only": get_settings().read_only},
+        {"boxes": await box_summaries(session),
+         "others": await other_locations(session),
+         "binders": await binder_summaries(session),
+         "decks": [(d, n) for d, n in decks],
+         "read_only": get_settings().read_only},
     )
+
+
+@router.post("/collection/boxes/new")
+async def new_box(
+    name: str = Form(""), session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    _guard_writable()
+    await create_box(session, name)
+    return RedirectResponse(url="/collection/locations", status_code=303)
+
+
+@router.post("/collection/boxes/{box_id}/rename")
+async def rename_box_route(
+    box_id: int, name: str = Form(""), session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    _guard_writable()
+    await rename_box(session, box_id, name)
+    return RedirectResponse(url="/collection/locations", status_code=303)
+
+
+@router.post("/collection/boxes/{box_id}/delete")
+async def delete_box_route(
+    box_id: int, session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    _guard_writable()
+    await delete_box(session, box_id)
+    return RedirectResponse(url="/collection/locations", status_code=303)
 
 
 @router.post("/collection/organize-by-identity")

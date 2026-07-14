@@ -26,7 +26,39 @@
       {% if s.condition %}<span class="text-muted">· {{ s.condition }}</span>{% endif %}
       <span class="text-muted uppercase">· {{ s.language }}</span>
       {% if s.binder_name %}<span class="text-muted">· {{ s.binder_name }}</span>{% endif %}
+      {% if read_only %}
       {% if s.location %}<span class="text-accent" title="Storage location">· 📍{{ s.location }}</span>{% endif %}
+      {% else %}
+      {# Unified location picker (#160): file this stack into a box, binder, or deck. #}
+      <form hx-post="/collection/stack/{{ s.id }}/locate"
+            hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
+        <select name="location_choice" title="Storage location"
+                onchange="this.form.requestSubmit()"
+                class="rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs max-w-[10rem]">
+          <option value="">📍 unfiled</option>
+          {% if boxes %}
+          <optgroup label="Boxes">
+            {% for bx in boxes %}
+            <option value="box:{{ bx.name }}" {% if s.location == bx.name %}selected{% endif %}>📦 {{ bx.name }}</option>
+            {% endfor %}
+          </optgroup>
+          {% endif %}
+          {% if s.location and s.location not in boxes|map(attribute='name')|list %}
+          <option value="box:{{ s.location }}" selected>📍 {{ s.location }}</option>
+          {% endif %}
+          {% if picker_binders %}
+          <optgroup label="Add to binder">
+            {% for bn in picker_binders %}<option value="binder:{{ bn.id }}">📕 {{ bn.name }}</option>{% endfor %}
+          </optgroup>
+          {% endif %}
+          {% if decks %}
+          <optgroup label="Add to deck">
+            {% for did, dname in decks %}<option value="deck:{{ did }}">🃏 {{ dname }}</option>{% endfor %}
+          </optgroup>
+          {% endif %}
+        </select>
+      </form>
+      {% endif %}
       {% if not read_only %}
       <button type="button" title="Delete this stack"
               class="ml-auto shrink-0 text-muted hover:text-rose-500"
@@ -62,8 +94,11 @@
     </select>
     <input type="text" name="binder" placeholder="binder" title="Binder (optional)"
            class="w-24 rounded bg-surface-2 px-2 py-1" />
-    <input type="text" name="location" placeholder="location" title="Storage location (optional)"
-           class="w-24 rounded bg-surface-2 px-2 py-1" />
+    <input type="text" name="location" placeholder="box" title="Storage box (optional)"
+           list="box-options" class="w-24 rounded bg-surface-2 px-2 py-1" />
+    <datalist id="box-options">
+      {% for bx in boxes %}<option value="{{ bx.name }}"></option>{% endfor %}
+    </datalist>
     <button type="submit"
             class="rounded bg-accent text-accent-fg px-3 py-1 font-medium">+ Add</button>
   </form>

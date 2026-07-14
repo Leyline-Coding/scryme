@@ -22,6 +22,7 @@ from src.prices import build_value_chart, value_series
 from src.routes.wishlist import _image as wishlist_image
 from src.sets import set_progress
 from src.stats import collection_growth, collection_stats
+from src.tags import tag_summaries
 from src.templating import templates
 from src.trade import trade_binder
 from src.wishlist import list_wishlist
@@ -32,6 +33,7 @@ TABS = [
     ("stats", "Stats"),
     ("decks", "Decks"),
     ("binders", "Binders"),
+    ("tags", "Tags"),
     ("wishlist", "Wishlist"),
     ("checklists", "Checklists"),
     ("trade", "Trade"),
@@ -68,6 +70,8 @@ async def collection(
         ctx["decks"] = [(d, n) for d, n in rows.all()]
     elif tab == "binders":
         ctx["binders"] = await binder_summaries(session)
+    elif tab == "tags":
+        ctx["tags"] = await tag_summaries(session)
     elif tab == "wishlist":
         wl = await list_wishlist(session, currency)
         ctx["view_obj"] = wl

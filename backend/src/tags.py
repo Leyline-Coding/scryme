@@ -9,6 +9,7 @@ the chips line up regardless of how they were typed.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +23,28 @@ def normalize_tag(raw: str | None) -> str | None:
     """Trim, collapse internal whitespace, lower-case, and length-cap; None if empty."""
     collapsed = " ".join((raw or "").split()).lower()
     return collapsed[:MAX_TAG_LEN] or None
+
+
+@dataclass
+class TagSummary:
+    name: str
+    quantity: int   # sum of stack quantities carrying this tag
+    stacks: int     # number of stacks carrying it
+
+
+async def tag_summaries(session: AsyncSession) -> list[TagSummary]:
+    """Every tag in use with its counts, for the Tags tab (each links to a ``tag:`` search)."""
+    rows = (await session.execute(
+        select(CollectionCard.tags, CollectionCard.quantity)
+        .where(CollectionCard.tags.is_not(None))
+    )).all()
+    agg: dict[str, list[int]] = {}
+    for tags, qty in rows:
+        for tag in tags or []:
+            entry = agg.setdefault(tag, [0, 0])
+            entry[0] += qty or 0
+            entry[1] += 1
+    return [TagSummary(name=t, quantity=q, stacks=s) for t, (q, s) in sorted(agg.items())]
 
 
 async def _stacks(session: AsyncSession, scryfall_id: uuid.UUID) -> list[CollectionCard]:

@@ -137,6 +137,30 @@ async def _resolve_names(session: AsyncSession, names: list[str], owned_sids: se
     return resolved
 
 
+async def add_card_to_deck(session: AsyncSession, deck_id: int, card: Card) -> bool:
+    """Add one copy of ``card`` to a deck's main board (bumps quantity if already present).
+
+    Used by the unified location picker (#160): filing a stack "into a deck" adds it to the
+    decklist. Returns False if the deck is missing.
+    """
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        return False
+    existing = next(
+        (dc for dc in deck.cards if dc.board == "main"
+         and dc.name.lower() == card.name.lower()), None
+    )
+    if existing:
+        existing.quantity += 1
+    else:
+        deck.cards.append(DeckCard(
+            name=card.name, quantity=1, board="main",
+            oracle_id=card.oracle_id, scryfall_id=card.scryfall_id,
+        ))
+    await session.commit()
+    return True
+
+
 async def create_deck(session: AsyncSession, name: str, decklist_text: str) -> Deck:
     parsed = _merge_lines(parse_decklist(decklist_text))
     owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))

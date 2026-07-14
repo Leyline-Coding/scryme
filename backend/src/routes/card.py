@@ -15,12 +15,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.binder_service import all_binders, binders_for_card
+from src.box_service import all_boxes
 from src.config import get_settings
 from src.currency import get_currency
 from src.db import get_session
 from src.embeddings import similar_to_oracle
 from src.llm import get_config
-from src.models import Card, CardEmbedding, CollectionCard
+from src.models import Card, CardEmbedding, CollectionCard, Deck
 from src.price_watch import target_for
 from src.scryfall.client import ScryfallClient, ScryfallError
 from src.scryfall.images import ImageCache
@@ -137,6 +138,12 @@ async def card_detail(
             "ai_ready": (await get_config(session)).ready,
             "binders": await all_binders(session),
             "in_ids": await binders_for_card(session, str(card.scryfall_id)),
+            "boxes": await all_boxes(session),
+            "picker_binders": await all_binders(session),
+            "decks": [
+                (d.id, d.name) for d in
+                (await session.execute(select(Deck).order_by(Deck.name))).scalars().all()
+            ],
         },
     )
 

@@ -2,14 +2,14 @@
 {% block title %}{{ card.name }} · scryme{% endblock %}
 {% block content %}
 <div class="max-w-5xl mx-auto px-4 py-6">
-  <header class="flex items-center gap-3 mb-6">
+  <header class="flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <a href="javascript:history.back()" class="text-sm text-muted hover:text-fg">← Back</a>
   </header>
 
   <div class="grid md:grid-cols-[300px_1fr] gap-6">
     {# Art #}
-    <div class="space-y-3">
+    <div class="space-y-3 w-full max-w-[300px] mx-auto md:mx-0">
       {% if image %}
       <img src="{{ image }}" alt="{{ card.name }}"
            class="w-full rounded-2xl ring-1 ring-edge shadow-lg" />

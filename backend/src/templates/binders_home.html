@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Binders · scryme{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-6">
+  <header class="flex items-center gap-3 mb-4">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold">Binders</h1>
+    <a href="/collection" class="ml-auto text-sm text-muted hover:text-fg shrink-0">← Collection</a>
+  </header>
+  <p class="text-sm text-muted mb-5">Your own named binders of owned cards. Add a card to a binder from its card page.</p>
+
+  {% if not read_only %}
+  <div class="grid sm:grid-cols-2 gap-3 mb-6">
+    <form method="post" action="/binders/new" class="flex gap-2">
+      <input type="text" name="name" required placeholder="New binder name"
+             class="flex-1 min-w-0 rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
+      <select name="group_id" class="rounded-lg bg-surface-2 border border-edge px-2 py-2 text-sm">
+        <option value="">(no group)</option>
+        {% for g in groups %}{% if g.id %}<option value="{{ g.id }}">{{ g.name }}</option>{% endif %}{% endfor %}
+      </select>
+      <button class="rounded-lg bg-accent text-accent-fg px-3 py-2 text-sm font-medium">Add</button>
+    </form>
+    <form method="post" action="/binder-groups/new" class="flex gap-2">
+      <input type="text" name="name" required placeholder="New group name"
+             class="flex-1 min-w-0 rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
+      <button class="rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-2 text-sm">+ Group</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% for g in groups %}
+  <section class="mb-5">
+    <div class="flex items-center gap-2 mb-2">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-muted">{{ g.name }}</h2>
+      {% if not read_only and g.id %}
+      <form method="post" action="/binder-groups/{{ g.id }}/delete" class="shrink-0"
+            onsubmit="return confirm('Delete group {{ g.name }}? Its binders become ungrouped.')">
+        <button class="text-xs text-muted hover:text-rose-500" title="Delete group">✕</button>
+      </form>
+      {% endif %}
+    </div>
+    <ul class="grid sm:grid-cols-2 gap-1.5">
+      {% for b in g.binders %}
+      <li class="flex items-center justify-between gap-2 rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm">
+        <a href="/binders/view/{{ b.id }}" class="min-w-0 truncate hover:text-accent">{{ b.name }}</a>
+        <span class="text-xs text-muted shrink-0">{{ b.count }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

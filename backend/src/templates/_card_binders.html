@@ -1,0 +1,25 @@
+{# Add/remove this card to/from custom binders, from the card page (#206). #}
+<div id="card-binders" class="flex flex-wrap items-center gap-1.5">
+  {% set in_binders = binders | selectattr('id', 'in', in_ids) | list %}
+  {% for b in in_binders %}
+  <span class="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-xs">
+    {{ b.name }}
+    {% if not read_only %}
+    <button hx-post="/card/{{ card_id }}/binder-remove" hx-target="#card-binders" hx-swap="outerHTML"
+            hx-vals='{"binder_id": "{{ b.id }}"}' class="text-muted hover:text-rose-500">✕</button>
+    {% endif %}
+  </span>
+  {% endfor %}
+  {% if not read_only %}
+  {% set available = binders | rejectattr('id', 'in', in_ids) | list %}
+  {% if available %}
+  <form hx-post="/card/{{ card_id }}/binder-add" hx-target="#card-binders" hx-swap="outerHTML"
+        class="inline-flex items-center gap-1">
+    <select name="binder_id" class="rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs">
+      {% for b in available %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+    </select>
+    <button class="rounded bg-surface-2 hover:bg-surface-3 px-2 py-0.5 text-xs">+ Binder</button>
+  </form>
+  {% endif %}
+  {% endif %}
+</div>

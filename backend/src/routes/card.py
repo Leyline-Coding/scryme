@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.binder_service import all_binders, binders_for_card
 from src.config import get_settings
 from src.currency import get_currency
 from src.db import get_session
@@ -134,6 +135,8 @@ async def card_detail(
             "read_only": get_settings().read_only,
             "show_similar": show_similar,
             "ai_ready": (await get_config(session)).ready,
+            "binders": await all_binders(session),
+            "in_ids": await binders_for_card(session, str(card.scryfall_id)),
         },
     )
 

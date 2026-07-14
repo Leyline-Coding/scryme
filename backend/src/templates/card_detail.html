@@ -175,6 +175,15 @@
   </section>
   {% endif %}
 
+  {# Custom binders (#206): add this owned card to your binders #}
+  {% if owned and binders %}
+  <section class="mt-6">
+    <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">Binders</h2>
+    {% set card_id = card.scryfall_id %}
+    {% include "_card_binders.html" %}
+  </section>
+  {% endif %}
+
   {# Rules Q&A (#175): ask about this card, grounded in oracle text + rulings #}
   {% if ai_ready %}
   <section class="mt-8">

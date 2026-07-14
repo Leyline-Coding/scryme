@@ -22,9 +22,9 @@ Once configured, these appear across the app:
 | --- | --- | --- |
 | **Deck analysis** | a deck page → *Analyze* | Grades a deck against Commander ratios (lands / ramp / draw / removal / win-cons / synergy) and flags gaps. |
 | **Upgrade planner** | a deck page → *Upgrade* | Suggests cards to buy to improve a deck, within a budget — validated, in-identity, and priced. |
-| **Coaching chat** | a deck page → *Chat* | A conversation about the specific deck, grounded in its cards, colors, and format. |
+| **Coaching chat** | a deck page → *💬 Coach* | A conversation about the specific deck, grounded in its cards, colors, and format. |
 | **Suggest from collection** | a deck page → *Suggest* | Recommends cards **you already own** that fit the deck. |
-| **Build from a prompt** | Decks tab → *Build from collection* | Turn a plain-English request ("aggressive red goblins") into a starting decklist from owned cards. |
+| **Build from a prompt** | Decks tab → *Build from collection* → *build from a prompt* | Turn a plain-English request ("aggressive red goblins") into a starting decklist from owned cards. |
 | **Commander finder** | `/ai/commanders` | Ranks the legendary creatures you own by how buildable a deck around them is from your collection. |
 | **Natural-language search** | search bar → *Ask in plain English* | Converts "blue instants that counter spells" into `c:u t:instant o:counter o:spell`. |
 | **Card rules Q&A** | a card page → *Ask a rules question* | Answers interaction questions, grounded in the card's oracle text, rulings, and the Comprehensive Rules. |

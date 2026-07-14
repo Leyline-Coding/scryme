@@ -2,7 +2,7 @@
 {% block title %}Coach · {{ deck.name }} · scryme{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-4 py-6">
-  <header class="flex items-center gap-3 mb-4">
+  <header class="flex flex-wrap items-center gap-3 mb-4">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold truncate">Coach: {{ deck.name }}</h1>
     <a href="/decks/{{ deck.id }}" class="ml-auto text-sm text-muted hover:text-fg shrink-0">← Deck</a>

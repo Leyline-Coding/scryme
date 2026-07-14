@@ -2,46 +2,59 @@
 {% block title %}Search · scryme{% endblock %}
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-6">
-  <header class="flex flex-wrap items-center gap-3 mb-6">
-    {% include "_brand.html" %}
-    <a href="/advanced" class="text-sm text-muted hover:text-fg shrink-0">Advanced</a>
-    <a href="/collection" class="text-sm text-muted hover:text-fg shrink-0">My Collection</a>
-    <a href="/prices" class="text-sm text-muted hover:text-fg shrink-0">Prices</a>
+  <header class="mb-6">
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3">
+      {% include "_brand.html" %}
+      <a href="/advanced" class="text-sm text-muted hover:text-fg shrink-0">Advanced</a>
+      <a href="/collection" class="text-sm text-muted hover:text-fg shrink-0">My Collection</a>
+      <a href="/prices" class="text-sm text-muted hover:text-fg shrink-0">Prices</a>
+    </div>
     <form
-      class="order-last w-full sm:order-none sm:w-auto flex-1 flex flex-wrap gap-2"
+      class="flex flex-col gap-2"
       hx-get="/search"
       hx-target="#results"
       hx-push-url="true"
       hx-trigger="submit, keyup changed delay:350ms from:input[name=q], change"
     >
+      {# Prominent, full-width syntax input — no controls crowd it. #}
       <input
         type="search"
         name="q"
         value="{{ q }}"
         autofocus
         placeholder="Search — e.g. c:r t:instant mv<=2"
-        class="flex-1 min-w-0 rounded-full bg-surface border border-edge px-5 py-2.5
+        class="w-full rounded-full bg-surface border border-edge px-5 py-2.5
                focus:outline-none focus:ring-2 focus:ring-accent"
       />
-      <select name="scope"
-        class="rounded-full bg-surface border border-edge px-3 py-2.5 text-sm">
-        <option value="collection" {% if scope == 'collection' %}selected{% endif %}>My collection</option>
-        <option value="all" {% if scope == 'all' %}selected{% endif %}>All cards</option>
-      </select>
-      <select name="sort" title="Sort by"
-        class="rounded-full bg-surface border border-edge px-3 py-2.5 text-sm">
-        <option value="name" {% if sort == 'name' %}selected{% endif %}>Name</option>
-        <option value="mv" {% if sort == 'mv' %}selected{% endif %}>Mana value</option>
-        <option value="price" {% if sort == 'price' %}selected{% endif %}>Price (USD)</option>
-        <option value="set" {% if sort == 'set' %}selected{% endif %}>Set</option>
-        <option value="rarity" {% if sort == 'rarity' %}selected{% endif %}>Rarity</option>
-        <option value="released" {% if sort == 'released' %}selected{% endif %}>Released</option>
-      </select>
-      <select name="dir" title="Direction"
-        class="rounded-full bg-surface border border-edge px-3 py-2.5 text-sm">
-        <option value="asc" {% if dir != 'desc' %}selected{% endif %}>Asc ↑</option>
-        <option value="desc" {% if dir == 'desc' %}selected{% endif %}>Desc ↓</option>
-      </select>
+      {# Compact scope / sort controls on their own line, below the search bar. #}
+      <div class="flex flex-wrap items-center gap-2 text-sm">
+        <div class="inline-flex rounded-full ring-1 ring-edge overflow-hidden shrink-0" title="Search scope">
+          <label class="cursor-pointer">
+            <input type="radio" name="scope" value="collection" class="peer sr-only"
+                   {% if scope != 'all' %}checked{% endif %} />
+            <span class="block px-3 py-1 text-muted peer-checked:bg-surface-2 peer-checked:text-fg">Mine</span>
+          </label>
+          <label class="cursor-pointer border-l border-edge">
+            <input type="radio" name="scope" value="all" class="peer sr-only"
+                   {% if scope == 'all' %}checked{% endif %} />
+            <span class="block px-3 py-1 text-muted peer-checked:bg-surface-2 peer-checked:text-fg">All cards</span>
+          </label>
+        </div>
+        <select name="sort" title="Sort by"
+          class="rounded-full bg-surface border border-edge px-3 py-1.5">
+          <option value="name" {% if sort == 'name' %}selected{% endif %}>Name</option>
+          <option value="mv" {% if sort == 'mv' %}selected{% endif %}>Mana value</option>
+          <option value="price" {% if sort == 'price' %}selected{% endif %}>Price (USD)</option>
+          <option value="set" {% if sort == 'set' %}selected{% endif %}>Set</option>
+          <option value="rarity" {% if sort == 'rarity' %}selected{% endif %}>Rarity</option>
+          <option value="released" {% if sort == 'released' %}selected{% endif %}>Released</option>
+        </select>
+        <select name="dir" title="Direction"
+          class="rounded-full bg-surface border border-edge px-3 py-1.5">
+          <option value="asc" {% if dir != 'desc' %}selected{% endif %}>Asc ↑</option>
+          <option value="desc" {% if dir == 'desc' %}selected{% endif %}>Desc ↓</option>
+        </select>
+      </div>
     </form>
     {% if ai_ready %}
     {# Natural-language search (#171): translated to Scryfall syntax, then shown editable above. #}

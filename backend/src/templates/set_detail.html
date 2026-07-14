@@ -2,7 +2,7 @@
 {% block title %}{{ set.name }} · scryme{% endblock %}
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 py-6">
-  <header class="flex items-center gap-3 mb-6">
+  <header class="flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <a href="/collection?tab=stats&view=sets" class="text-sm text-muted hover:text-fg shrink-0">← Sets</a>
     <a href="/search?q={{ ('s:' ~ set.code) | urlencode }}" class="ml-auto text-sm text-muted hover:text-fg">

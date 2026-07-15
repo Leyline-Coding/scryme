@@ -73,8 +73,9 @@ async def take_snapshot() -> PriceSnapshot | None:
 
 
 # Value-over-time chart ranges offered in the UI: (label, days-back or None for all-time).
+# Snapshots are captured monthly, so sub-month ranges aren't offered.
 CHART_RANGES = [
-    ("1w", 7), ("30d", 30), ("90d", 90), ("6mo", 182),
+    ("30d", 30), ("90d", 90), ("6mo", 182),
     ("1y", 365), ("5y", 1825), ("10y", 3650), ("15y", 5475), ("all", None),
 ]
 _RANGE_DAYS = dict(CHART_RANGES)

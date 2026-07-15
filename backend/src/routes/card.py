@@ -23,6 +23,7 @@ from src.embeddings import similar_to_oracle
 from src.llm import get_config
 from src.models import Card, CardEmbedding, CollectionCard, Deck
 from src.price_watch import target_for
+from src.pricing import SOURCES, effective_prices, get_price_source
 from src.routes.collection import printing_options
 from src.scryfall.client import ScryfallClient, ScryfallError
 from src.scryfall.images import ImageCache
@@ -111,8 +112,11 @@ async def card_detail(
     keywords = [k.lower() for k in (card.keywords or [])]
     can_rotate = card.layout in ("battle", "planar") or "aftermath" in keywords
 
-    prices = card.prices or {}
-    _usd_rows = [("USD", "usd"), ("USD foil", "usd_foil")]
+    source = get_price_source(request)
+    prices = effective_prices(card, source) or {}
+    _src = SOURCES.get(source, SOURCES["tcgplayer"])
+    _usd_label = f"{_src['label']}" if source != "tcgplayer" else "USD"
+    _usd_rows = [(_usd_label, "usd"), (f"{_usd_label} foil", "usd_foil")]
     _eur_rows = [("EUR", "eur"), ("EUR foil", "eur_foil")]
     # Lead with the visitor's chosen display currency.
     ordered = (_eur_rows + _usd_rows if get_currency(request) == "eur" else _usd_rows + _eur_rows)

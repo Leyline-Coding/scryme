@@ -75,6 +75,23 @@ async def _backfill_rules(file_path: str | None) -> None:
     print(f"Embedded {count} comprehensive-rules chunk(s).")
 
 
+async def _backfill_mtgjson_ids() -> None:
+    from src.market_prices import backfill_mtgjson_ids
+
+    n = await backfill_mtgjson_ids(force=True)
+    print(f"Mapped {n} card(s) to MTGJSON ids (needed for Card Kingdom prices).")
+
+
+async def _sync_market_prices(force: bool) -> None:
+    from src.market_prices import sync_market_prices
+
+    result = await sync_market_prices(force=force)
+    print("Synced market prices: "
+          f"Card Kingdom {result.get('cardkingdom', 0)}, ManaPool {result.get('manapool', 0)}.")
+    if result.get("cardkingdom", 0) == 0:
+        print("  (Card Kingdom empty? run `backfill-mtgjson-ids` once first.)")
+
+
 async def _organize_locations() -> None:
     from src.collection_edit import organize_by_color_identity
     from src.db import SessionLocal
@@ -160,6 +177,12 @@ def main() -> None:
 
     sub.add_parser("refresh-sets", help="Sync the set-release calendar from Scryfall")
 
+    sub.add_parser("backfill-mtgjson-ids",
+                   help="Map cards to MTGJSON ids (one-time; needed for Card Kingdom prices)")
+    p_market = sub.add_parser("sync-market-prices",
+                              help="Sync Card Kingdom (MTGJSON) + ManaPool prices (#231)")
+    p_market.add_argument("--force", action="store_true", help="Ignore the daily cache guard")
+
     p_backup = sub.add_parser("backup", help="Write a backup of your data to disk")
     p_backup.add_argument("--dir", help="Target directory (default: SCRYME_BACKUP_DIR)")
     p_backup.add_argument("--passphrase", help="Encrypt the backup with this passphrase")
@@ -189,6 +212,10 @@ def main() -> None:
         asyncio.run(_organize_locations())
     elif args.command == "refresh-sets":
         asyncio.run(_refresh_sets())
+    elif args.command == "backfill-mtgjson-ids":
+        asyncio.run(_backfill_mtgjson_ids())
+    elif args.command == "sync-market-prices":
+        asyncio.run(_sync_market_prices(args.force))
     elif args.command == "backup":
         asyncio.run(_backup(args.dir, args.passphrase))
     elif args.command == "restore":

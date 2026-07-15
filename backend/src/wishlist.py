@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.currency import unit_price
 from src.decks import deck_missing
 from src.models import Card, Deck, WishlistItem
+from src.pricing import effective_prices
 
 
 def _as_uuid(scryfall_id) -> uuid.UUID:
@@ -77,7 +78,9 @@ class WishlistView:
     total_cards: int
 
 
-async def list_wishlist(session: AsyncSession, currency: str = "usd") -> WishlistView:
+async def list_wishlist(
+    session: AsyncSession, currency: str = "usd", source: str = "tcgplayer"
+) -> WishlistView:
     items = list(
         (
             await session.execute(
@@ -88,7 +91,8 @@ async def list_wishlist(session: AsyncSession, currency: str = "usd") -> Wishlis
         .all()
     )
     total_cost = sum(
-        item.quantity * unit_price(item.card.prices, "normal", currency) for item in items
+        item.quantity * unit_price(effective_prices(item.card, source), "normal", currency)
+        for item in items
     )
     total_cards = sum(item.quantity for item in items)
     return WishlistView(items=items, total_cost=round(total_cost, 2), total_cards=total_cards)

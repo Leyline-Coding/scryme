@@ -33,6 +33,11 @@ async def _refresh_job() -> None:
         from src.price_watch import evaluate_targets
 
         await evaluate_targets()
+        # Refresh alternate-marketplace prices (Card Kingdom + ManaPool, #231) — best-effort, each
+        # source guarded by its own daily cache and isolated so one failure doesn't stop the others.
+        from src.market_prices import sync_market_prices
+
+        await sync_market_prices()
     except Exception as exc:  # noqa: BLE001 - never let a scheduled job crash the loop
         log.error("scryfall.refresh.failed", error=str(exc))
 

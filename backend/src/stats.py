@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.currency import unit_price
 from src.models import Card, CollectionCard
+from src.pricing import resolve_prices
 
 _COLOR_NAMES = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"}
 # Primary card types, checked in this order (first match wins).
@@ -131,7 +132,7 @@ class CollectionGrowth:
 
 
 async def collection_growth(
-    session: AsyncSession, currency: str = "usd", months: int = 12
+    session: AsyncSession, currency: str = "usd", months: int = 12, source: str = "tcgplayer"
 ) -> CollectionGrowth:
     """Cards (and current-price value) added per month, from ``collection_card.added_at``.
 
@@ -141,20 +142,21 @@ async def collection_growth(
         await session.execute(
             select(
                 CollectionCard.added_at, CollectionCard.quantity, CollectionCard.finish,
-                Card.prices,
+                Card.prices, Card.market_prices,
             ).join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
         )
     ).all()
 
     added: dict[str, int] = {}
     value: dict[str, float] = {}
-    for added_at, qty, finish, prices in rows:
+    for added_at, qty, finish, prices, market_prices in rows:
         if added_at is None:
             continue
         key = added_at.strftime("%Y-%m")
         qty = qty or 0
         added[key] = added.get(key, 0) + qty
-        value[key] = value.get(key, 0.0) + qty * unit_price(prices, finish, currency)
+        value[key] = value.get(key, 0.0) + qty * unit_price(
+            resolve_prices(prices, market_prices, source), finish, currency)
 
     keys = sorted(added)
     window = keys[-months:] if months else keys
@@ -167,12 +169,15 @@ async def collection_growth(
     )
 
 
-async def collection_stats(session: AsyncSession, currency: str = "usd") -> CollectionStats:
+async def collection_stats(
+    session: AsyncSession, currency: str = "usd", source: str = "tcgplayer"
+) -> CollectionStats:
     rows = (
         await session.execute(
             select(
                 CollectionCard.quantity, CollectionCard.finish,
                 Card.rarity, Card.color_identity, Card.type_line, Card.cmc, Card.prices,
+                Card.market_prices,
                 Card.name, Card.set_code, Card.set_name, Card.oracle_id, Card.scryfall_id,
             ).join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
         )
@@ -189,7 +194,7 @@ async def collection_stats(session: AsyncSession, currency: str = "usd") -> Coll
     oracles: set = set()
     valued: dict[str, ValuedCard] = {}
 
-    for (qty, finish, rarity, color_identity, type_line, cmc, prices,
+    for (qty, finish, rarity, color_identity, type_line, cmc, prices, market_prices,
          name, set_code, set_name, oracle_id, sid) in rows:
         qty = qty or 0
         s.total_cards += qty
@@ -197,7 +202,7 @@ async def collection_stats(session: AsyncSession, currency: str = "usd") -> Coll
         if oracle_id:
             oracles.add(oracle_id)
 
-        unit = unit_price(prices, finish, currency)
+        unit = unit_price(resolve_prices(prices, market_prices, source), finish, currency)
         s.total_value += qty * unit
 
         colors[_color_bucket(color_identity)] = colors.get(_color_bucket(color_identity), 0) + qty

@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.currency import unit_price
 from src.models import Card, CollectionCard
+from src.pricing import resolve_prices
 
 # Tags (normalized) that mark a card for trade regardless of quantity.
 TRADE_TAGS = ["for-trade", "for trade", "trade"]
@@ -50,7 +51,9 @@ class TradeBinder:
         return sum(c.tradeable for c in self.cards)
 
 
-async def trade_binder(session: AsyncSession, currency: str = "usd", keep: int = 1) -> TradeBinder:
+async def trade_binder(
+    session: AsyncSession, currency: str = "usd", keep: int = 1, source: str = "tcgplayer"
+) -> TradeBinder:
     """Cards owned in more than `keep` copies, plus any tagged for trade. Most valuable first."""
     keep = max(0, keep)
     flagged = func.coalesce(func.bool_or(CollectionCard.tags.op("&&")(TRADE_TAGS)), False)
@@ -58,7 +61,7 @@ async def trade_binder(session: AsyncSession, currency: str = "usd", keep: int =
         await session.execute(
             select(
                 Card.scryfall_id, Card.name, Card.set_code, Card.set_name, Card.rarity,
-                Card.collector_number, Card.prices,
+                Card.collector_number, Card.prices, Card.market_prices,
                 func.sum(CollectionCard.quantity).label("owned"),
                 flagged.label("for_trade"),
             )
@@ -68,7 +71,7 @@ async def trade_binder(session: AsyncSession, currency: str = "usd", keep: int =
     ).all()
 
     cards: list[TradeCard] = []
-    for sid, name, set_code, set_name, rarity, cn, prices, owned, for_trade in rows:
+    for sid, name, set_code, set_name, rarity, cn, prices, market_prices, owned, for_trade in rows:
         owned = int(owned or 0)
         for_trade = bool(for_trade)
         tradeable = owned if for_trade else max(0, owned - keep)
@@ -78,7 +81,8 @@ async def trade_binder(session: AsyncSession, currency: str = "usd", keep: int =
             TradeCard(
                 scryfall_id=str(sid), name=name, set_code=set_code, set_name=set_name,
                 collector_number=cn, rarity=rarity, owned=owned, tradeable=tradeable,
-                for_trade=for_trade, unit=unit_price(prices, "normal", currency),
+                for_trade=for_trade,
+                unit=unit_price(resolve_prices(prices, market_prices, source), "normal", currency),
             )
         )
     cards.sort(key=lambda c: (c.value, c.owned), reverse=True)

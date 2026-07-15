@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.currency import get_currency, info
 from src.db import get_session
+from src.pricing import get_price_source
 from src.sell import sell_list
 from src.templating import templates
 from src.valuation import valuation_report
@@ -53,9 +54,10 @@ async def sell_export(fmt: str = "csv", session: AsyncSession = Depends(get_sess
 @router.get("/valuation", response_class=HTMLResponse)
 async def valuation(request: Request, session: AsyncSession = Depends(get_session)) -> HTMLResponse:
     currency = get_currency(request)
+    source = get_price_source(request)
     return templates.TemplateResponse(
         request, "valuation.html",
-        {"report": await valuation_report(session, currency),
+        {"report": await valuation_report(session, currency, source=source),
          "cur": info(currency),
          "today": datetime.date.today().isoformat()},
     )

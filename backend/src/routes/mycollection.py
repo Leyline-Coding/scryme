@@ -21,6 +21,7 @@ from src.db import get_session
 from src.models import Deck, PriceSnapshot
 from src.perfcache import memoize
 from src.prices import CHART_RANGES, DEFAULT_RANGE, build_value_chart, range_days, value_series
+from src.pricing import get_price_source
 from src.routes.wishlist import _image as wishlist_image
 from src.sell import sell_list
 from src.sets import set_progress
@@ -57,6 +58,7 @@ async def collection(
 ) -> HTMLResponse:
     tab = tab if tab in _TAB_KEYS else "stats"
     currency = get_currency(request)
+    source = get_price_source(request)
     ctx: dict = {
         "tabs": TABS, "tab": tab, "view": view, "keep": keep,
         "cur": info(currency), "read_only": get_settings().read_only,
@@ -66,16 +68,16 @@ async def collection(
         async def _chart():
             return build_value_chart(await value_series(session, range_days(chart_range)))
 
-        ctx["stats"] = await memoize(("stats", currency),
-                                     lambda: collection_stats(session, currency))
+        ctx["stats"] = await memoize(("stats", currency, source),
+                                     lambda: collection_stats(session, currency, source))
         ctx["value_chart"] = await memoize(("vchart", chart_range), _chart)
         ctx["chart_range"] = chart_range
         ctx["chart_ranges"] = CHART_RANGES
         ctx["has_price_history"] = bool(
             await session.scalar(select(PriceSnapshot.id).limit(1))
         )
-        ctx["growth"] = await memoize(("growth", currency),
-                                      lambda: collection_growth(session, currency))
+        ctx["growth"] = await memoize(("growth", currency, source),
+                                      lambda: collection_growth(session, currency, source=source))
         if view == "sets":
             ctx["sets"] = await memoize("setprog", lambda: set_progress(session))
     elif tab == "decks":
@@ -98,7 +100,7 @@ async def collection(
     elif tab == "tags":
         ctx["tags"] = await tag_summaries(session)
     elif tab == "wishlist":
-        wl = await list_wishlist(session, currency)
+        wl = await list_wishlist(session, currency, source)
         ctx["view_obj"] = wl
         ctx["rows"] = [(item, wishlist_image(item.card)) for item in wl.items]
     elif tab == "checklists":
@@ -108,8 +110,8 @@ async def collection(
         )
         ctx["checklists"] = [(c, n) for c, n in rows.all()]
     elif tab == "trade":
-        ctx["binder"] = await trade_binder(session, currency, keep=keep)
+        ctx["binder"] = await trade_binder(session, currency, keep=keep, source=source)
     elif tab == "sell":
-        ctx["sell"] = await sell_list(session, currency)
+        ctx["sell"] = await sell_list(session, currency, source)
 
     return templates.TemplateResponse(request, "collection.html", ctx)

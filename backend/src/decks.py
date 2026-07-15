@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.currency import unit_price
 from src.models import Card, CollectionCard, Deck, DeckCard
+from src.pricing import resolve_prices
 from src.stats import Bar, _bars, _color_bucket
 
 _LINE = re.compile(r"^\s*(\d+)\s*[xX]?\s+(.+?)\s*$")
@@ -324,7 +325,8 @@ class DeckCoverage:
 
 
 async def deck_coverage(
-    session: AsyncSession, deck: Deck, fmt: str | None = None, currency: str = "usd"
+    session: AsyncSession, deck: Deck, fmt: str | None = None, currency: str = "usd",
+    source: str = "tcgplayer",
 ) -> DeckCoverage:
     owned = await _owned_by_oracle(session)
     fmt = fmt if fmt in LEGALITY_FORMATS else None
@@ -337,13 +339,13 @@ async def deck_coverage(
         rows = (
             await session.execute(
                 select(
-                    Card.scryfall_id, Card.oracle_id, Card.prices,
+                    Card.scryfall_id, Card.oracle_id, Card.prices, Card.market_prices,
                     Card.set_code, Card.set_name, Card.collector_number,
                 ).where(Card.scryfall_id.in_(sids))
             )
         ).all()
-        for sid, oracle, prices, set_code, set_name, collector in rows:
-            price_by_sid[str(sid)] = prices or {}
+        for sid, oracle, prices, market_prices, set_code, set_name, collector in rows:
+            price_by_sid[str(sid)] = resolve_prices(prices, market_prices, source) or {}
             print_by_sid[str(sid)] = (set_code, set_name, collector)
             oracle_sid[oracle] = str(sid)
     # Legality is judged per oracle from a playable printing, independent of the line's printing.
@@ -446,7 +448,9 @@ class DeckStats:
         return bool(self.mana_curve or self.by_color or self.total_value)
 
 
-async def deck_stats(session: AsyncSession, deck: Deck, currency: str = "usd") -> DeckStats:
+async def deck_stats(
+    session: AsyncSession, deck: Deck, currency: str = "usd", source: str = "tcgplayer"
+) -> DeckStats:
     """Mana curve (nonland mainboard spells), color breakdown, and total USD value."""
     sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
     info: dict = {}
@@ -454,11 +458,13 @@ async def deck_stats(session: AsyncSession, deck: Deck, currency: str = "usd") -
         rows = (
             await session.execute(
                 select(
-                    Card.scryfall_id, Card.cmc, Card.color_identity, Card.type_line, Card.prices
+                    Card.scryfall_id, Card.cmc, Card.color_identity, Card.type_line,
+                    Card.prices, Card.market_prices,
                 ).where(Card.scryfall_id.in_(sids))
             )
         ).all()
-        info = {sid: (cmc, ci, tl, prices) for sid, cmc, ci, tl, prices in rows}
+        info = {sid: (cmc, ci, tl, resolve_prices(prices, mp, source))
+                for sid, cmc, ci, tl, prices, mp in rows}
 
     curve: dict[str, int] = {}
     colors: dict[str, int] = {}

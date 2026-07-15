@@ -109,3 +109,20 @@ async def test_edit_and_remove_routes(client, session):
     assert await session.scalar(
         select(func.count()).select_from(CollectionCard)
         .where(CollectionCard.id == s.id)) == 0
+
+
+@pytest.mark.asyncio
+async def test_edit_printing_route_redirects(client, session):
+    """Changing a stack's printing sends the user to the new printing's page (HX-Redirect)."""
+    oracle = uuid.uuid4()
+    p1 = await _printing(session, oracle, 1)
+    p2 = await _printing(session, oracle, 2)
+    s = await add_or_increment(session, p1.scryfall_id, 1, finish="normal")
+
+    resp = await client.post(
+        f"/collection/stack/{s.id}/edit",
+        data={"card_id": str(p1.scryfall_id), "printing": str(p2.scryfall_id)},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 200
+    assert resp.headers.get("HX-Redirect") == f"/card/{p2.scryfall_id}"

@@ -10,7 +10,19 @@
     (function () {
       try {
         var d = document.documentElement;
-        d.setAttribute("data-theme", localStorage.getItem("scryme-theme") || "midnight");
+        // Theme = palette + light/dark mode. Migrate the pre-split `scryme-theme` once.
+        var pal = localStorage.getItem("scryme-palette");
+        var mode = localStorage.getItem("scryme-mode");
+        if (!pal) {
+          var map = { midnight: ["midnight", "dark"], slate: ["slate", "dark"],
+                      light: ["slate", "light"], parchment: ["midnight", "light"] };
+          var m = map[localStorage.getItem("scryme-theme")] || ["trop-orange", "dark"];
+          pal = m[0]; mode = mode || m[1];
+          localStorage.setItem("scryme-palette", pal);
+          localStorage.setItem("scryme-mode", mode);
+        }
+        if (!mode) { mode = "dark"; localStorage.setItem("scryme-mode", mode); }
+        d.setAttribute("data-theme", pal + "-" + mode);
         var a = localStorage.getItem("scryme-accent");
         if (a) d.style.setProperty("--c-accent", a);
         // Card-effect settings (foil animation speed, hover spin) — applied before paint.

@@ -37,57 +37,117 @@
   font-display: swap;
 }
 
+/* Themes: 9 palettes, each with a light + dark variant. `data-theme` is "<palette>-<mode>"; the
+   settings menu stores the palette + mode separately. :root is the default (Tropic, dark).
+   The two original pairs: Midnight↔Parchment (light), Slate↔Daylight (light). */
+
+/* Tropic (trop_orange) — deep aubergine, tropical tangerine. */
 :root,
-[data-theme="midnight"] {
+[data-theme="trop-orange-dark"] {
   color-scheme: dark;
-  --c-bg: #020617;
-  --c-surface: #0f172a;
-  --c-surface-2: #1e293b;
-  --c-surface-3: #334155;
-  --c-edge: #334155;
-  --c-fg: #f1f5f9;
-  --c-muted: #94a3b8;
-  --c-accent: #6366f1;
-  --c-accent-fg: #ffffff;
+  --c-bg: #0b0014; --c-surface: #17061f; --c-surface-2: #24102e; --c-surface-3: #351a3f;
+  --c-edge: #3a1f44; --c-fg: #eef6ef; --c-muted: #b295ac; --c-accent: #ff7733; --c-accent-fg: #1a0710;
+}
+[data-theme="trop-orange-light"] {
+  color-scheme: light;
+  --c-bg: #f3fbf5; --c-surface: #ffffff; --c-surface-2: #e6f6ec; --c-surface-3: #d4f4dd;
+  --c-edge: #bfe6cd; --c-fg: #2a1030; --c-muted: #7a6577; --c-accent: #e85f1f; --c-accent-fg: #ffffff;
 }
 
-[data-theme="slate"] {
+/* Prussian — deep navy, sky cyan. */
+[data-theme="prussian-dark"] {
   color-scheme: dark;
-  --c-bg: #16181d;
-  --c-surface: #1e2127;
-  --c-surface-2: #272b33;
-  --c-surface-3: #333843;
-  --c-edge: #3a3f4b;
-  --c-fg: #e8eaed;
-  --c-muted: #9aa0ab;
-  --c-accent: #14b8a6;
-  --c-accent-fg: #ffffff;
+  --c-bg: #0d2149; --c-surface: #132a5c; --c-surface-2: #1b3670; --c-surface-3: #244485;
+  --c-edge: #2b4a8f; --c-fg: #eef3fb; --c-muted: #b0a08f; --c-accent: #41bbd9; --c-accent-fg: #08192e;
+}
+[data-theme="prussian-light"] {
+  color-scheme: light;
+  --c-bg: #f5f8fd; --c-surface: #ffffff; --c-surface-2: #eaf1fa; --c-surface-3: #dbe7f5;
+  --c-edge: #c7d6ea; --c-fg: #0d2149; --c-muted: #5f6f88; --c-accent: #1f8faf; --c-accent-fg: #ffffff;
 }
 
-[data-theme="light"] {
+/* Pine — forest teal, sage. */
+[data-theme="pine-dark"] {
+  color-scheme: dark;
+  --c-bg: #122320; --c-surface: #1a302b; --c-surface-2: #243f38; --c-surface-3: #2f4e46;
+  --c-edge: #36564d; --c-fg: #e6f1e6; --c-muted: #9bb6ac; --c-accent: #57a7b0; --c-accent-fg: #07201f;
+}
+[data-theme="pine-light"] {
   color-scheme: light;
-  --c-bg: #f8fafc;
-  --c-surface: #ffffff;
-  --c-surface-2: #f1f5f9;
-  --c-surface-3: #e2e8f0;
-  --c-edge: #e2e8f0;
-  --c-fg: #0f172a;
-  --c-muted: #64748b;
-  --c-accent: #4f46e5;
-  --c-accent-fg: #ffffff;
+  --c-bg: #e9f2e6; --c-surface: #f4f8f2; --c-surface-2: #dbe9d6; --c-surface-3: #c8dcc3;
+  --c-edge: #afd0bf; --c-fg: #1e3b36; --c-muted: #57756c; --c-accent: #387780; --c-accent-fg: #ffffff;
 }
 
-[data-theme="parchment"] {
+/* Walnut — dark wood, cinnamon. */
+[data-theme="walnut-dark"] {
+  color-scheme: dark;
+  --c-bg: #211804; --c-surface: #2e2308; --c-surface-2: #3c2f10; --c-surface-3: #4c3b18;
+  --c-edge: #524021; --c-fg: #f1f2eb; --c-muted: #b0a487; --c-accent: #cc7d5c; --c-accent-fg: #211705;
+}
+[data-theme="walnut-light"] {
   color-scheme: light;
-  --c-bg: #efe6d2;
-  --c-surface: #faf4e6;
-  --c-surface-2: #ece1c8;
-  --c-surface-3: #ddcfa9;
-  --c-edge: #d3c29c;
-  --c-fg: #33291a;
-  --c-muted: #7c6c4f;
-  --c-accent: #9a6b2f;
-  --c-accent-fg: #ffffff;
+  --c-bg: #f2f2ea; --c-surface: #ffffff; --c-surface-2: #e8e8e0; --c-surface-3: #d8dad3;
+  --c-edge: #c8cabf; --c-fg: #312509; --c-muted: #786b52; --c-accent: #b86f52; --c-accent-fg: #ffffff;
+}
+
+/* Malachite — graphite, vivid green. */
+[data-theme="malachite-dark"] {
+  color-scheme: dark;
+  --c-bg: #1c1f1d; --c-surface: #262a27; --c-surface-2: #333833; --c-surface-3: #434a44;
+  --c-edge: #474e48; --c-fg: #fcfaf9; --c-muted: #9aa39c; --c-accent: #32e875; --c-accent-fg: #06210f;
+}
+[data-theme="malachite-light"] {
+  color-scheme: light;
+  --c-bg: #f7faf7; --c-surface: #ffffff; --c-surface-2: #eef3ee; --c-surface-3: #e0e8e1;
+  --c-edge: #d3ddd4; --c-fg: #12211a; --c-muted: #5f6e63; --c-accent: #12a150; --c-accent-fg: #ffffff;
+}
+
+/* Lemon — near-black, electric lemon (green accent in light for legibility). */
+[data-theme="lemon-dark"] {
+  color-scheme: dark;
+  --c-bg: #040f0f; --c-surface: #0c1717; --c-surface-2: #152121; --c-surface-3: #20302e;
+  --c-edge: #2d3a3a; --c-fg: #eefaf0; --c-muted: #83a892; --c-accent: #f9e900; --c-accent-fg: #1a1a00;
+}
+[data-theme="lemon-light"] {
+  color-scheme: light;
+  --c-bg: #f7faf5; --c-surface: #ffffff; --c-surface-2: #eef4ea; --c-surface-3: #dfeeda;
+  --c-edge: #cbe3c3; --c-fg: #0e2415; --c-muted: #5c7a63; --c-accent: #248232; --c-accent-fg: #ffffff;
+}
+
+/* Bubblegum — deep navy, bubblegum pink. */
+[data-theme="bubblegum-dark"] {
+  color-scheme: dark;
+  --c-bg: #0a1045; --c-surface: #121a5c; --c-surface-2: #1c2670; --c-surface-3: #283485;
+  --c-edge: #2d3a8f; --c-fg: #f3eef8; --c-muted: #9aa0c8; --c-accent: #ff6978; --c-accent-fg: #2a0a12;
+}
+[data-theme="bubblegum-light"] {
+  color-scheme: light;
+  --c-bg: #f7f6fd; --c-surface: #ffffff; --c-surface-2: #eeeefb; --c-surface-3: #dfe0f4;
+  --c-edge: #ccceec; --c-fg: #0a1045; --c-muted: #6a6f9a; --c-accent: #e8455a; --c-accent-fg: #ffffff;
+}
+
+/* Midnight (dark) ↔ Parchment (light) — the original default pair. */
+[data-theme="midnight-dark"] {
+  color-scheme: dark;
+  --c-bg: #020617; --c-surface: #0f172a; --c-surface-2: #1e293b; --c-surface-3: #334155;
+  --c-edge: #334155; --c-fg: #f1f5f9; --c-muted: #94a3b8; --c-accent: #6366f1; --c-accent-fg: #ffffff;
+}
+[data-theme="midnight-light"] {
+  color-scheme: light;
+  --c-bg: #efe6d2; --c-surface: #faf4e6; --c-surface-2: #ece1c8; --c-surface-3: #ddcfa9;
+  --c-edge: #d3c29c; --c-fg: #33291a; --c-muted: #7c6c4f; --c-accent: #9a6b2f; --c-accent-fg: #ffffff;
+}
+
+/* Slate (dark) ↔ Daylight (light). */
+[data-theme="slate-dark"] {
+  color-scheme: dark;
+  --c-bg: #16181d; --c-surface: #1e2127; --c-surface-2: #272b33; --c-surface-3: #333843;
+  --c-edge: #3a3f4b; --c-fg: #e8eaed; --c-muted: #9aa0ab; --c-accent: #14b8a6; --c-accent-fg: #ffffff;
+}
+[data-theme="slate-light"] {
+  color-scheme: light;
+  --c-bg: #f8fafc; --c-surface: #ffffff; --c-surface-2: #f1f5f9; --c-surface-3: #e2e8f0;
+  --c-edge: #e2e8f0; --c-fg: #0f172a; --c-muted: #64748b; --c-accent: #4f46e5; --c-accent-fg: #ffffff;
 }
 
 /* Brand mark: mask the logo SVG and tint it with the current text color so it themes. */

@@ -1,13 +1,15 @@
 # Theming
 
-scryme ships with several themes and a custom accent color. Open the **settings** gear
-(top-right of any page) to change them — the same panel holds the currency toggle and links to
-Backup and Status.
+scryme ships with a set of color **palettes**, each in a **light and dark** variation, plus a custom
+accent color. Open the **settings** gear (top-right of any page) to change them — the same panel
+holds the currency toggle and links to Backup and Status.
 
-- **Preset themes** — Midnight (default dark), Slate, Daylight (light), and Parchment (a warm,
-  MTG-flavored light theme).
+- **Mode** — a **🌙 Dark / ☀️ Light** switch that flips the current palette's brightness.
+- **Palette** — nine schemes: **Tropic** (the default), Prussian, Pine, Walnut, Malachite, Lemon,
+  Bubblegum, Midnight, and Slate. Each has a light and a dark variant, so mode and palette are
+  chosen independently.
 - **Custom accent** — pick any accent color, or choose one of the quick swatches; reset returns to
-  the theme's default.
+  the current palette/mode's default accent.
 
 Your choice is stored in the browser (localStorage) and applied before the page paints, so there's
 no flash of the default theme on load. Because it's client-side, theming also works on the

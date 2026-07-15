@@ -41,8 +41,9 @@ The MVP plus a steady stream of post-MVP features:
 - **[Tags](features/cards.md#tags)** — label owned cards, browse them on the Tags tab, and find them
   with `tag:`.
 - **[Wishlist](features/wishlist.md)** — a want list, including "add a deck's missing cards".
-- **[Theming](features/theming.md)** + **[currency](features/theming.md#display-currency)** (USD/EUR),
-  result **sort**, result **export** (CSV / decklist / ManaBox), and **saved searches**.
+- **[Theming](features/theming.md)** — nine color palettes each in light/dark, a custom accent, and
+  optional foil/etched **card effects** + hover tilt — plus **[currency](features/theming.md#display-currency)**
+  (USD/EUR), result **sort**, result **export** (CSV / decklist / ManaBox), and **saved searches**.
 - **[Backup & restore](features/backup.md)** — a portable JSON dump of your data, plus scheduled
   on-disk backups (optionally encrypted).
 - In-app **collection editing** (add/edit/bulk), **faceted browse**, and **"did you mean?"** search.

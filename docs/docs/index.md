@@ -33,8 +33,9 @@ Lens, then search it with Scryfall syntax and regular expressions.
   backups to a folder you choose.
 - 🗃️ **Local card database + image cache** built from Scryfall bulk data — works offline and stays
   within [Scryfall's API policy](https://scryfall.com/docs/api).
-- 🎨 **Themeable UI** (preset themes + custom accent), **USD/EUR** currency, and 🐳 **self-hostable
-  via Docker**, with an optional read-only public demo.
+- 🎨 **Themeable UI** — nine color **[palettes](features/theming.md)** each in light & dark, a custom
+  accent, playful **foil / etched card effects** and a cursor-reactive hover tilt, **USD/EUR**
+  currency, and 🐳 **self-hostable via Docker** with an optional read-only public demo.
 - 🖥️ **Desktop app** (macOS / Windows / Linux) — an install-free build that bundles PostgreSQL and
   the backend, with drag-and-drop import, a quick-search hotkey, LAN sharing, and auto-update.
 

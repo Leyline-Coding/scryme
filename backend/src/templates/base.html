@@ -13,6 +13,12 @@
         d.setAttribute("data-theme", localStorage.getItem("scryme-theme") || "midnight");
         var a = localStorage.getItem("scryme-accent");
         if (a) d.style.setProperty("--c-accent", a);
+        // Card-effect settings (foil animation speed, hover spin) — applied before paint.
+        var fs = localStorage.getItem("scryme-foil-speed");
+        if (fs) d.style.setProperty("--foil-speed", (11 - parseInt(fs, 10)) + "s");
+        var ss = localStorage.getItem("scryme-spin-speed");
+        if (ss) d.style.setProperty("--spin-speed", ((12 - parseInt(ss, 10)) * 0.06).toFixed(2) + "s");
+        if (localStorage.getItem("scryme-spin") !== "0") d.classList.add("spin-on");  // default on
       } catch (e) {}
     })();
   </script>

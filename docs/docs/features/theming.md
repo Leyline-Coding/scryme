@@ -25,3 +25,14 @@ The default can be set per-deployment with `SCRYME_DEFAULT_CURRENCY=eur`; each v
 remembered in a cookie. **[Price history](prices.md)** (snapshots, profit/loss, and movers) stays in
 USD — it's built on stored USD snapshots and recorded purchase prices, which can't be converted
 without an exchange rate.
+
+## Card effects
+
+The settings panel also has a **Card effects** section:
+
+- **Foil speed** — how fast the [holographic foil sheen](cards.md) animates on cards you own in
+  foil (slower is more subtle).
+- **Spin cards on hover** — a small 3-D partial turn on card thumbnails/art when you hover them,
+  with its own **Spin speed** slider.
+
+Both are saved in your browser and respect the OS *reduced motion* preference.

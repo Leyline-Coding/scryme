@@ -10,7 +10,7 @@
 
   {% if views %}
   <p class="text-sm text-muted mb-4">{{ views | length }} distinct card{{ '' if views|length == 1 else 's' }}</p>
-  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+  <div class="card-grid">
     {% for v in views %}
     <a href="/card/{{ v.card.scryfall_id }}"
        class="group relative block rounded-xl overflow-hidden bg-surface ring-1 ring-edge hover:ring-accent transition">

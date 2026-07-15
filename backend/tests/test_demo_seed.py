@@ -1,5 +1,6 @@
 """Curated demo seed (#larger-demo): colour/price selection, banned/restricted, 2019 dating."""
 
+import datetime
 import uuid
 
 import pytest
@@ -15,7 +16,8 @@ from src.models import (
 )
 
 
-async def _card(session, *, colors, usd, legalities=None, oracle_text=None):
+async def _card(session, *, colors, usd, legalities=None, oracle_text=None,
+                finishes=None, foil=False):
     card = Card(
         scryfall_id=uuid.uuid4(),
         oracle_id=uuid.uuid4(),
@@ -27,7 +29,7 @@ async def _card(session, *, colors, usd, legalities=None, oracle_text=None):
         oracle_text=oracle_text,
         prices={"usd": usd} if usd else {},
         legalities=legalities or {},
-        raw={"name": "Demo"},
+        raw={"name": "Demo", "foil": foil, "finishes": finishes or ["nonfoil"]},
     )
     session.add(card)
     await session.flush()
@@ -55,12 +57,37 @@ async def test_curated_demo_seed(session):
 
     rows = list((await session.execute(select(CollectionCard))).scalars())
     assert all(r.source_format == "demo" for r in rows)
-    assert all(r.added_at.year == 2019 for r in rows)
+    # Ownership spread from 2005-10-08 to today (test cards have no release date to clamp against).
+    assert all(2005 <= r.added_at.year <= datetime.date.today().year for r in rows)
     assert any(r.purchase_price for r in rows)  # priced cards get an acquisition price
 
-    # Synthesized price history for the value chart + movers points for the read-only demo.
+    # Synthesized price history (monthly since 2005) + movers points for the read-only demo.
     assert (await session.scalar(select(func.count()).select_from(PriceSnapshot))) > 12
     assert (await session.scalar(select(func.count()).select_from(CardPricePoint))) > 0
+
+
+@pytest.mark.asyncio
+async def test_finishes_reflect_availability(session, monkeypatch):
+    import src.demo as demo
+    monkeypatch.setattr(demo, "_FOIL_FRACTION", 1.0)
+    monkeypatch.setattr(demo, "_ETCHED_FRACTION", 1.0)
+
+    foilc = await _card(session, colors=["R"], usd="1", foil=True,
+                        finishes=["nonfoil", "foil"])
+    etchc = await _card(session, colors=["U"], usd="1", foil=True,
+                        finishes=["nonfoil", "foil", "etched"])
+    plain = await _card(session, colors=["G"], usd="1", finishes=["nonfoil"])
+    for c in (foilc, etchc, plain):
+        session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1,
+                                   source_format="demo", finish="normal"))
+    await session.commit()
+
+    await demo._seed_finishes(session)
+    finish = {r.scryfall_id: r.finish
+              for r in (await session.execute(select(CollectionCard))).scalars()}
+    assert finish[foilc.scryfall_id] == "foil"
+    assert finish[etchc.scryfall_id] == "etched"   # etched takes precedence over foil
+    assert finish[plain.scryfall_id] == "normal"   # no finish it doesn't offer
 
 
 @pytest.mark.asyncio

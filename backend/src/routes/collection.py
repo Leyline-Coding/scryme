@@ -173,8 +173,12 @@ async def edit_stack_route(
             qty = int(quantity)
         except ValueError:
             qty = None
-    await edit_stack(session, stack_id, quantity=qty,
-                     finish=finish.strip() or None, scryfall_id=printing.strip() or None)
+    survivor = await edit_stack(session, stack_id, quantity=qty,
+                                finish=finish.strip() or None, scryfall_id=printing.strip() or None)
+    # If the printing changed, the stack now lives on a *different* card page — send the user there
+    # so they see the copy they still own (rather than an empty "you don't own this printing yet").
+    if survivor is not None and str(survivor.scryfall_id) != card_id:
+        return HTMLResponse("", headers={"HX-Redirect": f"/card/{survivor.scryfall_id}"})
     return await _collection_partial(request, session, uuid.UUID(card_id))
 
 

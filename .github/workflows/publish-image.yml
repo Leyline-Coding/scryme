@@ -13,12 +13,13 @@ on:
 permissions:
   contents: read
   packages: write
+  security-events: write  # upload Trivy SARIF to the Security > Code scanning tab
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # QEMU lets the amd64 runner cross-build the arm64 image (Raspberry Pi / Apple Silicon).
       - uses: docker/setup-qemu-action@v3
@@ -102,3 +103,23 @@ jobs:
           tags: ${{ steps.meta-arm64.outputs.tags }}
           labels: ${{ steps.meta-arm64.outputs.labels }}
           cache-from: type=gha
+
+      # Scan the freshly-published image for OS/library vulnerabilities. Non-blocking:
+      # findings are reported to Security > Code scanning, but a HIGH/CRITICAL does not
+      # fail the publish (we're already logged in to GHCR, so Trivy can pull :latest).
+      - name: Scan image (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}:latest
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Upload Trivy results to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-image

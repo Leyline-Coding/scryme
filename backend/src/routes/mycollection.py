@@ -7,7 +7,7 @@ a ``_col_<tab>`` partial inside the shared shell. The old per-feature routes red
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,8 +18,8 @@ from src.checklists import Checklist
 from src.config import get_settings
 from src.currency import get_currency, info
 from src.db import get_session
-from src.models import Deck
-from src.prices import build_value_chart, value_series
+from src.models import Deck, PriceSnapshot
+from src.prices import CHART_RANGES, DEFAULT_RANGE, build_value_chart, range_days, value_series
 from src.routes.wishlist import _image as wishlist_image
 from src.sell import sell_list
 from src.sets import set_progress
@@ -51,6 +51,7 @@ async def collection(
     tab: str = "stats",
     view: str = "overview",
     keep: int = 1,
+    chart_range: str = Query(DEFAULT_RANGE, alias="range"),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     tab = tab if tab in _TAB_KEYS else "stats"
@@ -62,7 +63,12 @@ async def collection(
 
     if tab == "stats":
         ctx["stats"] = await collection_stats(session, currency)
-        ctx["value_chart"] = build_value_chart(await value_series(session))
+        ctx["value_chart"] = build_value_chart(await value_series(session, range_days(chart_range)))
+        ctx["chart_range"] = chart_range
+        ctx["chart_ranges"] = CHART_RANGES
+        ctx["has_price_history"] = bool(
+            await session.scalar(select(PriceSnapshot.id).limit(1))
+        )
         ctx["growth"] = await collection_growth(session, currency)
         if view == "sets":
             ctx["sets"] = await set_progress(session)

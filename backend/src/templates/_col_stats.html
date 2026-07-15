@@ -107,12 +107,21 @@
   </div>
 </div>
 
-{% if value_chart.available %}
+{% if has_price_history %}
 <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-8">
-  <div class="flex items-baseline justify-between mb-3">
+  <div class="flex items-baseline justify-between gap-3 flex-wrap mb-3">
     <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">
       Value over time{% if cur.code != 'usd' %} (USD){% endif %}</h2>
     <a href="/prices" class="text-xs text-muted hover:text-fg">Price history →</a>
+  </div>
+  {# Time-range selector — reloads the stats tab with the chosen window. #}
+  <div class="flex flex-wrap gap-1 mb-3">
+    {% for label, _days in chart_ranges %}
+    <a href="/collection?tab=stats&view=overview&range={{ label }}"
+       class="rounded-full px-2.5 py-0.5 text-xs
+              {% if chart_range == label %}bg-accent text-accent-fg font-medium
+              {% else %}bg-surface-2 text-muted hover:text-fg{% endif %}">{{ label }}</a>
+    {% endfor %}
   </div>
   {% if value_chart.has_trend %}
   <svg viewBox="0 0 {{ value_chart.width }} {{ value_chart.height }}" class="w-full h-32"
@@ -128,11 +137,13 @@
       · {{ value_chart.points|length }} snapshots</span>
     <span>{{ value_chart.last_date }}</span>
   </div>
-  {% else %}
+  {% elif value_chart.available %}
   <p class="text-sm text-muted">
-    Only one snapshot so far (${{ '{:,.2f}'.format(value_chart.current) }} on
-    {{ value_chart.last_date }}). The trend line appears after the next price refresh.
+    Only one snapshot in this range (${{ '{:,.2f}'.format(value_chart.current) }} on
+    {{ value_chart.last_date }}). Pick a longer range to see the trend.
   </p>
+  {% else %}
+  <p class="text-sm text-muted">No snapshots in this range — try a longer one.</p>
   {% endif %}
 </section>
 {% endif %}

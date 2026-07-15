@@ -1,0 +1,123 @@
+# Auto-deploy: poll GHCR for a new :latest image digest and roll the demo when it changes.
+#
+# The demo runs on a homelab k3s behind cloudflared, so GitHub can't reach the cluster API. Instead
+# of pushing from CI, this CronJob pulls: every few minutes it asks GHCR for the current digest of
+# ghcr.io/leyline-coding/scryme:latest (reusing the ghcr-pull secret for auth), compares it to the
+# last one it rolled out (kept in a ConfigMap), and runs `kubectl rollout restart` when they differ.
+# Outbound-only — nothing needs to be exposed. A release → publish-image.yml pushes a new :latest,
+# and this picks it up within a poll interval.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scryme-demo-autodeploy
+  namespace: scryme-demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: scryme-demo-autodeploy
+  namespace: scryme-demo
+rules:
+  # Roll the demo deployment (rollout restart patches the pod-template annotations).
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "patch"]
+  # Remember the last-deployed digest between runs.
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: scryme-demo-autodeploy
+  namespace: scryme-demo
+subjects:
+  - kind: ServiceAccount
+    name: scryme-demo-autodeploy
+    namespace: scryme-demo
+roleRef:
+  kind: Role
+  name: scryme-demo-autodeploy
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scryme-demo-autodeploy
+  namespace: scryme-demo
+spec:
+  schedule: "*/3 * * * *"          # poll every 3 minutes
+  concurrencyPolicy: Forbid        # never overlap runs
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 120
+      template:
+        spec:
+          serviceAccountName: scryme-demo-autodeploy
+          restartPolicy: OnFailure
+          containers:
+            - name: autodeploy
+              # Toolbox image with kubectl + curl + jq + bash (Docker Hub, public — no pull secret).
+              image: alpine/k8s:1.29.4
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+                  command -v jq >/dev/null && command -v curl >/dev/null || apk add --no-cache jq curl >/dev/null
+                  NS=scryme-demo
+                  REPO=leyline-coding/scryme
+                  TAG=latest
+                  STATE=scryme-demo-autodeploy-state
+
+                  # Registry auth from the same secret the kubelet uses to pull the image.
+                  AUTH=$(jq -r '(.auths["ghcr.io"] // .auths["https://ghcr.io"])
+                                 | (.auth // ((.username + ":" + .password) | @base64))' \
+                        /ghcr/.dockerconfigjson)
+                  TOKEN=$(curl -fsSL -H "Authorization: Basic ${AUTH}" \
+                    "https://ghcr.io/token?service=ghcr.io&scope=repository:${REPO}:pull" | jq -r .token)
+
+                  # The digest the :latest tag currently points to (the manifest-list/index digest).
+                  DIGEST=$(curl -fsSL -D - -o /dev/null -H "Authorization: Bearer ${TOKEN}" \
+                    -H "Accept: application/vnd.oci.image.index.v1+json" \
+                    -H "Accept: application/vnd.docker.distribution.manifest.list.v2+json" \
+                    -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+                    "https://ghcr.io/v2/${REPO}/manifests/${TAG}" \
+                    | tr -d '\r' | awk -F': ' 'tolower($1)=="docker-content-digest"{print $2}')
+                  if [ -z "${DIGEST}" ]; then echo "ERROR: could not resolve :latest digest"; exit 1; fi
+
+                  LAST=$(kubectl -n "${NS}" get configmap "${STATE}" \
+                    -o jsonpath='{.data.last-digest}' 2>/dev/null || true)
+                  echo "remote :latest = ${DIGEST}"
+                  echo "last deployed  = ${LAST:-<none>}"
+                  if [ "${DIGEST}" = "${LAST}" ]; then
+                    echo "already up to date; nothing to do"
+                    exit 0
+                  fi
+
+                  echo "new image detected — rolling deployment/scryme-demo"
+                  kubectl -n "${NS}" rollout restart deployment/scryme-demo
+                  kubectl -n "${NS}" create configmap "${STATE}" \
+                    --from-literal=last-digest="${DIGEST}" \
+                    --dry-run=client -o yaml | kubectl -n "${NS}" apply -f -
+                  echo "rolled to ${DIGEST}"
+              volumeMounts:
+                - name: ghcr
+                  mountPath: /ghcr
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 25m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+          volumes:
+            - name: ghcr
+              secret:
+                secretName: ghcr-pull
+                items:
+                  - key: .dockerconfigjson
+                    path: .dockerconfigjson

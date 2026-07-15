@@ -246,6 +246,13 @@ _IS_LAYOUTS = {
 }
 
 
+def _owned_finish(finish: str) -> ColumnElement:
+    """Printings owned in a given finish (normal/foil/etched)."""
+    return Card.scryfall_id.in_(
+        select(CollectionCard.scryfall_id).where(func.lower(CollectionCard.finish) == finish)
+    )
+
+
 def _is(term: Term) -> ColumnElement:
     val = term.value.lower()
     if val in _IS_LAYOUTS:
@@ -256,10 +263,11 @@ def _is(term: Term) -> ColumnElement:
             CollectionCard.grade_company.isnot(None)
         )
         return Card.scryfall_id.in_(graded)
-    if val == "etched":
-        # Etched foil lives in the printing's `finishes` array, not a top-level flag.
-        return Card.raw["finishes"].astext.contains("etched")
-    # Fall back to a boolean flag on the raw card object (foil, promo, reserved, reprint, ...).
+    if val in ("foil", "etched"):
+        # scryme is collection-first: is:foil / is:etched mean "you own a copy in that finish"
+        # (matching the chip + card animation), not merely "this printing can be foil/etched".
+        return _owned_finish(val)
+    # Fall back to a boolean flag on the raw card object (promo, reserved, reprint, ...).
     return Card.raw[val].astext == "true"
 
 

@@ -26,6 +26,10 @@ async def _seed(session):
         ("Hybrid", ["R", "G"], "rare", "Creature", "oth", "Other Set", "2023-02-01", True, True),
         ("Rock", [], "uncommon", "Artifact", "oth", "Other Set", "2023-09-01", False, False),
     ]
+    # Owned finishes per printing (is:foil / is:etched match the finish you own, not mere
+    # foil-capability): Bear owned in foil, Hybrid owned in both foil and etched.
+    owned_finishes = {"Bear": ["foil"], "Bolt": ["normal"],
+                      "Hybrid": ["foil", "etched"], "Rock": ["normal"]}
     for i, (name, colors, rarity, tl, sc, sn, rel, legal, foil) in enumerate(cards):
         finishes = ["nonfoil"] + (["foil"] if foil else [])
         if name == "Hybrid":
@@ -39,7 +43,8 @@ async def _seed(session):
         c = Card(**card_to_columns(raw))
         session.add(c)
         await session.flush()
-        session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1))
+        for fin in owned_finishes[name]:
+            session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish=fin))
     await session.commit()
 
 
@@ -86,11 +91,14 @@ async def test_year_legality_foil_facets(session):
     assert legality["Commander"] == ("f:commander", 3)  # 3 of 4 are commander-legal
 
     finish = {v.label: (v.token, v.count) for v in groups["foil"].values}
-    assert finish["Foil"] == ("is:foil", 2)      # Bear + Hybrid
-    assert finish["Etched"] == ("is:etched", 1)  # Hybrid
+    assert finish["Foil"] == ("is:foil", 2)      # owned in foil: Bear + Hybrid
+    assert finish["Etched"] == ("is:etched", 1)  # owned in etched: Hybrid
 
-    res = await run_search(session, "is:etched", scope=SearchScope.COLLECTION)
-    assert [c.name for c in res.cards] == ["Hybrid"]
+    # is:foil / is:etched match the finish you OWN, not mere foil-capability of the printing.
+    foil_res = await run_search(session, "is:foil", scope=SearchScope.COLLECTION)
+    assert sorted(c.name for c in foil_res.cards) == ["Bear", "Hybrid"]
+    etched_res = await run_search(session, "is:etched", scope=SearchScope.COLLECTION)
+    assert [c.name for c in etched_res.cards] == ["Hybrid"]
 
 
 @pytest.mark.asyncio

@@ -86,6 +86,14 @@ spec:
         - name: scryme
           image: ghcr.io/leyline-coding/scryme:latest
           imagePullPolicy: Always
+          # Override the image entrypoint to run 2 uvicorn workers. Migrations already ran in the
+          # initContainer; re-running is idempotent and harmless. Safe on the demo because the
+          # in-process scheduler is skipped under SCRYME_READ_ONLY (no duplicate jobs per worker).
+          command: ["sh", "-c"]
+          args:
+            - |
+              alembic upgrade head
+              exec uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 2
           envFrom:
             - configMapRef:
                 name: scryme-demo-config
@@ -114,10 +122,10 @@ spec:
             periodSeconds: 30
           resources:
             requests:
-              cpu: 100m
+              cpu: 250m
               memory: 256Mi
             limits:
-              memory: 512Mi
+              memory: 768Mi
       volumes:
         - name: data
           persistentVolumeClaim:

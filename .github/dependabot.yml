@@ -1,0 +1,65 @@
+# Dependabot keeps dependencies patched and surfaces security advisories as PRs.
+# Security updates (for known vulnerabilities) are always opened individually and
+# promptly; the version updates below are the routine, grouped housekeeping stream.
+version: 2
+updates:
+  # Backend Python deps (requirements.txt + requirements-dev.txt).
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      # Collapse routine minor/patch bumps into one PR to cut review noise;
+      # majors still come through on their own so they get a deliberate look.
+      backend-minor-patch:
+        update-types:
+          - minor
+          - patch
+    labels:
+      - dependencies
+      - area:ci
+
+  # Docs toolchain (MkDocs) pinned in docs-requirements.txt at the repo root.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      docs-minor-patch:
+        update-types:
+          - minor
+          - patch
+    labels:
+      - dependencies
+      - area:ci
+
+  # Desktop (Electron) app dependencies.
+  - package-ecosystem: npm
+    directory: /desktop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      desktop-minor-patch:
+        update-types:
+          - minor
+          - patch
+    labels:
+      - dependencies
+      - area:ci
+
+  # The GitHub Actions used by our workflows (keeps the Node runtime current, etc.).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      actions-all:
+        patterns:
+          - "*"
+    labels:
+      - dependencies
+      - area:ci

@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     # `scryme_currency` cookie set from the currency picker.
     default_currency: str = "usd"
 
+    # Preferred price source / marketplace (#231): tcgplayer | cardkingdom | manapool. TCGplayer is
+    # Scryfall's `usd`; Card Kingdom is synced from MTGJSON; ManaPool from its public prices API —
+    # both cached in cards.market_prices by the market-price sync. Per-visitor override via the
+    # `scryme_price_source` cookie.
+    default_price_source: str = "tcgplayer"
+
     # On-disk backups. Point `backup_dir` at a folder (e.g. a Dropbox/Drive-synced one) to enable
     # "Back up now", scheduled backups, and restore from disk. `backup_keep` bounds retention;
     # `backup_interval_hours` > 0 enables a scheduled backup (0 disables it).

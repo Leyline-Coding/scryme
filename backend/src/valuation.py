@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.currency import unit_price
 from src.models import Card, CollectionCard
+from src.pricing import resolve_prices
 
 _RARITY_ORDER = ["mythic", "rare", "special", "bonus", "uncommon", "common"]
 
@@ -53,13 +54,14 @@ class ValuationReport:
 
 
 async def valuation_report(
-    session: AsyncSession, currency: str = "usd", top: int = 25, top_sets: int = 15
+    session: AsyncSession, currency: str = "usd", top: int = 25, top_sets: int = 15,
+    source: str = "tcgplayer",
 ) -> ValuationReport:
     rows = (
         await session.execute(
             select(
                 CollectionCard.quantity, CollectionCard.finish, CollectionCard.value_override,
-                Card.rarity, Card.set_code, Card.set_name, Card.prices,
+                Card.rarity, Card.set_code, Card.set_name, Card.prices, Card.market_prices,
                 Card.name, Card.oracle_id, Card.scryfall_id,
             ).join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
         )
@@ -72,7 +74,8 @@ async def valuation_report(
     oracles: set = set()
     best: dict[str, ValuedCard] = {}               # per printing, its highest-unit stack
 
-    for qty, finish, override, rarity, set_code, set_name, prices, name, oracle_id, sid in rows:
+    for (qty, finish, override, rarity, set_code, set_name, prices, market_prices,
+         name, oracle_id, sid) in rows:
         qty = qty or 0
         # A graded card carries a manual value (graded prices aren't in Scryfall); it overrides the
         # market price for the whole stack.
@@ -80,7 +83,7 @@ async def valuation_report(
             unit = override / qty if qty else override
             value = override
         else:
-            unit = unit_price(prices, finish, currency)
+            unit = unit_price(resolve_prices(prices, market_prices, source), finish, currency)
             value = qty * unit
         r.total_cards += qty
         r.total_value += value

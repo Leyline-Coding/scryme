@@ -47,7 +47,14 @@ class Card(Base):
     released_at: Mapped[datetime.date | None] = mapped_column(Date, index=True)
 
     legalities: Mapped[dict | None] = mapped_column(JSONB)
-    prices: Mapped[dict | None] = mapped_column(JSONB)
+    prices: Mapped[dict | None] = mapped_column(JSONB)  # Scryfall: usd (TCGplayer), eur, tix
+
+    # Prices from other marketplaces, keyed by source (#231): e.g.
+    # {"cardkingdom": {"usd": "1.23", "usd_foil": "4.56"}, "manapool": {...}}. Populated by the
+    # market-price sync (MTGJSON for Card Kingdom, ManaPool API for ManaPool); NULL until synced.
+    market_prices: Mapped[dict | None] = mapped_column(JSONB)
+    # MTGJSON printing UUID, used to join this printing to MTGJSON's Card Kingdom prices.
+    mtgjson_id: Mapped[str | None] = mapped_column(String(64))
 
     # Local image cache bookkeeping: 'pending' | 'cached' | 'missing' | 'none'.
     image_status: Mapped[str] = mapped_column(String(16), default="pending")

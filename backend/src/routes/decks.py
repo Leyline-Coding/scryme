@@ -26,6 +26,7 @@ from src.decks import (
 )
 from src.llm import get_config
 from src.models import Deck, DeckCard
+from src.pricing import get_price_source
 from src.templating import templates
 from src.wishlist import add_deck_missing
 
@@ -118,14 +119,16 @@ async def view_deck(
     if deck is None:
         raise HTTPException(status_code=404, detail="Deck not found.")
     currency = get_currency(request)
-    coverage = await deck_coverage(session, deck, fmt=format or None, currency=currency)
+    source = get_price_source(request)
+    coverage = await deck_coverage(session, deck, fmt=format or None, currency=currency,
+                                   source=source)
     return templates.TemplateResponse(
         request,
         "deck_detail.html",
         {
             "cov": coverage,
             "formats": LEGALITY_FORMATS,
-            "stats": await deck_stats(session, deck, currency),
+            "stats": await deck_stats(session, deck, currency, source),
             "export_formats": EXPORT_FORMATS,
             "cur": info(currency),
             "read_only": get_settings().read_only,

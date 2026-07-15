@@ -9,7 +9,6 @@ from src.pricing import available_sources, effective_prices, resolve_prices
 from src.scryfall.mapping import card_to_columns
 from src.stats import collection_stats
 
-
 # --- pure parsers ---------------------------------------------------------------------------
 
 def test_cardkingdom_parser_takes_latest_date():

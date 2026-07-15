@@ -17,7 +17,7 @@ from src.models import (
 
 
 async def _card(session, *, colors, usd, legalities=None, oracle_text=None,
-                finishes=None, foil=False):
+                finishes=None, foil=False, released=None):
     card = Card(
         scryfall_id=uuid.uuid4(),
         oracle_id=uuid.uuid4(),
@@ -27,6 +27,7 @@ async def _card(session, *, colors, usd, legalities=None, oracle_text=None,
         colors=colors,
         color_identity=colors,
         oracle_text=oracle_text,
+        released_at=released,
         prices={"usd": usd} if usd else {},
         legalities=legalities or {},
         raw={"name": "Demo", "foil": foil, "finishes": finishes or ["nonfoil"]},
@@ -46,6 +47,8 @@ async def test_curated_demo_seed(session):
     banned = await _card(session, colors=["B"], usd="40.00", legalities={"modern": "banned"})
     restricted = await _card(session, colors=["U"], usd="3000.00",
                              legalities={"vintage": "restricted"})
+    future = await _card(session, colors=["W"], usd="5.00",
+                         released=datetime.date(2099, 1, 1))  # unreleased — never owned
     await session.commit()
 
     added = await seed_demo()
@@ -54,6 +57,7 @@ async def test_curated_demo_seed(session):
     owned = set(await session.scalars(select(CollectionCard.scryfall_id)))
     assert {red_hi.scryfall_id, red_lo.scryfall_id, banned.scryfall_id,
             restricted.scryfall_id} <= owned
+    assert future.scryfall_id not in owned  # a not-yet-released printing is skipped
 
     rows = list((await session.execute(select(CollectionCard))).scalars())
     assert all(r.source_format == "demo" for r in rows)

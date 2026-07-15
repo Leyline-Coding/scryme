@@ -121,6 +121,9 @@
   .card-grid-sm { grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); }
 }
 
+/* Card-effect knobs, tunable from Settings (persisted to :root by the settings menu). */
+:root { --foil-speed: 5s; --spin-speed: 0.5s; }
+
 /* Foil / holographic sheen for foil printings — an animated rainbow that drifts across the card,
    plus a diagonal glare sweep. Purely decorative (pointer-events off) and respects reduced motion. */
 .foil { position: relative; overflow: hidden; isolation: isolate; }
@@ -134,16 +137,16 @@
     transparent 82%);
   background-size: 300% 300%;
   mix-blend-mode: color-dodge;
-  animation: foil-shift 5s linear infinite;
+  animation: foil-shift var(--foil-speed) linear infinite;
 }
 .foil::after {
   background: linear-gradient(115deg, transparent 40%,
     rgba(255, 255, 255, 0.55) 50%, transparent 60%);
   background-size: 250% 250%;
   mix-blend-mode: soft-light;
-  animation: foil-glare 5s linear infinite;
+  animation: foil-glare var(--foil-speed) linear infinite;
 }
-.foil:hover::before, .foil:hover::after { animation-duration: 2.2s; }
+.foil:hover::before, .foil:hover::after { animation-duration: calc(var(--foil-speed) * 0.45); }
 @keyframes foil-shift { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
 @keyframes foil-glare { 0% { background-position: 120% 0%; } 100% { background-position: -40% 0%; } }
 @media (prefers-reduced-motion: reduce) {
@@ -154,9 +157,22 @@
 .foil-chip {
   background: linear-gradient(115deg, #ff5bd0, #ffd75b, #5bffce, #6f8bff);
   background-size: 300% 300%;
-  animation: foil-shift 5s linear infinite;
+  animation: foil-shift var(--foil-speed) linear infinite;
   color: #1b1030;
 }
+
+/* Hover spin: a cursor-reactive 3-D tilt on card images/art, enabled by the `spin-on` root class
+   (toggled from Settings). The transform is set inline by _card_spin.html from the pointer's
+   position, so the card leans toward the cursor; this rule just smooths it (and the return) at the
+   chosen speed. Only card *thumbnails/art* (links containing an image, or .card-art) get it —
+   text card-name links are left alone. */
+.spin-on a[href^="/card/"]:has(img),
+.spin-on .card-art {
+  transition: transform var(--spin-speed) cubic-bezier(0.2, 0.7, 0.3, 1);
+  transform-origin: center;
+}
+.spin-on a[href^="/card/"]:has(img):hover,
+.spin-on .card-art:hover { z-index: 5; will-change: transform; }
 
 /* HTMX request indicator (shown only while a request tagged with hx-indicator is in flight). */
 .htmx-indicator { display: none; }

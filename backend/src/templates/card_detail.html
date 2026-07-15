@@ -11,7 +11,7 @@
     {# Art #}
     <div class="space-y-3 w-full max-w-[300px] mx-auto md:mx-0">
       {% if image %}
-      <div class="{% if owned_foil %}foil {% endif %}rounded-2xl ring-1 ring-edge shadow-lg">
+      <div class="card-art {% if owned_foil %}foil {% endif %}rounded-2xl ring-1 ring-edge shadow-lg">
         <img src="{{ image }}" alt="{{ card.name }}" class="w-full rounded-2xl" />
       </div>
       {% if owned_foil %}

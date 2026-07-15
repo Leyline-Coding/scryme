@@ -32,7 +32,7 @@ The settings panel also has a **Card effects** section:
 
 - **Foil speed** — how fast the [holographic foil sheen](cards.md) animates on cards you own in
   foil (slower is more subtle).
-- **Spin cards on hover** — a small 3-D partial turn on card thumbnails/art when you hover them,
-  with its own **Spin speed** slider.
+- **Spin cards on hover** — a cursor-reactive 3-D tilt: card thumbnails/art lean toward the pointer
+  based on where you hover over them, with its own **Spin speed** slider.
 
 Both are saved in your browser and respect the OS *reduced motion* preference.

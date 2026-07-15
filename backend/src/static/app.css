@@ -161,24 +161,18 @@
   color: #1b1030;
 }
 
-/* Hover spin: a small 3D partial turn on card images/art, enabled by the `spin-on` root class
-   (toggled from Settings). Only card *thumbnails/art* (links containing an image, or .card-art) get
-   it — text card-name links are left alone. Off by default and disabled for reduced-motion. */
+/* Hover spin: a cursor-reactive 3-D tilt on card images/art, enabled by the `spin-on` root class
+   (toggled from Settings). The transform is set inline by _card_spin.html from the pointer's
+   position, so the card leans toward the cursor; this rule just smooths it (and the return) at the
+   chosen speed. Only card *thumbnails/art* (links containing an image, or .card-art) get it —
+   text card-name links are left alone. */
 .spin-on a[href^="/card/"]:has(img),
 .spin-on .card-art {
   transition: transform var(--spin-speed) cubic-bezier(0.2, 0.7, 0.3, 1);
   transform-origin: center;
-  will-change: transform;
 }
 .spin-on a[href^="/card/"]:has(img):hover,
-.spin-on .card-art:hover {
-  transform: perspective(700px) rotateY(-16deg) rotate(1deg) scale(1.04);
-  z-index: 5;
-}
-@media (prefers-reduced-motion: reduce) {
-  .spin-on a[href^="/card/"]:has(img):hover,
-  .spin-on .card-art:hover { transform: none; }
-}
+.spin-on .card-art:hover { z-index: 5; will-change: transform; }
 
 /* HTMX request indicator (shown only while a request tagged with hx-indicator is in flight). */
 .htmx-indicator { display: none; }

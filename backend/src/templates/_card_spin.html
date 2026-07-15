@@ -1,0 +1,39 @@
+{# Cursor-reactive card tilt: when "Spin cards on hover" is on (root .spin-on), a card thumbnail/art
+   leans in 3-D toward the pointer, based on where the cursor is over it. Speed/return is smoothed by
+   the CSS transition (--spin-speed). Honors reduced-motion. #}
+<script>
+(function () {
+  var MAX = 15;  // peak tilt in degrees
+  var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var active = null;
+
+  function target(el) {
+    var a = el && el.closest && el.closest('.card-art, a[href^="/card/"]');
+    if (!a) return null;
+    // Skip text card-name links (no image) — only thumbnails/art tilt.
+    if (a.matches('a[href^="/card/"]') && !a.querySelector("img")) return null;
+    return a;
+  }
+  function reset() { if (active) { active.style.transform = ""; active = null; } }
+
+  document.addEventListener("pointermove", function (e) {
+    if (reduce || !document.documentElement.classList.contains("spin-on")) return;
+    var el = target(e.target);
+    if (!el) { reset(); return; }
+    if (active && active !== el) active.style.transform = "";
+    active = el;
+    var r = el.getBoundingClientRect();
+    var px = (e.clientX - r.left) / r.width;   // 0 (left) .. 1 (right)
+    var py = (e.clientY - r.top) / r.height;   // 0 (top) .. 1 (bottom)
+    var ry = (px - 0.5) * 2 * MAX;             // cursor right → lean right
+    var rx = (0.5 - py) * 2 * MAX;             // cursor top → lean back
+    el.style.transform =
+      "perspective(700px) rotateX(" + rx.toFixed(1) + "deg) rotateY(" + ry.toFixed(1) +
+      "deg) scale(1.05)";
+  });
+  document.addEventListener("pointerout", function (e) {
+    if (active && !target(e.relatedTarget)) reset();
+  });
+  window.addEventListener("scroll", reset, true);
+})();
+</script>

@@ -44,6 +44,66 @@ async def test_card_page_renders(client, session):
     assert "Legalities" in body
 
 
+async def _add(session, raw):
+    raw.setdefault("id", str(uuid.uuid4()))
+    raw.setdefault("oracle_id", str(uuid.uuid4()))
+    c = Card(**card_to_columns(raw))
+    session.add(c)
+    await session.commit()
+    return c
+
+
+@pytest.mark.asyncio
+async def test_transform_button_for_double_faced(client, session):
+    card = await _add(session, {
+        "name": "Delver of Secrets // Insectile Aberration", "set": "isd",
+        "collector_number": "51", "rarity": "common", "layout": "transform",
+        "type_line": "Creature — Human Wizard", "colors": ["U"], "color_identity": ["U"],
+        "card_faces": [
+            {"name": "Delver of Secrets", "image_uris": {"normal": "https://img.test/front.jpg"}},
+            {"name": "Insectile Aberration", "image_uris": {"normal": "https://img.test/back.jpg"}},
+        ],
+    })
+    body = (await client.get(f"/card/{card.scryfall_id}")).text
+    assert "⇅ Transform" in body
+    assert "https://img.test/back.jpg" in body   # back face available for the flip
+    assert "⟳ Rotate" not in body
+
+
+@pytest.mark.asyncio
+async def test_rotate_button_for_planar_and_aftermath(client, session):
+    plane = await _add(session, {
+        "name": "Naar Isle", "set": "hop", "collector_number": "1", "rarity": "common",
+        "layout": "planar", "type_line": "Plane — Dominaria",
+        "image_uris": {"normal": "https://img.test/plane.jpg"},
+    })
+    body = (await client.get(f"/card/{plane.scryfall_id}")).text
+    assert "⟳ Rotate" in body and "⇅ Transform" not in body
+
+    aftermath = await _add(session, {
+        "name": "Commit // Memory", "set": "akh", "collector_number": "211", "rarity": "rare",
+        "layout": "split", "type_line": "Instant", "keywords": ["Aftermath"],
+        "image_uris": {"normal": "https://img.test/after.jpg"},
+    })
+    body = (await client.get(f"/card/{aftermath.scryfall_id}")).text
+    assert "⟳ Rotate" in body
+
+
+@pytest.mark.asyncio
+async def test_normal_card_has_no_flip_or_rotate(client, session):
+    card = await _seed(session)
+    body = (await client.get(f"/card/{card.scryfall_id}")).text
+    assert "⇅ Transform" not in body and "⟳ Rotate" not in body
+
+
+@pytest.mark.asyncio
+async def test_footer_shows_version(client, session):
+    from src import __version__
+    card = await _seed(session)
+    body = (await client.get(f"/card/{card.scryfall_id}")).text
+    assert f"scryme v{__version__}" in body
+
+
 @pytest.mark.asyncio
 async def test_card_404(client):
     assert (await client.get("/card/not-a-uuid")).status_code == 404

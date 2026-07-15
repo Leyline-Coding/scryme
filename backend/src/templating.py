@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
 
+from src import __version__
 from src.config import get_settings
 from src.symbols import mana_symbols, set_symbol
 
@@ -18,3 +19,5 @@ templates.env.filters["mana"] = mana_symbols
 templates.env.globals["set_symbol"] = set_symbol
 # True only in the desktop app (SCRYME_LAN_GUARD) — gates the "Share on LAN" affordance.
 templates.env.globals["lan_available"] = lambda: get_settings().lan_guard
+# Shown in the footer for quick reference.
+templates.env.globals["app_version"] = __version__

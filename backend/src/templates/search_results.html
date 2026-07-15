@@ -102,7 +102,18 @@
               hover:ring-accent transition">
       {% if v.image %}
       <img src="{{ v.image }}" alt="{{ v.card.name }}" loading="lazy"
-           class="w-full aspect-[5/7] object-cover" />
+           class="grid-card-img w-full aspect-[5/7] object-cover"
+           {% if v.flip_back %}data-front="{{ v.image }}" data-back="{{ v.flip_back }}"
+           data-face="front"{% endif %} />
+      {% if v.flip_back %}
+      {# Double-faced: hover shows an accent overlay + a flip button (doesn't navigate). #}
+      <span class="grid-flip-overlay absolute inset-0 z-10 flex items-center justify-center
+                   opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <button type="button" title="Flip to the other face" aria-label="Flip card"
+                class="grid-flip-btn pointer-events-auto grid place-items-center w-10 h-10 rounded-full
+                       bg-black/60 text-white text-xl leading-none hover:bg-black/80 shadow-lg">↻</button>
+      </span>
+      {% endif %}
       {% else %}
       <div class="w-full aspect-[5/7] flex items-center justify-center text-center p-2 text-xs text-muted">
         {{ v.card.name }}

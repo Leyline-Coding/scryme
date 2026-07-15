@@ -282,6 +282,20 @@
   .art-stage, .card-fx-img { transition: none; }
 }
 
+/* Grid hover-flip for double-faced cards: a quick 3-D flip while the <img> src swaps mid-way. */
+@keyframes grid-flip {
+  0%   { transform: perspective(600px) rotateY(0); }
+  50%  { transform: perspective(600px) rotateY(90deg); }
+  100% { transform: perspective(600px) rotateY(0); }
+}
+.grid-card-img.grid-flipping { animation: grid-flip 0.34s ease; }
+@media (prefers-reduced-motion: reduce) { .grid-card-img.grid-flipping { animation: none; } }
+
+/* Hover overlay behind the grid flip button: the palette's darkest token (--c-bg) at 30%, so it
+   tints toward the selected theme. The element's own opacity handles the hover fade (keeping the
+   button fully opaque), so the tint stays a true 30% when shown. */
+.grid-flip-overlay { background-color: color-mix(in srgb, var(--c-bg) 30%, transparent); }
+
 /* HTMX request indicator (shown only while a request tagged with hx-indicator is in flight). */
 .htmx-indicator { display: none; }
 .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline; }

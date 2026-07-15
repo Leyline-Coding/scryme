@@ -19,7 +19,7 @@ import random
 from pathlib import Path
 
 import structlog
-from sqlalchemy import Float, and_, cast, func, select, text, update
+from sqlalchemy import Float, and_, cast, func, or_, select, text, update
 
 from src.checklists import create_checklist
 from src.db import SessionLocal
@@ -59,6 +59,8 @@ _ETCHED_FRACTION = 0.45
 _SEED_GUARD = 5000  # consider the demo already built when this many demo cards exist
 
 _USD = cast(Card.prices["usd"].astext, Float)
+# Only own cards that have actually been released (Default Cards includes upcoming/spoiled sets).
+_RELEASED = or_(Card.released_at.is_(None), Card.released_at <= func.current_date())
 
 # Showcase data seeded on a fresh demo build (in addition to cards/decks/boxes).
 _TRADE_TAG_COUNT = 40  # how many owned cards to flag "for-trade" so the Trade tab is populated
@@ -98,7 +100,7 @@ async def _take(session, where, count: int, used: set, out: list) -> None:
         rows = (
             await session.execute(
                 select(Card.scryfall_id, Card.oracle_id, _USD)
-                .where(clause)
+                .where(clause, _RELEASED)
                 .order_by(func.random())
                 .limit(need * 4 + 100)
             )
@@ -119,7 +121,7 @@ async def _ensure_status(session, fmt: str, status: str, count: int, used: set, 
     rows = (
         await session.execute(
             select(Card.scryfall_id, Card.oracle_id, _USD)
-            .where(Card.legalities[fmt].astext == status)
+            .where(Card.legalities[fmt].astext == status, _RELEASED)
             .order_by(func.random())
             .limit(count * 5 + 20)
         )

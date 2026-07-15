@@ -148,6 +148,84 @@ async def delete_stack(session: AsyncSession, stack_id: int):
     return sid
 
 
+async def edit_stack(
+    session: AsyncSession, stack_id: int, *,
+    quantity: int | None = None, finish: str | None = None, scryfall_id=None,
+):
+    """Edit a stack's quantity, finish, and/or printing, merging into a sibling stack if the change
+    collides with the (scryfall_id, finish, condition, language, binder, location) key.
+
+    Returns the surviving stack (or None if the stack/target printing is missing).
+    """
+    stack = await session.get(CollectionCard, stack_id)
+    if stack is None:
+        return None
+    target_sid = _as_uuid(scryfall_id) if scryfall_id else stack.scryfall_id
+    if scryfall_id and await session.get(Card, target_sid) is None:
+        return None
+    target_finish = finish if finish in ("normal", "foil", "etched") else stack.finish
+    new_qty = max(1, quantity) if quantity is not None else stack.quantity
+
+    dup = (await session.execute(
+        select(CollectionCard).where(
+            CollectionCard.id != stack.id,
+            CollectionCard.scryfall_id == target_sid,
+            CollectionCard.finish == target_finish,
+            CollectionCard.language == stack.language,
+            _eq_or_null(CollectionCard.condition, stack.condition),
+            _eq_or_null(CollectionCard.binder_name, stack.binder_name),
+            _eq_or_null(CollectionCard.location, stack.location),
+        )
+    )).scalar_one_or_none()
+
+    if dup is not None:
+        dup.quantity += new_qty
+        merged_tags = sorted(set((dup.tags or []) + (stack.tags or [])))
+        dup.tags = merged_tags or None
+        await session.delete(stack)
+        survivor = dup
+    else:
+        stack.scryfall_id = target_sid
+        stack.finish = target_finish
+        stack.quantity = new_qty
+        survivor = stack
+    await session.commit()
+    return survivor
+
+
+async def owned_for_oracle(session: AsyncSession, oracle_id) -> list[tuple[CollectionCard, Card]]:
+    """Every owned stack of any printing sharing this oracle id (for the remove-copies modal)."""
+    rows = (await session.execute(
+        select(CollectionCard, Card)
+        .join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
+        .where(Card.oracle_id == oracle_id)
+        .order_by(Card.released_at.desc().nulls_last(), CollectionCard.finish)
+    )).all()
+    return [(cc, c) for cc, c in rows]
+
+
+async def remove_copies(session: AsyncSession, removals: list[tuple[int, int]]) -> int:
+    """Apply per-stack removals ``[(stack_id, count), ...]``; a stack hitting zero is deleted.
+
+    Returns the number of copies actually removed.
+    """
+    removed = 0
+    for stack_id, count in removals:
+        if count <= 0:
+            continue
+        stack = await session.get(CollectionCard, stack_id)
+        if stack is None:
+            continue
+        take = min(count, stack.quantity)
+        stack.quantity -= take
+        removed += take
+        if stack.quantity <= 0:
+            await session.delete(stack)
+    if removed:
+        await session.commit()
+    return removed
+
+
 async def bulk_add_to_collection(
     session: AsyncSession, scryfall_ids: list, quantity: int = 1
 ) -> int:

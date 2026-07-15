@@ -1,14 +1,17 @@
 {# Owned stacks for one printing, with inline edit controls. Swapped (outerHTML) after each edit. #}
 <div id="card-collection" class="rounded-lg bg-surface ring-1 ring-edge p-3">
-  <p class="text-sm font-semibold mb-1">
-    In your collection
-    {% if owned_total %}<span class="text-accent">· {{ owned_total }} total</span>{% endif %}
+  <p class="text-sm font-semibold mb-1 flex items-center gap-2">
+    <span>In your collection{% if owned_total %}<span class="text-accent"> · {{ owned_total }} total</span>{% endif %}</span>
+    {% if owned and not read_only %}
+    <button type="button" class="ml-auto text-xs font-normal text-muted hover:text-rose-500"
+            hx-get="/card/{{ card_id }}/remove-modal" hx-target="#remove-modal" hx-swap="innerHTML">Remove…</button>
+    {% endif %}
   </p>
 
   {% if owned %}
   <ul class="text-sm divide-y divide-edge">
     {% for s in owned %}
-    <li class="py-1.5" x-data="{ g: false }">
+    <li class="py-1.5" x-data="{ g: false, e: false }">
       <div class="flex items-center gap-2">
       {% if not read_only %}
       <span class="inline-flex items-center rounded-full bg-surface-2 overflow-hidden shrink-0">
@@ -37,6 +40,8 @@
         🏅 {{ s.grade_company }} {{ s.grade }}</span>
       {% endif %}
       {% if not read_only %}
+      <button type="button" @click="e = !e" title="Edit quantity / finish / printing"
+              class="shrink-0 text-muted hover:text-fg">✎</button>
       <button type="button" @click="g = !g" title="Grading" class="shrink-0 text-muted hover:text-fg">🏅</button>
       {% endif %}
       {% if read_only %}
@@ -80,6 +85,37 @@
               hx-confirm="Delete this stack?">✕</button>
       {% endif %}
       </div>{# /flex row #}
+
+      {# Edit panel (#collection-edit): quantity / finish / printing, with merge-on-collision. #}
+      {% if not read_only %}
+      <div x-show="e" x-cloak class="mt-2 rounded-lg bg-surface-2 p-2">
+        <form hx-post="/collection/stack/{{ s.id }}/edit"
+              hx-target="#card-collection" hx-swap="outerHTML"
+              class="flex flex-wrap items-end gap-1.5 text-xs">
+          <input type="hidden" name="card_id" value="{{ card_id }}" />
+          <label class="flex flex-col">Qty
+            <input name="quantity" type="number" min="1" value="{{ s.quantity }}"
+                   class="w-16 rounded bg-surface border border-edge px-1.5 py-1" /></label>
+          <label class="flex flex-col">Finish
+            <select name="finish" class="rounded bg-surface border border-edge px-1.5 py-1">
+              {% for f in ["normal", "foil", "etched"] %}
+              <option value="{{ f }}" {% if s.finish == f %}selected{% endif %}>{{ f }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          {% if printing_opts %}
+          <label class="flex flex-col">Printing
+            <select name="printing" class="rounded bg-surface border border-edge px-1.5 py-1 max-w-[10rem]">
+              {% for pid, plabel in printing_opts %}
+              <option value="{{ pid }}" {% if pid == card_id|string %}selected{% endif %}>{{ plabel }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          {% endif %}
+          <button type="submit" class="rounded bg-accent text-accent-fg px-2.5 py-1 font-medium">Save</button>
+        </form>
+      </div>
+      {% endif %}
 
       {# Grade photo (both modes when present) #}
       {% if s.grade_photo %}
@@ -164,4 +200,7 @@
             class="rounded bg-accent text-accent-fg px-3 py-1 font-medium">+ Add</button>
   </form>
   {% endif %}
+
+  {# Remove-from-collection modal loads here (HTMX). #}
+  <div id="remove-modal"></div>
 </div>

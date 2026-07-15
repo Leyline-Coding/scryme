@@ -1,0 +1,38 @@
+{# Remove-from-collection modal: choose how many copies (and which printings) to remove. Loaded
+   into #remove-modal by HTMX; a successful remove re-renders #card-collection (clearing this). #}
+<div class="fixed inset-0 z-[70] flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/50"
+       onclick="document.getElementById('remove-modal').innerHTML=''"></div>
+  <div class="relative w-full max-w-md rounded-xl bg-surface ring-1 ring-edge shadow-2xl p-4">
+    <h3 class="font-semibold">Remove from collection</h3>
+    <p class="text-sm text-muted mb-3">
+      {{ name }} — set how many copies to remove{% if stacks|length > 1 %} from each printing/finish{% endif %}.
+    </p>
+    <form hx-post="/collection/remove" hx-target="#card-collection" hx-swap="outerHTML">
+      <input type="hidden" name="card_id" value="{{ card_id }}" />
+      <div class="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+        {% for cc, c in stacks %}
+        <div class="flex items-center gap-2 text-sm">
+          <input type="hidden" name="stack_id" value="{{ cc.id }}" />
+          <span class="flex-1 min-w-0 truncate">
+            <span class="uppercase text-muted text-xs">{{ c.set_code }}</span>·{{ c.collector_number }}
+            {% if cc.finish == 'foil' %}<span class="text-accent">foil</span>
+            {% elif cc.finish == 'etched' %}<span class="text-accent">etched</span>{% endif %}
+            {% if cc.language != 'en' %}<span class="uppercase text-muted">{{ cc.language }}</span>{% endif %}
+            <span class="text-muted">· own {{ cc.quantity }}</span>
+          </span>
+          <input type="number" name="count" min="0" max="{{ cc.quantity }}" value="0"
+                 title="Copies to remove"
+                 class="w-16 rounded bg-surface-2 border border-edge px-2 py-1 text-right" />
+        </div>
+        {% endfor %}
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button type="button" onclick="document.getElementById('remove-modal').innerHTML=''"
+                class="rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-1.5 text-sm">Cancel</button>
+        <button type="submit"
+                class="rounded-lg bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 text-sm font-medium">Remove</button>
+      </div>
+    </form>
+  </div>
+</div>

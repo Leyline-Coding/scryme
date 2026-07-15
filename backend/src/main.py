@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src import __version__
@@ -83,12 +84,36 @@ def _install_lan_guard(app: FastAPI) -> None:
         return response
 
 
+def _install_cache_headers(app: FastAPI) -> None:
+    """Let browsers (and any CDN in front, e.g. Cloudflare) cache static assets.
+
+    Card images are content-addressed (the scryfall id + size is in the filename), so they're
+    safe to cache forever — this is what makes card grids feel instant on repeat views and lets a
+    CDN serve them without touching the origin. Bundled static assets (CSS/JS) can change between
+    releases and aren't fingerprinted, so they get a modest TTL and still revalidate via ETag.
+    """
+
+    @app.middleware("http")
+    async def cache_headers(request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith("/images/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        elif path.startswith("/static/"):
+            response.headers.setdefault("Cache-Control", "public, max-age=86400")
+        return response
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="scryme", version=__version__, lifespan=lifespan)
 
+    # Compress text responses (HTML, the value-chart SVG, JSON API). Skips small bodies.
+    app.add_middleware(GZipMiddleware, minimum_size=512)
+
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+    _install_cache_headers(app)
     if settings.lan_guard:
         _install_lan_guard(app)
 

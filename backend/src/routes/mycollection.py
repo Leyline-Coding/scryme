@@ -19,6 +19,7 @@ from src.config import get_settings
 from src.currency import get_currency, info
 from src.db import get_session
 from src.models import Deck, PriceSnapshot
+from src.perfcache import memoize
 from src.prices import CHART_RANGES, DEFAULT_RANGE, build_value_chart, range_days, value_series
 from src.routes.wishlist import _image as wishlist_image
 from src.sell import sell_list
@@ -62,16 +63,21 @@ async def collection(
     }
 
     if tab == "stats":
-        ctx["stats"] = await collection_stats(session, currency)
-        ctx["value_chart"] = build_value_chart(await value_series(session, range_days(chart_range)))
+        async def _chart():
+            return build_value_chart(await value_series(session, range_days(chart_range)))
+
+        ctx["stats"] = await memoize(("stats", currency),
+                                     lambda: collection_stats(session, currency))
+        ctx["value_chart"] = await memoize(("vchart", chart_range), _chart)
         ctx["chart_range"] = chart_range
         ctx["chart_ranges"] = CHART_RANGES
         ctx["has_price_history"] = bool(
             await session.scalar(select(PriceSnapshot.id).limit(1))
         )
-        ctx["growth"] = await collection_growth(session, currency)
+        ctx["growth"] = await memoize(("growth", currency),
+                                      lambda: collection_growth(session, currency))
         if view == "sets":
-            ctx["sets"] = await set_progress(session)
+            ctx["sets"] = await memoize("setprog", lambda: set_progress(session))
     elif tab == "decks":
         rows = await session.execute(
             select(Deck, func.count()).outerjoin(Deck.cards)

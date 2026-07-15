@@ -52,6 +52,8 @@ def _schema():
 async def _clean_tables():
     """Truncate mutable tables between tests for isolation."""
     yield
+    from src import perfcache
+    perfcache.clear()  # the read-only TTL cache is process-global; reset it between tests
     async with engine.begin() as conn:
         await conn.execute(text("TRUNCATE collection_card RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE saved_search RESTART IDENTITY CASCADE"))

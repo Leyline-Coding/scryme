@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only
 
-from src.models import Card
+from src.models import Card, CollectionCard
 from src.search import SearchScope
 from src.search.engine import build_search
 from src.stats import _RARITY_ORDER, _primary_type
@@ -108,18 +108,19 @@ async def compute_facets(
             if legalities.get(fmt) in _LEGAL:
                 legal[fmt] = legal.get(fmt, 0) + 1
 
-    # Finish availability lives in the raw card object (avoid loading it for every row above);
-    # a couple of counts over the same result set are cheap.
-    foil_count = await session.scalar(
-        select(func.count()).select_from(
-            base.where(Card.raw["foil"].astext == "true").limit(FACET_ROW_CAP).subquery()
+    # Finish facets count printings you own in that finish (matching the is:foil / is:etched
+    # filter), not merely printings that *can* be foil/etched — so the count agrees with what
+    # clicking the facet returns.
+    def _finish_count(finish: str):
+        owned = select(CollectionCard.scryfall_id).where(
+            func.lower(CollectionCard.finish) == finish
         )
-    ) or 0
-    etched_count = await session.scalar(
-        select(func.count()).select_from(
-            base.where(Card.raw["finishes"].astext.contains("etched")).limit(FACET_ROW_CAP).subquery()
+        return select(func.count()).select_from(
+            base.where(Card.scryfall_id.in_(owned)).limit(FACET_ROW_CAP).subquery()
         )
-    ) or 0
+
+    foil_count = await session.scalar(_finish_count("foil")) or 0
+    etched_count = await session.scalar(_finish_count("etched")) or 0
 
     groups: list[FacetGroup] = []
 

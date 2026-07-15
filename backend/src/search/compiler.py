@@ -256,6 +256,9 @@ def _is(term: Term) -> ColumnElement:
             CollectionCard.grade_company.isnot(None)
         )
         return Card.scryfall_id.in_(graded)
+    if val == "etched":
+        # Etched foil lives in the printing's `finishes` array, not a top-level flag.
+        return Card.raw["finishes"].astext.contains("etched")
     # Fall back to a boolean flag on the raw card object (foil, promo, reserved, reprint, ...).
     return Card.raw[val].astext == "true"
 

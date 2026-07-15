@@ -22,6 +22,7 @@ from src.db import get_session
 from src.facets import compute_facets
 from src.llm import ChatClient, get_config, nl_to_query
 from src.models import Card
+from src.perfcache import memoize
 from src.prices import biggest_movers
 from src.routes.saved import list_saved
 from src.scryfall.images import ImageCache
@@ -138,7 +139,10 @@ async def search(
         ctx["result"] = result
         ctx["views"] = _to_views(result)
         if result.total:
-            ctx["facets"] = await compute_facets(session, effective_q, scope_enum)
+            ctx["facets"] = await memoize(
+                ("facets", effective_q, scope_enum.value),
+                lambda: compute_facets(session, effective_q, scope_enum),
+            )
         else:
             ctx["suggestions"] = await name_suggestions(session, q, scope_enum)
     except SearchError as exc:
@@ -171,5 +175,5 @@ async def search(
     ctx["binders"] = await all_binders(session)
     # Optional biggest-movers panel (opt-in via a Settings cookie).
     if request.cookies.get("scryme_movers") == "1":
-        ctx["movers"] = await biggest_movers(session, limit=5)
+        ctx["movers"] = await memoize("movers", lambda: biggest_movers(session, limit=5))
     return templates.TemplateResponse(request, "search.html", ctx)

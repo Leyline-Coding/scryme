@@ -19,16 +19,18 @@ def test_toggle_adds_and_removes():
 
 async def _seed(session):
     cards = [
-        # name, colors, rarity, type_line, set, set_name
-        ("Bear", ["G"], "common", "Creature — Bear", "tst", "Test Set"),
-        ("Bolt", ["R"], "common", "Instant", "tst", "Test Set"),
-        ("Hybrid", ["R", "G"], "rare", "Creature — Beast", "oth", "Other Set"),
-        ("Rock", [], "uncommon", "Artifact", "oth", "Other Set"),
+        # name, colors, rarity, type_line, set, set_name, released, legal_commander, foil
+        ("Bear", ["G"], "common", "Creature — Bear", "tst", "Test Set", "2021-01-01", True, True),
+        ("Bolt", ["R"], "common", "Instant", "tst", "Test Set", "2021-06-01", True, False),
+        ("Hybrid", ["R", "G"], "rare", "Creature", "oth", "Other Set", "2023-02-01", True, True),
+        ("Rock", [], "uncommon", "Artifact", "oth", "Other Set", "2023-09-01", False, False),
     ]
-    for i, (name, colors, rarity, tl, sc, sn) in enumerate(cards):
+    for i, (name, colors, rarity, tl, sc, sn, rel, legal, foil) in enumerate(cards):
         raw = {"id": str(uuid.uuid4()), "oracle_id": str(uuid.uuid4()), "name": name,
                "set": sc, "set_name": sn, "collector_number": str(i), "rarity": rarity,
                "type_line": tl, "colors": colors, "color_identity": colors,
+               "released_at": rel, "foil": foil,
+               "legalities": {"commander": "legal" if legal else "not_legal"},
                "prices": {"usd": "1.00"}}
         c = Card(**card_to_columns(raw))
         session.add(c)
@@ -68,10 +70,26 @@ async def test_facet_value_tokens_and_toggle(session):
 
 
 @pytest.mark.asyncio
+async def test_year_legality_foil_facets(session):
+    await _seed(session)
+    groups = {g.key: g for g in await compute_facets(session, "", SearchScope.COLLECTION)}
+
+    years = {v.label: (v.token, v.count) for v in groups["year"].values}
+    assert years["2023"] == ("year:2023", 2) and years["2021"] == ("year:2021", 2)
+    assert [v.label for v in groups["year"].values] == ["2023", "2021"]  # recent first
+
+    legality = {v.label: (v.token, v.count) for v in groups["legality"].values}
+    assert legality["Commander"] == ("f:commander", 3)  # 3 of 4 are commander-legal
+
+    foil = {v.label: (v.token, v.count) for v in groups["foil"].values}
+    assert foil["Foil"] == ("is:foil", 2)  # Bear + Hybrid
+
+
+@pytest.mark.asyncio
 async def test_view_toggle_grid_vs_list(client, session):
     await _seed(session)
     grid = await client.get("/search?q=")
-    assert "grid grid-cols-2" in grid.text and "<table" not in grid.text
+    assert "card-grid" in grid.text and "<table" not in grid.text
     lst = await client.get("/search?q=", headers={"Cookie": "scryme_view=list"})
     assert "<table" in lst.text and "<thead" in lst.text
 

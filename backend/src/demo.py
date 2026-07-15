@@ -1,10 +1,12 @@
 """Seed a rich sample collection for the public demo.
 
-Builds a ~6,000-card collection from already-ingested cards with a deliberate spread — colour
-balance, a 50/50 split around $5, and a sampling of each format's banned list (plus Vintage's
-restricted list) — so the demo shows off search, stats, decks, and price tracking at a realistic
-scale. The collection is dated to 2019 (with synthesized monthly price history) so the value-over
--time and acquisition P/L views have years of data to display.
+Builds a ~12,000-card collection from already-ingested cards with a deliberate spread — colour
+balance, a price mix around $5, a sampling of each format's banned list (plus Vintage's restricted
+list), and cards drawn at random across many sets — so the demo shows off search, stats, decks, and
+price tracking at a realistic scale. Ownership is spread from **October 8, 2005** (Ravnica: City of
+Guilds) to today, with synthesized monthly price history, so the value-over-time, growth, and
+acquisition P/L views have two decades of data. Foil / etched finishes are assigned only to
+printings that actually offer them.
 
 Run after ingesting card data; pair with SCRYME_READ_ONLY=true. Every step is idempotent — safe to
 re-run on each restart (it skips when the demo collection is already populated).
@@ -27,7 +29,7 @@ from src.wishlist import add_to_wishlist
 
 log = structlog.get_logger()
 
-DEFAULT_LIMIT = 6000  # retained for the CLI flag; the curated build uses its own targets
+DEFAULT_LIMIT = 12000  # retained for the CLI flag; the curated build uses its own targets
 _DECK_DIR = Path(__file__).resolve().parent / "seed_data" / "decks"
 EXAMPLE_DECKS = {
     "Heavenly Inferno (Commander)": "heavenly_inferno.txt",
@@ -35,11 +37,12 @@ EXAMPLE_DECKS = {
     "Goblins (Duel Decks)": "goblins.txt",
 }
 
-# Collection shape.
-MONO_COLORS = {"W": 1000, "U": 1000, "B": 1000, "R": 1000, "G": 1000}
-COLORLESS_TARGET = 500
-MULTI_TARGET = 500
-PRICE_SPLIT = 5.0  # roughly half the collection at/above $5, half below
+# Collection shape (~12,000 cards).
+MONO_COLORS = {"W": 2000, "U": 2000, "B": 2000, "R": 2000, "G": 2000}
+COLORLESS_TARGET = 1000
+MULTI_TARGET = 1000
+PRICE_SPLIT = 5.0        # a chunk at/above $5, the rest below (topped up from any price)
+_ABOVE_FRACTION = 0.35   # aim ~35% of each bucket at/above $5 (expensive cards are scarcer)
 
 # At least this many cards from each format's banned list, plus Vintage's restricted list.
 BANNED_FORMATS = [
@@ -48,7 +51,11 @@ BANNED_FORMATS = [
 MIN_BANNED = 3
 MIN_RESTRICTED = 6  # restricted is a Vintage concept; Legacy uses a banned list (covered above)
 
-IMPORT_YEAR = 2019
+IMPORT_YEAR = 2019  # RNG seed (deterministic selection)
+COLLECTION_START = datetime.date(2005, 10, 8)  # Ravnica: City of Guilds — collecting begins here
+# Fraction of finish-capable printings to make foil / etched (only where the printing offers it).
+_FOIL_FRACTION = 0.18
+_ETCHED_FRACTION = 0.45
 _SEED_GUARD = 5000  # consider the demo already built when this many demo cards exist
 
 _USD = cast(Card.prices["usd"].astext, Float)
@@ -72,32 +79,39 @@ _DEMO_CHECKLISTS = {
 
 
 async def _take(session, where, count: int, used: set, out: list) -> None:
-    """Pick up to ``count`` distinct cards matching ``where``, ~50/50 around $5."""
+    """Pick ``count`` distinct cards matching ``where``, biased ~35% toward $5+ then topped up from
+    any price so the target is reliably met (expensive cards are too scarce to fill it alone)."""
     if count <= 0:
         return
-    below = count // 2
-    bands = [(_USD >= PRICE_SPLIT, count - below), (and_(_USD > 0, _USD < PRICE_SPLIT), below)]
+    above = int(count * _ABOVE_FRACTION)
+    bands = [
+        (_USD >= PRICE_SPLIT, above),
+        (and_(_USD > 0, _USD < PRICE_SPLIT), count - above),
+        (None, count),  # top-up from anything matching (incl. price-less cards)
+    ]
+    taken = 0
     for band, want in bands:
-        if want <= 0:
+        need = min(want, count - taken)
+        if need <= 0:
             continue
+        clause = where if band is None else and_(where, band)
         rows = (
             await session.execute(
                 select(Card.scryfall_id, Card.oracle_id, _USD)
-                .where(where, band)
+                .where(clause)
                 .order_by(func.random())
-                .limit(want * 4 + 50)
+                .limit(need * 4 + 100)
             )
         ).all()
-        got = 0
         for sid, oracle, usd in rows:
             key = oracle or sid
             if key in used:
                 continue
             used.add(key)
             out.append((sid, float(usd) if usd else 0.0))
-            got += 1
-            if got >= want:
-                break
+            taken += 1
+            if taken >= count:
+                return
 
 
 async def _ensure_status(session, fmt: str, status: str, count: int, used: set, out: list) -> None:
@@ -124,10 +138,14 @@ async def _ensure_status(session, fmt: str, status: str, count: int, used: set, 
 
 
 def _import_date(rng: random.Random) -> datetime.datetime:
-    """A random day in the import year (2019), so the collection looks gradually acquired."""
+    """A random day between COLLECTION_START (2005-10-08) and today, so the collection looks
+    gradually acquired over two decades. (A later pass bumps any date earlier than a card's own
+    release so nothing is 'owned' before it existed.)"""
+    start = COLLECTION_START.toordinal()
+    end = datetime.date.today().toordinal()
+    day = datetime.date.fromordinal(rng.randint(start, end))
     return datetime.datetime(
-        IMPORT_YEAR, rng.randint(1, 12), rng.randint(1, 28),
-        rng.randint(0, 23), rng.randint(0, 59), tzinfo=datetime.UTC,
+        day.year, day.month, day.day, rng.randint(0, 23), rng.randint(0, 59), tzinfo=datetime.UTC,
     )
 
 
@@ -142,7 +160,7 @@ def _month_starts(start: datetime.datetime, end: datetime.datetime) -> list[date
 
 
 async def _seed_price_history(session, cards: list, rng: random.Random) -> None:
-    """Synthesize monthly value snapshots from 2019 → now so the value chart has real history.
+    """Synthesize monthly value snapshots from 2005 → now so the value chart has real history.
 
     The two most recent months also get per-card points so the "biggest movers" view works in the
     read-only demo (where the live scheduler doesn't run).
@@ -151,20 +169,17 @@ async def _seed_price_history(session, cards: list, rng: random.Random) -> None:
         return
     current_total = sum(usd for _, usd in cards)
     months = _month_starts(
-        datetime.datetime(IMPORT_YEAR, 1, 1, tzinfo=datetime.UTC),
+        datetime.datetime(COLLECTION_START.year, COLLECTION_START.month, 1, tzinfo=datetime.UTC),
         datetime.datetime.now(datetime.UTC),
     )
     n = len(months)
     snaps: list[PriceSnapshot] = []
     for i, when in enumerate(months):
-        if when.year == IMPORT_YEAR:
-            # The collection is being imported through 2019: value ramps up.
-            factor = 0.1 + 0.6 * ((i + 1) / 12)
-        else:
-            # Afterward, steady appreciation toward the current value.
-            post = (i - 11) / max(1, n - 12)
-            factor = 0.7 + 0.35 * post
-        value = current_total * factor * rng.uniform(0.96, 1.04)
+        # Value ramps from ~5% (2005) to 100% (now) as the collection is gradually acquired, with a
+        # gentle acceleration and month-to-month noise.
+        progress = i / max(1, n - 1)
+        factor = 0.05 + 0.95 * (progress ** 1.25)
+        value = current_total * factor * rng.uniform(0.97, 1.03)
         snaps.append(
             PriceSnapshot(captured_at=when, total_usd=round(value, 2), card_count=len(cards))
         )
@@ -184,6 +199,41 @@ async def _seed_price_history(session, cards: list, rng: random.Random) -> None:
                     usd=round(usd * rng.uniform(0.8, 1.15), 2),
                 )
             )
+
+
+async def _seed_finishes(session) -> None:
+    """Give demo stacks foil / etched finishes — but only where the printing offers them (foil flag,
+    'etched' in the finishes array). Etched first so the foil pass can't overwrite it."""
+    await session.execute(
+        text(
+            "UPDATE collection_card cc SET finish = 'etched' "
+            "FROM cards c WHERE c.scryfall_id = cc.scryfall_id AND cc.source_format = 'demo' "
+            "AND cc.finish = 'normal' AND c.raw -> 'finishes' @> '[\"etched\"]' AND random() < :p"
+        ),
+        {"p": _ETCHED_FRACTION},
+    )
+    await session.execute(
+        text(
+            "UPDATE collection_card cc SET finish = 'foil' "
+            "FROM cards c WHERE c.scryfall_id = cc.scryfall_id AND cc.source_format = 'demo' "
+            "AND cc.finish = 'normal' AND (c.raw ->> 'foil') = 'true' AND random() < :p"
+        ),
+        {"p": _FOIL_FRACTION},
+    )
+    await session.commit()
+
+
+async def _clamp_dates(session) -> None:
+    """Bump any acquisition date earlier than a card's own release up to its release date, so
+    nothing is 'owned' before it existed."""
+    await session.execute(
+        text(
+            "UPDATE collection_card cc SET added_at = c.released_at::timestamptz "
+            "FROM cards c WHERE c.scryfall_id = cc.scryfall_id AND cc.source_format = 'demo' "
+            "AND c.released_at IS NOT NULL AND cc.added_at < c.released_at"
+        )
+    )
+    await session.commit()
 
 
 async def _seed_showcase(session) -> None:
@@ -283,6 +333,8 @@ async def seed_demo(limit: int = DEFAULT_LIMIT) -> int:
                 )
             )
         await session.flush()
+        await _clamp_dates(session)     # no card owned before it was printed
+        await _seed_finishes(session)   # foil / etched where the printing offers it
         await _seed_price_history(session, out, rng)
         # Showcase storage boxes (#160): two physical boxes, filed by rarity (idempotent).
         existing_boxes = set(await session.scalars(select(Box.name)))

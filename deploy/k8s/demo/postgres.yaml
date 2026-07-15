@@ -32,6 +32,22 @@ spec:
       containers:
         - name: postgres
           image: postgres:16-alpine
+          # Tuned for the demo's read-heavy trigram/regex search + facets/stats over ~115k cards.
+          # Stock defaults (shared_buffers=128MB, work_mem=4MB) thrash the PVC because almost
+          # nothing stays cached; these let the hot indexes/table pages stay resident in the 2Gi
+          # limit. effective_cache_size is a planner hint (~OS cache), so it steers plans toward
+          # index scans without reserving memory.
+          args:
+            - "-c"
+            - "shared_buffers=512MB"
+            - "-c"
+            - "effective_cache_size=1536MB"
+            - "-c"
+            - "work_mem=32MB"
+            - "-c"
+            - "maintenance_work_mem=128MB"
+            - "-c"
+            - "random_page_cost=1.1"
           env:
             - name: POSTGRES_USER
               value: scryme
@@ -56,10 +72,11 @@ spec:
             periodSeconds: 5
           resources:
             requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
+              cpu: 250m
               memory: 512Mi
+            # No CPU limit: let Postgres burst on heavy searches (nodes have ample headroom).
+            limits:
+              memory: 2Gi
       volumes:
         - name: data
           persistentVolumeClaim:

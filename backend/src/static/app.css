@@ -161,6 +161,35 @@
   color: #1b1030;
 }
 
+/* Etched foil — a cooler, engraved look: a static crosshatch "etch" texture plus a metallic
+   silver sheen sweep. Distinct from the rainbow foil above; shares the speed var and glare sweep. */
+.etched { position: relative; overflow: hidden; isolation: isolate; }
+.etched::before,
+.etched::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.etched::before {
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.10) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(-45deg, rgba(175, 215, 255, 0.10) 0 2px, transparent 2px 7px);
+  mix-blend-mode: overlay;
+  opacity: 0.75;
+}
+.etched::after {
+  background: linear-gradient(115deg, transparent 42%,
+    rgba(210, 230, 255, 0.55) 50%, rgba(255, 255, 255, 0.40) 54%, transparent 62%);
+  background-size: 250% 250%;
+  mix-blend-mode: color-dodge;
+  animation: foil-glare var(--foil-speed) linear infinite;
+}
+.etched:hover::after { animation-duration: calc(var(--foil-speed) * 0.45); }
+@media (prefers-reduced-motion: reduce) { .etched::after { animation: none; } }
+
+.etched-chip {
+  background: linear-gradient(115deg, #cfe3ff, #eef5ff, #b8cbe0, #dfe9f5);
+  background-size: 300% 300%;
+  animation: foil-shift var(--foil-speed) linear infinite;
+  color: #17324f;
+}
+
 /* Hover spin: a cursor-reactive 3-D tilt on card images/art, enabled by the `spin-on` root class
    (toggled from Settings). The transform is set inline by _card_spin.html from the pointer's
    position, so the card leans toward the cursor; this rule just smooths it (and the return) at the

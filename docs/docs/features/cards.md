@@ -11,8 +11,9 @@ Click any card in the results grid (or a binder/stats list) to open its detail p
 - Prices (USD / USD foil / EUR / TIX when available).
 - A **format legality** grid.
 - **In your collection** — every stack you own of that printing (quantity, finish, condition,
-  language, binder). Own it in **foil**? The card art gets an animated holographic sheen and the
-  finish shows a shiny ✦ chip.
+  language, binder). Own it in **foil** or **etched foil**? The card art gets an animated sheen (a
+  rainbow holo for foil, a cooler engraved shimmer for etched) and the finish shows a shiny chip
+  (✦ foil / ❖ etched). Find them with `is:foil` / `is:etched`.
 - **Other printings** — thumbnails of every other printing of the card, each linking to its own
   page.
 - **Rulings** — loaded on demand from Scryfall; the page renders instantly and degrades gracefully

@@ -7,6 +7,7 @@ from src.facets import _toggle, compute_facets
 from src.models import Card, CollectionCard
 from src.scryfall.mapping import card_to_columns
 from src.search import SearchScope
+from src.search.engine import run_search
 
 
 def test_toggle_adds_and_removes():
@@ -26,10 +27,13 @@ async def _seed(session):
         ("Rock", [], "uncommon", "Artifact", "oth", "Other Set", "2023-09-01", False, False),
     ]
     for i, (name, colors, rarity, tl, sc, sn, rel, legal, foil) in enumerate(cards):
+        finishes = ["nonfoil"] + (["foil"] if foil else [])
+        if name == "Hybrid":
+            finishes.append("etched")   # Hybrid is available in etched foil
         raw = {"id": str(uuid.uuid4()), "oracle_id": str(uuid.uuid4()), "name": name,
                "set": sc, "set_name": sn, "collector_number": str(i), "rarity": rarity,
                "type_line": tl, "colors": colors, "color_identity": colors,
-               "released_at": rel, "foil": foil,
+               "released_at": rel, "foil": foil, "finishes": finishes,
                "legalities": {"commander": "legal" if legal else "not_legal"},
                "prices": {"usd": "1.00"}}
         c = Card(**card_to_columns(raw))
@@ -81,8 +85,12 @@ async def test_year_legality_foil_facets(session):
     legality = {v.label: (v.token, v.count) for v in groups["legality"].values}
     assert legality["Commander"] == ("f:commander", 3)  # 3 of 4 are commander-legal
 
-    foil = {v.label: (v.token, v.count) for v in groups["foil"].values}
-    assert foil["Foil"] == ("is:foil", 2)  # Bear + Hybrid
+    finish = {v.label: (v.token, v.count) for v in groups["foil"].values}
+    assert finish["Foil"] == ("is:foil", 2)      # Bear + Hybrid
+    assert finish["Etched"] == ("is:etched", 1)  # Hybrid
+
+    res = await run_search(session, "is:etched", scope=SearchScope.COLLECTION)
+    assert [c.name for c in res.cards] == ["Hybrid"]
 
 
 @pytest.mark.asyncio

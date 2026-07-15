@@ -108,11 +108,16 @@ async def compute_facets(
             if legalities.get(fmt) in _LEGAL:
                 legal[fmt] = legal.get(fmt, 0) + 1
 
-    # Foil availability lives in the raw card object (avoid loading it for every row above);
-    # a single count over the same result set is cheap.
+    # Finish availability lives in the raw card object (avoid loading it for every row above);
+    # a couple of counts over the same result set are cheap.
     foil_count = await session.scalar(
         select(func.count()).select_from(
             base.where(Card.raw["foil"].astext == "true").limit(FACET_ROW_CAP).subquery()
+        )
+    ) or 0
+    etched_count = await session.scalar(
+        select(func.count()).select_from(
+            base.where(Card.raw["finishes"].astext.contains("etched")).limit(FACET_ROW_CAP).subquery()
         )
     ) or 0
 
@@ -152,7 +157,12 @@ async def compute_facets(
                              [(f.capitalize(), f"f:{f}", legal[f])
                               for f in _FACET_FORMATS if legal.get(f)]))
 
+    finish_items = []
     if foil_count:
-        groups.append(_group(query, "foil", "Finish", [("Foil", "is:foil", foil_count)]))
+        finish_items.append(("Foil", "is:foil", foil_count))
+    if etched_count:
+        finish_items.append(("Etched", "is:etched", etched_count))
+    if finish_items:
+        groups.append(_group(query, "foil", "Finish", finish_items))
 
     return groups

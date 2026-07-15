@@ -11,9 +11,43 @@
     {# Art #}
     <div class="space-y-3 w-full max-w-[300px] mx-auto md:mx-0">
       {% if image %}
+      {% if can_flip or can_rotate %}
+      {# Interactive art: Scryfall-style transform (flip) for double-faced cards and/or a rotate
+         button for sideways-read cards (battles, planes, aftermath), each with an animation. #}
+      <div class="art-stage" x-data="{
+             face: 0, rot: 0, flipping: false,
+             front: '{{ image }}'{% if can_flip %}, back: '{{ flip_image }}'{% endif %},
+             flip() { if (this.flipping) return; this.flipping = true;
+                      setTimeout(() => { this.face = this.face ? 0 : 1; }, 170);
+                      setTimeout(() => { this.flipping = false; }, 190); },
+             rotate() { this.rot += 90; }
+           }"
+           :style="'transform: rotate(' + rot + 'deg) scale(' + (rot % 180 ? 0.72 : 1) + ')'">
+        <div class="card-art {% if owned_etched %}etched {% elif owned_foil %}foil {% endif %}rounded-2xl ring-1 ring-edge shadow-lg"
+             style="perspective: 1200px">
+          <img {% if can_flip %}:src="face ? back : front"{% else %}src="{{ image }}"{% endif %}
+               alt="{{ card.name }}" class="w-full rounded-2xl card-fx-img"
+               :class="{ 'is-flipping': flipping }" />
+        </div>
+      </div>
+      {% if can_flip %}<img src="{{ flip_image }}" alt="" aria-hidden="true" class="hidden" />{% endif %}
+      <div class="flex flex-wrap justify-center gap-2">
+        {% if can_flip %}
+        <button type="button" @click="flip()"
+                class="rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-1.5 text-sm font-medium">
+          ⇅ Transform</button>
+        {% endif %}
+        {% if can_rotate %}
+        <button type="button" @click="rotate()"
+                class="rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-1.5 text-sm font-medium">
+          ⟳ Rotate</button>
+        {% endif %}
+      </div>
+      {% else %}
       <div class="card-art {% if owned_etched %}etched {% elif owned_foil %}foil {% endif %}rounded-2xl ring-1 ring-edge shadow-lg">
         <img src="{{ image }}" alt="{{ card.name }}" class="w-full rounded-2xl" />
       </div>
+      {% endif %}
       {% if owned_foil or owned_etched %}
       <p class="text-center text-xs space-x-1">
         {% if owned_foil %}<span class="rounded-full foil-chip px-2 py-0.5 font-semibold">✦ Foil</span>{% endif %}

@@ -1,5 +1,6 @@
-{# Fan Content Policy + pricing disclaimer, shown at the bottom of every page. #}
-<footer class="max-w-4xl mx-auto px-4 py-8 mt-4 border-t border-edge text-xs text-muted space-y-2 print:hidden">
+{# Fan Content Policy + pricing disclaimer, centered at the bottom of every page. #}
+<footer class="w-full max-w-4xl mx-auto px-4 py-8 mt-4 border-t border-edge text-xs text-muted
+               text-center space-y-2 print:hidden">
   <p>
     Scryme is an unofficial Fan project permitted under the
     <a href="https://company.wizards.com/en/legal/fancontentpolicy" target="_blank" rel="noopener"
@@ -14,5 +15,9 @@
     Card prices and promotional offers represent daily estimates and/or market values provided by
     major markets. Absolutely no guarantee is made for any price information. See stores for final
     prices and details.
+  </p>
+  <p class="pt-1 text-muted/80">
+    <a href="https://github.com/Leyline-Coding/scryme/releases/tag/v{{ app_version }}"
+       target="_blank" rel="noopener" class="hover:text-fg">scryme v{{ app_version }}</a>
   </p>
 </footer>

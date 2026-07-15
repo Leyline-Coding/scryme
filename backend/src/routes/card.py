@@ -98,6 +98,19 @@ async def card_detail(
             .all()
         )
 
+    # Double-faced cards (transform / modal DFC / battles / reversible) carry a separate image per
+    # face — offer a Scryfall-style flip button. Battles, Planes/Phenomena, and Aftermath cards read
+    # sideways, so offer a rotate button. Both get playful animations on the card page.
+    raw_faces = card.raw.get("card_faces") or []
+    face_images = [
+        (f.get("image_uris") or {}).get("normal") or (f.get("image_uris") or {}).get("png")
+        for f in raw_faces
+    ]
+    can_flip = sum(1 for u in face_images if u) >= 2
+    flip_image = face_images[1] if can_flip else None
+    keywords = [k.lower() for k in (card.keywords or [])]
+    can_rotate = card.layout in ("battle", "planar") or "aftermath" in keywords
+
     prices = card.prices or {}
     _usd_rows = [("USD", "usd"), ("USD foil", "usd_foil")]
     _eur_rows = [("EUR", "eur"), ("EUR foil", "eur_foil")]
@@ -129,6 +142,9 @@ async def card_detail(
             "owned_total": sum(s.quantity for s in owned),
             "owned_foil": any((s.finish or "").lower() == "foil" for s in owned),
             "owned_etched": any((s.finish or "").lower() == "etched" for s in owned),
+            "can_flip": can_flip,
+            "flip_image": flip_image,
+            "can_rotate": can_rotate,
             "printings": [(p, _image(p, "small")) for p in printings],
             "price_rows": price_rows,
             "legality_rows": legality_rows,

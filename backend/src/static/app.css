@@ -263,6 +263,25 @@
 .spin-on a[href^="/card/"]:has(img):hover,
 .spin-on .card-art:hover { z-index: 5; will-change: transform; }
 
+/* Card-detail Transform / Rotate controls. The rotate spins the whole card (springy overshoot,
+   scaled to keep a sideways card inside its column); the transform pulses the image edge-on
+   (rotateY) while its src swaps, mimicking a physical card flip. Applied to a wrapper and the
+   <img> respectively, so neither collides with the .card-art hover-tilt transform above. */
+.art-stage {
+  transition: transform 0.55s cubic-bezier(0.34, 1.3, 0.5, 1);
+  transform-origin: center;
+  will-change: transform;
+}
+.card-fx-img {
+  transition: transform 0.17s ease-in;
+  transform-origin: center;
+  backface-visibility: hidden;
+}
+.card-fx-img.is-flipping { transform: rotateY(90deg); }
+@media (prefers-reduced-motion: reduce) {
+  .art-stage, .card-fx-img { transition: none; }
+}
+
 /* HTMX request indicator (shown only while a request tagged with hx-indicator is in flight). */
 .htmx-indicator { display: none; }
 .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline; }

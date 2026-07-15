@@ -1,0 +1,25 @@
+{# Grid hover-flip for double-faced cards: clicking the flip button on a card thumbnail swaps to the
+   other face instead of navigating. Delegated on document so it survives HTMX result swaps. #}
+<script>
+(function () {
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest && e.target.closest(".grid-flip-btn");
+    if (!btn) return;
+    e.preventDefault();     // don't follow the card link
+    e.stopPropagation();
+    var img = btn.closest("a") && btn.closest("a").querySelector("img.grid-card-img");
+    if (!img) return;
+    var toBack = img.getAttribute("data-face") !== "back";
+    var next = toBack ? img.getAttribute("data-back") : img.getAttribute("data-front");
+    if (!next) return;
+    img.classList.remove("grid-flipping");
+    void img.offsetWidth;   // restart the animation on rapid clicks
+    img.classList.add("grid-flipping");
+    setTimeout(function () {
+      img.src = next;
+      img.setAttribute("data-face", toBack ? "back" : "front");
+    }, 150);                // swap at the edge-on midpoint of the flip
+    setTimeout(function () { img.classList.remove("grid-flipping"); }, 340);
+  });
+})();
+</script>

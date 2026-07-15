@@ -42,6 +42,18 @@ class CardView:
     image: str
     scryfall_uri: str
     tags: list[str]
+    flip_back: str | None = None  # back-face image for double-faced cards (grid hover-flip)
+
+
+def _back_face_image(card) -> str | None:
+    """Back-face image URL for a double-faced card (both faces must have their own image)."""
+    faces = card.raw.get("card_faces") or []
+    uris = [f.get("image_uris") or {} for f in faces]
+    if len(uris) < 2:
+        return None
+    front = uris[0].get("normal") or uris[0].get("large") or uris[0].get("small")
+    back = uris[1].get("normal") or uris[1].get("large") or uris[1].get("small")
+    return back if front and back else None
 
 
 def _apply_universal(q: str, universal: str) -> str:
@@ -68,6 +80,7 @@ def _to_views(result) -> list[CardView]:
                 image=image or "",
                 scryfall_uri=card.raw.get("scryfall_uri", "#"),
                 tags=result.tags.get(sid, []),
+                flip_back=_back_face_image(card),
             )
         )
     return views

@@ -13,36 +13,54 @@
       {% if image %}
       {% if can_flip or can_rotate %}
       {# Interactive art: Scryfall-style transform (flip) for double-faced cards and/or a rotate
-         button for sideways-read cards (battles, planes, aftermath), each with an animation. #}
-      <div class="art-stage" x-data="{
-             face: 0, rot: 0, flipping: false,
-             front: '{{ image }}'{% if can_flip %}, back: '{{ flip_image }}'{% endif %},
-             flip() { if (this.flipping) return; this.flipping = true;
-                      setTimeout(() => { this.face = this.face ? 0 : 1; }, 170);
-                      setTimeout(() => { this.flipping = false; }, 190); },
-             rotate() { this.rot += 90; }
-           }"
-           :style="'transform: rotate(' + rot + 'deg) scale(' + (rot % 180 ? 0.72 : 1) + ')'">
+         button for sideways-read cards (battles, planes, aftermath), each with an animation.
+         Wired by the vanilla script below (no Alpine) so it can't collide with the hover-tilt. #}
+      <div class="art-stage" id="card-art-stage"
+           {% if can_flip %}data-front="{{ image }}" data-back="{{ flip_image }}"{% endif %}>
         <div class="card-art {% if owned_etched %}etched {% elif owned_foil %}foil {% endif %}rounded-2xl ring-1 ring-edge shadow-lg"
              style="perspective: 1200px">
-          <img {% if can_flip %}:src="face ? back : front"{% else %}src="{{ image }}"{% endif %}
-               alt="{{ card.name }}" class="w-full rounded-2xl card-fx-img"
-               :class="{ 'is-flipping': flipping }" />
+          <img id="card-art-img" src="{{ image }}" alt="{{ card.name }}"
+               class="w-full rounded-2xl card-fx-img" />
         </div>
       </div>
       {% if can_flip %}<img src="{{ flip_image }}" alt="" aria-hidden="true" class="hidden" />{% endif %}
       <div class="flex flex-wrap justify-center gap-2">
         {% if can_flip %}
-        <button type="button" @click="flip()"
+        <button type="button" id="card-transform-btn"
                 class="rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-1.5 text-sm font-medium">
           ⇅ Transform</button>
         {% endif %}
         {% if can_rotate %}
-        <button type="button" @click="rotate()"
+        <button type="button" id="card-rotate-btn"
                 class="rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-1.5 text-sm font-medium">
           ⟳ Rotate</button>
         {% endif %}
       </div>
+      <script>
+        (function () {
+          var stage = document.getElementById("card-art-stage");
+          var img = document.getElementById("card-art-img");
+          if (!stage || !img) return;
+          var rot = 0, face = 0, flipping = false;
+          var rb = document.getElementById("card-rotate-btn");
+          if (rb) rb.addEventListener("click", function () {
+            rot -= 90;  // 90° counter-clockwise per click
+            var s = (Math.abs(rot) % 180) ? 0.72 : 1;  // shrink a sideways card to fit its column
+            stage.style.transform = "rotate(" + rot + "deg) scale(" + s + ")";
+          });
+          var tb = document.getElementById("card-transform-btn");
+          if (tb) tb.addEventListener("click", function () {
+            if (flipping) return;
+            flipping = true;
+            img.classList.add("is-flipping");            // rotateY edge-on
+            setTimeout(function () {
+              face = face ? 0 : 1;
+              img.src = face ? stage.dataset.back : stage.dataset.front;
+            }, 170);
+            setTimeout(function () { img.classList.remove("is-flipping"); flipping = false; }, 190);
+          });
+        })();
+      </script>
       {% else %}
       <div class="card-art {% if owned_etched %}etched {% elif owned_foil %}foil {% endif %}rounded-2xl ring-1 ring-edge shadow-lg">
         <img src="{{ image }}" alt="{{ card.name }}" class="w-full rounded-2xl" />

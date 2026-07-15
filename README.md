@@ -125,12 +125,18 @@ Feature branches → PRs into `main`; GitHub Actions runs the tests + lint on ev
 FastAPI · SQLAlchemy 2.0 (async) + asyncpg · PostgreSQL 16 · Alembic · Jinja2 + HTMX + Alpine.js +
 Tailwind · APScheduler · Docker + nginx.
 
-## Acknowledgements
-
-Card data and images come from [Scryfall](https://scryfall.com). scryme is unofficial Fan
-Content permitted under the Wizards of the Coast Fan Content Policy and is not affiliated with
-or endorsed by Wizards of the Coast or Scryfall.
-
 ## License
 
 See [LICENSE](LICENSE).
+
+## Disclaimer
+
+Scryme is an unofficial Fan project permitted under the [Wizards of the Coast Fan Content
+Policy](https://company.wizards.com/en/legal/fancontentpolicy). The literal information presented on
+this site about Magic: The Gathering, including card images and mana symbols, is copyright of
+Wizards of the Coast, LLC. Our card images are sourced through [Scryfall](https://scryfall.com/) as
+an intermediary. (Also our source of inspiration!) Scryme is not endorsed by Wizards of the Coast.
+
+Card prices and promotional offers represent daily estimates and/or market values provided by major
+markets. Absolutely no guarantee is made for any price information. See stores for final prices and
+details.

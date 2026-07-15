@@ -8,7 +8,7 @@ recent snapshots to find the cards whose price changed most.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -72,14 +72,32 @@ async def take_snapshot() -> PriceSnapshot | None:
         return await snapshot_prices(session)
 
 
-async def value_series(session: AsyncSession, limit: int = 90) -> list[PriceSnapshot]:
-    """Most recent snapshots, oldest-first, for the value-over-time chart."""
-    rows = (
-        await session.execute(
-            select(PriceSnapshot).order_by(desc(PriceSnapshot.captured_at)).limit(limit)
-        )
-    ).scalars().all()
-    return list(reversed(rows))
+# Value-over-time chart ranges offered in the UI: (label, days-back or None for all-time).
+CHART_RANGES = [
+    ("1w", 7), ("30d", 30), ("90d", 90), ("6mo", 182),
+    ("1y", 365), ("5y", 1825), ("10y", 3650), ("15y", 5475), ("all", None),
+]
+_RANGE_DAYS = dict(CHART_RANGES)
+DEFAULT_RANGE = "90d"
+_MAX_CHART_POINTS = 400  # downsample beyond this so long ranges stay readable/cheap to render
+
+
+def range_days(label: str) -> int | None:
+    """Days-back for a chart-range label (falls back to the default)."""
+    return _RANGE_DAYS.get(label, _RANGE_DAYS[DEFAULT_RANGE])
+
+
+async def value_series(session: AsyncSession, days: int | None = 90) -> list[PriceSnapshot]:
+    """Snapshots within the last ``days`` (``None`` = all-time), oldest-first, for the value chart.
+    Downsampled to at most ``_MAX_CHART_POINTS`` (keeping the latest) so long ranges stay light."""
+    query = select(PriceSnapshot).order_by(PriceSnapshot.captured_at)
+    if days is not None:
+        query = query.where(PriceSnapshot.captured_at >= datetime.now(UTC) - timedelta(days=days))
+    rows = list((await session.execute(query)).scalars().all())
+    if len(rows) > _MAX_CHART_POINTS:
+        step = len(rows) / _MAX_CHART_POINTS
+        rows = [rows[int(i * step)] for i in range(_MAX_CHART_POINTS)] + [rows[-1]]
+    return rows
 
 
 @dataclass

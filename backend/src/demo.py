@@ -161,46 +161,55 @@ def _month_starts(start: datetime.datetime, end: datetime.datetime) -> list[date
     return out
 
 
-async def _seed_price_history(session, cards: list, rng: random.Random) -> None:
-    """Synthesize monthly value snapshots from 2005 → now so the value chart has real history.
+async def _seed_price_history(session, rng: random.Random) -> None:
+    """Build monthly value snapshots from the collection's actual acquisition dates: each month's
+    total is the value of everything owned by then, so the curve grows as cards are added (and jumps
+    when pricey cards arrive) instead of ramping linearly. Read from the DB after acquisition dates
+    are assigned.
 
     The two most recent months also get per-card points so the "biggest movers" view works in the
     read-only demo (where the live scheduler doesn't run).
     """
     if await session.scalar(select(func.count()).select_from(PriceSnapshot)):
         return
-    current_total = sum(usd for _, usd in cards)
+    owned = (
+        await session.execute(
+            select(CollectionCard.scryfall_id, CollectionCard.added_at, _USD)
+            .join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
+            .where(CollectionCard.source_format == "demo")
+        )
+    ).all()
+    # (added_at, usd) sorted by acquisition, for a running cumulative total.
+    dated = sorted(((a, float(u) if u else 0.0) for _, a, u in owned if a), key=lambda r: r[0])
+
     months = _month_starts(
         datetime.datetime(COLLECTION_START.year, COLLECTION_START.month, 1, tzinfo=datetime.UTC),
         datetime.datetime.now(datetime.UTC),
     )
-    n = len(months)
     snaps: list[PriceSnapshot] = []
-    for i, when in enumerate(months):
-        # Value ramps from ~5% (2005) to 100% (now) as the collection is gradually acquired, with a
-        # gentle acceleration and month-to-month noise.
-        progress = i / max(1, n - 1)
-        factor = 0.05 + 0.95 * (progress ** 1.25)
-        value = current_total * factor * rng.uniform(0.97, 1.03)
-        snaps.append(
-            PriceSnapshot(captured_at=when, total_usd=round(value, 2), card_count=len(cards))
-        )
+    idx, cum, cnt = 0, 0.0, 0
+    for when in months:
+        while idx < len(dated) and dated[idx][0] <= when:  # cards owned by the start of this month
+            cum += dated[idx][1]
+            cnt += 1
+            idx += 1
+        snaps.append(PriceSnapshot(
+            captured_at=when, total_usd=round(cum * rng.uniform(0.99, 1.01), 2), card_count=cnt
+        ))
     session.add_all(snaps)
     await session.flush()
 
     # Per-card points for the last two months → movers has something to compare.
     if len(snaps) >= 2:
         prev, last = snaps[-2], snaps[-1]
-        for sid, usd in cards:
-            if usd <= 0:
+        for sid, _added, usd in owned:
+            if not usd:
                 continue
+            usd = float(usd)
             session.add(CardPricePoint(snapshot_id=last.id, scryfall_id=sid, usd=round(usd, 2)))
-            session.add(
-                CardPricePoint(
-                    snapshot_id=prev.id, scryfall_id=sid,
-                    usd=round(usd * rng.uniform(0.8, 1.15), 2),
-                )
-            )
+            session.add(CardPricePoint(
+                snapshot_id=prev.id, scryfall_id=sid, usd=round(usd * rng.uniform(0.8, 1.15), 2)
+            ))
 
 
 async def _seed_finishes(session) -> None:
@@ -225,14 +234,18 @@ async def _seed_finishes(session) -> None:
     await session.commit()
 
 
-async def _clamp_dates(session) -> None:
-    """Bump any acquisition date earlier than a card's own release up to its release date, so
-    nothing is 'owned' before it existed."""
+async def _acquire_dates(session) -> None:
+    """Set each card's acquisition date to a random 1–320 days after it was released (or after the
+    2005-10-08 collection start, for cards older than that), capped at today — so ownership
+    accumulates gradually over the years instead of everything appearing at once."""
     await session.execute(
         text(
-            "UPDATE collection_card cc SET added_at = c.released_at::timestamptz "
-            "FROM cards c WHERE c.scryfall_id = cc.scryfall_id AND cc.source_format = 'demo' "
-            "AND c.released_at IS NOT NULL AND cc.added_at < c.released_at"
+            "UPDATE collection_card cc SET added_at = LEAST("
+            "  GREATEST(c.released_at, DATE '2005-10-08')::timestamptz "
+            "    + ((1 + floor(random() * 320))::int) * interval '1 day', now()) "
+            "FROM cards c "
+            "WHERE c.scryfall_id = cc.scryfall_id AND cc.source_format = 'demo' "
+            "AND c.released_at IS NOT NULL"
         )
     )
     await session.commit()
@@ -335,9 +348,9 @@ async def seed_demo(limit: int = DEFAULT_LIMIT) -> int:
                 )
             )
         await session.flush()
-        await _clamp_dates(session)     # no card owned before it was printed
+        await _acquire_dates(session)   # gradual acquisition: release + 1–320 days, capped at today
         await _seed_finishes(session)   # foil / etched where the printing offers it
-        await _seed_price_history(session, out, rng)
+        await _seed_price_history(session, rng)  # value curve from real acquisition dates
         # Showcase storage boxes (#160): two physical boxes, filed by rarity (idempotent).
         existing_boxes = set(await session.scalars(select(Box.name)))
         for name in ("Rares & Mythics", "Bulk Box"):

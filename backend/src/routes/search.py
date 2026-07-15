@@ -22,6 +22,7 @@ from src.db import get_session
 from src.facets import compute_facets
 from src.llm import ChatClient, get_config, nl_to_query
 from src.models import Card
+from src.prices import biggest_movers
 from src.routes.saved import list_saved
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
@@ -168,4 +169,7 @@ async def search(
     ctx["read_only"] = get_settings().read_only
     ctx["ai_ready"] = (await get_config(session)).ready
     ctx["binders"] = await all_binders(session)
+    # Optional biggest-movers panel (opt-in via a Settings cookie).
+    if request.cookies.get("scryme_movers") == "1":
+        ctx["movers"] = await biggest_movers(session, limit=5)
     return templates.TemplateResponse(request, "search.html", ctx)

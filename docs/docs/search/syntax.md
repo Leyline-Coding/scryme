@@ -19,9 +19,10 @@ Queries combine **filters** with boolean logic, and by default search **your col
 
 !!! tip "Filter by clicking"
     On wider screens a **facets** sidebar appears next to the results with the colors, rarities,
-    types, and sets present in the current results (and how many of each). Click one to toggle that
-    filter — scryme just adds or removes the matching token (`c:`, `r:`, `t:`, `s:`) on your query,
-    so the search bar stays the source of truth and you can keep editing it by hand.
+    types, sets, **years**, **formats** (Legal in…), and **foil** availability present in the
+    current results (and how many of each). Click one to toggle that filter — scryme just adds or
+    removes the matching token (`c:`, `r:`, `t:`, `s:`, `year:`, `f:`, `is:foil`) on your query, so
+    the search bar stays the source of truth and you can keep editing it by hand.
 
 ## Scope
 

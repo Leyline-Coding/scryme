@@ -1,0 +1,36 @@
+{# Compact "biggest movers" panel, shown on the search page when enabled in Settings. #}
+{% macro movers_col(items, up) %}
+<ul class="space-y-1 text-sm">
+  {% for m in items %}
+  <li class="flex items-center gap-2">
+    <a href="/card/{{ m.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">
+      {{ m.name }} <span class="text-muted uppercase text-xs">{{ m.set_code }}</span>
+    </a>
+    <span class="shrink-0 tabular-nums font-medium {% if up %}text-emerald-500{% else %}text-rose-500{% endif %}">
+      {{ '+' if m.delta > 0 else '' }}{{ '{:,.2f}'.format(m.delta) }} ({{ m.pct }}%)
+    </span>
+  </li>
+  {% else %}
+  <li class="text-muted">None.</li>
+  {% endfor %}
+</ul>
+{% endmacro %}
+
+{% if movers and movers.available %}
+<section class="mb-6 rounded-xl bg-surface ring-1 ring-edge p-4">
+  <div class="flex items-baseline justify-between mb-2">
+    <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">Biggest movers</h2>
+    <a href="/prices" class="text-xs text-muted hover:text-fg">Price history →</a>
+  </div>
+  <div class="grid sm:grid-cols-2 gap-x-6 gap-y-2">
+    <div>
+      <h3 class="text-xs font-semibold text-emerald-500 mb-1">▲ Gainers</h3>
+      {{ movers_col(movers.gainers, True) }}
+    </div>
+    <div>
+      <h3 class="text-xs font-semibold text-rose-500 mb-1">▼ Losers</h3>
+      {{ movers_col(movers.losers, False) }}
+    </div>
+  </div>
+</section>
+{% endif %}

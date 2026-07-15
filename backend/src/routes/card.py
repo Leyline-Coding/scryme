@@ -23,6 +23,7 @@ from src.embeddings import similar_to_oracle
 from src.llm import get_config
 from src.models import Card, CardEmbedding, CollectionCard, Deck
 from src.price_watch import target_for
+from src.routes.collection import printing_options
 from src.scryfall.client import ScryfallClient, ScryfallError
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
@@ -146,6 +147,7 @@ async def card_detail(
                 (d.id, d.name) for d in
                 (await session.execute(select(Deck).order_by(Deck.name))).scalars().all()
             ],
+            "printing_opts": await printing_options(session, card.scryfall_id),
         },
     )
 

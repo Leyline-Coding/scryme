@@ -26,7 +26,14 @@ is editable:
 
 - **Adjust quantity** — the `−` / `+` buttons on a stack nudge its count; dropping to zero removes
   the stack.
-- **Delete** a stack with the `✕` button.
+- **Edit a stack** — the `✎` button opens an editor to change the **quantity**, **finish**
+  (normal / foil / etched), and **printing** (move the stack to another printing of the same card).
+  If an edit collides with a stack you already have, they're merged.
+- **Tags**, a storage **location** (box / binder / deck), and **grading** are edited per stack too
+  (see [tags](#tags) and [graded cards](grading.md)).
+- **Remove from collection** — the **Remove…** link opens a dialog to choose **how many copies** to
+  take out, and **which printings/finishes** when you own more than one.
+- **Delete** a whole stack outright with the `✕` button.
 - **Add to collection** — the small form adds a copy (quantity, finish, and an optional binder).
   Adding a printing you already own in the same finish/binder just increments that stack.
 

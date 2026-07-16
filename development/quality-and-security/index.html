@@ -12,13 +12,13 @@
         <meta name="author" content="Taylor Cohron">
       
       
-        <link rel="canonical" href="https://docs.scryme.app/features/checklists/">
+        <link rel="canonical" href="https://docs.scryme.app/development/quality-and-security/">
       
       
-        <link rel="prev" href="../grading/">
+        <link rel="prev" href="../contributing/">
       
       
-        <link rel="next" href="../wishlist/">
+        <link rel="next" href="../adr/0001-single-collection-accounts/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -26,7 +26,7 @@
     
     
       
-        <title>Checklists - scryme Documentation</title>
+        <title>Quality & Security - scryme Documentation</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#custom-checklists" class="md-skip">
+        <a href="#quality-security" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Checklists
+              Quality & Security
             
           </span>
         </div>
@@ -296,13 +296,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../cards/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../features/cards/" class="md-tabs__link">
           
   
     
@@ -335,11 +333,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../development/architecture/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../architecture/" class="md-tabs__link">
           
   
     
@@ -821,10 +821,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -865,12 +863,12 @@
       
       
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
@@ -884,7 +882,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             Features
@@ -898,7 +896,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cards/" class="md-nav__link">
+      <a href="../../features/cards/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -919,7 +917,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../decks/" class="md-nav__link">
+      <a href="../../features/decks/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -940,7 +938,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ai/" class="md-nav__link">
+      <a href="../../features/ai/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -961,7 +959,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../binders/" class="md-nav__link">
+      <a href="../../features/binders/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -982,7 +980,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../locations/" class="md-nav__link">
+      <a href="../../features/locations/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1003,7 +1001,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../sets/" class="md-nav__link">
+      <a href="../../features/sets/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1024,7 +1022,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../grading/" class="md-nav__link">
+      <a href="../../features/grading/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1042,30 +1040,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Checklists
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../features/checklists/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1074,44 +1052,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#create-one" class="md-nav__link">
-    <span class="md-ellipsis">
-      Create one
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#track-completion" class="md-nav__link">
-    <span class="md-ellipsis">
-      Track completion
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1124,7 +1064,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../wishlist/" class="md-nav__link">
+      <a href="../../features/wishlist/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1145,7 +1085,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../trade/" class="md-nav__link">
+      <a href="../../features/trade/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1166,7 +1106,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../sell/" class="md-nav__link">
+      <a href="../../features/sell/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1187,7 +1127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../stats/" class="md-nav__link">
+      <a href="../../features/stats/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1208,7 +1148,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../prices/" class="md-nav__link">
+      <a href="../../features/prices/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1229,7 +1169,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../theming/" class="md-nav__link">
+      <a href="../../features/theming/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1250,7 +1190,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../backup/" class="md-nav__link">
+      <a href="../../features/backup/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1295,8 +1235,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1317,12 +1259,12 @@
       
       
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
           <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
@@ -1336,7 +1278,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             Development
@@ -1350,7 +1292,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/architecture/" class="md-nav__link">
+      <a href="../architecture/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1371,7 +1313,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/api/" class="md-nav__link">
+      <a href="../api/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1392,7 +1334,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/contributing/" class="md-nav__link">
+      <a href="../contributing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1410,10 +1352,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../development/quality-and-security/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Quality & Security
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -1422,6 +1384,89 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#change-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Change workflow
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#continuous-integration-github-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Continuous integration (GitHub Actions)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependency-supply-chain-hygiene" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dependency &amp; supply-chain hygiene
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#static-analysis-quality-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      Static analysis &amp; quality gate
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repository-security-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Repository security features
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-data-safety" class="md-nav__link">
+    <span class="md-ellipsis">
+      Runtime &amp; data safety
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reporting-a-vulnerability" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reporting a vulnerability
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1478,7 +1523,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/adr/0001-single-collection-accounts/" class="md-nav__link">
+      <a href="../adr/0001-single-collection-accounts/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1534,18 +1579,63 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#create-one" class="md-nav__link">
+  <a href="#change-workflow" class="md-nav__link">
     <span class="md-ellipsis">
-      Create one
+      Change workflow
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#track-completion" class="md-nav__link">
+  <a href="#continuous-integration-github-actions" class="md-nav__link">
     <span class="md-ellipsis">
-      Track completion
+      Continuous integration (GitHub Actions)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependency-supply-chain-hygiene" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dependency &amp; supply-chain hygiene
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#static-analysis-quality-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      Static analysis &amp; quality gate
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repository-security-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Repository security features
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-data-safety" class="md-nav__link">
+    <span class="md-ellipsis">
+      Runtime &amp; data safety
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reporting-a-vulnerability" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reporting a vulnerability
     </span>
   </a>
   
@@ -1569,25 +1659,98 @@
   
 
 
-<h1 id="custom-checklists">Custom checklists</h1>
-<p>The <strong>Checklists</strong> page (<code>/checklists</code>, or the <em>checklists</em> link on the home page) tracks your
-completion of any card list you define — the Power 9, the original dual lands, a Commander's
-staples, a cube — generalizing <a href="../sets/">set completion</a> to an arbitrary list.</p>
-<h2 id="create-one">Create one</h2>
-<p>Give the checklist a name and paste the cards, <strong>one per line</strong>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Black Lotus
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>Mox Sapphire
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Ancestral Recall
-</code></pre></div>
-<p>A leading quantity (<code>4 Lightning Bolt</code>) and trailing printing hints (<code>(LEA) 1</code>, <code>*F*</code>) are accepted
-too, so a decklist pastes straight in; duplicates are collapsed. Each line is matched to a card by
-its <strong>oracle identity</strong>, so any printing you own counts. Lines that don't match a known card are
-kept and flagged as <em>unrecognized</em>.</p>
-<h2 id="track-completion">Track completion</h2>
-<p>The checklist page shows the <strong>percent complete</strong>, an owned / total count, and every entry with a
-✓ (owned) or ○ (missing), each linking to its card page. <strong>Add missing to wishlist</strong> drops the
-matched-but-missing cards onto your <a href="../wishlist/">wishlist</a> in one click.</p>
-<p>Creating and editing checklists is disabled on the read-only demo.</p>
+<h1 id="quality-security">Quality &amp; Security</h1>
+<p>scryme is developed with a layered set of automated checks so that changes are validated for
+correctness, code quality, dependency health, and security before — and after — they reach <code>main</code>.
+This page summarizes those measures.</p>
+<h2 id="change-workflow">Change workflow</h2>
+<ul>
+<li><strong>Branch per change</strong> — <code>feat/*</code> / <code>fix/*</code> branches open a pull request into <code>main</code>.</li>
+<li><strong>Protected <code>main</code></strong> — a branch ruleset requires a pull request (with review) before merge.</li>
+<li><strong>Green CI required</strong> — the GitHub Actions checks below must pass before a PR can be merged.</li>
+<li><strong>Migrations reviewed</strong> — schema changes ship as Alembic migrations alongside the code that needs
+  them.</li>
+</ul>
+<h2 id="continuous-integration-github-actions">Continuous integration (GitHub Actions)</h2>
+<p>Every pull request and push to <code>main</code> runs, on GitHub-hosted runners:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Lint</strong></td>
+<td><code>ruff check src tests</code> — style and common-bug lints</td>
+</tr>
+<tr>
+<td><strong>Tests + coverage</strong></td>
+<td>the full <code>pytest</code> suite (400+ tests) against a real PostgreSQL 16 service, emitting <code>coverage.xml</code></td>
+</tr>
+<tr>
+<td><strong>Dependency audit</strong></td>
+<td><code>pip-audit</code> fails the build if a dependency has a known vulnerability</td>
+</tr>
+<tr>
+<td><strong>CodeQL</strong></td>
+<td>GitHub's static analysis (SAST) for both Python and JavaScript/TypeScript, on every PR plus a weekly scheduled scan</td>
+</tr>
+</tbody>
+</table>
+<p>Published container images are additionally scanned:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Trivy image scan</strong></td>
+<td>scans each released image for OS/library vulnerabilities (HIGH/CRITICAL), reporting to the repository's Security tab</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dependency-supply-chain-hygiene">Dependency &amp; supply-chain hygiene</h2>
+<ul>
+<li><strong>Pinned dependencies</strong> — <code>requirements.txt</code> pins exact versions; the container image builds from
+  those pins for reproducibility.</li>
+<li><strong>Dependabot</strong> — opens weekly, grouped update PRs for the backend (pip), the docs toolchain, the
+  desktop app (npm), and the GitHub Actions themselves, and opens <strong>security updates</strong> promptly when
+  an advisory affects a pinned dependency.</li>
+<li><strong>pip-audit gate</strong> — because the audit runs in CI (above), a vulnerable dependency blocks the
+  merge rather than shipping silently.</li>
+</ul>
+<h2 id="static-analysis-quality-gate">Static analysis &amp; quality gate</h2>
+<p>Beyond CodeQL, the repository ships a <strong>SonarQube</strong> pipeline (<code>Jenkinsfile</code> +
+<code>sonar-project.properties</code>) that runs the test suite with coverage and then a SonarQube analysis
+gated on a <strong>quality gate</strong> (bugs, code smells, coverage, duplication). This runs on a self-hosted
+Jenkins and complements — it does not replace — the required GitHub Actions gate.</p>
+<h2 id="repository-security-features">Repository security features</h2>
+<ul>
+<li><strong>Secret scanning</strong> and <strong>push protection</strong> are enabled, so credentials are detected in history
+  and blocked from being pushed.</li>
+<li><strong>Dependabot alerts</strong> and <strong>automated security fixes</strong> are enabled at the repository level.</li>
+<li>Findings from CodeQL and Trivy surface in the repository's <strong>Security → Code scanning</strong> tab.</li>
+</ul>
+<h2 id="runtime-data-safety">Runtime &amp; data safety</h2>
+<ul>
+<li><strong>Read-only mode</strong> — <code>SCRYME_READ_ONLY=true</code> disables all mutations (used for the public demo), so
+  a publicly reachable instance can't be modified.</li>
+<li><strong>Scryfall API compliance</strong> — the ingestion client sends a descriptive <code>User-Agent</code>/<code>Accept</code>,
+  stays under Scryfall's rate limit, backs off on <code>429</code>, and uses cached bulk downloads (see
+  <a href="../architecture/">Architecture</a>).</li>
+<li><strong>Backups</strong> — a portable JSON <a href="../../features/backup/">backup &amp; restore</a> (optionally encrypted, and
+  schedulable to disk) protects your collection data.</li>
+<li><strong>Non-root container</strong> — the production image runs as a non-root user with a healthcheck.</li>
+</ul>
+<h2 id="reporting-a-vulnerability">Reporting a vulnerability</h2>
+<p>If you believe you've found a security issue, please open a
+<a href="https://github.com/Leyline-Coding/scryme/issues">GitHub issue</a> (or, for sensitive reports, a
+private security advisory) rather than disclosing it publicly.</p>
 
 
 
@@ -1610,7 +1773,7 @@ matched-but-missing cards onto your <a href="../wishlist/">wishlist</a> in one c
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1-2.1-2M12.5 7v5.2l4 2.4-1 1L11 13V7h1.5M11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2v1.8Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 29, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">July 16, 2026</span>
   </span>
 
     
@@ -1620,7 +1783,7 @@ matched-but-missing cards onto your <a href="../wishlist/">wishlist</a> in one c
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3h-2Z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">June 29, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date">July 16, 2026</span>
   </span>
 
     
@@ -1655,7 +1818,7 @@ matched-but-missing cards onto your <a href="../wishlist/">wishlist</a> in one c
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../grading/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Graded Cards">
+          <a href="../contributing/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Contributing">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -1665,20 +1828,20 @@ matched-but-missing cards onto your <a href="../wishlist/">wishlist</a> in one c
                 Previous
               </span>
               <div class="md-ellipsis">
-                Graded Cards
+                Contributing
               </div>
             </div>
           </a>
         
         
           
-          <a href="../wishlist/" class="md-footer__link md-footer__link--next" aria-label="Next: Wishlist">
+          <a href="../adr/0001-single-collection-accounts/" class="md-footer__link md-footer__link--next" aria-label="Next: Single collection, no accounts">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Wishlist
+                Single collection, no accounts
               </div>
             </div>
             <div class="md-footer__button md-icon">

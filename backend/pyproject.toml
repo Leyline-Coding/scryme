@@ -27,7 +27,12 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "W"]
-ignore = ["B008"]  # FastAPI uses function calls (Depends) in argument defaults
+ignore = [
+    "B008",   # FastAPI uses function calls (Depends) in argument defaults
+    "UP042",  # str+Enum -> StrEnum: an opinionated refactor with str()-formatting behavior
+              # differences; revisit deliberately rather than on a ruff bump.
+    "UP047",  # PEP 695 type parameters for generic functions: cosmetic; defer.
+]
 
 [tool.mypy]
 python_version = "3.12"

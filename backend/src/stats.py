@@ -150,7 +150,7 @@ async def collection_growth(
     added: dict[str, int] = {}
     value: dict[str, float] = {}
     for added_at, qty, finish, prices, market_prices in rows:
-        if added_at is None:
+        if added_at is None:  # pragma: no cover - added_at is NOT NULL
             continue
         key = added_at.strftime("%Y-%m")
         qty = qty or 0

@@ -72,7 +72,11 @@ for _ in range(60):
 else:
     raise SystemExit("postgres not ready")
 PY
-            pytest tests/   # pyproject addopts emit coverage.xml (Cobertura) in backend/
+            # COVERAGE_CORE=sysmon (Python 3.12 sys.monitoring) traces code that runs inside
+            # SQLAlchemy's async greenlets; the default C tracer misses statements after an
+            # await that crosses the greenlet boundary, under-reporting every async
+            # route/service. Needed for accurate coverage in the SonarQube report.
+            COVERAGE_CORE=sysmon pytest tests/   # pyproject addopts emit coverage.xml (Cobertura)
           '''
         }
       }

@@ -221,5 +221,5 @@ def main() -> None:
         asyncio.run(_restore(args.file, args.apply, args.passphrase))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

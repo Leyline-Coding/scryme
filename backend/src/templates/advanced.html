@@ -44,6 +44,7 @@
           <template x-for="c in ['W','U','B','R','G','C']" :key="c">
             <label class="cursor-pointer" :title="c === 'C' ? 'Colorless' : c">
               <input type="checkbox" class="peer sr-only" x-model="grp.map[c]" />
+              <span class="sr-only" x-text="c === 'C' ? 'Colorless' : c">color</span>
               <span class="inline-flex w-8 h-8 items-center justify-center rounded-full transition
                            opacity-50 peer-checked:opacity-100 peer-checked:ring-2 peer-checked:ring-accent">
                 <i class="ms ms-cost text-xl" :class="'ms-' + c.toLowerCase()"></i>
@@ -89,7 +90,7 @@
             <input type="checkbox" class="peer sr-only" x-model="rarity[r]" />
             <span class="inline-block rounded-full border border-edge px-3 py-1 text-sm capitalize
                          peer-checked:bg-accent peer-checked:text-accent-fg peer-checked:border-accent"
-                  x-text="r"></span>
+                  x-text="r">rarity</span>
           </label>
         </template>
       </div>
@@ -218,7 +219,7 @@
         p.set("scope", this.scope);
         p.set("sort", this.sort);
         p.set("dir", this.dir);
-        window.location = "/search?" + p.toString();
+        globalThis.location = "/search?" + p.toString();
       },
       reset() {
         Object.assign(this, advancedSearch());

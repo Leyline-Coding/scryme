@@ -58,7 +58,8 @@
         async start() {
           this.error = ""; this.phase = "starting"; this.pct = 0; this.message = "Preparing…";
           this.cycleFlavor();
-          try { await fetch("/admin/ingest", { method: "POST" }); } catch (e) {}
+          try { await fetch("/admin/ingest", { method: "POST" }); }
+          catch (e) { console.debug("ingest kickoff failed, will poll anyway:", e); }
           this.poll();
         },
         async poll() {
@@ -79,7 +80,7 @@
               clearInterval(this._flavorTimer); this._flavorTimer = null;
               this.error = d.error || "Unknown error"; return;
             }
-          } catch (e) { /* transient; keep polling */ }
+          } catch (e) { console.debug("ingest progress poll error (transient):", e); }
           setTimeout(() => this.poll(), 1000);
         },
       };

@@ -12,6 +12,6 @@ ipcRenderer.on("scryme:focus-search", () => {
     input.focus();
     input.select();
   } else {
-    window.location.href = "/";
+    globalThis.location.href = "/";
   }
 });

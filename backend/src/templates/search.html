@@ -134,7 +134,7 @@
   <script>
     function clearUniversalFilter() {
       document.cookie = "scryme_search_filter=;path=/;max-age=0;samesite=lax";
-      window.location.reload();
+      globalThis.location.reload();
     }
   </script>
   {% endif %}
@@ -165,10 +165,10 @@
       return {
         open: false,
         download(fmt) {
-          var p = new URLSearchParams(window.location.search);
+          var p = new URLSearchParams(globalThis.location.search);
           p.set("fmt", fmt);
           p.delete("page");
-          window.location = "/export?" + p.toString();
+          globalThis.location = "/export?" + p.toString();
         },
       };
     }
@@ -176,10 +176,10 @@
       return {
         open: false,
         save() {
-          var name = window.prompt("Name this search:");
+          var name = globalThis.prompt("Name this search:");
           if (!name) return;
           // Save the live query/scope/sort from the URL (kept current by hx-push-url).
-          var src = new URLSearchParams(window.location.search);
+          var src = new URLSearchParams(globalThis.location.search);
           var body = new URLSearchParams();
           body.set("name", name);
           body.set("q", src.get("q") || "");
@@ -187,7 +187,7 @@
           body.set("sort", src.get("sort") || "name");
           body.set("dir", src.get("dir") || "asc");
           fetch("/saved", { method: "POST", body: body }).then(function () {
-            window.location.reload();
+            globalThis.location.reload();
           });
         },
       };
@@ -245,7 +245,7 @@
   function bulkSubmit(action) {
     var f = document.getElementById('bulkform');
     if (!f || !bulkChecked().length) return;
-    var p = new URLSearchParams(window.location.search);
+    var p = new URLSearchParams(globalThis.location.search);
     f.querySelector('[name=q]').value = p.get('q') || '';
     f.querySelector('[name=scope]').value = p.get('scope') || 'collection';
     f.querySelector('[name=sort]').value = p.get('sort') || 'name';

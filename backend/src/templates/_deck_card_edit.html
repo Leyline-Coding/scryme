@@ -3,8 +3,8 @@
 <form hx-post="/decks/{{ deck_id }}/card/{{ card_id }}" hx-swap="none"
       class="flex flex-wrap items-center gap-2 rounded-lg bg-surface-2 p-2 text-xs">
   <input type="hidden" name="format" value="{{ fmt }}">
-  <label class="text-muted">Printing</label>
-  <select name="scryfall_id"
+  <label class="text-muted" for="ed-print-{{ card_id }}">Printing</label>
+  <select name="scryfall_id" id="ed-print-{{ card_id }}"
           class="max-w-[18rem] truncate rounded border border-edge bg-surface px-2 py-1">
     {% for p in printings %}
     <option value="{{ p.scryfall_id }}" {% if current_sid == p.scryfall_id %}selected{% endif %}>
@@ -12,8 +12,8 @@
     </option>
     {% endfor %}
   </select>
-  <label class="text-muted">Language</label>
-  <select name="language" class="rounded border border-edge bg-surface px-2 py-1 uppercase">
+  <label class="text-muted" for="ed-lang-{{ card_id }}">Language</label>
+  <select name="language" id="ed-lang-{{ card_id }}" class="rounded border border-edge bg-surface px-2 py-1 uppercase">
     {% for code, name in languages %}
     <option value="{{ code }}" {% if current_lang == code %}selected{% endif %}>{{ code|upper }} — {{ name }}</option>
     {% endfor %}

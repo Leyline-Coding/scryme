@@ -1,8 +1,8 @@
 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
   <form method="get" action="/collection" class="flex items-center gap-2 text-sm">
     <input type="hidden" name="tab" value="trade" />
-    <label class="text-muted">Keep</label>
-    <select name="keep" onchange="this.form.submit()"
+    <label class="text-muted" for="trade-keep">Keep</label>
+    <select name="keep" id="trade-keep" onchange="this.form.submit()"
       class="rounded-lg bg-surface border border-edge px-2 py-1">
       {% for n in [0, 1, 2, 3, 4] %}
       <option value="{{ n }}" {% if binder.keep == n %}selected{% endif %}>{{ n }}</option>

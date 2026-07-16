@@ -22,16 +22,18 @@
           localStorage.setItem("scryme-mode", mode);
         }
         if (!mode) { mode = "dark"; localStorage.setItem("scryme-mode", mode); }
-        d.setAttribute("data-theme", pal + "-" + mode);
+        d.dataset.theme = pal + "-" + mode;
         var a = localStorage.getItem("scryme-accent");
         if (a) d.style.setProperty("--c-accent", a);
         // Card-effect settings (foil animation speed, hover spin) — applied before paint.
         var fs = localStorage.getItem("scryme-foil-speed");
-        if (fs) d.style.setProperty("--foil-speed", (11 - parseInt(fs, 10)) + "s");
+        if (fs) d.style.setProperty("--foil-speed", (11 - Number.parseInt(fs, 10)) + "s");
         var ss = localStorage.getItem("scryme-spin-speed");
-        if (ss) d.style.setProperty("--spin-speed", ((12 - parseInt(ss, 10)) * 0.06).toFixed(2) + "s");
+        if (ss) d.style.setProperty("--spin-speed", ((12 - Number.parseInt(ss, 10)) * 0.06).toFixed(2) + "s");
         if (localStorage.getItem("scryme-spin") !== "0") d.classList.add("spin-on");  // default on
-      } catch (e) {}
+      } catch (e) {
+        console.warn("theme init skipped (storage unavailable):", e);
+      }
     })();
   </script>
   <!-- Tailwind via CDN keeps the app a single pure-Python service; swap for a build step later. -->

@@ -4,13 +4,13 @@
 {% if not read_only %}
 <script>
   (function () {
-    if (!("Notification" in window)) return;
+    if (!("Notification" in globalThis)) return;
     fetch("/alerts")
       .then(function (r) { return r.json(); })
       .then(function (d) {
         var total = (d && d.total) || 0;
         if (!total) return;
-        var last = parseInt(localStorage.getItem("scryme-alert-seen") || "0", 10);
+        var last = Number.parseInt(localStorage.getItem("scryme-alert-seen") || "0", 10);
         localStorage.setItem("scryme-alert-seen", String(total));
         if (total <= last) return; // only notify when there's something new
         var parts = [];
@@ -19,7 +19,7 @@
         var body = parts.join(" · ") + ".";
         function fire() {
           var n = new Notification("scryme — what's new", { body: body });
-          n.onclick = function () { window.focus(); window.location.href = "/"; };
+          n.onclick = function () { globalThis.focus(); globalThis.location.href = "/"; };
         }
         if (Notification.permission === "granted") fire();
         else if (Notification.permission !== "denied") {

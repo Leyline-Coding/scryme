@@ -4,7 +4,7 @@
 <script>
 (function () {
   var MAX = 15;  // peak tilt in degrees
-  var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var reduce = globalThis.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   var active = null;
 
   function target(el) {
@@ -34,6 +34,6 @@
   document.addEventListener("pointerout", function (e) {
     if (active && !target(e.relatedTarget)) reset();
   });
-  window.addEventListener("scroll", reset, true);
+  globalThis.addEventListener("scroll", reset, true);
 })();
 </script>

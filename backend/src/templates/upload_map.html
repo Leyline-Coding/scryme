@@ -24,10 +24,10 @@
     <textarea name="csv" class="hidden">{{ csv }}</textarea>
     {% for f in fields %}
     <div class="flex items-center gap-3">
-      <label class="w-40 shrink-0 text-sm {% if f.required %}font-medium{% else %}text-muted{% endif %}">
+      <label for="map-{{ f.key }}" class="w-40 shrink-0 text-sm {% if f.required %}font-medium{% else %}text-muted{% endif %}">
         {{ f.label }}{% if f.required %} *{% endif %}
       </label>
-      <select name="map_{{ f.key }}"
+      <select name="map_{{ f.key }}" id="map-{{ f.key }}"
         class="flex-1 rounded-lg bg-bg border border-edge px-3 py-2 text-sm">
         <option value="">— skip —</option>
         {% for h in headers %}

@@ -104,13 +104,20 @@ jobs:
           labels: ${{ steps.meta-arm64.outputs.labels }}
           cache-from: type=gha
 
-      # Scan the freshly-published image for OS/library vulnerabilities. Non-blocking:
-      # findings are reported to Security > Code scanning, but a HIGH/CRITICAL does not
-      # fail the publish (we're already logged in to GHCR, so Trivy can pull :latest).
+      # GHCR image names must be lowercase, but ${{ github.repository }} keeps the org's case
+      # (Leyline-Coding). Lowercase it so Trivy can actually pull the image.
+      - name: Resolve lowercase image ref
+        id: imageref
+        run: echo "ref=ghcr.io/${GITHUB_REPOSITORY,,}:latest" >> "$GITHUB_OUTPUT"
+
+      # Scan the freshly-published image for OS/library vulnerabilities. Non-blocking and
+      # continue-on-error: findings go to Security > Code scanning, but neither a HIGH/CRITICAL
+      # finding nor a scan hiccup fails the publish (the image is already pushed by this point).
       - name: Scan image (Trivy)
+        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ghcr.io/${{ github.repository }}:latest
+          image-ref: ${{ steps.imageref.outputs.ref }}
           format: sarif
           output: trivy-results.sarif
           severity: HIGH,CRITICAL
@@ -118,7 +125,8 @@ jobs:
           exit-code: "0"
 
       - name: Upload Trivy results to code scanning
-        if: always()
+        if: ${{ hashFiles('trivy-results.sarif') != '' }}
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results.sarif

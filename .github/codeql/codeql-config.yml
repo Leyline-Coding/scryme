@@ -1,0 +1,11 @@
+# CodeQL / GitHub Code Quality configuration.
+#
+# Exclude Alembic migrations from analysis. They are generated boilerplate whose module-level
+# globals (revision / down_revision / branch_labels / depends_on) are Alembic's required migration
+# API — read by name off the module by the framework, not dead code — so the quality queries raise
+# false "unused global variable" findings on every migration. Alembic is already excluded from
+# SonarQube (sonar.exclusions) and ruff for the same reason.
+name: "scryme CodeQL config"
+
+paths-ignore:
+  - backend/alembic

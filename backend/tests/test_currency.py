@@ -14,7 +14,8 @@ _PRICES = {"usd": "1.00", "usd_foil": "3.00", "eur": "0.80", "eur_foil": "2.50"}
 def test_normalize_and_info():
     assert normalize("USD") == "usd"
     assert normalize("eur") == "eur"
-    assert normalize("gbp") is None
+    assert normalize("gbp") == "gbp"   # a converted currency (#232)
+    assert normalize("zzz") is None    # genuinely unknown
     assert normalize(None) is None
     assert info("eur")["symbol"] == "€"
     assert info("nonsense")["symbol"] == "$"  # falls back to USD
@@ -28,7 +29,7 @@ def test_unit_price_by_currency_and_finish():
     # Foil price missing -> fall back to the base price in that currency.
     assert unit_price({"eur": "0.80"}, "foil", "eur") == 0.80
     # Unknown currency normalizes to USD; no price -> 0.
-    assert unit_price(_PRICES, "normal", "gbp") == 1.00
+    assert unit_price(_PRICES, "normal", "zzz") == 1.00
     assert unit_price({}, "normal", "usd") == 0.0
 
 

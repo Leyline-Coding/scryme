@@ -114,37 +114,10 @@
       Value over time{% if cur.code != 'usd' %} (USD){% endif %}</h2>
     <a href="/prices" class="text-xs text-muted hover:text-fg">Price history →</a>
   </div>
-  {# Time-range selector — reloads the stats tab with the chosen window. #}
-  <div class="flex flex-wrap gap-1 mb-3">
-    {% for label, _days in chart_ranges %}
-    <a href="/collection?tab=stats&view=overview&range={{ label }}"
-       class="rounded-full px-2.5 py-0.5 text-xs
-              {% if chart_range == label %}bg-accent text-accent-fg font-medium
-              {% else %}bg-surface-2 text-muted hover:text-fg{% endif %}">{{ label }}</a>
-    {% endfor %}
-  </div>
-  {% if value_chart.has_trend %}
-  <svg viewBox="0 0 {{ value_chart.width }} {{ value_chart.height }}" class="w-full h-32"
-       preserveAspectRatio="none" role="img" aria-label="Collection value over time">
-    <path d="{{ value_chart.area }}" fill="var(--c-accent)" fill-opacity="0.12" />
-    <polyline points="{{ value_chart.polyline }}" fill="none" stroke="var(--c-accent)"
-              stroke-width="2" vector-effect="non-scaling-stroke"
-              stroke-linejoin="round" stroke-linecap="round" />
-  </svg>
-  <div class="mt-2 flex justify-between text-xs text-muted">
-    <span>{{ value_chart.first_date }}</span>
-    <span>${{ '{:,.2f}'.format(value_chart.min_value) }} – ${{ '{:,.2f}'.format(value_chart.max_value) }}
-      · {{ value_chart.points|length }} snapshots</span>
-    <span>{{ value_chart.last_date }}</span>
-  </div>
-  {% elif value_chart.available %}
-  <p class="text-sm text-muted">
-    Only one snapshot in this range (${{ '{:,.2f}'.format(value_chart.current) }} on
-    {{ value_chart.last_date }}). Pick a longer range to see the trend.
-  </p>
-  {% else %}
-  <p class="text-sm text-muted">No snapshots in this range — try a longer one.</p>
-  {% endif %}
+  {# Time-range selector + chart, shared with the per-card price history (#233). #}
+  {% import "_value_chart.html" as vc %}
+  {{ vc.chart(value_chart, chart_ranges, chart_range,
+              "/collection?tab=stats&view=overview&", "Collection value over time") }}
 </section>
 {% endif %}
 

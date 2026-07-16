@@ -36,6 +36,9 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+          # Path exclusions for both the security and Code Quality query suites (e.g. Alembic
+          # migrations, whose required module globals are false "unused" positives).
+          config-file: ./.github/codeql/codeql-config.yml
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4

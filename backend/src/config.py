@@ -51,12 +51,14 @@ class Settings(BaseSettings):
     scryfall_min_request_interval: float = 0.1  # seconds between requests (<= 10/s)
     # Don't re-download bulk data more often than this many hours (Scryfall asks >= 24h cache).
     bulk_refresh_min_hours: int = 24
+    # Don't re-fetch FX rates (for converted display currencies, #232) more often than this.
+    fx_refresh_min_hours: int = 24
 
     # Read-only demo mode disables uploads/mutations (used by the public sandbox).
     read_only: bool = False
 
-    # Default display currency for current-value prices (usd | eur). Per-visitor override via the
-    # `scryme_currency` cookie set from the currency picker.
+    # Default display currency for current-value prices (usd | eur native; gbp | cad | aud | jpy
+    # converted from USD via FX). Per-visitor override via the `scryme_currency` cookie.
     default_currency: str = "usd"
 
     # Preferred price source / marketplace (#231): tcgplayer | cardkingdom | manapool. TCGplayer is

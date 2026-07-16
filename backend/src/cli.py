@@ -46,6 +46,17 @@ async def _snapshot_prices() -> None:
         print(f"Captured snapshot: ${snap.total_usd:,.2f} across {snap.card_count} cards.")
 
 
+async def _refresh_fx() -> None:
+    from src.fx import FX_RATES, refresh_fx_rates
+
+    n = await refresh_fx_rates(force=True)
+    if n:
+        rates = ", ".join(f"{c}={FX_RATES[c]:.4f}" for c in sorted(FX_RATES))
+        print(f"Refreshed {n} FX rate(s): {rates}")
+    else:
+        print("FX rates unchanged (fetch failed or nothing returned).")
+
+
 async def _prune_digital() -> None:
     from src.scryfall.ingest import prune_digital_only
 
@@ -160,6 +171,8 @@ def main() -> None:
 
     sub.add_parser("snapshot-prices", help="Capture a price snapshot of the owned collection")
 
+    sub.add_parser("refresh-fx", help="Refresh FX rates for converted display currencies (#232)")
+
     sub.add_parser("prune-digital", help="Remove digital-only (Arena/MTGO) cards from the DB")
 
     p_embed = sub.add_parser("backfill-embeddings",
@@ -193,32 +206,25 @@ def main() -> None:
     p_restore.add_argument("--passphrase", help="Passphrase for an encrypted backup")
 
     args = parser.parse_args()
-    if args.command == "ingest":
-        asyncio.run(_ingest(args.force))
-    elif args.command == "backfill-images":
-        asyncio.run(_backfill())
-    elif args.command == "seed-demo":
-        asyncio.run(_seed_demo())
-    elif args.command == "snapshot-prices":
-        asyncio.run(_snapshot_prices())
-    elif args.command == "prune-digital":
-        asyncio.run(_prune_digital())
-    elif args.command == "backfill-embeddings":
-        asyncio.run(_backfill_embeddings("all" if args.all else "owned"))
-    elif args.command == "backfill-rules":
-        asyncio.run(_backfill_rules(args.file))
-    elif args.command == "organize-locations":
-        asyncio.run(_organize_locations())
-    elif args.command == "refresh-sets":
-        asyncio.run(_refresh_sets())
-    elif args.command == "backfill-mtgjson-ids":
-        asyncio.run(_backfill_mtgjson_ids())
-    elif args.command == "sync-market-prices":
-        asyncio.run(_sync_market_prices(args.force))
-    elif args.command == "backup":
-        asyncio.run(_backup(args.dir, args.passphrase))
-    elif args.command == "restore":
-        asyncio.run(_restore(args.file, args.apply, args.passphrase))
+    # command -> a no-arg callable returning the coroutine to run. Commands that take arguments use
+    # a small lambda to bind them from `args`; the rest reference their worker directly.
+    handlers = {
+        "ingest": lambda: _ingest(args.force),
+        "backfill-images": _backfill,
+        "seed-demo": _seed_demo,
+        "snapshot-prices": _snapshot_prices,
+        "refresh-fx": _refresh_fx,
+        "prune-digital": _prune_digital,
+        "backfill-embeddings": lambda: _backfill_embeddings("all" if args.all else "owned"),
+        "backfill-rules": lambda: _backfill_rules(args.file),
+        "organize-locations": _organize_locations,
+        "refresh-sets": _refresh_sets,
+        "backfill-mtgjson-ids": _backfill_mtgjson_ids,
+        "sync-market-prices": lambda: _sync_market_prices(args.force),
+        "backup": lambda: _backup(args.dir, args.passphrase),
+        "restore": lambda: _restore(args.file, args.apply, args.passphrase),
+    }
+    asyncio.run(handlers[args.command]())
 
 
 if __name__ == "__main__":  # pragma: no cover

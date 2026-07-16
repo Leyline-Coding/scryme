@@ -141,7 +141,7 @@ def _color_clause(col, term: Term) -> ColumnElement:
         return and_(contains, size > n)
     if op == "<":
         return and_(contained, size < n)
-    raise SearchError(f"Operator “{op}” is not valid for {term.field}.")
+    raise SearchError(f"Operator “{op}” is not valid for {term.field}.")  # pragma: no cover
 
 
 def _color(term: Term) -> ColumnElement:

@@ -25,6 +25,8 @@ from src.config import Settings, get_settings
 
 log = structlog.get_logger()
 
+_NOT_ENTERED_MSG = "use 'async with ScryfallClient()'"
+
 
 class ScryfallError(RuntimeError):
     """Raised when Scryfall returns a non-retryable error."""
@@ -69,7 +71,7 @@ class ScryfallClient:
 
     async def get_json(self, url: str, *, max_retries: int = 3) -> dict:
         """GET a JSON document, retrying once per 429 with a 30s backoff."""
-        assert self._client is not None, "use 'async with ScryfallClient()'"
+        assert self._client is not None, _NOT_ENTERED_MSG
         for attempt in range(max_retries + 1):
             await self._throttle()
             resp = await self._client.get(url)
@@ -96,7 +98,7 @@ class ScryfallClient:
 
     async def download_to_file(self, url: str, dest: Path) -> Path:
         """Stream the *raw* (still-gzip) body of ``url`` to ``dest``."""
-        assert self._client is not None, "use 'async with ScryfallClient()'"
+        assert self._client is not None, _NOT_ENTERED_MSG
         dest.parent.mkdir(parents=True, exist_ok=True)
         tmp = dest.with_suffix(dest.suffix + ".part")
         await self._throttle()
@@ -112,7 +114,7 @@ class ScryfallClient:
     @asynccontextmanager
     async def stream_bytes(self, url: str) -> AsyncIterator[AsyncIterator[bytes]]:
         """Yield an async iterator over the raw body bytes of ``url``."""
-        assert self._client is not None, "use 'async with ScryfallClient()'"
+        assert self._client is not None, _NOT_ENTERED_MSG
         await self._throttle()
         async with self._client.stream("GET", url) as resp:
             if resp.status_code >= 400:

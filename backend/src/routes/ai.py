@@ -37,6 +37,9 @@ router = APIRouter(tags=["ai"])
 _NOT_CONFIGURED = "AI isn't configured — set it up in Settings → AI."
 _UNREACHABLE = "Couldn't reach the AI endpoint. Check Settings → AI."
 _EMPTY = "The model returned an empty response — try again or use a larger token limit / model."
+_DECK_AI_ERROR_TMPL = "_deck_ai_error.html"
+_DECK_CHAT_LOG_TMPL = "_deck_chat_log.html"
+_CARD_ANSWER_TMPL = "_card_answer.html"
 
 
 def _guard_writable() -> None:
@@ -94,14 +97,14 @@ async def deck_analyze(
     cfg = await get_config(session)
     if not cfg.ready:
         return templates.TemplateResponse(
-            request, "_deck_ai_error.html", {"message": _NOT_CONFIGURED})
+            request, _DECK_AI_ERROR_TMPL, {"message": _NOT_CONFIGURED})
     try:
         analysis = await analyze_deck(session, deck, ChatClient(cfg))
     except (httpx.HTTPError, KeyError, IndexError, ValueError):
         return templates.TemplateResponse(
-            request, "_deck_ai_error.html", {"message": _UNREACHABLE})
+            request, _DECK_AI_ERROR_TMPL, {"message": _UNREACHABLE})
     if not analysis.strip():
-        return templates.TemplateResponse(request, "_deck_ai_error.html", {"message": _EMPTY})
+        return templates.TemplateResponse(request, _DECK_AI_ERROR_TMPL, {"message": _EMPTY})
     return templates.TemplateResponse(request, "_deck_analysis.html", {"analysis": analysis})
 
 
@@ -113,14 +116,14 @@ async def deck_suggest(
     cfg = await get_config(session)
     if not cfg.ready:
         return templates.TemplateResponse(
-            request, "_deck_ai_error.html", {"message": _NOT_CONFIGURED})
+            request, _DECK_AI_ERROR_TMPL, {"message": _NOT_CONFIGURED})
     try:
         result = await suggest_from_collection(session, deck, ChatClient(cfg))
     except (httpx.HTTPError, KeyError, IndexError, ValueError):
         return templates.TemplateResponse(
-            request, "_deck_ai_error.html", {"message": _UNREACHABLE})
+            request, _DECK_AI_ERROR_TMPL, {"message": _UNREACHABLE})
     if result.empty:
-        return templates.TemplateResponse(request, "_deck_ai_error.html", {"message": _EMPTY})
+        return templates.TemplateResponse(request, _DECK_AI_ERROR_TMPL, {"message": _EMPTY})
     return templates.TemplateResponse(request, "_deck_suggest.html", {"result": result})
 
 
@@ -165,14 +168,14 @@ async def deck_upgrade(
     cfg = await get_config(session)
     if not cfg.ready:
         return templates.TemplateResponse(
-            request, "_deck_ai_error.html", {"message": _NOT_CONFIGURED})
+            request, _DECK_AI_ERROR_TMPL, {"message": _NOT_CONFIGURED})
     try:
         plan = await plan_upgrades(session, deck, max(0.0, budget), ChatClient(cfg))
     except (httpx.HTTPError, KeyError, IndexError, ValueError):
         return templates.TemplateResponse(
-            request, "_deck_ai_error.html", {"message": _UNREACHABLE})
+            request, _DECK_AI_ERROR_TMPL, {"message": _UNREACHABLE})
     if plan.empty:
-        return templates.TemplateResponse(request, "_deck_ai_error.html", {"message": _EMPTY})
+        return templates.TemplateResponse(request, _DECK_AI_ERROR_TMPL, {"message": _EMPTY})
     return templates.TemplateResponse(request, "_deck_upgrade.html", {"plan": plan})
 
 
@@ -207,7 +210,7 @@ async def deck_chat_send(
     text = message.strip()
     if not cfg.ready or not text:
         return templates.TemplateResponse(
-            request, "_deck_chat_log.html", {"messages": await _chat_history(session, deck_id)})
+            request, _DECK_CHAT_LOG_TMPL, {"messages": await _chat_history(session, deck_id)})
     prior = await _chat_history(session, deck_id)
     history = [{"role": m.role, "content": m.content} for m in prior]
     try:
@@ -219,7 +222,7 @@ async def deck_chat_send(
                                 content=reply or "(the AI endpoint didn't respond — try again)"))
     await session.commit()
     return templates.TemplateResponse(
-        request, "_deck_chat_log.html", {"messages": await _chat_history(session, deck_id)})
+        request, _DECK_CHAT_LOG_TMPL, {"messages": await _chat_history(session, deck_id)})
 
 
 @router.post("/decks/{deck_id}/chat/clear", response_class=HTMLResponse)
@@ -229,7 +232,7 @@ async def deck_chat_clear(
     await _load_deck(session, deck_id)
     await session.execute(delete(DeckChatMessage).where(DeckChatMessage.deck_id == deck_id))
     await session.commit()
-    return templates.TemplateResponse(request, "_deck_chat_log.html", {"messages": []})
+    return templates.TemplateResponse(request, _DECK_CHAT_LOG_TMPL, {"messages": []})
 
 
 # --- card rules Q&A (#175) ----------------------------------------------------------------------
@@ -243,7 +246,7 @@ async def card_ask(
     cfg = await get_config(session)
     if not cfg.ready or not question.strip():
         return templates.TemplateResponse(
-            request, "_card_answer.html", {"answer": "", "message": _NOT_CONFIGURED})
+            request, _CARD_ANSWER_TMPL, {"answer": "", "message": _NOT_CONFIGURED})
     raw_rulings = await fetch_rulings(scryfall_id, card) or []
     rulings = [r.get("comment", "") for r in raw_rulings if r.get("comment")]
     rules_context = await rules_for_question(session, question.strip())
@@ -252,8 +255,8 @@ async def card_ask(
             card, rulings, question.strip(), ChatClient(cfg), rules_context=rules_context)
     except (httpx.HTTPError, KeyError, IndexError, ValueError):
         return templates.TemplateResponse(
-            request, "_card_answer.html", {"answer": "", "message": _UNREACHABLE})
+            request, _CARD_ANSWER_TMPL, {"answer": "", "message": _UNREACHABLE})
     if not answer.strip():
         return templates.TemplateResponse(
-            request, "_card_answer.html", {"answer": "", "message": _EMPTY})
-    return templates.TemplateResponse(request, "_card_answer.html", {"answer": answer})
+            request, _CARD_ANSWER_TMPL, {"answer": "", "message": _EMPTY})
+    return templates.TemplateResponse(request, _CARD_ANSWER_TMPL, {"answer": answer})

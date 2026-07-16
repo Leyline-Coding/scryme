@@ -29,7 +29,6 @@ from src.wishlist import add_to_wishlist
 
 log = structlog.get_logger()
 
-DEFAULT_LIMIT = 12000  # retained for the CLI flag; the curated build uses its own targets
 _DECK_DIR = Path(__file__).resolve().parent / "seed_data" / "decks"
 EXAMPLE_DECKS = {
     "Heavenly Inferno (Commander)": "heavenly_inferno.txt",
@@ -80,6 +79,21 @@ _DEMO_CHECKLISTS = {
 }
 
 
+def _collect_rows(rows, limit: int, used: set, out: list) -> int:
+    """Append up to ``limit`` distinct (unused) rows to ``out``; return how many were added."""
+    added = 0
+    for sid, oracle, usd in rows:
+        key = oracle or sid
+        if key in used:
+            continue
+        used.add(key)
+        out.append((sid, float(usd) if usd else 0.0))
+        added += 1
+        if added >= limit:
+            break
+    return added
+
+
 async def _take(session, where, count: int, used: set, out: list) -> None:
     """Pick ``count`` distinct cards matching ``where``, biased ~35% toward $5+ then topped up from
     any price so the target is reliably met (expensive cards are too scarce to fill it alone)."""
@@ -105,15 +119,9 @@ async def _take(session, where, count: int, used: set, out: list) -> None:
                 .limit(need * 4 + 100)
             )
         ).all()
-        for sid, oracle, usd in rows:
-            key = oracle or sid
-            if key in used:
-                continue
-            used.add(key)
-            out.append((sid, float(usd) if usd else 0.0))
-            taken += 1
-            if taken >= count:
-                return
+        taken += _collect_rows(rows, count - taken, used, out)
+        if taken >= count:
+            return
 
 
 async def _ensure_status(session, fmt: str, status: str, count: int, used: set, out: list) -> None:
@@ -301,7 +309,7 @@ async def _seed_showcase(session) -> None:
             await create_checklist(session, name, cards)
 
 
-async def seed_demo(limit: int = DEFAULT_LIMIT) -> int:
+async def seed_demo() -> int:
     """Build the curated demo collection. Idempotent: skips when already populated."""
     rng = random.Random(IMPORT_YEAR)  # deterministic selection/dates
     async with SessionLocal() as session:

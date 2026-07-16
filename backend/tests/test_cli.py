@@ -38,11 +38,10 @@ def test_cli_backfill(monkeypatch, capsys):
 
 
 def test_cli_seed_demo(monkeypatch, capsys):
-    async def fake_seed(limit):
-        assert limit == 5
+    async def fake_seed():
         return 5
 
     monkeypatch.setattr(cli, "seed_demo", fake_seed)
-    monkeypatch.setattr(sys, "argv", ["scryme", "seed-demo", "--limit", "5"])
+    monkeypatch.setattr(sys, "argv", ["scryme", "seed-demo"])
     cli.main()
     assert "Added 5 cards" in capsys.readouterr().out

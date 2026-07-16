@@ -65,6 +65,102 @@ def _group(query: str, key: str, title: str, items: list[tuple[str, str, int]]) 
     return FacetGroup(key=key, title=title, values=values)
 
 
+def _count_colors(cs, colors: dict) -> int:
+    """Tally color letters into ``colors``; return 1 when the card is colorless."""
+    if not cs:
+        return 1
+    for letter in cs:
+        colors[letter.lower()] = colors.get(letter.lower(), 0) + 1
+    return 0
+
+
+def _count_legal(legalities: dict, legal: dict) -> None:
+    for fmt in _FACET_FORMATS:
+        if legalities.get(fmt) in _LEGAL:
+            legal[fmt] = legal.get(fmt, 0) + 1
+
+
+@dataclass
+class _FacetTally:
+    colors: dict
+    colorless: int
+    rarities: dict
+    types: dict
+    sets: dict
+    years: dict
+    legal: dict
+
+
+def _tally_facets(rows) -> _FacetTally:
+    """Count facet dimensions over the (capped) result rows."""
+    colors: dict[str, int] = {}
+    colorless = 0
+    rarities: dict[str, int] = {}
+    types: dict[str, int] = {}
+    sets: dict[str, tuple[str, int]] = {}  # code -> (label, count)
+    years: dict[int, int] = {}
+    legal: dict[str, int] = {}
+    for c in rows:
+        colorless += _count_colors(c.colors or [], colors)
+        if c.rarity:
+            rarities[c.rarity] = rarities.get(c.rarity, 0) + 1
+        pt = _primary_type(c.type_line)
+        types[pt] = types.get(pt, 0) + 1
+        label, n = sets.get(c.set_code, (c.set_name or c.set_code.upper(), 0))
+        sets[c.set_code] = (label, n + 1)
+        if c.released_at:
+            years[c.released_at.year] = years.get(c.released_at.year, 0) + 1
+        _count_legal(c.legalities or {}, legal)
+    return _FacetTally(colors, colorless, rarities, types, sets, years, legal)
+
+
+def _color_rarity_type_groups(query: str, t: _FacetTally) -> list[FacetGroup]:
+    groups: list[FacetGroup] = []
+    color_items = [
+        (name, f"c:{ltr}", t.colors[ltr]) for ltr, name in _COLOR_FACETS if t.colors.get(ltr)
+    ]
+    if t.colorless:
+        color_items.append(("Colorless", "c:c", t.colorless))
+    if color_items:
+        groups.append(_group(query, "colors", "Colors", color_items))
+    if t.rarities:
+        ordered = sorted(t.rarities, key=lambda r: _RARITY_ORDER.index(r) if r in _RARITY_ORDER
+                         else len(_RARITY_ORDER))
+        groups.append(_group(query, "rarity", "Rarity",
+                             [(r.capitalize(), f"r:{r}", t.rarities[r]) for r in ordered]))
+    if t.types:
+        ordered_types = sorted(t.types.items(), key=lambda kv: kv[1], reverse=True)
+        groups.append(_group(query, "type", "Type",
+                             [(ty, f"t:{ty.lower()}", n) for ty, n in ordered_types]))
+    return groups
+
+
+def _set_year_legal_finish_groups(
+    query: str, t: _FacetTally, top_sets: int, foil_count: int, etched_count: int
+) -> list[FacetGroup]:
+    groups: list[FacetGroup] = []
+    if t.sets:
+        top = sorted(t.sets.items(), key=lambda kv: kv[1][1], reverse=True)[:top_sets]
+        groups.append(_group(query, "set", "Set",
+                             [(label, f"s:{code}", n) for code, (label, n) in top]))
+    if t.years:
+        top_years = sorted(t.years.items(), key=lambda kv: kv[0], reverse=True)[:_TOP_YEARS]
+        groups.append(_group(query, "year", "Year",
+                             [(str(y), f"year:{y}", n) for y, n in top_years]))
+    if t.legal:
+        groups.append(_group(query, "legality", "Legal in",
+                             [(f.capitalize(), f"f:{f}", t.legal[f])
+                              for f in _FACET_FORMATS if t.legal.get(f)]))
+    finish_items = []
+    if foil_count:
+        finish_items.append(("Foil", "is:foil", foil_count))
+    if etched_count:
+        finish_items.append(("Etched", "is:etched", etched_count))
+    if finish_items:
+        groups.append(_group(query, "foil", "Finish", finish_items))
+    return groups
+
+
 async def compute_facets(
     session: AsyncSession, query: str, scope: SearchScope, top_sets: int = 8
 ) -> list[FacetGroup]:
@@ -82,31 +178,7 @@ async def compute_facets(
         )
     ).scalars().all()
 
-    colors: dict[str, int] = {}
-    colorless = 0
-    rarities: dict[str, int] = {}
-    types: dict[str, int] = {}
-    sets: dict[str, tuple[str, int]] = {}  # code -> (label, count)
-    years: dict[int, int] = {}
-    legal: dict[str, int] = {}
-    for c in rows:
-        cs = c.colors or []
-        if cs:
-            for letter in cs:
-                colors[letter.lower()] = colors.get(letter.lower(), 0) + 1
-        else:
-            colorless += 1
-        if c.rarity:
-            rarities[c.rarity] = rarities.get(c.rarity, 0) + 1
-        types[_primary_type(c.type_line)] = types.get(_primary_type(c.type_line), 0) + 1
-        label, n = sets.get(c.set_code, (c.set_name or c.set_code.upper(), 0))
-        sets[c.set_code] = (label, n + 1)
-        if c.released_at:
-            years[c.released_at.year] = years.get(c.released_at.year, 0) + 1
-        legalities = c.legalities or {}
-        for fmt in _FACET_FORMATS:
-            if legalities.get(fmt) in _LEGAL:
-                legal[fmt] = legal.get(fmt, 0) + 1
+    tally = _tally_facets(rows)
 
     # Finish facets count printings you own in that finish (matching the is:foil / is:etched
     # filter), not merely printings that *can* be foil/etched — so the count agrees with what
@@ -122,48 +194,6 @@ async def compute_facets(
     foil_count = await session.scalar(_finish_count("foil")) or 0
     etched_count = await session.scalar(_finish_count("etched")) or 0
 
-    groups: list[FacetGroup] = []
-
-    color_items = [
-        (name, f"c:{ltr}", colors[ltr]) for ltr, name in _COLOR_FACETS if colors.get(ltr)
-    ]
-    if colorless:
-        color_items.append(("Colorless", "c:c", colorless))
-    if color_items:
-        groups.append(_group(query, "colors", "Colors", color_items))
-
-    if rarities:
-        ordered = sorted(rarities, key=lambda r: _RARITY_ORDER.index(r) if r in _RARITY_ORDER
-                         else len(_RARITY_ORDER))
-        groups.append(_group(query, "rarity", "Rarity",
-                             [(r.capitalize(), f"r:{r}", rarities[r]) for r in ordered]))
-
-    if types:
-        ordered = sorted(types.items(), key=lambda kv: kv[1], reverse=True)
-        groups.append(_group(query, "type", "Type",
-                             [(t, f"t:{t.lower()}", n) for t, n in ordered]))
-
-    if sets:
-        top = sorted(sets.items(), key=lambda kv: kv[1][1], reverse=True)[:top_sets]
-        groups.append(_group(query, "set", "Set",
-                             [(label, f"s:{code}", n) for code, (label, n) in top]))
-
-    if years:
-        top = sorted(years.items(), key=lambda kv: kv[0], reverse=True)[:_TOP_YEARS]
-        groups.append(_group(query, "year", "Year",
-                             [(str(y), f"year:{y}", n) for y, n in top]))
-
-    if legal:
-        groups.append(_group(query, "legality", "Legal in",
-                             [(f.capitalize(), f"f:{f}", legal[f])
-                              for f in _FACET_FORMATS if legal.get(f)]))
-
-    finish_items = []
-    if foil_count:
-        finish_items.append(("Foil", "is:foil", foil_count))
-    if etched_count:
-        finish_items.append(("Etched", "is:etched", etched_count))
-    if finish_items:
-        groups.append(_group(query, "foil", "Finish", finish_items))
-
+    groups = _color_rarity_type_groups(query, tally)
+    groups += _set_year_legal_finish_groups(query, tally, top_sets, foil_count, etched_count)
     return groups

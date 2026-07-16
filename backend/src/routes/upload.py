@@ -19,6 +19,8 @@ from src.templating import templates
 
 router = APIRouter(tags=["upload"])
 
+_UPLOAD_TMPL = "upload.html"
+
 MAX_UPLOAD_BYTES = 32 * 1024 * 1024
 
 
@@ -35,7 +37,7 @@ async def upload_form(
 
     snap = None if get_settings().read_only else await latest_snapshot(session)
     return templates.TemplateResponse(
-        request, "upload.html", {"read_only": get_settings().read_only, "undo": snap}
+        request, _UPLOAD_TMPL, {"read_only": get_settings().read_only, "undo": snap}
     )
 
 
@@ -58,7 +60,7 @@ async def upload_preview(
     raw = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(raw) > MAX_UPLOAD_BYTES:
         return templates.TemplateResponse(
-            request, "upload.html", {"error": "File is too large (32 MB max)."}
+            request, _UPLOAD_TMPL, {"error": "File is too large (32 MB max)."}
         )
     text = raw.decode("utf-8-sig", errors="replace")
 
@@ -73,7 +75,7 @@ async def upload_preview(
                 {"headers": headers, "fields": MAP_FIELDS,
                  "guess": guess_mapping(headers), "csv": text},
             )
-        return templates.TemplateResponse(request, "upload.html", {"error": str(exc)})
+        return templates.TemplateResponse(request, _UPLOAD_TMPL, {"error": str(exc)})
 
     return templates.TemplateResponse(request, "upload_preview.html", {"preview": preview})
 

@@ -30,6 +30,25 @@ class Token:
 _PREFIX_KINDS = {TokKind.LPAREN, TokKind.OR, TokKind.AND, TokKind.NOT}
 
 
+def _read_delimited(s: str, i: int, delim: str, escape: bool) -> tuple[str, int]:
+    """Read from the opening ``delim`` at ``i`` through the matching close (inclusive)."""
+    n = len(s)
+    buf = [s[i]]  # opening delimiter
+    i += 1
+    while i < n and s[i] != delim:
+        if escape and s[i] == "\\" and i + 1 < n:
+            buf.append(s[i])
+            buf.append(s[i + 1])
+            i += 2
+            continue
+        buf.append(s[i])
+        i += 1
+    if i < n:  # closing delimiter
+        buf.append(s[i])
+        i += 1
+    return "".join(buf), i
+
+
 def _read_atom(s: str, i: int) -> tuple[str, int]:
     """Read one atom starting at index ``i``; returns (atom, next_index)."""
     n = len(s)
@@ -39,29 +58,12 @@ def _read_atom(s: str, i: int) -> tuple[str, int]:
         if ch.isspace() or ch in "()":
             break
         if ch == '"':
-            buf.append(ch)
-            i += 1
-            while i < n and s[i] != '"':
-                buf.append(s[i])
-                i += 1
-            if i < n:  # closing quote
-                buf.append(s[i])
-                i += 1
+            chunk, i = _read_delimited(s, i, '"', escape=False)
+            buf.append(chunk)
             continue
         if ch == "/":
-            buf.append(ch)
-            i += 1
-            while i < n and s[i] != "/":
-                if s[i] == "\\" and i + 1 < n:
-                    buf.append(s[i])
-                    buf.append(s[i + 1])
-                    i += 2
-                    continue
-                buf.append(s[i])
-                i += 1
-            if i < n:  # closing slash
-                buf.append(s[i])
-                i += 1
+            chunk, i = _read_delimited(s, i, "/", escape=True)
+            buf.append(chunk)
             continue
         buf.append(ch)
         i += 1

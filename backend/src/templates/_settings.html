@@ -167,9 +167,9 @@
       searchFilter: decodeURIComponent(
         (document.cookie.match(/(?:^|; )scryme_search_filter=([^;]+)/) || [])[1] || ""
       ),
-      foilSpeed: parseInt(localStorage.getItem("scryme-foil-speed") || "6", 10),
+      foilSpeed: Number.parseInt(localStorage.getItem("scryme-foil-speed") || "6", 10),
       spinOn: localStorage.getItem("scryme-spin") !== "0",   // default on
-      spinSpeed: parseInt(localStorage.getItem("scryme-spin-speed") || "6", 10),
+      spinSpeed: Number.parseInt(localStorage.getItem("scryme-spin-speed") || "6", 10),
       moversOn: (document.cookie.match(/(?:^|; )scryme_movers=([^;]+)/) || [])[1] === "1",
       // id, name, dark/light swatch bg, and per-mode default accent (for the accent picker reset).
       palettes: [
@@ -193,7 +193,7 @@
         return this.custom || this.themeDefault();
       },
       applyTheme() {
-        document.documentElement.setAttribute("data-theme", this.palette + "-" + this.mode);
+        document.documentElement.dataset.theme = this.palette + "-" + this.mode;
       },
       setPalette(id) {
         this.palette = id;
@@ -219,12 +219,12 @@
         this.currency = id;
         // Server-read cookie so server-rendered totals (stats/decks/wishlist) use this currency.
         document.cookie = "scryme_currency=" + id + ";path=/;max-age=31536000;samesite=lax";
-        window.location.reload();
+        globalThis.location.reload();
       },
       setPriceSource(id) {
         this.priceSource = id;
         document.cookie = "scryme_price_source=" + id + ";path=/;max-age=31536000;samesite=lax";
-        window.location.reload();
+        globalThis.location.reload();
       },
       setSearchFilter() {
         // Server-read cookie (#143) so /search ANDs it into every query. Empty clears it.

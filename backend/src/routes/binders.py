@@ -33,6 +33,8 @@ from src.scryfall.mapping import image_url as cdn_image_url
 from src.templating import templates
 
 router = APIRouter(tags=["binders"])
+
+_BINDERS_URL = "/collection?tab=binders"
 _cache = ImageCache()
 
 NONE_SENTINEL = "__none__"
@@ -60,7 +62,7 @@ class CardView:
 @router.get("/binders")
 async def binders_home() -> RedirectResponse:
     # The binder index lives on the collection Binders tab.
-    return RedirectResponse(url="/collection?tab=binders", status_code=307)
+    return RedirectResponse(url=_BINDERS_URL, status_code=307)
 
 
 @router.get("/binders/view/{binder_id}", response_class=HTMLResponse)
@@ -84,7 +86,7 @@ async def new_binder(
 ) -> RedirectResponse:
     _guard_writable()
     await create_binder(session, name)
-    return RedirectResponse(url="/collection?tab=binders", status_code=303)
+    return RedirectResponse(url=_BINDERS_URL, status_code=303)
 
 
 @router.post("/binders/{binder_id}/rename")
@@ -102,7 +104,7 @@ async def delete_binder_route(
 ) -> RedirectResponse:
     _guard_writable()
     await delete_binder(session, binder_id)
-    return RedirectResponse(url="/collection?tab=binders", status_code=303)
+    return RedirectResponse(url=_BINDERS_URL, status_code=303)
 
 
 @router.post("/binders/{binder_id}/remove-card")

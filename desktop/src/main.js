@@ -9,9 +9,9 @@
 const {
   app, BrowserWindow, dialog, shell, Menu, globalShortcut, Tray, nativeImage,
 } = require("electron");
-const path = require("path");
-const fs = require("fs");
-const { spawn } = require("child_process");
+const path = require("node:path");
+const fs = require("node:fs");
+const { spawn } = require("node:child_process");
 
 // get-port is ESM-only (v7+, "type": "module"), so it can't be require()'d from this CommonJS
 // file. Load it lazily via dynamic import() and cache it, then expose the same callable API.
@@ -51,14 +51,16 @@ function dataDir() {
 function backendPortFor(dir) {
   const file = path.join(dir, "backend-port");
   let saved;
-  try {
-    saved = parseInt(fs.readFileSync(file, "utf8").trim(), 10);
-  } catch (_) {
-    saved = undefined;
+  if (fs.existsSync(file)) {
+    saved = Number.parseInt(fs.readFileSync(file, "utf8").trim(), 10);
   }
   // getPort returns the preferred port if available, else any free port.
   return getPort(saved ? { port: saved } : undefined).then((port) => {
-    try { fs.writeFileSync(file, String(port)); } catch (_) { /* best-effort */ }
+    try {
+      fs.writeFileSync(file, String(port));
+    } catch (err) {
+      process.stderr.write(`[port] could not persist backend port: ${err}\n`);
+    }
     return port;
   });
 }
@@ -82,7 +84,10 @@ async function startPostgres(dir, port) {
   try {
     await pg.createDatabase(DB_NAME);
   } catch (err) {
-    // Database already exists — fine.
+    // "Database already exists" is expected on every launch after the first; surface anything else.
+    if (!/exist/i.test(String(err))) {
+      process.stderr.write(`[db] createDatabase failed: ${err}\n`);
+    }
   }
 }
 
@@ -127,15 +132,17 @@ function startBackend(dir, backendPort, pgPort) {
 async function waitForHealth(port, timeoutMs = 60000) {
   const url = `http://127.0.0.1:${port}/health`;
   const deadline = Date.now() + timeoutMs;
+  let lastErr;
   while (Date.now() < deadline) {
     try {
       const res = await fetch(url);
       if (res.ok) return true;
-    } catch (_) {
-      // not up yet
+    } catch (err) {
+      lastErr = err;  // connection refused until the backend binds its port
     }
     await new Promise((r) => setTimeout(r, 500));
   }
+  if (lastErr) process.stderr.write(`[backend] health check never succeeded: ${lastErr}\n`);
   return false;
 }
 
@@ -190,8 +197,10 @@ function createTray(port) {
       { label: "Quit", click: () => { quitting = true; app.quit(); } },
     ]));
     tray.on("click", showWindow);
-  } catch (_) {
-    tray = null; // no system tray (some Linux DEs) — app simply quits on window close instead
+  } catch (err) {
+    // No system tray (some Linux DEs) — app simply quits on window close instead.
+    tray = null;
+    process.stderr.write(`[tray] unavailable: ${err}\n`);
   }
 }
 
@@ -202,7 +211,8 @@ function checkForUpdates() {
   let autoUpdater;
   try {
     ({ autoUpdater } = require("electron-updater"));
-  } catch (_) {
+  } catch (err) {
+    process.stderr.write(`[updater] unavailable: ${err}\n`);
     return;
   }
   autoUpdater.on("update-downloaded", async (info) => {
@@ -219,7 +229,7 @@ function checkForUpdates() {
     }
   });
   autoUpdater.on("error", (err) => {
-    process.stderr.write(`[updater] ${err && err.message ? err.message : err}\n`);
+    process.stderr.write(`[updater] ${err?.message ? err.message : err}\n`);
   });
   autoUpdater.checkForUpdates().catch(() => { /* best-effort */ });
 }
@@ -285,14 +295,18 @@ async function shutdown() {
     backend.kill();
   }
   if (pg) {
-    try { await pg.stop(); } catch (_) { /* ignore */ }
+    try {
+      await pg.stop();
+    } catch (err) {
+      process.stderr.write(`[pg] stop failed: ${err}\n`);
+    }
   }
 }
 
 app.whenReady().then(() => {
   // The application menu is built in createWindow() once the backend port is known.
   boot().catch((err) => {
-    dialog.showErrorBox("scryme", `Failed to start: ${err && err.message ? err.message : err}`);
+    dialog.showErrorBox("scryme", `Failed to start: ${err?.message ? err.message : err}`);
     app.quit();
   });
   app.on("activate", () => {

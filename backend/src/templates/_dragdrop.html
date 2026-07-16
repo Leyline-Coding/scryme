@@ -17,15 +17,15 @@
     function show() { dz.classList.remove("hidden"); dz.classList.add("flex"); }
     function hide() { dz.classList.add("hidden"); dz.classList.remove("flex"); depth = 0; }
     function hasFiles(e) {
-      return e.dataTransfer && Array.from(e.dataTransfer.types || []).indexOf("Files") !== -1;
+      return e.dataTransfer && Array.from(e.dataTransfer.types || []).includes("Files");
     }
-    window.addEventListener("dragenter", function (e) {
+    globalThis.addEventListener("dragenter", function (e) {
       if (!hasFiles(e)) return;
       e.preventDefault(); depth++; show();
     });
-    window.addEventListener("dragover", function (e) { if (hasFiles(e)) e.preventDefault(); });
-    window.addEventListener("dragleave", function () { if (--depth <= 0) hide(); });
-    window.addEventListener("drop", async function (e) {
+    globalThis.addEventListener("dragover", function (e) { if (hasFiles(e)) e.preventDefault(); });
+    globalThis.addEventListener("dragleave", function () { if (--depth <= 0) hide(); });
+    globalThis.addEventListener("drop", async function (e) {
       if (!hasFiles(e)) return;
       e.preventDefault();
       var file = e.dataTransfer.files[0];

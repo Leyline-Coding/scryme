@@ -39,6 +39,21 @@ class ParsedLine:
     board: str  # main | side
 
 
+def _parse_deck_line(s: str, board: str) -> ParsedLine | None:
+    """Parse one non-comment, non-header decklist line into a ParsedLine (or None)."""
+    sb = False
+    if s.lower().startswith("sb:"):
+        sb, s = True, s[3:].strip()
+    m = _LINE.match(s)
+    if not m:
+        return None
+    name = _MARKER.sub("", m.group(2).rstrip())
+    name = _SET_SUFFIX.sub("", name).strip()
+    if not name:
+        return None
+    return ParsedLine(int(m.group(1)), name, "side" if sb else board)
+
+
 def parse_decklist(text: str | None) -> list[ParsedLine]:
     out: list[ParsedLine] = []
     board = "main"
@@ -46,20 +61,12 @@ def parse_decklist(text: str | None) -> list[ParsedLine]:
         s = raw.strip()
         if not s or s.startswith(("#", "//")):
             continue
-        low = s.lower()
-        if low.startswith("sideboard"):
+        if s.lower().startswith("sideboard"):
             board = "side"
             continue
-        sb = False
-        if low.startswith("sb:"):
-            sb, s = True, s[3:].strip()
-        m = _LINE.match(s)
-        if not m:
-            continue
-        name = _MARKER.sub("", m.group(2).rstrip())
-        name = _SET_SUFFIX.sub("", name).strip()
-        if name:
-            out.append(ParsedLine(int(m.group(1)), name, "side" if sb else board))
+        line = _parse_deck_line(s, board)
+        if line:
+            out.append(line)
     return out
 
 
@@ -328,6 +335,55 @@ class DeckCoverage:
         return bool(self.fmt) and self.illegal_count == 0 and self.unmatched == 0
 
 
+async def _load_deck_printings(session: AsyncSession, sids: list, source: str):
+    """Per-sid price map, printing tuple, and oracle→sid map for the deck's resolved cards."""
+    price_by_sid: dict[str, dict] = {}
+    print_by_sid: dict[str, tuple] = {}   # sid -> (set_code, set_name, collector_number)
+    oracle_sid: dict = {}
+    if not sids:
+        return price_by_sid, print_by_sid, oracle_sid
+    rows = (
+        await session.execute(
+            select(
+                Card.scryfall_id, Card.oracle_id, Card.prices, Card.market_prices,
+                Card.set_code, Card.set_name, Card.collector_number,
+            ).where(Card.scryfall_id.in_(sids))
+        )
+    ).all()
+    for sid, oracle, prices, market_prices, set_code, set_name, collector in rows:
+        price_by_sid[str(sid)] = resolve_prices(prices, market_prices, source) or {}
+        print_by_sid[str(sid)] = (set_code, set_name, collector)
+        oracle_sid[oracle] = str(sid)
+    return price_by_sid, print_by_sid, oracle_sid
+
+
+def _card_legality(c, fmt: str | None, legal_by_oracle: dict, illegal_oracles: set) -> str | None:
+    """Format legality for a card's oracle; records illegal oracles as a side effect."""
+    if not (fmt and c.oracle_id):
+        return None
+    legality = legal_by_oracle.get(c.oracle_id, {}).get(fmt, "not_legal")
+    if legality not in _ALLOWED_LEGALITIES:
+        illegal_oracles.add(c.oracle_id)
+    return legality
+
+
+def _tally_missing(cov, deck, needed_by_oracle, owned, price_by_sid, oracle_sid, currency) -> None:
+    """Missing counts/cost: once per oracle for matched cards, per line for unmatched."""
+    for oracle, needed in needed_by_oracle.items():
+        miss = max(0, needed - owned.get(oracle, 0))
+        if miss:
+            cov.missing_count += miss
+            cov.unique_missing += 1
+            cov.missing_cost += miss * unit_price(
+                price_by_sid.get(oracle_sid.get(oracle, ""), {}), "normal", currency
+            )
+    for c in deck.cards:
+        if not c.oracle_id:
+            cov.missing_count += c.quantity
+            cov.unique_missing += 1
+            cov.unmatched += 1
+
+
 async def deck_coverage(
     session: AsyncSession, deck: Deck, fmt: str | None = None, currency: str = "usd",
     source: str = "tcgplayer",
@@ -336,22 +392,7 @@ async def deck_coverage(
     fmt = fmt if fmt in LEGALITY_FORMATS else None
 
     sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
-    price_by_sid: dict[str, dict] = {}
-    print_by_sid: dict[str, tuple] = {}   # sid -> (set_code, set_name, collector_number)
-    oracle_sid: dict = {}
-    if sids:
-        rows = (
-            await session.execute(
-                select(
-                    Card.scryfall_id, Card.oracle_id, Card.prices, Card.market_prices,
-                    Card.set_code, Card.set_name, Card.collector_number,
-                ).where(Card.scryfall_id.in_(sids))
-            )
-        ).all()
-        for sid, oracle, prices, market_prices, set_code, set_name, collector in rows:
-            price_by_sid[str(sid)] = resolve_prices(prices, market_prices, source) or {}
-            print_by_sid[str(sid)] = (set_code, set_name, collector)
-            oracle_sid[oracle] = str(sid)
+    price_by_sid, print_by_sid, oracle_sid = await _load_deck_printings(session, sids, source)
     # Legality is judged per oracle from a playable printing, independent of the line's printing.
     legal_by_oracle = await _legalities_by_oracle(
         session, {c.oracle_id for c in deck.cards if c.oracle_id}
@@ -366,11 +407,7 @@ async def deck_coverage(
     cov = DeckCoverage(deck=deck, fmt=fmt)
     illegal_oracles: set = set()
     for c in deck.cards:
-        legality = None
-        if fmt and c.oracle_id:
-            legality = legal_by_oracle.get(c.oracle_id, {}).get(fmt, "not_legal")
-            if legality not in _ALLOWED_LEGALITIES:
-                illegal_oracles.add(c.oracle_id)
+        legality = _card_legality(c, fmt, legal_by_oracle, illegal_oracles)
         set_code, set_name, collector = print_by_sid.get(str(c.scryfall_id), (None, None, None))
         row = CardRow(
             name=c.name, quantity=c.quantity, board=c.board,
@@ -387,19 +424,7 @@ async def deck_coverage(
     cov.illegal_count = len(illegal_oracles)
 
     # Missing math, counted once per oracle (and per unmatched line).
-    for oracle, needed in needed_by_oracle.items():
-        miss = max(0, needed - owned.get(oracle, 0))
-        if miss:
-            cov.missing_count += miss
-            cov.unique_missing += 1
-            cov.missing_cost += miss * unit_price(
-                price_by_sid.get(oracle_sid.get(oracle, ""), {}), "normal", currency
-            )
-    for c in deck.cards:
-        if not c.oracle_id:
-            cov.missing_count += c.quantity
-            cov.unique_missing += 1
-            cov.unmatched += 1
+    _tally_missing(cov, deck, needed_by_oracle, owned, price_by_sid, oracle_sid, currency)
     return cov
 
 

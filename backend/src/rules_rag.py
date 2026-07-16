@@ -26,13 +26,8 @@ _SECTION = re.compile(r"^\d{3}\.\s+\S")               # "702. Keyword Abilities"
 _DEFAULT_RULES_FILE = Path(__file__).resolve().parent / "data" / "comprehensive_rules.txt"
 
 
-def chunk_rules(text: str) -> list[tuple[str, str]]:
-    """Split the rules into (ref, chunk_text): one per top-level rule + one per glossary term."""
-    lines = text.splitlines()
-    gloss_positions = [i for i, ln in enumerate(lines) if ln.strip() == "Glossary"]
-    gloss_at = gloss_positions[-1] if len(gloss_positions) >= 2 else None
-    rule_lines = lines[:gloss_at] if gloss_at is not None else lines
-
+def _chunk_top_rules(rule_lines: list[str]) -> list[tuple[str, str]]:
+    """One (ref, text) chunk per top-level rule; bare section headers aren't folded in."""
     chunks: list[tuple[str, str]] = []
     ref: str | None = None
     title = ""
@@ -54,18 +49,38 @@ def chunk_rules(text: str) -> list[tuple[str, str]]:
         elif ref and ln.strip():
             buf.append(ln.strip())
     flush()
+    return chunks
 
-    if gloss_at is not None:
-        entry: list[str] = []
-        for ln in lines[gloss_at + 1:]:
-            if not ln.strip():
-                if entry:
-                    chunks.append((f"Glossary: {entry[0].strip()}"[:64], "\n".join(entry).strip()))
-                    entry = []
-            else:
-                entry.append(ln)
+
+def _chunk_glossary(gloss_lines: list[str]) -> list[tuple[str, str]]:
+    """One (ref, text) chunk per blank-line-separated glossary entry."""
+    chunks: list[tuple[str, str]] = []
+    entry: list[str] = []
+
+    def flush() -> None:
         if entry:
             chunks.append((f"Glossary: {entry[0].strip()}"[:64], "\n".join(entry).strip()))
+
+    for ln in gloss_lines:
+        if not ln.strip():
+            flush()
+            entry = []
+        else:
+            entry.append(ln)
+    flush()
+    return chunks
+
+
+def chunk_rules(text: str) -> list[tuple[str, str]]:
+    """Split the rules into (ref, chunk_text): one per top-level rule + one per glossary term."""
+    lines = text.splitlines()
+    gloss_positions = [i for i, ln in enumerate(lines) if ln.strip() == "Glossary"]
+    gloss_at = gloss_positions[-1] if len(gloss_positions) >= 2 else None
+    rule_lines = lines[:gloss_at] if gloss_at is not None else lines
+
+    chunks = _chunk_top_rules(rule_lines)
+    if gloss_at is not None:
+        chunks += _chunk_glossary(lines[gloss_at + 1:])
 
     return [(r, t) for r, t in chunks if len(t) > 20]
 

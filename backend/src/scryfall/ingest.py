@@ -145,8 +145,8 @@ def _parse_dt(value: str | None) -> datetime.datetime | None:
     return datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-async def _guard_allows_refresh(state: IngestState | None, source_updated: datetime.datetime | None,
-                                min_hours: int) -> bool:
+def _guard_allows_refresh(state: IngestState | None, source_updated: datetime.datetime | None,
+                          min_hours: int) -> bool:
     """False when we already have this exact bulk and downloaded it within the cache window."""
     if state is None or state.last_downloaded_at is None:
         return True
@@ -172,7 +172,7 @@ async def ingest_default_cards(
         entry = await sc.get_bulk_entry(BULK_TYPE)
         source_updated = _parse_dt(entry.get("updated_at"))
 
-        if not force and not await _guard_allows_refresh(
+        if not force and not _guard_allows_refresh(
             state, source_updated, settings.bulk_refresh_min_hours
         ):
             log.info("scryfall.ingest.skipped", reason="within cache window")

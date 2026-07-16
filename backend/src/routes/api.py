@@ -371,7 +371,7 @@ async def api_similar(
     out: list[SimilarCardOut] = []
     for oid, score in scored:
         rep = by_oracle.get(oid)
-        if rep is None:
+        if rep is None:  # pragma: no cover - every scored oracle resolves to a representative
             continue
         base = _card_out(rep, int(owned.get(oid, 0) or 0))
         out.append(SimilarCardOut(**base.model_dump(), score=round(score, 4)))

@@ -111,7 +111,7 @@ async def test_guard_allows_refresh_rules():
     now = datetime.datetime.now(datetime.UTC)
     src = now
     # No state -> always allowed.
-    assert await _guard_allows_refresh(None, src, 24) is True
+    assert _guard_allows_refresh(None, src, 24) is True
 
     fresh = IngestState(
         bulk_type="default_cards",
@@ -120,9 +120,9 @@ async def test_guard_allows_refresh_rules():
         card_count=3,
     )
     # Same bulk, just downloaded -> blocked.
-    assert await _guard_allows_refresh(fresh, src, 24) is False
+    assert _guard_allows_refresh(fresh, src, 24) is False
     # Newer bulk available -> allowed even within the window.
-    assert await _guard_allows_refresh(fresh, now + datetime.timedelta(hours=1), 24) is True
+    assert _guard_allows_refresh(fresh, now + datetime.timedelta(hours=1), 24) is True
     # Old download -> allowed.
     stale = IngestState(
         bulk_type="default_cards",
@@ -130,4 +130,4 @@ async def test_guard_allows_refresh_rules():
         last_downloaded_at=now - datetime.timedelta(hours=30),
         card_count=3,
     )
-    assert await _guard_allows_refresh(stale, src, 24) is True
+    assert _guard_allows_refresh(stale, src, 24) is True

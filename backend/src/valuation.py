@@ -53,6 +53,24 @@ class ValuationReport:
         return self.total_cards == 0
 
 
+def _row_unit_value(override, qty, prices, market_prices, finish, currency, source):
+    """(unit, stack value) for one row. A manual override wins over market prices."""
+    if override is not None:
+        return (override / qty if qty else override), override
+    unit = unit_price(resolve_prices(prices, market_prices, source), finish, currency)
+    return unit, qty * unit
+
+
+def _update_best(best: dict, sid, name, set_code, qty, unit) -> None:
+    """Track, per printing, the highest-unit stack seen."""
+    cur = best.get(str(sid))
+    if cur is None:
+        best[str(sid)] = ValuedCard(name, set_code.upper(), str(sid), qty, unit)
+    else:
+        cur.quantity += qty
+        cur.unit = max(cur.unit, unit)
+
+
 async def valuation_report(
     session: AsyncSession, currency: str = "usd", top: int = 25, top_sets: int = 15,
     source: str = "tcgplayer",
@@ -79,12 +97,9 @@ async def valuation_report(
         qty = qty or 0
         # A graded card carries a manual value (graded prices aren't in Scryfall); it overrides the
         # market price for the whole stack.
-        if override is not None:
-            unit = override / qty if qty else override
-            value = override
-        else:
-            unit = unit_price(resolve_prices(prices, market_prices, source), finish, currency)
-            value = qty * unit
+        unit, value = _row_unit_value(
+            override, qty, prices, market_prices, finish, currency, source
+        )
         r.total_cards += qty
         r.total_value += value
         printings.add(sid)
@@ -100,12 +115,7 @@ async def valuation_report(
         s[0] += value
         s[1] += qty
 
-        cur = best.get(str(sid))
-        if cur is None:
-            best[str(sid)] = ValuedCard(name, set_code.upper(), str(sid), qty, unit)
-        else:
-            cur.quantity += qty
-            cur.unit = max(cur.unit, unit)
+        _update_best(best, sid, name, set_code, qty, unit)
 
     def _rarity_rank(kv) -> int:
         return _RARITY_ORDER.index(kv[0]) if kv[0] in _RARITY_ORDER else len(_RARITY_ORDER)

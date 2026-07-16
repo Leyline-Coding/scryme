@@ -128,6 +128,22 @@ def _insert(session: AsyncSession, stack: Stack, source_format: str | None) -> N
     )
 
 
+def _merge_stack(session, key, stack, existing, strategy, decision_for, source_format):
+    """Insert or update one aggregated stack; return (inserted_delta, updated_delta)."""
+    if key not in existing:
+        _insert(session, stack, source_format)
+        return 1, 0
+    choice = "increment"
+    if strategy is MergeStrategy.PER_CARD:
+        choice = decision_for.get(key, "increment")
+    if choice == "replace":
+        existing[key].quantity = stack.quantity
+    else:
+        existing[key].quantity += stack.quantity
+    existing[key].source_format = source_format
+    return 0, 1
+
+
 async def apply_merge(
     session: AsyncSession,
     matched: list[MatchedRow],
@@ -148,26 +164,16 @@ async def apply_merge(
                             total_quantity=sum(s.quantity for s in stacks.values()))
 
     existing = await load_existing(session)
-    conflict_keys = [k for k in sorted(stacks.keys() & existing.keys(),
-                                       key=lambda k: stacks[k].name.lower())]
+    conflict_keys = sorted(stacks.keys() & existing.keys(),
+                           key=lambda k: stacks[k].name.lower())
     decision_for = {conflict_keys[i]: choice for i, choice in decisions.items()
                     if i < len(conflict_keys)}
 
     inserted = updated = 0
     for key, stack in stacks.items():
-        if key in existing:
-            choice = "increment"
-            if strategy is MergeStrategy.PER_CARD:
-                choice = decision_for.get(key, "increment")
-            if choice == "replace":
-                existing[key].quantity = stack.quantity
-            else:
-                existing[key].quantity += stack.quantity
-            existing[key].source_format = source_format
-            updated += 1
-        else:
-            _insert(session, stack, source_format)
-            inserted += 1
+        di, du = _merge_stack(session, key, stack, existing, strategy, decision_for, source_format)
+        inserted += di
+        updated += du
 
     await session.commit()
     total = await session.scalar(select(func.coalesce(func.sum(CollectionCard.quantity), 0)))

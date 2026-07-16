@@ -18,6 +18,7 @@ from src.config import get_settings
 SUPPORTED = "Moxfield, Archidekt, and TappedOut"
 _UA = f"scryme/{__version__} (+https://github.com/Leyline-Coding/scryme)"
 _TIMEOUT = 15.0
+_DEFAULT_DECK_NAME = "Imported deck"
 
 
 class DeckImportError(Exception):
@@ -51,7 +52,7 @@ def _lines(entries: list[tuple[int, str, str]]) -> str:
 
 def parse_moxfield(payload: dict) -> tuple[str, str]:
     """Moxfield v2 deck JSON → (name, decklist text)."""
-    name = (payload.get("name") or "Imported deck").strip()
+    name = (payload.get("name") or _DEFAULT_DECK_NAME).strip()
     entries: list[tuple[int, str, str]] = []
     # Commanders + mainboard are "main", sideboard is "side"; each board maps name -> {quantity}.
     for board_key, board in [("commanders", "main"), ("mainboard", "main"), ("sideboard", "side")]:
@@ -66,7 +67,7 @@ def parse_moxfield(payload: dict) -> tuple[str, str]:
 
 def parse_archidekt(payload: dict) -> tuple[str, str]:
     """Archidekt deck JSON → (name, decklist text)."""
-    name = (payload.get("name") or "Imported deck").strip()
+    name = (payload.get("name") or _DEFAULT_DECK_NAME).strip()
     entries: list[tuple[int, str, str]] = []
     for item in payload.get("cards") or []:
         card = item.get("card") or {}
@@ -83,7 +84,7 @@ def parse_archidekt(payload: dict) -> tuple[str, str]:
 
 
 def _slug_name(slug: str) -> str:
-    return slug.replace("-", " ").replace("_", " ").strip().title() or "Imported deck"
+    return slug.replace("-", " ").replace("_", " ").strip().title() or _DEFAULT_DECK_NAME
 
 
 async def fetch_deck_from_url(

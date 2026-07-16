@@ -32,28 +32,28 @@
     </label>
 
     <div>
-      <label class="block text-sm text-muted mb-1">Endpoint base URL</label>
-      <input type="url" name="base_url" value="{{ cfg.base_url }}" placeholder="http://localhost:11434/v1"
+      <label class="block text-sm text-muted mb-1" for="ai-base-url">Endpoint base URL</label>
+      <input type="url" name="base_url" id="ai-base-url" value="{{ cfg.base_url }}" placeholder="http://localhost:11434/v1"
              class="w-full rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
     </div>
 
     <div>
-      <label class="block text-sm text-muted mb-1">API key
+      <label class="block text-sm text-muted mb-1" for="ai-api-key">API key
         {% if has_key %}<span class="text-emerald-500">(set)</span>{% endif %}</label>
-      <input type="password" name="api_key" autocomplete="off"
+      <input type="password" name="api_key" id="ai-api-key" autocomplete="off"
              placeholder="{{ 'leave blank to keep current key' if has_key else 'optional for local servers' }}"
              class="w-full rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
     </div>
 
     <div class="grid grid-cols-2 gap-3">
       <div>
-        <label class="block text-sm text-muted mb-1">Chat model</label>
-        <input type="text" name="chat_model" value="{{ cfg.chat_model }}" placeholder="llama3.1"
+        <label class="block text-sm text-muted mb-1" for="ai-chat-model">Chat model</label>
+        <input type="text" name="chat_model" id="ai-chat-model" value="{{ cfg.chat_model }}" placeholder="llama3.1"
                class="w-full rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
       </div>
       <div>
-        <label class="block text-sm text-muted mb-1">Embedding model</label>
-        <input type="text" name="embed_model" value="{{ cfg.embed_model }}" placeholder="nomic-embed-text"
+        <label class="block text-sm text-muted mb-1" for="ai-embed-model">Embedding model</label>
+        <input type="text" name="embed_model" id="ai-embed-model" value="{{ cfg.embed_model }}" placeholder="nomic-embed-text"
                class="w-full rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
       </div>
     </div>

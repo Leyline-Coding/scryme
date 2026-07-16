@@ -19,14 +19,14 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # QEMU lets the amd64 runner cross-build the arm64 image (Raspberry Pi / Apple Silicon).
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -35,7 +35,7 @@ jobs:
       # Multi-arch manifest tags (e.g. :latest, :v1.2.3, :<sha>) — `docker pull` auto-selects arch.
       - name: Derive image tags
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
@@ -46,7 +46,7 @@ jobs:
       # Per-arch convenience tags (e.g. :latest-amd64, :v1.2.3-arm64) for pulling a specific arch.
       - name: Derive amd64 tags
         id: meta-amd64
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}
           flavor: |
@@ -59,7 +59,7 @@ jobs:
 
       - name: Derive arm64 tags
         id: meta-arm64
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}
           flavor: |
@@ -71,7 +71,7 @@ jobs:
             type=sha,format=short
 
       - name: Build and push (multi-arch manifest)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           file: ./backend/Dockerfile
@@ -83,7 +83,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push (amd64 tags)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           file: ./backend/Dockerfile
@@ -94,7 +94,7 @@ jobs:
           cache-from: type=gha
 
       - name: Build and push (arm64 tags)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           file: ./backend/Dockerfile
@@ -127,7 +127,7 @@ jobs:
       - name: Upload Trivy results to code scanning
         if: ${{ hashFiles('trivy-results.sarif') != '' }}
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-results.sarif
           category: trivy-image

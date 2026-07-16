@@ -20,10 +20,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models import Card, Deck
 
 # fmt -> (file suffix, media type, UI label)
+_TEXT_PLAIN = "text/plain"
+
 EXPORT_FORMATS = {
-    "text": ("txt", "text/plain", "Plain text"),
-    "arena": ("txt", "text/plain", "Arena"),
-    "moxfield": ("txt", "text/plain", "Moxfield"),
+    "text": ("txt", _TEXT_PLAIN, "Plain text"),
+    "arena": ("txt", _TEXT_PLAIN, "Arena"),
+    "moxfield": ("txt", _TEXT_PLAIN, "Moxfield"),
     "mtgo": ("dek", "application/xml", "MTGO (.dek)"),
 }
 

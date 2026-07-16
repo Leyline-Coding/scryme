@@ -124,6 +124,25 @@ async def search_nl(
     return local_redirect(url)
 
 
+async def _run_into_ctx(
+    ctx: dict, session, query: str, scope_enum, page: int, sort: str, descending: bool,
+    *, with_facets: bool,
+) -> None:
+    """Run the search and populate ctx with result/views, plus facets or name suggestions."""
+    result = await run_search(
+        session, query, scope=scope_enum, page=page, sort=sort, descending=descending
+    )
+    ctx["result"] = result
+    ctx["views"] = _to_views(result)
+    if result.total and with_facets:
+        ctx["facets"] = await memoize(
+            ("facets", query, scope_enum.value),
+            lambda: compute_facets(session, query, scope_enum),
+        )
+    elif not result.total:
+        ctx["suggestions"] = await name_suggestions(session, ctx["q"], scope_enum)
+
+
 @router.get("/search", response_class=HTMLResponse)
 async def search(
     request: Request,
@@ -147,31 +166,18 @@ async def search(
                  "read_only": get_settings().read_only, "view": view, "nl": nl,
                  "universal": universal, "cur": info(get_currency(request))}
     try:
-        result = await run_search(
-            session, effective_q, scope=scope_enum, page=page, sort=sort, descending=descending
+        await _run_into_ctx(
+            ctx, session, effective_q, scope_enum, page, sort, descending, with_facets=True
         )
-        ctx["result"] = result
-        ctx["views"] = _to_views(result)
-        if result.total:
-            ctx["facets"] = await memoize(
-                ("facets", effective_q, scope_enum.value),
-                lambda: compute_facets(session, effective_q, scope_enum),
-            )
-        else:
-            ctx["suggestions"] = await name_suggestions(session, q, scope_enum)
     except SearchError as exc:
         # If the universal filter is what broke the query, fall back to the bare query so a bad
         # saved filter can't wedge every search — and flag it.
         if universal:
             try:
-                result = await run_search(
-                    session, q, scope=scope_enum, page=page, sort=sort, descending=descending
+                await _run_into_ctx(
+                    ctx, session, q, scope_enum, page, sort, descending, with_facets=False
                 )
-                ctx["result"] = result
-                ctx["views"] = _to_views(result)
                 ctx["universal_error"] = True
-                if not result.total:
-                    ctx["suggestions"] = await name_suggestions(session, q, scope_enum)
             except SearchError:
                 ctx["error"] = str(exc)
         else:

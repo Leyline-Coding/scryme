@@ -112,6 +112,27 @@ def validate_backup(data) -> str | None:
     return None
 
 
+def _prepare_rows(
+    tables: dict, existing_cards: set
+) -> tuple[dict[str, list[dict]], dict[str, int], int]:
+    """Coerce backup rows per table, dropping card-FK rows whose card isn't present."""
+    prepared: dict[str, list[dict]] = {}
+    counts: dict[str, int] = {}
+    skipped = 0
+    for name, model in _TABLES:
+        cols = {c.name: c for c in model.__table__.columns}
+        good: list[dict] = []
+        for row in tables.get(name) or []:
+            coerced = {k: _from_json(cols[k], v) for k, v in row.items() if k in cols}
+            if name in _CARD_FK_TABLES and coerced.get("scryfall_id") not in existing_cards:
+                skipped += 1
+                continue
+            good.append(coerced)
+        prepared[name] = good
+        counts[name] = len(good)
+    return prepared, counts, skipped
+
+
 async def restore_backup(
     session: AsyncSession, data, *, dry_run: bool = True, passphrase: str = ""
 ) -> RestoreResult:
@@ -131,20 +152,7 @@ async def restore_backup(
     tables = data["tables"]
     existing_cards = set(await session.scalars(select(Card.scryfall_id)))
 
-    prepared: dict[str, list[dict]] = {}
-    counts: dict[str, int] = {}
-    skipped = 0
-    for name, model in _TABLES:
-        cols = {c.name: c for c in model.__table__.columns}
-        good: list[dict] = []
-        for row in tables.get(name) or []:
-            coerced = {k: _from_json(cols[k], v) for k, v in row.items() if k in cols}
-            if name in _CARD_FK_TABLES and coerced.get("scryfall_id") not in existing_cards:
-                skipped += 1
-                continue
-            good.append(coerced)
-        prepared[name] = good
-        counts[name] = len(good)
+    prepared, counts, skipped = _prepare_rows(tables, existing_cards)
 
     if dry_run:
         return RestoreResult(ok=True, applied=False, counts=counts, skipped_missing_cards=skipped)

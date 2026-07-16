@@ -3,7 +3,7 @@
 Usage:
     python -m src.cli ingest [--force]      # download + ingest Default Cards bulk
     python -m src.cli backfill-images       # cache images for owned cards
-    python -m src.cli seed-demo [--limit N] # add sample cards to the collection (demo)
+    python -m src.cli seed-demo            # add the curated demo collection
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-from src.demo import DEFAULT_LIMIT, seed_demo, seed_demo_decks
+from src.demo import seed_demo, seed_demo_decks
 from src.scryfall.images import ImageCache
 from src.scryfall.ingest import ingest_default_cards
 
@@ -29,8 +29,8 @@ async def _backfill() -> None:
     print(f"Cached {fetched} new images.")
 
 
-async def _seed_demo(limit: int) -> None:
-    added = await seed_demo(limit)
+async def _seed_demo() -> None:
+    added = await seed_demo()
     print(f"Added {added} cards to the demo collection.")
     decks = await seed_demo_decks()
     print(f"Created {decks} example deck(s).")
@@ -156,8 +156,7 @@ def main() -> None:
 
     sub.add_parser("backfill-images", help="Cache images for owned cards")
 
-    p_demo = sub.add_parser("seed-demo", help="Add sample cards to the collection (demo)")
-    p_demo.add_argument("--limit", type=int, default=DEFAULT_LIMIT, help="How many cards to add")
+    sub.add_parser("seed-demo", help="Add sample cards to the collection (demo)")
 
     sub.add_parser("snapshot-prices", help="Capture a price snapshot of the owned collection")
 
@@ -199,7 +198,7 @@ def main() -> None:
     elif args.command == "backfill-images":
         asyncio.run(_backfill())
     elif args.command == "seed-demo":
-        asyncio.run(_seed_demo(args.limit))
+        asyncio.run(_seed_demo())
     elif args.command == "snapshot-prices":
         asyncio.run(_snapshot_prices())
     elif args.command == "prune-digital":

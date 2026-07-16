@@ -36,6 +36,11 @@ def _finish(value: str | None) -> str:
     return v if v in ("normal", "foil", "etched") else "normal"
 
 
+def _clean(raw: dict, key: str, default: str | None = None) -> str | None:
+    """Trimmed cell value, or ``default`` when blank/missing."""
+    return (raw.get(key) or "").strip() or default
+
+
 @register
 class ManaBoxImporter:
     format_name: ClassVar[str] = "manabox"
@@ -50,23 +55,22 @@ class ManaBoxImporter:
         reader = csv.DictReader(io.StringIO(text))
         rows: list[ImportRow] = []
         for raw in reader:
-            name = (raw.get("Name") or "").strip()
+            name = _clean(raw, "Name")
             if not name:
                 continue
-            sid = (raw.get("Scryfall ID") or "").strip() or None
-            set_code = (raw.get("Set code") or "").strip().lower() or None
+            set_code = _clean(raw, "Set code")
             rows.append(
                 ImportRow(
                     name=name,
                     quantity=_to_int(raw.get("Quantity")),
-                    set_code=set_code,
-                    collector_number=(raw.get("Collector number") or "").strip() or None,
-                    scryfall_id=sid,
+                    set_code=set_code.lower() if set_code else None,
+                    collector_number=_clean(raw, "Collector number"),
+                    scryfall_id=_clean(raw, "Scryfall ID"),
                     finish=_finish(raw.get("Foil")),
-                    condition=(raw.get("Condition") or "").strip() or None,
-                    language=(raw.get("Language") or "en").strip() or "en",
+                    condition=_clean(raw, "Condition"),
+                    language=_clean(raw, "Language", "en"),
                     purchase_price=_to_float(raw.get("Purchase price")),
-                    binder_name=(raw.get("Binder Name") or "").strip() or None,
+                    binder_name=_clean(raw, "Binder Name"),
                 )
             )
         return rows

@@ -45,6 +45,9 @@ from src.templating import templates
 
 router = APIRouter(tags=["collection"])
 
+_STACK_NOT_FOUND = "Stack not found."
+_LOCATIONS_URL = "/collection?tab=locations"
+
 
 def _guard_writable() -> None:
     if get_settings().read_only:
@@ -138,7 +141,7 @@ async def adjust(
     _guard_writable()
     sid = await adjust_quantity(session, stack_id, delta)
     if sid is None:
-        raise HTTPException(status_code=404, detail="Stack not found.")
+        raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     return await _collection_partial(request, session, sid)
 
 
@@ -151,7 +154,7 @@ async def remove_stack(
     _guard_writable()
     sid = await delete_stack(session, stack_id)
     if sid is None:
-        raise HTTPException(status_code=404, detail="Stack not found.")
+        raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     return await _collection_partial(request, session, sid)
 
 
@@ -232,7 +235,7 @@ async def locate_stack(
     _guard_writable()
     stack = await session.get(CollectionCard, stack_id)
     if stack is None:
-        raise HTTPException(status_code=404, detail="Stack not found.")
+        raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     sid = stack.scryfall_id
     kind, _, ref = location_choice.partition(":")
     if kind == "box":
@@ -263,7 +266,7 @@ async def grade_stack(
     _guard_writable()
     stack = await session.get(CollectionCard, stack_id)
     if stack is None:
-        raise HTTPException(status_code=404, detail="Stack not found.")
+        raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     try:
         override = float(value_override) if value_override.strip() else None
     except ValueError:
@@ -282,7 +285,7 @@ async def grade_clear(
     _guard_writable()
     stack = await session.get(CollectionCard, stack_id)
     if stack is None:
-        raise HTTPException(status_code=404, detail="Stack not found.")
+        raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     sid = stack.scryfall_id
     await clear_grade(session, stack_id)
     return await _collection_partial(request, session, sid)
@@ -323,7 +326,7 @@ async def bulk(
 @router.get("/collection/locations")
 async def locations() -> RedirectResponse:
     # The storage hub is now the collection Locations tab.
-    return RedirectResponse(url="/collection?tab=locations", status_code=307)
+    return RedirectResponse(url=_LOCATIONS_URL, status_code=307)
 
 
 @router.post("/collection/boxes/new")
@@ -332,7 +335,7 @@ async def new_box(
 ) -> RedirectResponse:
     _guard_writable()
     await create_box(session, name)
-    return RedirectResponse(url="/collection?tab=locations", status_code=303)
+    return RedirectResponse(url=_LOCATIONS_URL, status_code=303)
 
 
 @router.post("/collection/boxes/{box_id}/rename")
@@ -341,7 +344,7 @@ async def rename_box_route(
 ) -> RedirectResponse:
     _guard_writable()
     await rename_box(session, box_id, name)
-    return RedirectResponse(url="/collection?tab=locations", status_code=303)
+    return RedirectResponse(url=_LOCATIONS_URL, status_code=303)
 
 
 @router.post("/collection/boxes/{box_id}/delete")
@@ -350,7 +353,7 @@ async def delete_box_route(
 ) -> RedirectResponse:
     _guard_writable()
     await delete_box(session, box_id)
-    return RedirectResponse(url="/collection?tab=locations", status_code=303)
+    return RedirectResponse(url=_LOCATIONS_URL, status_code=303)
 
 
 @router.post("/collection/organize-by-identity")
@@ -359,4 +362,4 @@ async def organize_locations(
 ) -> RedirectResponse:
     _guard_writable()
     await organize_by_color_identity(session)
-    return RedirectResponse(url="/collection?tab=locations", status_code=303)
+    return RedirectResponse(url=_LOCATIONS_URL, status_code=303)

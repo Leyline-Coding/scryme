@@ -32,6 +32,8 @@ from src.wishlist import add_deck_missing
 
 router = APIRouter(tags=["decks"])
 
+_DECK_NOT_FOUND = "Deck not found."
+
 
 def _guard_writable() -> None:
     if get_settings().read_only:
@@ -117,7 +119,7 @@ async def view_deck(
 ) -> HTMLResponse:
     deck = await session.get(Deck, deck_id)
     if deck is None:
-        raise HTTPException(status_code=404, detail="Deck not found.")
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     currency = get_currency(request)
     source = get_price_source(request)
     coverage = await deck_coverage(session, deck, fmt=format or None, currency=currency,
@@ -211,7 +213,7 @@ async def export_deck(
 ) -> PlainTextResponse:
     deck = await session.get(Deck, deck_id)
     if deck is None:
-        raise HTTPException(status_code=404, detail="Deck not found.")
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     if fmt not in EXPORT_FORMATS:
         fmt = "text"
     suffix, media_type, _label = EXPORT_FORMATS[fmt]
@@ -241,6 +243,6 @@ async def deck_to_wishlist(deck_id: int, session: AsyncSession = Depends(get_ses
     _guard_writable()
     deck = await session.get(Deck, deck_id)
     if deck is None:
-        raise HTTPException(status_code=404, detail="Deck not found.")
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     await add_deck_missing(session, deck)
     return RedirectResponse(url="/wishlist", status_code=303)

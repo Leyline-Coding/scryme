@@ -198,8 +198,8 @@ class Mover:
 class Movers:
     previous_at: object = None
     latest_at: object = None
-    gainers: list = None
-    losers: list = None
+    gainers: list | None = None
+    losers: list | None = None
 
     @property
     def available(self) -> bool:
@@ -215,8 +215,8 @@ async def _movers_between(
             CardPricePoint.snapshot_id == sid
         )
 
-    latest = {s: u for s, u in (await session.execute(points(latest_id))).all()}
-    prev = {s: u for s, u in (await session.execute(points(prev_id))).all()}
+    latest = dict((await session.execute(points(latest_id))).all())
+    prev = dict((await session.execute(points(prev_id))).all())
     shared = [s for s in latest if s in prev and latest[s] != prev[s]]
     if not shared:
         return [], []

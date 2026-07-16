@@ -68,14 +68,18 @@ async def match_rows(session: AsyncSession, rows: list[ImportRow]) -> list[Match
         for sid, name in res.all():
             name_map[name] = str(sid)
 
-    matched: list[MatchedRow] = []
-    for r in rows:
-        if r.scryfall_id and r.scryfall_id in existing_ids:
-            matched.append(MatchedRow(r, r.scryfall_id, "scryfall_id"))
-        elif r.set_code and r.collector_number and (r.set_code, r.collector_number) in pair_map:
-            matched.append(MatchedRow(r, pair_map[(r.set_code, r.collector_number)], "set_number"))
-        elif r.name in name_map:
-            matched.append(MatchedRow(r, name_map[r.name], "name"))
-        else:
-            matched.append(MatchedRow(r, None, "unmatched"))
-    return matched
+    return [_match_one(r, existing_ids, pair_map, name_map) for r in rows]
+
+
+def _match_one(
+    r: ImportRow, existing_ids: set, pair_map: dict, name_map: dict
+) -> MatchedRow:
+    """Resolve one row by precedence: Scryfall id → set+number → name → unmatched."""
+    if r.scryfall_id and r.scryfall_id in existing_ids:
+        return MatchedRow(r, r.scryfall_id, "scryfall_id")
+    pair = (r.set_code, r.collector_number)
+    if r.set_code and r.collector_number and pair in pair_map:
+        return MatchedRow(r, pair_map[pair], "set_number")
+    if r.name in name_map:
+        return MatchedRow(r, name_map[r.name], "name")
+    return MatchedRow(r, None, "unmatched")

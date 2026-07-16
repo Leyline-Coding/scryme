@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -223,10 +224,47 @@ class DeckContext:
                 "and legal in its format — never cards of other colors.")
 
 
+@dataclass
+class _DeckScan:
+    identity: set
+    kw_counts: Counter
+    text_cards: list
+    valued: list          # (usd, name, type_line)
+    commander: str
+    commander_text: str
+    commanders: list
+
+
+def _scan_deck_cards(info: dict) -> _DeckScan:
+    """Aggregate identity, keywords, oracle text, commanders, and values across the deck's cards."""
+    scan = _DeckScan(set(), Counter(), [], [], "", "", [])
+    for _sid, (name, type_line, ci, oracle, keywords, prices) in info.items():
+        scan.identity.update(ci or [])
+        for k in (keywords or []):
+            scan.kw_counts[k] += 1
+        scan.text_cards.append((oracle or "").lower())
+        tl = (type_line or "").lower()
+        if "legendary" in tl and "creature" in tl:
+            scan.commanders.append(name)
+            if not scan.commander:
+                scan.commander = name
+                scan.commander_text = (oracle or "").split("\n")[0][:160]
+        if "land" not in tl:
+            scan.valued.append((float((prices or {}).get("usd") or 0.0), name, tl))
+    return scan
+
+
+def _deck_themes(kw_counts: Counter, text_cards: list) -> list[str]:
+    """Themes from repeated keywords, plus text-signal themes seen in >=4 cards."""
+    themes = [k for k, n in kw_counts.most_common(5) if n >= 2]
+    for label, sig in _THEME_TEXT_SIGNALS.items():
+        if label not in themes and sum(1 for t in text_cards if sig in t) >= 4:
+            themes.append(label)
+    return themes
+
+
 async def deck_ai_context(session: AsyncSession, deck) -> DeckContext:
     """Rich grounded context for the AI deck features: identity, commander, themes, key cards."""
-    from collections import Counter
-
     cov = await deck_coverage(session, deck)
     stats = await deck_stats(session, deck)
     curve = ", ".join(f"{b.label}:{b.count}" for b in stats.mana_curve)
@@ -241,34 +279,14 @@ async def deck_ai_context(session: AsyncSession, deck) -> DeckContext:
         )).all():
             info[row[0]] = row[1:]
 
-    identity: set[str] = set()
-    kw_counts: Counter = Counter()
-    text_cards: list[str] = []
-    valued: list[tuple[float, str, str]] = []  # (usd, name, type_line)
-    commander = commander_text = ""
-    commanders: list[str] = []
-    for _sid, (name, type_line, ci, oracle, keywords, prices) in info.items():
-        identity.update(ci or [])
-        for k in (keywords or []):
-            kw_counts[k] += 1
-        text_cards.append((oracle or "").lower())
-        tl = (type_line or "").lower()
-        if "legendary" in tl and "creature" in tl:
-            commanders.append(name)
-            if not commander:
-                commander, commander_text = name, (oracle or "").split("\n")[0][:160]
-        if "land" not in tl:
-            valued.append((float((prices or {}).get("usd") or 0.0), name, tl))
-
-    themes = [k for k, n in kw_counts.most_common(5) if n >= 2]
-    for label, sig in _THEME_TEXT_SIGNALS.items():
-        if label not in themes and sum(1 for t in text_cards if sig in t) >= 4:
-            themes.append(label)
-    key_cards = [n for _v, n, _t in sorted(valued, reverse=True)[:5]]
+    scan = _scan_deck_cards(info)
+    themes = _deck_themes(scan.kw_counts, scan.text_cards)
+    key_cards = [n for _v, n, _t in sorted(scan.valued, reverse=True)[:5]]
 
     return DeckContext(
-        name=deck.name, identity=identity, is_commander=bool(commander),
-        commander=commander, commander_text=commander_text, commanders=commanders[:4],
+        name=deck.name, identity=scan.identity, is_commander=bool(scan.commander),
+        commander=scan.commander, commander_text=scan.commander_text,
+        commanders=scan.commanders[:4],
         decklist=_decklist_text(cov), curve=curve, colors=colors,
         themes=themes[:6], key_cards=key_cards,
     )
@@ -687,6 +705,21 @@ def _parse_named_reasons(text: str) -> list[tuple[str, str]]:
     return out
 
 
+def _validate_upgrade(card, reason, ctx, owned_oracles, remaining):
+    """Vet one candidate card; return (UpgradeItem, price) or None if it should be dropped."""
+    if card is None or card.oracle_id in owned_oracles:  # not real, or already owned
+        return None
+    # Enforce the deck's color identity + format legality (#192): drop off-identity / illegal.
+    if ctx.identity and not set(card.color_identity or []).issubset(ctx.identity):
+        return None
+    if ctx.is_commander and (card.legalities or {}).get("commander") not in _ALLOWED_LEGAL:
+        return None
+    price = float((card.prices or {}).get("usd") or 0.0)
+    if price <= 0 or price > remaining:
+        return None
+    return UpgradeItem(card.name, str(card.scryfall_id), round(price, 2), reason), price
+
+
 async def plan_upgrades(
     session: AsyncSession, deck, budget: float, client: ChatClient,
 ) -> UpgradePlan:
@@ -713,18 +746,12 @@ async def plan_upgrades(
             select(Card).where(func.lower(Card.name) == name.lower())
             .order_by(Card.released_at.desc().nulls_last()).limit(1)
         )).scalars().first()
-        if card is None or card.oracle_id in owned_oracles:  # not real, or already owned
+        result = _validate_upgrade(card, reason, ctx, owned_oracles, budget - total)
+        if result is None:
             continue
-        # Enforce the deck's color identity + format legality (#192): drop off-identity / illegal.
-        if ctx.identity and not set(card.color_identity or []).issubset(ctx.identity):
-            continue
-        if ctx.is_commander and (card.legalities or {}).get("commander") not in _ALLOWED_LEGAL:
-            continue
-        price = float((card.prices or {}).get("usd") or 0.0)
-        if price <= 0 or total + price > budget:
-            continue
+        item, price = result
         total += price
-        items.append(UpgradeItem(card.name, str(card.scryfall_id), round(price, 2), reason))
+        items.append(item)
     return UpgradePlan(items=items, total=round(total, 2), budget=budget, empty=not text.strip())
 
 

@@ -18,18 +18,19 @@ from src.models import Card, CollectionCard
 
 BASIC_BY_COLOR = {"W": "Plains", "U": "Island", "B": "Swamp", "R": "Mountain", "G": "Forest"}
 _ALLOWED_LEGAL = {"legal", "restricted"}
+_CARD_DRAW = "Card draw"
 
 DECK_SIZE = 99  # cards besides the commander
 LAND_TARGET = 35
 # Non-land role targets; the remainder of the 99 is creatures + filler.
 _TEMPLATE = [
     ("Ramp", 10),
-    ("Card draw", 10),
+    (_CARD_DRAW, 10),
     ("Removal", 10),
     ("Creatures", 28),
     ("Other", 6),
 ]
-ROLES = ["Lands", "Ramp", "Card draw", "Removal", "Creatures", "Other"]
+ROLES = ["Lands", "Ramp", _CARD_DRAW, "Removal", "Creatures", "Other"]
 
 
 @dataclass
@@ -84,7 +85,7 @@ def classify_role(type_line: str | None, oracle_text: str | None) -> str:
     ):
         return "Removal"
     if "draw" in o and "card" in o:
-        return "Card draw"
+        return _CARD_DRAW
     if "creature" in t:
         return "Creatures"
     return "Other"

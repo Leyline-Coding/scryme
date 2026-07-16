@@ -63,6 +63,34 @@ async def _load_card(session: AsyncSession, scryfall_id: str) -> Card:
     return card
 
 
+def _flip_rotate(card: Card) -> tuple[bool, str | None, bool]:
+    """(can_flip, flip_image, can_rotate) for a card's page controls, from its faces/layout."""
+    raw_faces = card.raw.get("card_faces") or []
+    face_images = [
+        (f.get("image_uris") or {}).get("normal") or (f.get("image_uris") or {}).get("png")
+        for f in raw_faces
+    ]
+    can_flip = sum(1 for u in face_images if u) >= 2
+    flip_image = face_images[1] if can_flip else None
+    keywords = [k.lower() for k in (card.keywords or [])]
+    can_rotate = card.layout in ("battle", "planar") or "aftermath" in keywords
+    return can_flip, flip_image, can_rotate
+
+
+def _price_rows(request: Request, card: Card) -> list[tuple[str, float]]:
+    """Non-empty (label, price) rows, led by the visitor's chosen currency and price source."""
+    source = get_price_source(request)
+    prices = effective_prices(card, source) or {}
+    src = SOURCES.get(source, SOURCES["tcgplayer"])
+    usd_label = f"{src['label']}" if source != "tcgplayer" else "USD"
+    usd_rows = [(usd_label, "usd"), (f"{usd_label} foil", "usd_foil")]
+    eur_rows = [("EUR", "eur"), ("EUR foil", "eur_foil")]
+    ordered = eur_rows + usd_rows if get_currency(request) == "eur" else usd_rows + eur_rows
+    return [
+        (label, prices.get(key)) for label, key in [*ordered, ("TIX", "tix")] if prices.get(key)
+    ]
+
+
 @router.get("/card/{scryfall_id}", response_class=HTMLResponse)
 async def card_detail(
     request: Request,
@@ -102,27 +130,8 @@ async def card_detail(
     # Double-faced cards (transform / modal DFC / battles / reversible) carry a separate image per
     # face — offer a Scryfall-style flip button. Battles, Planes/Phenomena, and Aftermath cards read
     # sideways, so offer a rotate button. Both get playful animations on the card page.
-    raw_faces = card.raw.get("card_faces") or []
-    face_images = [
-        (f.get("image_uris") or {}).get("normal") or (f.get("image_uris") or {}).get("png")
-        for f in raw_faces
-    ]
-    can_flip = sum(1 for u in face_images if u) >= 2
-    flip_image = face_images[1] if can_flip else None
-    keywords = [k.lower() for k in (card.keywords or [])]
-    can_rotate = card.layout in ("battle", "planar") or "aftermath" in keywords
-
-    source = get_price_source(request)
-    prices = effective_prices(card, source) or {}
-    _src = SOURCES.get(source, SOURCES["tcgplayer"])
-    _usd_label = f"{_src['label']}" if source != "tcgplayer" else "USD"
-    _usd_rows = [(_usd_label, "usd"), (f"{_usd_label} foil", "usd_foil")]
-    _eur_rows = [("EUR", "eur"), ("EUR foil", "eur_foil")]
-    # Lead with the visitor's chosen display currency.
-    ordered = (_eur_rows + _usd_rows if get_currency(request) == "eur" else _usd_rows + _eur_rows)
-    price_rows = [
-        (label, prices.get(key)) for label, key in [*ordered, ("TIX", "tix")] if prices.get(key)
-    ]
+    can_flip, flip_image, can_rotate = _flip_rotate(card)
+    price_rows = _price_rows(request, card)
     legalities = card.legalities or {}
     legality_rows = [(fmt, legalities.get(fmt, "not_legal")) for fmt in LEGALITY_FORMATS]
 

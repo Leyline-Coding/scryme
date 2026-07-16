@@ -13,11 +13,8 @@ from __future__ import annotations
 
 import time
 from collections.abc import Awaitable, Callable, Hashable
-from typing import TypeVar
 
 from src.config import get_settings
-
-_T = TypeVar("_T")
 
 _DEFAULT_TTL = 300.0  # seconds
 _MAX_ENTRIES = 512    # bound memory even if many distinct queries are cached
@@ -38,9 +35,9 @@ def _evict(now: float) -> None:
         _store.pop(min(_store, key=lambda k: _store[k][0]), None)
 
 
-async def memoize(
-    key: Hashable, factory: Callable[[], Awaitable[_T]], ttl: float = _DEFAULT_TTL
-) -> _T:
+async def memoize[T](
+    key: Hashable, factory: Callable[[], Awaitable[T]], ttl: float = _DEFAULT_TTL
+) -> T:
     """Return the cached value for ``key``, else compute it via ``factory`` and store it.
 
     When not read-only this is a pass-through (``factory`` runs every call, nothing is stored).

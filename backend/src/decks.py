@@ -22,8 +22,9 @@ from src.pricing import resolve_prices
 from src.stats import Bar, _bars, _color_bucket
 
 # Capture the name greedily and rstrip() it in code (a lazy `(.+?)\s*$` tail backtracks
-# polynomially on trailing whitespace).
-_LINE = re.compile(r"^\s*(\d+)\s*[xX]?\s+(.+)$")
+# polynomially on trailing whitespace). The optional 'x' count marker is grouped with its
+# leading space so the two whitespace runs can't overlap (keeps the match linear).
+_LINE = re.compile(r"^\s*(\d+)(?:\s*[xX])?\s+(.+)$")
 # Strip trailing export markers like "*F*" (foil) / "*E*" (etched). Possessive quantifiers
 # keep it linear (the char classes are disjoint, so no legitimate backtracking is lost).
 _MARKER = re.compile(r"\s*+(?:\*[^*]*+\*\s*+)++$")

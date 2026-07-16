@@ -59,6 +59,10 @@ win:
 
 linux:
   category: Utility
+  # Name the .desktop entry and sync it to the app's WM_CLASS so Linux desktops associate running
+  # windows with the launcher (taskbar/dock grouping). Matches executableName.
+  desktopName: scryme.desktop
+  syncDesktopName: true
   # Default targets (x64 runner builds both). The arm64 runner overrides this with `--linux AppImage`
   # in CI, because electron-builder's bundled fpm (for .deb) is x86-only and can't run on arm64.
   target:

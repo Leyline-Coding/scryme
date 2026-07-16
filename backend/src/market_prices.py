@@ -25,6 +25,7 @@ import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
+import aiofiles
 import httpx
 import ijson
 import structlog
@@ -154,9 +155,9 @@ async def _download(url: str, dest: Path) -> Path:
                                  follow_redirects=True) as client:
         async with client.stream("GET", url) as resp:
             resp.raise_for_status()
-            with tmp.open("wb") as fh:
+            async with aiofiles.open(tmp, "wb") as fh:
                 async for chunk in resp.aiter_bytes():
-                    fh.write(chunk)
+                    await fh.write(chunk)
     tmp.replace(dest)
     return dest
 

@@ -36,6 +36,13 @@
       <section>
         <h3 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">Value by rarity</h3>
         <table class="w-full text-sm">
+          <thead>
+            <tr class="text-xs text-muted uppercase tracking-wide">
+              <th scope="col" class="py-1 text-left font-medium">Rarity</th>
+              <th scope="col" class="py-1 text-right font-medium">Count</th>
+              <th scope="col" class="py-1 text-right font-medium">Value</th>
+            </tr>
+          </thead>
           <tbody>
             {% for row in report.by_rarity %}
             <tr class="border-t border-edge">
@@ -50,6 +57,13 @@
       <section>
         <h3 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">Top sets by value</h3>
         <table class="w-full text-sm">
+          <thead>
+            <tr class="text-xs text-muted uppercase tracking-wide">
+              <th scope="col" class="py-1 text-left font-medium">Set</th>
+              <th scope="col" class="py-1 text-right font-medium">Count</th>
+              <th scope="col" class="py-1 text-right font-medium">Value</th>
+            </tr>
+          </thead>
           <tbody>
             {% for row in report.by_set %}
             <tr class="border-t border-edge">

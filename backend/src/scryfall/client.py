@@ -17,6 +17,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import aiofiles
 import httpx
 import structlog
 
@@ -102,9 +103,9 @@ class ScryfallClient:
         async with self._client.stream("GET", url) as resp:
             if resp.status_code >= 400:
                 raise ScryfallError(f"GET {url} -> {resp.status_code}")
-            with tmp.open("wb") as fh:
+            async with aiofiles.open(tmp, "wb") as fh:
                 async for chunk in resp.aiter_raw():
-                    fh.write(chunk)
+                    await fh.write(chunk)
         tmp.replace(dest)
         return dest
 

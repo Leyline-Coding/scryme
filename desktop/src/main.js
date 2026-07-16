@@ -11,14 +11,43 @@ const {
 } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
+const net = require("node:net");
 const { spawn } = require("node:child_process");
 
-// get-port is ESM-only (v7+, "type": "module"), so it can't be require()'d from this CommonJS
-// file. Load it lazily via dynamic import() and cache it, then expose the same callable API.
-let _getPortImpl;
-async function getPort(options) {
-  if (!_getPortImpl) _getPortImpl = (await import("get-port")).default;
-  return _getPortImpl(options);
+// Find a free TCP port on 127.0.0.1: prefer `preferred` if it's free, otherwise take any free port.
+// A tiny built-in replacement for the get-port dependency (ESM-only, which forced a fragile dynamic
+// import() from this CommonJS main process).
+function getPort(preferred) {
+  return new Promise((resolve, reject) => {
+    const listen = (candidate, canFallback) => {
+      const server = net.createServer();
+      server.once("error", () => {
+        if (canFallback) listen(0, false);   // preferred port busy → fall back to any free port
+        else reject(new Error("could not find a free TCP port"));
+      });
+      server.listen(candidate, "127.0.0.1", () => {
+        const { port } = server.address();
+        server.close(() => resolve(port));
+      });
+    };
+    const pref = Number(preferred) || 0;
+    listen(pref, pref !== 0);
+  });
+}
+
+// Ubuntu 24.04 / Zorin 18 (and other recent AppArmor distros) restrict unprivileged user namespaces,
+// which breaks Chromium's sandbox for AppImages — there's no SUID sandbox helper to fall back to, so
+// the app fails to launch. When that restriction is on, disable the sandbox so it still starts;
+// scryme only ever loads its own localhost backend, so the renderer sees no untrusted web content.
+const _USERNS_FLAG = "/proc/sys/kernel/apparmor_restrict_unprivileged_userns";
+if (process.platform === "linux" && fs.existsSync(_USERNS_FLAG)) {
+  try {
+    if (fs.readFileSync(_USERNS_FLAG, "utf8").trim() === "1") {
+      app.commandLine.appendSwitch("no-sandbox");
+    }
+  } catch (err) {
+    process.stderr.write(`[sandbox] userns check failed: ${err}\n`);
+  }
 }
 
 // embedded-postgres is ESM-only ("type": "module") too, so it can't be require()'d from this
@@ -55,7 +84,7 @@ function backendPortFor(dir) {
     saved = Number.parseInt(fs.readFileSync(file, "utf8").trim(), 10);
   }
   // getPort returns the preferred port if available, else any free port.
-  return getPort(saved ? { port: saved } : undefined).then((port) => {
+  return getPort(saved).then((port) => {
     try {
       fs.writeFileSync(file, String(port));
     } catch (err) {
@@ -122,6 +151,12 @@ function startBackend(dir, backendPort, pgPort) {
   backend = spawn(cmd, args, { ...opts, stdio: ["ignore", "pipe", "pipe"] });
   backend.stdout.on("data", (d) => process.stdout.write(`[backend] ${d}`));
   backend.stderr.on("data", (d) => process.stderr.write(`[backend] ${d}`));
+  backend.on("error", (err) => {
+    // e.g. the frozen backend binary is missing/not executable — surface it instead of hanging.
+    if (!didShutdown) {
+      dialog.showErrorBox("scryme", `The backend failed to launch: ${err?.message || err}`);
+    }
+  });
   backend.on("exit", (code) => {
     if (code !== 0 && code !== null && !didShutdown) {
       dialog.showErrorBox("scryme", `The backend exited unexpectedly (code ${code}).`);
@@ -267,23 +302,31 @@ function registerShortcuts() {
 }
 
 async function boot() {
-  const dir = dataDir();
-  // Backend port is stable across launches (keeps renderer settings); the internal PG port is not.
-  const [backendPort, pgPort] = await Promise.all([backendPortFor(dir), getPort()]);
-
-  await startPostgres(dir, pgPort);
-  startBackend(dir, backendPort, pgPort);
-
-  const healthy = await waitForHealth(backendPort);
-  if (!healthy) {
-    dialog.showErrorBox("scryme", "The backend didn't start in time. See the logs for details.");
-    app.quit();
-    return;
+  let step = "preparing the data folder";
+  try {
+    const dir = dataDir();
+    // Backend port is stable across launches (keeps renderer settings); the PG port is not.
+    step = "resolving ports";
+    const [backendPort, pgPort] = await Promise.all([backendPortFor(dir), getPort()]);
+    step = "starting the embedded database";
+    await startPostgres(dir, pgPort);
+    step = "starting the backend";
+    startBackend(dir, backendPort, pgPort);
+    step = "waiting for the backend to become healthy";
+    const healthy = await waitForHealth(backendPort);
+    if (!healthy) {
+      dialog.showErrorBox("scryme", "The backend didn't start in time. See the logs for details.");
+      app.quit();
+      return;
+    }
+    createWindow(backendPort);
+    createTray(backendPort);
+    registerShortcuts();
+    checkForUpdates();
+  } catch (err) {
+    // Attribute the failure to a step and keep the stack, so it's never reported as bare "undefined".
+    throw new Error(`while ${step}: ${(err && (err.stack || err.message)) || err}`);
   }
-  createWindow(backendPort);
-  createTray(backendPort);
-  registerShortcuts();
-  checkForUpdates();
 }
 
 async function shutdown() {
@@ -306,7 +349,19 @@ async function shutdown() {
 app.whenReady().then(() => {
   // The application menu is built in createWindow() once the backend port is known.
   boot().catch((err) => {
-    dialog.showErrorBox("scryme", `Failed to start: ${err?.message ? err.message : err}`);
+    const detail = (err && (err.stack || err.message)) || String(err);
+    try {
+      fs.writeFileSync(path.join(dataDir(), "startup-error.log"),
+        `${new Date().toISOString()}\n${detail}\n`);
+    } catch (logErr) {
+      process.stderr.write(`[scryme] could not write startup-error.log: ${logErr}\n`);
+    }
+    process.stderr.write(`[scryme] startup failed: ${detail}\n`);
+    dialog.showErrorBox(
+      "scryme — couldn't start",
+      `scryme couldn't start:\n\n${(err && err.message) || detail}\n\n` +
+      "Full details were saved to startup-error.log in the app's data folder.",
+    );
     app.quit();
   });
   app.on("activate", () => {

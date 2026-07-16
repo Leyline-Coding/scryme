@@ -20,9 +20,10 @@ updates:
       - dependencies
       - area:ci
 
-  # Docs toolchain (MkDocs) pinned in docs-requirements.txt at the repo root.
+  # Docs toolchain (MkDocs) pinned in docs/docs-requirements.txt. Scoped to /docs so it doesn't
+  # also scan backend/ (a `directory: /` here recurses and duplicates the backend PRs).
   - package-ecosystem: pip
-    directory: /
+    directory: /docs
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

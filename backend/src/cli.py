@@ -206,34 +206,24 @@ def main() -> None:
     p_restore.add_argument("--passphrase", help="Passphrase for an encrypted backup")
 
     args = parser.parse_args()
-    if args.command == "ingest":
-        asyncio.run(_ingest(args.force))
-    elif args.command == "backfill-images":
-        asyncio.run(_backfill())
-    elif args.command == "seed-demo":
-        asyncio.run(_seed_demo())
-    elif args.command == "snapshot-prices":
-        asyncio.run(_snapshot_prices())
-    elif args.command == "refresh-fx":
-        asyncio.run(_refresh_fx())
-    elif args.command == "prune-digital":
-        asyncio.run(_prune_digital())
-    elif args.command == "backfill-embeddings":
-        asyncio.run(_backfill_embeddings("all" if args.all else "owned"))
-    elif args.command == "backfill-rules":
-        asyncio.run(_backfill_rules(args.file))
-    elif args.command == "organize-locations":
-        asyncio.run(_organize_locations())
-    elif args.command == "refresh-sets":
-        asyncio.run(_refresh_sets())
-    elif args.command == "backfill-mtgjson-ids":
-        asyncio.run(_backfill_mtgjson_ids())
-    elif args.command == "sync-market-prices":
-        asyncio.run(_sync_market_prices(args.force))
-    elif args.command == "backup":
-        asyncio.run(_backup(args.dir, args.passphrase))
-    elif args.command == "restore":
-        asyncio.run(_restore(args.file, args.apply, args.passphrase))
+    # command -> the coroutine to run (built lazily from args; only the chosen one is called).
+    handlers = {
+        "ingest": lambda: _ingest(args.force),
+        "backfill-images": lambda: _backfill(),
+        "seed-demo": lambda: _seed_demo(),
+        "snapshot-prices": lambda: _snapshot_prices(),
+        "refresh-fx": lambda: _refresh_fx(),
+        "prune-digital": lambda: _prune_digital(),
+        "backfill-embeddings": lambda: _backfill_embeddings("all" if args.all else "owned"),
+        "backfill-rules": lambda: _backfill_rules(args.file),
+        "organize-locations": lambda: _organize_locations(),
+        "refresh-sets": lambda: _refresh_sets(),
+        "backfill-mtgjson-ids": lambda: _backfill_mtgjson_ids(),
+        "sync-market-prices": lambda: _sync_market_prices(args.force),
+        "backup": lambda: _backup(args.dir, args.passphrase),
+        "restore": lambda: _restore(args.file, args.apply, args.passphrase),
+    }
+    asyncio.run(handlers[args.command]())
 
 
 if __name__ == "__main__":  # pragma: no cover

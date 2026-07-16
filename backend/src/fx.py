@@ -42,7 +42,8 @@ async def load_rates(session: AsyncSession | None = None) -> None:
     """Mirror the ``fx_rate`` table into ``FX_RATES`` (cheap; called at startup)."""
     if session is None:
         async with SessionLocal() as s:
-            return await load_rates(s)
+            await load_rates(s)
+        return
     rows = (await session.execute(select(FxRate.code, FxRate.rate))).all()
     FX_RATES.clear()
     FX_RATES.update(dict(rows))

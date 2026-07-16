@@ -11,7 +11,9 @@
     if (!img) return;
     var toBack = img.getAttribute("data-face") !== "back";
     var next = toBack ? img.getAttribute("data-back") : img.getAttribute("data-front");
-    if (!next) return;
+    // Only accept a same-origin path or an http(s)/data image URL before assigning to .src —
+    // never a "javascript:"-style value from the attribute.
+    if (!next || !/^(?:\/(?!\/)|https?:\/\/|data:image\/)/.test(next)) return;
     img.classList.remove("grid-flipping");
     void img.offsetWidth;   // restart the animation on rapid clicks
     img.classList.add("grid-flipping");

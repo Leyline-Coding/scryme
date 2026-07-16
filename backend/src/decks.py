@@ -21,11 +21,15 @@ from src.models import Card, CollectionCard, Deck, DeckCard
 from src.pricing import resolve_prices
 from src.stats import Bar, _bars, _color_bucket
 
-_LINE = re.compile(r"^\s*(\d+)\s*[xX]?\s+(.+?)\s*$")
-# Strip trailing export markers like "*F*" (foil) / "*E*" (etched).
-_MARKER = re.compile(r"(\s*\*[^*]*\*)+\s*$")
-# Strip a trailing "(SET) 123" / "(SET)" printing hint from a card name.
-_SET_SUFFIX = re.compile(r"\s*\([A-Za-z0-9]{2,6}\)\s*[A-Za-z0-9-]*\s*$")
+# Capture the name greedily and rstrip() it in code (a lazy `(.+?)\s*$` tail backtracks
+# polynomially on trailing whitespace). The optional 'x' count marker uses a possessive
+# `\s*+` so its whitespace can't overlap the following `\s+` (keeps the match linear).
+_LINE = re.compile(r"^\s*(\d+)(?:\s*+[xX])?\s+(.+)$")
+# Strip trailing export markers like "*F*" (foil) / "*E*" (etched). Possessive quantifiers
+# keep it linear (the char classes are disjoint, so no legitimate backtracking is lost).
+_MARKER = re.compile(r"\s*+(?:\*[^*]*+\*\s*+)++$")
+# Strip a trailing "(SET) 123" / "(SET)" printing hint from a card name (possessive = linear).
+_SET_SUFFIX = re.compile(r"\s*+\([A-Za-z0-9]{2,6}\)\s*+[A-Za-z0-9-]*+\s*+$")
 
 
 @dataclass
@@ -52,7 +56,7 @@ def parse_decklist(text: str | None) -> list[ParsedLine]:
         m = _LINE.match(s)
         if not m:
             continue
-        name = _MARKER.sub("", m.group(2))
+        name = _MARKER.sub("", m.group(2).rstrip())
         name = _SET_SUFFIX.sub("", name).strip()
         if name:
             out.append(ParsedLine(int(m.group(1)), name, "side" if sb else board))

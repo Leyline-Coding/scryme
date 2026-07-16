@@ -10,6 +10,7 @@ from fastapi.responses import PlainTextResponse, RedirectResponse, StreamingResp
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import get_session
+from src.routes._safe import local_redirect
 from src.trade import trade_binder
 
 router = APIRouter(tags=["trade"])
@@ -18,7 +19,7 @@ router = APIRouter(tags=["trade"])
 @router.get("/trade")
 async def trade_page(keep: int = 1) -> RedirectResponse:
     # The trade binder is now the Trade tab of /collection.
-    return RedirectResponse(url=f"/collection?tab=trade&keep={keep}", status_code=307)
+    return local_redirect(f"/collection?tab=trade&keep={keep}", status_code=307)
 
 
 @router.get("/trade/export")

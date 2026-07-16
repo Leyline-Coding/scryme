@@ -19,8 +19,10 @@ from src.wishlist import add_to_wishlist
 # A checklist line is a bare card name, optionally with a leading count and a trailing printing
 # hint / foil marker (so decklists paste in too).
 _QTY = re.compile(r"^\s*\d+\s*[xX]?\s+")
-_MARKER = re.compile(r"(\s*\*[^*]*\*)+\s*$")
-_SET_SUFFIX = re.compile(r"\s*\([A-Za-z0-9]{2,6}\)\s*[A-Za-z0-9-]*\s*$")
+# Possessive quantifiers keep these suffix-strippers linear (disjoint char classes, so no
+# legitimate backtracking is lost) — a plain `(\s*\*[^*]*\*)+\s*$` backtracks polynomially.
+_MARKER = re.compile(r"\s*+(?:\*[^*]*+\*\s*+)++$")
+_SET_SUFFIX = re.compile(r"\s*+\([A-Za-z0-9]{2,6}\)\s*+[A-Za-z0-9-]*+\s*+$")
 
 
 def _distinct_names(text: str | None) -> list[str]:

@@ -27,6 +27,7 @@ from src.binder_service import (
 from src.config import get_settings
 from src.db import get_session
 from src.models import Binder, Card, CollectionCard
+from src.routes._safe import local_redirect
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
 from src.templating import templates
@@ -92,7 +93,7 @@ async def rename_binder_route(
 ) -> RedirectResponse:
     _guard_writable()
     await rename_binder(session, binder_id, name)
-    return RedirectResponse(url=f"/binders/view/{binder_id}", status_code=303)
+    return local_redirect(f"/binders/view/{binder_id}")
 
 
 @router.post("/binders/{binder_id}/delete")
@@ -110,7 +111,7 @@ async def remove_card_route(
 ) -> RedirectResponse:
     _guard_writable()
     await remove_card(session, binder_id, scryfall_id)
-    return RedirectResponse(url=f"/binders/view/{binder_id}", status_code=303)
+    return local_redirect(f"/binders/view/{binder_id}")
 
 
 # Add/remove a card to/from a binder from the card detail page (HTMX-swaps the control).

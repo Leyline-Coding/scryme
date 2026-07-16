@@ -206,19 +206,20 @@ def main() -> None:
     p_restore.add_argument("--passphrase", help="Passphrase for an encrypted backup")
 
     args = parser.parse_args()
-    # command -> the coroutine to run (built lazily from args; only the chosen one is called).
+    # command -> a no-arg callable returning the coroutine to run. Commands that take arguments use
+    # a small lambda to bind them from `args`; the rest reference their worker directly.
     handlers = {
         "ingest": lambda: _ingest(args.force),
-        "backfill-images": lambda: _backfill(),
-        "seed-demo": lambda: _seed_demo(),
-        "snapshot-prices": lambda: _snapshot_prices(),
-        "refresh-fx": lambda: _refresh_fx(),
-        "prune-digital": lambda: _prune_digital(),
+        "backfill-images": _backfill,
+        "seed-demo": _seed_demo,
+        "snapshot-prices": _snapshot_prices,
+        "refresh-fx": _refresh_fx,
+        "prune-digital": _prune_digital,
         "backfill-embeddings": lambda: _backfill_embeddings("all" if args.all else "owned"),
         "backfill-rules": lambda: _backfill_rules(args.file),
-        "organize-locations": lambda: _organize_locations(),
-        "refresh-sets": lambda: _refresh_sets(),
-        "backfill-mtgjson-ids": lambda: _backfill_mtgjson_ids(),
+        "organize-locations": _organize_locations,
+        "refresh-sets": _refresh_sets,
+        "backfill-mtgjson-ids": _backfill_mtgjson_ids,
         "sync-market-prices": lambda: _sync_market_prices(args.force),
         "backup": lambda: _backup(args.dir, args.passphrase),
         "restore": lambda: _restore(args.file, args.apply, args.passphrase),

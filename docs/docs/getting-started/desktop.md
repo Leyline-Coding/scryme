@@ -11,14 +11,13 @@ Grab the installer for your OS from the
 
 | OS | File |
 | --- | --- |
-| **Linux x64** | `scryme-<version>.AppImage` or `scryme-desktop_<version>_amd64.deb` |
-| **Linux arm64** | `scryme-<version>-arm64.AppImage` (no `.deb` — see below) |
+| **Linux (x64 / arm64)** | `scryme-<version>.AppImage` / `scryme-<version>-arm64.AppImage` |
 | **Windows** | `scryme-Setup-<version>.exe` (x64; runs on Windows-on-ARM via emulation) |
 | **macOS (Apple Silicon)** | `scryme-<version>-arm64-mac.zip` or `scryme-<version>-arm64.dmg` |
 
-!!! note "arm64 Linux"
-    arm64 Linux ships as an **AppImage only** — electron-builder's bundled `.deb` tooling is
-    x86-only. The AppImage is portable and needs no install.
+!!! note "Linux is AppImage-only"
+    scryme ships Linux as an **AppImage** (both x64 and arm64) — the universal, distro-agnostic
+    format. Mark it executable (`chmod +x`) and run it; no install or package manager needed.
 
 !!! note "Unsigned installers"
     Builds are currently **unsigned**, so Windows SmartScreen and macOS Gatekeeper warn on first
@@ -29,6 +28,9 @@ Grab the installer for your OS from the
 
 On first run the app downloads the Scryfall card database **once** (a progress screen shows the
 import). After that it's the same app as the web version — import a collection and search away.
+
+Only **one copy** of scryme runs at a time (they'd share one embedded database) — launching it again
+just focuses the window that's already open.
 
 All state lives in a single folder, so you can back it up or put it on a synced drive:
 

@@ -17,16 +17,22 @@ read-only public demo — each visitor gets their own preference.
 
 ## Display currency
 
-The same settings panel has a **Currency** toggle — **USD** or **EUR**. scryme shows the matching
-Scryfall price (`usd` / `eur`) for *current values*: the [stats](stats.md) collection value and
-growth, [deck](decks.md) value and cost-to-complete, the [wishlist](wishlist.md) estimate, and the
-card page's price list (the chosen currency leads). It's a price-key choice, **not** a converted
-rate.
+The same settings panel has a **Currency** picker with six options: **USD** and **EUR** (Scryfall's
+native prices) plus **GBP**, **CAD**, **AUD**, and **JPY**. It applies to *current values* wherever
+they're shown: the [stats](stats.md) collection value and growth, [deck](decks.md) value and
+cost-to-complete, the [wishlist](wishlist.md) estimate, and the card page's price list (the chosen
+currency leads).
 
-The default can be set per-deployment with `SCRYME_DEFAULT_CURRENCY=eur`; each visitor's override is
-remembered in a cookie. **[Price history](prices.md)** (snapshots, profit/loss, and movers) stays in
-USD — it's built on stored USD snapshots and recorded purchase prices, which can't be converted
-without an exchange rate.
+USD and EUR are a direct price-key choice — Scryfall carries both. The others have no Scryfall
+price, so scryme converts the USD value using a foreign-exchange rate refreshed daily from the
+European Central Bank (via [Frankfurter](https://frankfurter.dev)). A set of fallback rates ships
+with the app so amounts render immediately, and `python -m src.cli refresh-fx` fetches the latest on
+demand.
+
+The default can be set per-deployment with `SCRYME_DEFAULT_CURRENCY` (e.g. `gbp`); each visitor's
+override is remembered in a cookie. **[Price history](prices.md)** — the value chart, per-card price
+history, profit/loss, and movers — always stays in **USD**: it's built on stored USD snapshots and
+recorded purchase prices, kept honest in their source currency rather than converted after the fact.
 
 ## Card effects
 

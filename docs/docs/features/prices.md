@@ -37,3 +37,12 @@ python -m src.cli snapshot-prices
 
 Two snapshots are needed before movers appear, so the page fills in over time. On the read-only
 public demo the scheduled refresh is disabled, so snapshots don't accumulate there.
+
+## Per-card price history
+
+Every [card page](cards.md) shows a **price-history chart** (USD) for that printing, with the same
+time-range selector as the collection value chart. To keep the database bounded, each snapshot
+records a per-card point only for cards you **own** or **track** — anything on your
+[wishlist](wishlist.md) or price watchlist — rather than all ~90k printings. A card with no recorded
+points yet shows a short "no history yet" note; add it to your collection or wishlist and it starts
+building history from the next snapshot.

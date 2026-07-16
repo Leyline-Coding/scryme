@@ -10,15 +10,16 @@
     var img = btn.closest("a") && btn.closest("a").querySelector("img.grid-card-img");
     if (!img) return;
     var toBack = img.getAttribute("data-face") !== "back";
-    var next = toBack ? img.getAttribute("data-back") : img.getAttribute("data-front");
-    // Only accept a same-origin path or an http(s)/data image URL before assigning to .src —
-    // never a "javascript:"-style value from the attribute.
-    if (!next || !/^(?:\/(?!\/)|https?:\/\/|data:image\/)/.test(next)) return;
+    var raw = toBack ? img.getAttribute("data-back") : img.getAttribute("data-front");
+    // Accept only a same-origin path or an http(s)/data image URL — never a "javascript:"-style
+    // value. `next` stays null otherwise, so the assignment below is skipped entirely.
+    var next = raw && /^(?:\/(?!\/)|https?:\/\/|data:image\/)/.test(raw) ? raw : null;
+    if (!next) return;
     img.classList.remove("grid-flipping");
     void img.offsetWidth;   // restart the animation on rapid clicks
     img.classList.add("grid-flipping");
     setTimeout(function () {
-      img.src = next;
+      if (next) img.src = next;
       img.setAttribute("data-face", toBack ? "back" : "front");
     }, 150);                // swap at the edge-on midpoint of the flip
     setTimeout(function () { img.classList.remove("grid-flipping"); }, 340);

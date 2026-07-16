@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import get_settings
 from src.db import get_session
 from src.price_watch import add_target, count_triggered, remove_target
+from src.routes._safe import local_redirect
 from src.saved_alerts import total_new_matches
 
 router = APIRouter(tags=["watch"])
@@ -30,7 +31,7 @@ async def watch_add(
 ):
     _guard_writable()
     await add_target(session, scryfall_id, direction, threshold)
-    return RedirectResponse(url=f"/card/{scryfall_id}", status_code=303)
+    return local_redirect(f"/card/{scryfall_id}")
 
 
 @router.post("/watch/{target_id}/delete")

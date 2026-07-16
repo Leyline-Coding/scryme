@@ -24,6 +24,7 @@ from src.llm import ChatClient, get_config, nl_to_query
 from src.models import Card
 from src.perfcache import memoize
 from src.prices import biggest_movers
+from src.routes._safe import local_redirect
 from src.routes.saved import list_saved
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
@@ -120,7 +121,7 @@ async def search_nl(
     url = f"/search?q={quote(generated or text)}&scope={quote(scope)}"
     if generated:
         url += f"&nl={quote(text)}"
-    return RedirectResponse(url, status_code=303)
+    return local_redirect(url)
 
 
 @router.get("/search", response_class=HTMLResponse)

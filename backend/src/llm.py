@@ -235,22 +235,27 @@ class _DeckScan:
     commanders: list
 
 
+def _scan_one_card(scan: _DeckScan, name, type_line, ci, oracle, keywords, prices) -> None:
+    """Fold a single card's data into the running deck scan."""
+    scan.identity.update(ci or [])
+    for k in (keywords or []):
+        scan.kw_counts[k] += 1
+    scan.text_cards.append((oracle or "").lower())
+    tl = (type_line or "").lower()
+    if "legendary" in tl and "creature" in tl:
+        scan.commanders.append(name)
+        if not scan.commander:
+            scan.commander = name
+            scan.commander_text = (oracle or "").split("\n")[0][:160]
+    if "land" not in tl:
+        scan.valued.append((float((prices or {}).get("usd") or 0.0), name, tl))
+
+
 def _scan_deck_cards(info: dict) -> _DeckScan:
     """Aggregate identity, keywords, oracle text, commanders, and values across the deck's cards."""
     scan = _DeckScan(set(), Counter(), [], [], "", "", [])
-    for _sid, (name, type_line, ci, oracle, keywords, prices) in info.items():
-        scan.identity.update(ci or [])
-        for k in (keywords or []):
-            scan.kw_counts[k] += 1
-        scan.text_cards.append((oracle or "").lower())
-        tl = (type_line or "").lower()
-        if "legendary" in tl and "creature" in tl:
-            scan.commanders.append(name)
-            if not scan.commander:
-                scan.commander = name
-                scan.commander_text = (oracle or "").split("\n")[0][:160]
-        if "land" not in tl:
-            scan.valued.append((float((prices or {}).get("usd") or 0.0), name, tl))
+    for _sid, row in info.items():
+        _scan_one_card(scan, *row)
     return scan
 
 

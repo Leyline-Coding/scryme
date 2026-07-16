@@ -6,15 +6,13 @@ Create Date: 2026-07-16
 
 """
 import datetime
-from typing import Sequence, Union
+from typing import Union
 
 import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0023_fx_rates"
 down_revision: Union[str, None] = "0022_market_prices"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
 
 # Seed fallback rates so converted currencies render a number immediately; updated_at=epoch marks
 # them stale so the scheduler / `cli refresh-fx` replaces them with live ECB rates on first run.

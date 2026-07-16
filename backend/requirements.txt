@@ -1,4 +1,4 @@
-fastapi==0.139.0
+fastapi==0.139.1
 # starlette is a FastAPI dependency; pinned explicitly to stay on a version without the
 # advisories flagged by pip-audit (see the CI security scan). Keep compatible with fastapi.
 starlette==1.3.1

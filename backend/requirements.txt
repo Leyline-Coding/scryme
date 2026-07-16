@@ -13,6 +13,6 @@ python-multipart==0.0.32
 httpx==0.28.1
 ijson==3.5.1
 apscheduler==3.11.3
-structlog==24.4.0
+structlog==26.1.0
 cryptography==48.0.1
 qrcode==8.2

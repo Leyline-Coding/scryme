@@ -86,7 +86,14 @@ PY
             // SONAR_HOST_URL + SONAR_TOKEN that withSonarQubeEnv injects; runs on
             // glibc Node 20 so the analyzer bridge starts. report-task.txt lands in
             // .scannerwork for the Quality Gate stage.
-            sh 'npx --yes @sonar/scan'
+            // Tag each analysis with the app version (from backend/src/__init__.py) so the
+            // SonarQube Activity view is versioned and the "Previous version" New Code model
+            // (if selected) uses each release as a fresh new-code baseline.
+            sh '''
+              VERSION=$(grep '__version__' backend/src/__init__.py | cut -d'"' -f2)
+              echo "scryme version for analysis: ${VERSION:-unknown}"
+              npx --yes @sonar/scan -Dsonar.projectVersion="${VERSION:-0.0.0}"
+            '''
           }
         }
       }

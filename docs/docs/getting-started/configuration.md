@@ -11,7 +11,7 @@ with `SCRYME_`.
 | `POSTGRES_PASSWORD` | `scryme` | PostgreSQL password |
 | `SCRYME_PORT` | `8080` | Host port for the web UI (nginx) |
 | `SCRYME_READ_ONLY` | `false` | Demo mode — disables uploads/admin mutations and shows a banner |
-| `SCRYME_DEFAULT_CURRENCY` | `usd` | Default display currency for current values (`usd` or `eur`); visitors can override via the palette menu |
+| `SCRYME_DEFAULT_CURRENCY` | `usd` | Default display currency for current values: `usd` / `eur` (native Scryfall prices) or `gbp` / `cad` / `aud` / `jpy` (converted from USD via a daily FX rate); visitors override in Settings |
 | `SCRYME_BACKUP_DIR` | _(unset)_ | Folder for [on-disk backups](../features/backup.md#automatic-backups-to-a-folder-and-cross-device-sync); enables Back up now, scheduled backups, and restore from disk |
 | `SCRYME_BACKUP_INTERVAL_HOURS` | `0` | Hours between scheduled backups to `SCRYME_BACKUP_DIR` (`0` disables scheduling) |
 | `SCRYME_BACKUP_KEEP` | `14` | How many on-disk backups to retain (older ones are pruned) |

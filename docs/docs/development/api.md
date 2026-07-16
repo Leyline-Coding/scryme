@@ -24,7 +24,7 @@ Mutating endpoints additionally respect `SCRYME_READ_ONLY` (they return `403` on
 | --- | --- | --- |
 | `GET` | `/api/v1/search` | Search (`q`, `scope`, `page`, `sort`, `dir`) — full [Scryfall syntax](../search/syntax.md). Returns cards with your owned quantity + tags. |
 | `GET` | `/api/v1/cards/{id}` | One printing: details, your owned stacks, and tags. |
-| `GET` | `/api/v1/stats` | Collection stats (`currency=usd|eur`). |
+| `GET` | `/api/v1/stats` | Collection stats (`currency=usd|eur|gbp|cad|aud|jpy`). |
 | `GET` | `/api/v1/decks` · `/api/v1/decks/{id}` | Decks list / one deck's coverage. |
 | `GET` | `/api/v1/wishlist` | Wishlist with estimated cost. |
 | `POST` | `/api/v1/collection` | Add/increment an owned stack (`scryfall_id`, `quantity`, `finish`, …). |

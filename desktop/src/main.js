@@ -60,9 +60,9 @@ const DB_NAME = "scryme";
 
 let pg = null;
 let backend = null;
+let backendExited = false;  // the backend child has fired its "exit" event
 let mainWindow = null;
 let tray = null;
-let quitting = false;     // the user actually chose to quit (vs. closing to the tray)
 let didShutdown = false;  // PG + backend already stopped (cleanup is idempotent)
 
 function dataDir() {
@@ -94,10 +94,72 @@ function backendPortFor(dir) {
   });
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isAlive(pid) {
+  try {
+    process.kill(pid, 0);       // signal 0 just probes; it doesn't actually kill
+    return true;
+  } catch (err) {
+    return err.code === "EPERM";  // EPERM = exists but not ours (alive); ESRCH = gone
+  }
+}
+
+// Confirm a PID is actually a Postgres serving this data dir, to guard against killing an unrelated
+// process that happens to have reused the recorded PID. (Linux: check /proc; trust the pidfile
+// elsewhere — PID reuse on Windows/macOS in this window is negligible.)
+function isOurPostgres(pid, databaseDir) {
+  if (process.platform !== "linux") return true;
+  try {
+    const cmdline = fs.readFileSync(`/proc/${pid}/cmdline`, "utf8");
+    return cmdline.includes("postgres") && cmdline.includes(databaseDir);
+  } catch (err) {
+    return err.code !== "ENOENT";  // ENOENT = process already gone
+  }
+}
+
+// We only reach here holding the single-instance lock, so no other scryme owns this data dir. A
+// leftover postmaster.pid therefore belongs to a previous run that crashed or was force-killed
+// without cleaning up — stop that orphaned Postgres, then clear the lock so we can start.
+async function reclaimDataDir(databaseDir) {
+  const pidFile = path.join(databaseDir, "postmaster.pid");
+  if (!fs.existsSync(pidFile)) return;
+  const pid = Number.parseInt((fs.readFileSync(pidFile, "utf8").split("\n")[0] || "").trim(), 10);
+  if (pid > 0 && isAlive(pid) && isOurPostgres(pid, databaseDir)) {
+    process.stderr.write(`[db] reclaiming data dir: stopping orphaned postgres (pid ${pid})\n`);
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch (err) {
+      process.stderr.write(`[db] SIGTERM pid ${pid}: ${err}\n`);
+    }
+    for (let i = 0; i < 40 && isAlive(pid); i++) await delay(250);   // wait up to ~10s to exit
+    if (isAlive(pid)) {
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch (err) {
+        process.stderr.write(`[db] SIGKILL pid ${pid}: ${err}\n`);
+      }
+    }
+    for (let i = 0; i < 20 && isAlive(pid); i++) await delay(250);   // let SIGKILL take effect
+  }
+  // Only clear the lock once no live postmaster remains. Never start a second postmaster on a data
+  // dir another one still holds — that corrupts it; leave the lock so Postgres fails loudly instead.
+  if (!(pid > 0) || !isAlive(pid)) {
+    try {
+      fs.rmSync(pidFile, { force: true });
+    } catch (err) {
+      process.stderr.write(`[db] could not remove stale postmaster.pid: ${err}\n`);
+    }
+  }
+}
+
 async function startPostgres(dir, port) {
   // ESM-only module — dynamic import() works from CommonJS; `.default` is the class.
   const { default: EmbeddedPostgres } = await import("embedded-postgres");
   const databaseDir = path.join(dir, "pg");
+  await reclaimDataDir(databaseDir);   // self-heal a Postgres left running by a crashed run
   pg = new EmbeddedPostgres({
     databaseDir,
     user: DB_USER,
@@ -148,7 +210,14 @@ function backendCommand(dir, backendPort, pgPort) {
 
 function startBackend(dir, backendPort, pgPort) {
   const { cmd, args, opts } = backendCommand(dir, backendPort, pgPort);
-  backend = spawn(cmd, args, { ...opts, stdio: ["ignore", "pipe", "pipe"] });
+  // Own process group on POSIX (detached) so shutdown can signal the whole tree at once — a
+  // PyInstaller onefile backend re-execs a child, which a plain backend.kill() would leave running.
+  backend = spawn(cmd, args, {
+    ...opts,
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: process.platform !== "win32",
+  });
+  backendExited = false;
   backend.stdout.on("data", (d) => process.stdout.write(`[backend] ${d}`));
   backend.stderr.on("data", (d) => process.stderr.write(`[backend] ${d}`));
   backend.on("error", (err) => {
@@ -158,10 +227,26 @@ function startBackend(dir, backendPort, pgPort) {
     }
   });
   backend.on("exit", (code) => {
+    backendExited = true;
     if (code !== 0 && code !== null && !didShutdown) {
       dialog.showErrorBox("scryme", `The backend exited unexpectedly (code ${code}).`);
     }
   });
+}
+
+// Stop the backend and every process it spawned. POSIX: signal the detached child's whole process
+// group (negative PID). Windows has no groups, so kill the tree with taskkill /T.
+function killBackend(signal) {
+  if (!backend || backendExited || !backend.pid) return;
+  try {
+    if (process.platform === "win32") {
+      spawn("taskkill", ["/pid", String(backend.pid), "/T", "/F"], { stdio: "ignore" });
+    } else {
+      process.kill(-backend.pid, signal);
+    }
+  } catch (err) {
+    process.stderr.write(`[backend] kill (${signal}): ${err}\n`);
+  }
 }
 
 async function waitForHealth(port, timeoutMs = 60000) {
@@ -200,11 +285,8 @@ function createWindow(port) {
     return { action: "deny" };
   });
   mainWindow.loadURL(`http://127.0.0.1:${port}/`);
-  // Closing the window hides to the tray (so Postgres + backend keep running for a fast reopen)
-  // when a tray exists; otherwise let it close so the app stays quittable.
-  mainWindow.on("close", (e) => {
-    if (!quitting && tray) { e.preventDefault(); mainWindow.hide(); }
-  });
+  // Closing the window quits the app so the embedded Postgres + backend are always torn down —
+  // leaving them running orphans the data-dir lock and blocks the next launch.
   mainWindow.on("closed", () => { mainWindow = null; });
   buildMenu(port);
 }
@@ -229,7 +311,7 @@ function createTray(port) {
         click: () => { showWindow(); if (mainWindow) mainWindow.loadURL(`http://127.0.0.1:${port}/lan`); },
       },
       { type: "separator" },
-      { label: "Quit", click: () => { quitting = true; app.quit(); } },
+      { label: "Quit", click: () => app.quit() },
     ]));
     tray.on("click", showWindow);
   } catch (err) {
@@ -334,12 +416,15 @@ async function shutdown() {
   didShutdown = true;
   globalShortcut.unregisterAll();
   if (tray) { tray.destroy(); tray = null; }
-  if (backend && !backend.killed) {
-    backend.kill();
-  }
+  // Ask the backend to exit, then escalate to SIGKILL if it lingers, so it never outlives the app.
+  killBackend("SIGTERM");
+  for (let i = 0; i < 12 && !backendExited; i++) await delay(250);   // up to ~3s to exit cleanly
+  if (!backendExited) killBackend("SIGKILL");
   if (pg) {
+    // Bound pg.stop() so a hung shutdown can't wedge quitting. If it doesn't finish, we quit anyway
+    // — reclaimDataDir() clears any leftover lock on the next launch.
     try {
-      await pg.stop();
+      await Promise.race([pg.stop(), delay(8000)]);
     } catch (err) {
       process.stderr.write(`[pg] stop failed: ${err}\n`);
     }
@@ -380,13 +465,33 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.on("window-all-closed", () => {
-  // With a tray the app keeps running in the background; without one, closing quits.
-  if (!tray) app.quit();
+  // Quit on every platform (before-quit → shutdown() stops PG + backend) so nothing is orphaned.
+  app.quit();
 });
 
 app.on("before-quit", (e) => {
-  quitting = true;
   if (didShutdown) return;
   e.preventDefault();
   shutdown().then(() => app.quit());
+});
+
+// Route OS termination signals (terminal close, `kill`, logout) through the same graceful teardown
+// as a window close — otherwise Electron exits without firing before-quit and orphans the backend.
+for (const sig of ["SIGTERM", "SIGINT", "SIGHUP"]) {
+  process.on(sig, () => app.quit());
+}
+
+// Last-resort synchronous cleanup: if we ever exit without shutdown() completing (an uncaught
+// fault), still hard-kill the backend's process group so it can't outlive the app.
+process.on("exit", () => {
+  if (!backend || backendExited || !backend.pid) return;
+  try {
+    if (process.platform === "win32") {
+      spawn("taskkill", ["/pid", String(backend.pid), "/T", "/F"], { stdio: "ignore" });
+    } else {
+      process.kill(-backend.pid, "SIGKILL");
+    }
+  } catch (err) {
+    process.stderr.write(`[backend] exit cleanup: ${err}\n`);
+  }
 });

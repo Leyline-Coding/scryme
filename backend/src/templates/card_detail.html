@@ -139,6 +139,25 @@
       </div>
       {% endif %}
 
+      {# Price history (#233): USD chart from recorded snapshots, for owned + tracked cards. #}
+      <div>
+        <div class="flex items-baseline justify-between gap-2 mb-2">
+          <h3 class="text-sm font-semibold text-muted uppercase tracking-wide">Price history (USD)</h3>
+          {% if has_card_history %}
+          <a href="/prices" class="text-xs text-muted hover:text-fg">All prices →</a>
+          {% endif %}
+        </div>
+        {% if has_card_history %}
+        {% import "_value_chart.html" as vc %}
+        {{ vc.chart(price_chart, chart_ranges, chart_range,
+                    "/card/" ~ card.scryfall_id ~ "?", "Card price over time") }}
+        {% else %}
+        <p class="text-sm text-muted">
+          No price history yet — owned and tracked cards build history over time.
+        </p>
+        {% endif %}
+      </div>
+
       {# Price watch (#88) #}
       {% if not read_only %}
       <div class="rounded-lg border border-edge bg-surface p-3">

@@ -1,0 +1,40 @@
+{# Reusable value-over-time chart: a time-range selector + server-rendered SVG line chart.
+   Used by the collection Stats tab and the per-card price history (#233). Params:
+     chart          — a ValueChart (src/prices.py build_value_chart)
+     ranges         — CHART_RANGES [(label, days), ...]
+     current_range  — the active range label
+     range_base     — URL prefix ending in "?"/"&", e.g. "/card/<id>?" — range=<label> is appended
+     label          — accessible chart title (optional)
+#}
+{% macro chart(chart, ranges, current_range, range_base, label="Value over time") %}
+  <div class="flex flex-wrap gap-1 mb-3">
+    {% for rlabel, _days in ranges %}
+    <a href="{{ range_base }}range={{ rlabel }}"
+       class="rounded-full px-2.5 py-0.5 text-xs
+              {% if current_range == rlabel %}bg-accent text-accent-fg font-medium
+              {% else %}bg-surface-2 text-muted hover:text-fg{% endif %}">{{ rlabel }}</a>
+    {% endfor %}
+  </div>
+  {% if chart.has_trend %}
+  <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" class="w-full h-32"
+       preserveAspectRatio="none" role="img" aria-label="{{ label }}">
+    <path d="{{ chart.area }}" fill="var(--c-accent)" fill-opacity="0.12" />
+    <polyline points="{{ chart.polyline }}" fill="none" stroke="var(--c-accent)"
+              stroke-width="2" vector-effect="non-scaling-stroke"
+              stroke-linejoin="round" stroke-linecap="round" />
+  </svg>
+  <div class="mt-2 flex justify-between text-xs text-muted">
+    <span>{{ chart.first_date }}</span>
+    <span>${{ '{:,.2f}'.format(chart.min_value) }} – ${{ '{:,.2f}'.format(chart.max_value) }}
+      · {{ chart.points|length }} snapshots</span>
+    <span>{{ chart.last_date }}</span>
+  </div>
+  {% elif chart.available %}
+  <p class="text-sm text-muted">
+    Only one snapshot in this range (${{ '{:,.2f}'.format(chart.current) }} on
+    {{ chart.last_date }}). Pick a longer range to see the trend.
+  </p>
+  {% else %}
+  <p class="text-sm text-muted">No snapshots in this range — try a longer one.</p>
+  {% endif %}
+{% endmacro %}

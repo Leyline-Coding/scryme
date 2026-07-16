@@ -55,6 +55,14 @@ async def lifespan(app: FastAPI):
     # The daily bulk refresh runs in-process. Skip it under tests and in read-only demos.
     if settings.environment != "test" and not settings.read_only:
         start_scheduler(refresh_hours=max(1, settings.bulk_refresh_min_hours))
+    # Mirror cached FX rates into memory so converted display currencies (#232) work from the first
+    # request (even in read-only demos). Non-critical: a failure just leaves conversion unavailable.
+    try:
+        from src import fx
+
+        await fx.load_rates()
+    except Exception as exc:  # noqa: BLE001 - display-currency conversion is non-critical
+        log.warning("fx.load_failed", error=str(exc))
     yield
     shutdown_scheduler()
     log.info("scryme.shutdown")

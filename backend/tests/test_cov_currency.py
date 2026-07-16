@@ -18,7 +18,8 @@ def _req(cookie=None):
 def test_get_currency_cookie_and_default():
     # No cookie -> configured default (usd).
     assert get_currency(_req()) == "usd"
-    # Valid cookie honored.
+    # Valid cookies honored (incl. converted currencies, #232).
     assert get_currency(_req("eur")) == "eur"
+    assert get_currency(_req("gbp")) == "gbp"
     # Unknown cookie value falls back to the default.
-    assert get_currency(_req("gbp")) == "usd"
+    assert get_currency(_req("zzz")) == "usd"

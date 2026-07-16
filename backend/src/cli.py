@@ -46,6 +46,17 @@ async def _snapshot_prices() -> None:
         print(f"Captured snapshot: ${snap.total_usd:,.2f} across {snap.card_count} cards.")
 
 
+async def _refresh_fx() -> None:
+    from src.fx import FX_RATES, refresh_fx_rates
+
+    n = await refresh_fx_rates(force=True)
+    if n:
+        rates = ", ".join(f"{c}={FX_RATES[c]:.4f}" for c in sorted(FX_RATES))
+        print(f"Refreshed {n} FX rate(s): {rates}")
+    else:
+        print("FX rates unchanged (fetch failed or nothing returned).")
+
+
 async def _prune_digital() -> None:
     from src.scryfall.ingest import prune_digital_only
 
@@ -160,6 +171,8 @@ def main() -> None:
 
     sub.add_parser("snapshot-prices", help="Capture a price snapshot of the owned collection")
 
+    sub.add_parser("refresh-fx", help="Refresh FX rates for converted display currencies (#232)")
+
     sub.add_parser("prune-digital", help="Remove digital-only (Arena/MTGO) cards from the DB")
 
     p_embed = sub.add_parser("backfill-embeddings",
@@ -201,6 +214,8 @@ def main() -> None:
         asyncio.run(_seed_demo())
     elif args.command == "snapshot-prices":
         asyncio.run(_snapshot_prices())
+    elif args.command == "refresh-fx":
+        asyncio.run(_refresh_fx())
     elif args.command == "prune-digital":
         asyncio.run(_prune_digital())
     elif args.command == "backfill-embeddings":

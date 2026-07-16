@@ -38,6 +38,10 @@ async def _refresh_job() -> None:
         from src.market_prices import sync_market_prices
 
         await sync_market_prices()
+        # Refresh FX rates for converted display currencies (#232) — best-effort, 24h-guarded.
+        from src.fx import refresh_fx_rates
+
+        await refresh_fx_rates()
     except Exception as exc:  # noqa: BLE001 - never let a scheduled job crash the loop
         log.error("scryfall.refresh.failed", error=str(exc))
 

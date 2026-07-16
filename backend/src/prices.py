@@ -14,7 +14,14 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import SessionLocal
-from src.models import Card, CardPricePoint, CollectionCard, PriceSnapshot
+from src.models import (
+    Card,
+    CardPricePoint,
+    CollectionCard,
+    PriceSnapshot,
+    PriceTarget,
+    WishlistItem,
+)
 
 
 def _f(value) -> float:
@@ -32,8 +39,35 @@ def _unit_market(prices: dict | None, finish: str) -> float:
     return foil if finish in ("foil", "etched") and foil else usd
 
 
+async def _add_tracked_points(session: AsyncSession, points: dict) -> None:
+    """Add non-foil USD points for wishlist + price-watch printings not already in ``points``.
+
+    Lets a card's page build a price history even when you don't own it, as long as it's tracked
+    (#233), without the unbounded cost of snapshotting every printing.
+    """
+    tracked = set(await session.scalars(select(WishlistItem.scryfall_id)))
+    tracked |= set(await session.scalars(select(PriceTarget.scryfall_id)))
+    tracked -= set(points)
+    if not tracked:
+        return
+    rows = (
+        await session.execute(
+            select(Card.scryfall_id, Card.prices).where(Card.scryfall_id.in_(tracked))
+        )
+    ).all()
+    for sid, prices in rows:
+        usd = _f((prices or {}).get("usd"))
+        if usd > 0:
+            points[sid] = usd
+
+
 async def snapshot_prices(session: AsyncSession) -> PriceSnapshot | None:
-    """Capture a price snapshot of the owned collection. Returns None if nothing is owned."""
+    """Capture a price snapshot of the owned collection. Returns None if nothing is owned.
+
+    Records a per-card USD point for each owned printing *and* each tracked (wishlist / price-watch)
+    printing, so their card pages can show a price history (#233). The snapshot's total/card_count
+    stay owned-only — the collection's value is unchanged.
+    """
     rows = (
         await session.execute(
             select(
@@ -46,20 +80,22 @@ async def snapshot_prices(session: AsyncSession) -> PriceSnapshot | None:
         return None
 
     total = 0.0
-    market: dict = {}  # scryfall_id -> market (non-foil) USD, for mover comparison
+    points: dict = {}  # scryfall_id -> non-foil USD, recorded for owned + tracked printings
+    owned_priced = 0
     for sid, qty, finish, prices in rows:
         prices = prices or {}
         usd = _f(prices.get("usd"))
-        foil = _f(prices.get("usd_foil"))
-        unit = foil if finish in ("foil", "etched") and foil else usd
-        total += (qty or 0) * unit
+        total += (qty or 0) * _unit_market(prices, finish)
         if usd > 0:
-            market[sid] = usd
+            points[sid] = usd
+            owned_priced += 1
 
-    snap = PriceSnapshot(total_usd=round(total, 2), card_count=len(market))
+    await _add_tracked_points(session, points)
+
+    snap = PriceSnapshot(total_usd=round(total, 2), card_count=owned_priced)
     session.add(snap)
     await session.flush()
-    for sid, usd in market.items():
+    for sid, usd in points.items():
         session.add(CardPricePoint(snapshot_id=snap.id, scryfall_id=sid, usd=usd))
     await session.commit()
     await session.refresh(snap)
@@ -175,6 +211,40 @@ def build_value_chart(
     )
     return ValueChart(points=coords, polyline=polyline, area=area, min_value=vmin,
                       max_value=vmax, current=values[-1], width=width, height=height)
+
+
+@dataclass
+class _CardPoint:
+    """One card's recorded USD at a snapshot; duck-types as a `build_value_chart` series item."""
+
+    total_usd: float
+    captured_at: datetime
+
+
+async def card_value_series(
+    session: AsyncSession, scryfall_id, days: int | None = 90
+) -> list[_CardPoint]:
+    """One card's USD price points over time (oldest-first) for the card-page history chart (#233).
+
+    Downsampled to ``_MAX_CHART_POINTS`` like ``value_series``; feed the result to
+    ``build_value_chart`` (each point exposes ``total_usd`` + ``captured_at``).
+    """
+    query = (
+        select(PriceSnapshot.captured_at, CardPricePoint.usd)
+        .join(CardPricePoint, CardPricePoint.snapshot_id == PriceSnapshot.id)
+        .where(CardPricePoint.scryfall_id == scryfall_id)
+        .order_by(PriceSnapshot.captured_at)
+    )
+    if days is not None:
+        query = query.where(PriceSnapshot.captured_at >= datetime.now(UTC) - timedelta(days=days))
+    rows = [
+        _CardPoint(total_usd=usd, captured_at=dt)
+        for dt, usd in (await session.execute(query)).all()
+    ]
+    if len(rows) > _MAX_CHART_POINTS:
+        step = len(rows) / _MAX_CHART_POINTS
+        rows = [rows[int(i * step)] for i in range(_MAX_CHART_POINTS)] + [rows[-1]]
+    return rows
 
 
 @dataclass

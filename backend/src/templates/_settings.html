@@ -157,7 +157,11 @@
       mode: localStorage.getItem("scryme-mode") || "dark",
       custom: localStorage.getItem("scryme-accent") || "",
       currency: (document.cookie.match(/(?:^|; )scryme_currency=([^;]+)/) || [])[1] || "usd",
-      currencies: [{ id: "usd", label: "USD ($)" }, { id: "eur", label: "EUR (€)" }],
+      currencies: [
+        { id: "usd", label: "USD ($)" }, { id: "eur", label: "EUR (€)" },
+        { id: "gbp", label: "GBP (£)" }, { id: "cad", label: "CAD (CA$)" },
+        { id: "aud", label: "AUD (A$)" }, { id: "jpy", label: "JPY (¥)" },
+      ],
       priceSource: (document.cookie.match(/(?:^|; )scryme_price_source=([^;]+)/) || [])[1] || "tcgplayer",
       priceSources: [
         { id: "tcgplayer", label: "TCGplayer" },

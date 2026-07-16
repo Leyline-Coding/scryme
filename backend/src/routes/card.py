@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,8 +21,15 @@ from src.currency import get_currency
 from src.db import get_session
 from src.embeddings import similar_to_oracle
 from src.llm import get_config
-from src.models import Card, CardEmbedding, CollectionCard, Deck
+from src.models import Card, CardEmbedding, CardPricePoint, CollectionCard, Deck
 from src.price_watch import target_for
+from src.prices import (
+    CHART_RANGES,
+    DEFAULT_RANGE,
+    build_value_chart,
+    card_value_series,
+    range_days,
+)
 from src.pricing import SOURCES, effective_prices, get_price_source
 from src.routes.collection import printing_options
 from src.scryfall.client import ScryfallClient, ScryfallError
@@ -95,6 +102,7 @@ def _price_rows(request: Request, card: Card) -> list[tuple[str, float]]:
 async def card_detail(
     request: Request,
     scryfall_id: str,
+    chart_range: str = Query(DEFAULT_RANGE, alias="range"),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     card = await _load_card(session, scryfall_id)
@@ -132,6 +140,19 @@ async def card_detail(
     # sideways, so offer a rotate button. Both get playful animations on the card page.
     can_flip, flip_image, can_rotate = _flip_rotate(card)
     price_rows = _price_rows(request, card)
+
+    # Per-card price history (#233): a USD chart from recorded points, shown for owned + tracked
+    # cards. `has_card_history` guards the onboarding empty-state for cards with no points at all.
+    has_card_history = (
+        await session.scalar(
+            select(CardPricePoint.id).where(
+                CardPricePoint.scryfall_id == card.scryfall_id
+            ).limit(1)
+        )
+    ) is not None
+    price_chart = build_value_chart(
+        await card_value_series(session, card.scryfall_id, range_days(chart_range))
+    )
     legalities = card.legalities or {}
     legality_rows = [(fmt, legalities.get(fmt, "not_legal")) for fmt in LEGALITY_FORMATS]
 
@@ -161,6 +182,10 @@ async def card_detail(
             "printings": [(p, _image(p, "small")) for p in printings],
             "price_rows": price_rows,
             "legality_rows": legality_rows,
+            "has_card_history": has_card_history,
+            "price_chart": price_chart,
+            "chart_range": chart_range,
+            "chart_ranges": CHART_RANGES,
             "tags": await card_tags(session, card.scryfall_id),
             "wishlisted": await is_wishlisted(session, card.scryfall_id),
             "price_target": await target_for(session, str(card.scryfall_id)),

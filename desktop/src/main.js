@@ -346,29 +346,38 @@ async function shutdown() {
   }
 }
 
-app.whenReady().then(() => {
-  // The application menu is built in createWindow() once the backend port is known.
-  boot().catch((err) => {
-    const detail = (err && (err.stack || err.message)) || String(err);
-    try {
-      fs.writeFileSync(path.join(dataDir(), "startup-error.log"),
-        `${new Date().toISOString()}\n${detail}\n`);
-    } catch (logErr) {
-      process.stderr.write(`[scryme] could not write startup-error.log: ${logErr}\n`);
-    }
-    process.stderr.write(`[scryme] startup failed: ${detail}\n`);
-    dialog.showErrorBox(
-      "scryme — couldn't start",
-      `scryme couldn't start:\n\n${(err && err.message) || detail}\n\n` +
-      "Full details were saved to startup-error.log in the app's data folder.",
-    );
-    app.quit();
+// Single-instance guard: two scryme processes would fight over the embedded Postgres data
+// directory (its postmaster.pid lock), so the second launch fails to start. Instead, hand off to
+// the already-running instance — focus its window — and exit immediately.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on("second-instance", () => showWindow());
+
+  app.whenReady().then(() => {
+    // The application menu is built in createWindow() once the backend port is known.
+    boot().catch((err) => {
+      const detail = (err && (err.stack || err.message)) || String(err);
+      try {
+        fs.writeFileSync(path.join(dataDir(), "startup-error.log"),
+          `${new Date().toISOString()}\n${detail}\n`);
+      } catch (logErr) {
+        process.stderr.write(`[scryme] could not write startup-error.log: ${logErr}\n`);
+      }
+      process.stderr.write(`[scryme] startup failed: ${detail}\n`);
+      dialog.showErrorBox(
+        "scryme — couldn't start",
+        `scryme couldn't start:\n\n${(err && err.message) || detail}\n\n` +
+        "Full details were saved to startup-error.log in the app's data folder.",
+      );
+      app.quit();
+    });
+    app.on("activate", () => {
+      // macOS dock click: re-show the hidden window if it still exists.
+      if (mainWindow) showWindow();
+    });
   });
-  app.on("activate", () => {
-    // macOS dock click: re-show the hidden window if it still exists.
-    if (mainWindow) showWindow();
-  });
-});
+}
 
 app.on("window-all-closed", () => {
   // With a tray the app keeps running in the background; without one, closing quits.

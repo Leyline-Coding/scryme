@@ -14,5 +14,5 @@ httpx==0.28.1
 ijson==3.5.1
 apscheduler==3.11.3
 structlog==24.4.0
-cryptography==48.0.1
+cryptography==49.0.0
 qrcode==8.2

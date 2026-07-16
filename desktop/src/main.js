@@ -12,10 +12,17 @@ const {
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
-const getPort = require("get-port");
 
-// embedded-postgres is ESM-only ("type": "module"), so it can't be require()'d from this CommonJS
-// file — it's loaded lazily via dynamic import() in startPostgres().
+// get-port is ESM-only (v7+, "type": "module"), so it can't be require()'d from this CommonJS
+// file. Load it lazily via dynamic import() and cache it, then expose the same callable API.
+let _getPortImpl;
+async function getPort(options) {
+  if (!_getPortImpl) _getPortImpl = (await import("get-port")).default;
+  return _getPortImpl(options);
+}
+
+// embedded-postgres is ESM-only ("type": "module") too, so it can't be require()'d from this
+// CommonJS file — it's loaded lazily via dynamic import() in startPostgres().
 
 const isDev = !app.isPackaged;
 const DB_USER = "scryme";

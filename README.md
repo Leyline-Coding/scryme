@@ -116,9 +116,29 @@ cd backend && pytest tests/                   # tests (needs Postgres via SCRYME
 ruff check src tests                          # lint
 ```
 
-Feature branches → PRs into `main`; GitHub Actions runs the tests + lint on every PR. See
+Feature branches → PRs into `main`, which is protected and requires green CI before merge. See
 [CLAUDE.md](CLAUDE.md) for architecture and conventions, or the
 [documentation](https://docs.scryme.app) for the full guide.
+
+## Quality & security
+
+Changes are validated for correctness, code quality, dependency health, and security before and
+after they reach `main`:
+
+- ✅ **CI on every PR** — `ruff` lint and the full `pytest` suite (400+ tests, with coverage) against
+  a real PostgreSQL service.
+- 🔒 **Dependency auditing** — `pip-audit` fails the build on a known-vulnerable dependency, and
+  **Dependabot** keeps dependencies (pip / npm / GitHub Actions) patched with grouped and security
+  updates.
+- 🛡️ **Static analysis** — **CodeQL** (Python + JS/TS) on every PR plus a weekly scan, and a
+  self-hosted **SonarQube** quality gate (`Jenkinsfile` + `sonar-project.properties`) that
+  complements the GitHub Actions gate.
+- 🐳 **Image scanning** — published container images are scanned with **Trivy** for OS/library
+  vulnerabilities.
+- 🔑 **Repository hardening** — secret scanning with push protection, plus Dependabot alerts and
+  automated security fixes.
+
+Full details: **[Quality & Security](https://docs.scryme.app/development/quality-and-security/)**.
 
 ## Tech stack
 

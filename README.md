@@ -8,6 +8,14 @@
   [![License](https://img.shields.io/github/license/Leyline-Coding/scryme)](https://github.com/Leyline-Coding/scryme/blob/main/LICENSE)
   [![GitHub Stars](https://img.shields.io/github/stars/Leyline-Coding/scryme)](https://github.com/Leyline-Coding/scryme/stargazers)
   [![GitHub Issues](https://img.shields.io/github/issues/Leyline-Coding/scryme)](https://github.com/Leyline-Coding/scryme/issues)
+<br>
+  [![Tests](https://img.shields.io/github/actions/workflow/status/Leyline-Coding/scryme/test.yml?branch=main&label=tests)](https://github.com/Leyline-Coding/scryme/actions/workflows/test.yml)
+  [![CodeQL](https://img.shields.io/github/actions/workflow/status/Leyline-Coding/scryme/codeql.yml?branch=main&label=CodeQL)](https://github.com/Leyline-Coding/scryme/actions/workflows/codeql.yml)
+  [![Image](https://img.shields.io/github/actions/workflow/status/Leyline-Coding/scryme/publish-image.yml?label=image)](https://github.com/Leyline-Coding/scryme/pkgs/container/scryme)
+  [![Dependabot](https://img.shields.io/badge/Dependabot-enabled-025E8C?logo=dependabot&logoColor=white)](https://docs.scryme.app/development/quality-and-security/)
+  [![Trivy](https://img.shields.io/badge/Trivy-image%20scanned-1904DA?logo=aquasecurity&logoColor=white)](https://docs.scryme.app/development/quality-and-security/)
+  [![Secret scanning](https://img.shields.io/badge/secret%20scanning-enabled-2088FF?logo=github&logoColor=white)](https://docs.scryme.app/development/quality-and-security/)
+  [![SonarQube](https://img.shields.io/badge/SonarQube-quality%20gate-4E9BCD?logo=sonarqube&logoColor=white)](https://docs.scryme.app/development/quality-and-security/)
 <br>  [Public Demo](https://demo.scryme.app) · [Documentation](https://docs.scryme.app) · [Report Bug](https://github.com/Leyline-Coding/scryme/issues)
 </div>
 

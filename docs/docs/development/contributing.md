@@ -19,7 +19,9 @@ pytest tests/         # tests + coverage (writes coverage.xml)
 ruff check src tests  # lint
 ```
 
-CI (GitHub Actions) runs the same checks on every pull request and must pass before merge.
+CI (GitHub Actions) runs the same checks on every pull request and must pass before merge, alongside
+a dependency audit (`pip-audit`) and CodeQL static analysis. See
+[Quality & Security](quality-and-security.md) for the full set of automated checks.
 
 ## Workflow
 

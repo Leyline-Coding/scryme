@@ -1,8 +1,9 @@
 {# Remove-from-collection modal: choose how many copies (and which printings) to remove. Loaded
    into #remove-modal by HTMX; a successful remove re-renders #card-collection (clearing this). #}
 <div class="fixed inset-0 z-[70] flex items-center justify-center p-4">
-  <div class="absolute inset-0 bg-black/50"
-       onclick="document.getElementById('remove-modal').innerHTML=''"></div>
+  <div class="absolute inset-0 bg-black/50" role="button" tabindex="0" aria-label="Close dialog"
+       onclick="document.getElementById('remove-modal').innerHTML=''"
+       onkeydown="if(event.key==='Enter'||event.key===' '||event.key==='Escape'){document.getElementById('remove-modal').innerHTML=''}"></div>
   <div class="relative w-full max-w-md rounded-xl bg-surface ring-1 ring-edge shadow-2xl p-4">
     <h3 class="font-semibold">Remove from collection</h3>
     <p class="text-sm text-muted mb-3">

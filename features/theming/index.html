@@ -1927,15 +1927,20 @@ holds the currency toggle and links to Backup and Status.</p>
 no flash of the default theme on load. Because it's client-side, theming also works on the
 read-only public demo — each visitor gets their own preference.</p>
 <h2 id="display-currency">Display currency</h2>
-<p>The same settings panel has a <strong>Currency</strong> toggle — <strong>USD</strong> or <strong>EUR</strong>. scryme shows the matching
-Scryfall price (<code>usd</code> / <code>eur</code>) for <em>current values</em>: the <a href="../stats/">stats</a> collection value and
-growth, <a href="../decks/">deck</a> value and cost-to-complete, the <a href="../wishlist/">wishlist</a> estimate, and the
-card page's price list (the chosen currency leads). It's a price-key choice, <strong>not</strong> a converted
-rate.</p>
-<p>The default can be set per-deployment with <code>SCRYME_DEFAULT_CURRENCY=eur</code>; each visitor's override is
-remembered in a cookie. <strong><a href="../prices/">Price history</a></strong> (snapshots, profit/loss, and movers) stays in
-USD — it's built on stored USD snapshots and recorded purchase prices, which can't be converted
-without an exchange rate.</p>
+<p>The same settings panel has a <strong>Currency</strong> picker with six options: <strong>USD</strong> and <strong>EUR</strong> (Scryfall's
+native prices) plus <strong>GBP</strong>, <strong>CAD</strong>, <strong>AUD</strong>, and <strong>JPY</strong>. It applies to <em>current values</em> wherever
+they're shown: the <a href="../stats/">stats</a> collection value and growth, <a href="../decks/">deck</a> value and
+cost-to-complete, the <a href="../wishlist/">wishlist</a> estimate, and the card page's price list (the chosen
+currency leads).</p>
+<p>USD and EUR are a direct price-key choice — Scryfall carries both. The others have no Scryfall
+price, so scryme converts the USD value using a foreign-exchange rate refreshed daily from the
+European Central Bank (via <a href="https://frankfurter.dev">Frankfurter</a>). A set of fallback rates ships
+with the app so amounts render immediately, and <code>python -m src.cli refresh-fx</code> fetches the latest on
+demand.</p>
+<p>The default can be set per-deployment with <code>SCRYME_DEFAULT_CURRENCY</code> (e.g. <code>gbp</code>); each visitor's
+override is remembered in a cookie. <strong><a href="../prices/">Price history</a></strong> — the value chart, per-card price
+history, profit/loss, and movers — always stays in <strong>USD</strong>: it's built on stored USD snapshots and
+recorded purchase prices, kept honest in their source currency rather than converted after the fact.</p>
 <h2 id="card-effects">Card effects</h2>
 <p>The settings panel also has a <strong>Card effects</strong> section:</p>
 <ul>
@@ -1967,7 +1972,7 @@ without an exchange rate.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 15, 2026 14:04:45 UTC">July 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 16, 2026 23:26:44 UTC">July 16, 2026</span>
   </span>
 
     

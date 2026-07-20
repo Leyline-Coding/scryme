@@ -120,6 +120,24 @@ function isOurPostgres(pid, databaseDir) {
   }
 }
 
+// SIGTERM an orphaned postgres, wait for it to exit, then SIGKILL if it won't.
+async function stopOrphanedPostgres(pid) {
+  process.stderr.write(`[db] reclaiming data dir: stopping orphaned postgres (pid ${pid})\n`);
+  try {
+    process.kill(pid, "SIGTERM");
+  } catch (err) {
+    process.stderr.write(`[db] SIGTERM pid ${pid}: ${err}\n`);
+  }
+  for (let i = 0; i < 40 && isAlive(pid); i++) await delay(250);   // wait up to ~10s to exit
+  if (!isAlive(pid)) return;
+  try {
+    process.kill(pid, "SIGKILL");
+  } catch (err) {
+    process.stderr.write(`[db] SIGKILL pid ${pid}: ${err}\n`);
+  }
+  for (let i = 0; i < 20 && isAlive(pid); i++) await delay(250);   // let SIGKILL take effect
+}
+
 // We only reach here holding the single-instance lock, so no other scryme owns this data dir. A
 // leftover postmaster.pid therefore belongs to a previous run that crashed or was force-killed
 // without cleaning up — stop that orphaned Postgres, then clear the lock so we can start.
@@ -128,25 +146,11 @@ async function reclaimDataDir(databaseDir) {
   if (!fs.existsSync(pidFile)) return;
   const pid = Number.parseInt((fs.readFileSync(pidFile, "utf8").split("\n")[0] || "").trim(), 10);
   if (pid > 0 && isAlive(pid) && isOurPostgres(pid, databaseDir)) {
-    process.stderr.write(`[db] reclaiming data dir: stopping orphaned postgres (pid ${pid})\n`);
-    try {
-      process.kill(pid, "SIGTERM");
-    } catch (err) {
-      process.stderr.write(`[db] SIGTERM pid ${pid}: ${err}\n`);
-    }
-    for (let i = 0; i < 40 && isAlive(pid); i++) await delay(250);   // wait up to ~10s to exit
-    if (isAlive(pid)) {
-      try {
-        process.kill(pid, "SIGKILL");
-      } catch (err) {
-        process.stderr.write(`[db] SIGKILL pid ${pid}: ${err}\n`);
-      }
-    }
-    for (let i = 0; i < 20 && isAlive(pid); i++) await delay(250);   // let SIGKILL take effect
+    await stopOrphanedPostgres(pid);
   }
   // Only clear the lock once no live postmaster remains. Never start a second postmaster on a data
   // dir another one still holds — that corrupts it; leave the lock so Postgres fails loudly instead.
-  if (!(pid > 0) || !isAlive(pid)) {
+  if (pid <= 0 || !isAlive(pid)) {
     try {
       fs.rmSync(pidFile, { force: true });
     } catch (err) {
@@ -234,13 +238,20 @@ function startBackend(dir, backendPort, pgPort) {
   });
 }
 
+// Windows has no process groups: kill the whole tree with taskkill /T. Resolve taskkill by its
+// absolute path in System32 so a writable PATH entry can't shadow it with a malicious binary.
+function taskkillTree(pid) {
+  const exe = path.join(process.env.SystemRoot || "C:\\Windows", "System32", "taskkill.exe");
+  spawn(exe, ["/pid", String(pid), "/T", "/F"], { stdio: "ignore" });
+}
+
 // Stop the backend and every process it spawned. POSIX: signal the detached child's whole process
 // group (negative PID). Windows has no groups, so kill the tree with taskkill /T.
 function killBackend(signal) {
   if (!backend || backendExited || !backend.pid) return;
   try {
     if (process.platform === "win32") {
-      spawn("taskkill", ["/pid", String(backend.pid), "/T", "/F"], { stdio: "ignore" });
+      taskkillTree(backend.pid);
     } else {
       process.kill(-backend.pid, signal);
     }
@@ -434,9 +445,7 @@ async function shutdown() {
 // Single-instance guard: two scryme processes would fight over the embedded Postgres data
 // directory (its postmaster.pid lock), so the second launch fails to start. Instead, hand off to
 // the already-running instance — focus its window — and exit immediately.
-if (!app.requestSingleInstanceLock()) {
-  app.quit();
-} else {
+if (app.requestSingleInstanceLock()) {
   app.on("second-instance", () => showWindow());
 
   app.whenReady().then(() => {
@@ -452,7 +461,7 @@ if (!app.requestSingleInstanceLock()) {
       process.stderr.write(`[scryme] startup failed: ${detail}\n`);
       dialog.showErrorBox(
         "scryme — couldn't start",
-        `scryme couldn't start:\n\n${(err && err.message) || detail}\n\n` +
+        `scryme couldn't start:\n\n${err?.message || detail}\n\n` +
         "Full details were saved to startup-error.log in the app's data folder.",
       );
       app.quit();
@@ -462,6 +471,9 @@ if (!app.requestSingleInstanceLock()) {
       if (mainWindow) showWindow();
     });
   });
+} else {
+  // Another scryme already holds the lock; hand off to it (via second-instance) and exit.
+  app.quit();
 }
 
 app.on("window-all-closed", () => {
@@ -487,7 +499,7 @@ process.on("exit", () => {
   if (!backend || backendExited || !backend.pid) return;
   try {
     if (process.platform === "win32") {
-      spawn("taskkill", ["/pid", String(backend.pid), "/T", "/F"], { stdio: "ignore" });
+      taskkillTree(backend.pid);
     } else {
       process.kill(-backend.pid, "SIGKILL");
     }

@@ -1478,6 +1478,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Per-card price history">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#chart-currency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chart currency
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -1911,6 +1928,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Per-card price history">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#chart-currency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chart currency
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -1965,12 +1999,26 @@ prices are freshly updated). The total is foil-aware — foil stacks are valued 
 <p>Two snapshots are needed before movers appear, so the page fills in over time. On the read-only
 public demo the scheduled refresh is disabled, so snapshots don't accumulate there.</p>
 <h2 id="per-card-price-history">Per-card price history</h2>
-<p>Every <a href="../cards/">card page</a> shows a <strong>price-history chart</strong> (USD) for that printing, with the same
+<p>Every <a href="../cards/">card page</a> shows a <strong>price-history chart</strong> for that printing, with the same
 time-range selector as the collection value chart. To keep the database bounded, each snapshot
 records a per-card point only for cards you <strong>own</strong> or <strong>track</strong> — anything on your
 <a href="../wishlist/">wishlist</a> or price watchlist — rather than all ~90k printings. A card with no recorded
 points yet shows a short "no history yet" note; add it to your collection or wishlist and it starts
 building history from the next snapshot.</p>
+<h3 id="chart-currency">Chart currency</h3>
+<p>The chart's header has a <strong>currency dropdown</strong> (USD, EUR, GBP, CAD, AUD, JPY). Prices are recorded
+in USD, so to chart past values in another currency accurately scryme converts each snapshot at the
+exchange rate that applied <strong>on its own date</strong> — not one flat current rate. The first time you pick
+a non-USD currency it confirms a one-time <strong>download of historical exchange rates</strong> (from
+<a href="https://frankfurter.dev">Frankfurter</a>, ECB reference rates); those are cached, so switching is
+instant afterwards. Your choice is remembered per browser. If the rates can't be downloaded
+(offline), the chart falls back to the current rate and labels itself <em>approximate</em>.</p>
+<p>This is separate from the site-wide currency picker in Settings, which controls <em>current</em> prices
+everywhere else; the collection value chart on the <a href="../stats/">stats</a> page stays in USD.</p>
+<p>To pre-download the rates (e.g. for an offline/self-host deploy):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>backfill-fx-history<span class="w">            </span><span class="c1"># all convertible currencies</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>backfill-fx-history<span class="w"> </span>--code<span class="w"> </span>gbp<span class="w"> </span><span class="c1"># just one</span>
+</code></pre></div>
 
 
 
@@ -1993,7 +2041,7 @@ building history from the next snapshot.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 16, 2026 23:26:44 UTC">July 16, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 20, 2026 16:24:54 UTC">July 20, 2026</span>
   </span>
 
     

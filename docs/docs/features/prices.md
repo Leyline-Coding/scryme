@@ -40,9 +40,29 @@ public demo the scheduled refresh is disabled, so snapshots don't accumulate the
 
 ## Per-card price history
 
-Every [card page](cards.md) shows a **price-history chart** (USD) for that printing, with the same
+Every [card page](cards.md) shows a **price-history chart** for that printing, with the same
 time-range selector as the collection value chart. To keep the database bounded, each snapshot
 records a per-card point only for cards you **own** or **track** — anything on your
 [wishlist](wishlist.md) or price watchlist — rather than all ~90k printings. A card with no recorded
 points yet shows a short "no history yet" note; add it to your collection or wishlist and it starts
 building history from the next snapshot.
+
+### Chart currency
+
+The chart's header has a **currency dropdown** (USD, EUR, GBP, CAD, AUD, JPY). Prices are recorded
+in USD, so to chart past values in another currency accurately scryme converts each snapshot at the
+exchange rate that applied **on its own date** — not one flat current rate. The first time you pick
+a non-USD currency it confirms a one-time **download of historical exchange rates** (from
+[Frankfurter](https://frankfurter.dev), ECB reference rates); those are cached, so switching is
+instant afterwards. Your choice is remembered per browser. If the rates can't be downloaded
+(offline), the chart falls back to the current rate and labels itself *approximate*.
+
+This is separate from the site-wide currency picker in Settings, which controls *current* prices
+everywhere else; the collection value chart on the [stats](stats.md) page stays in USD.
+
+To pre-download the rates (e.g. for an offline/self-host deploy):
+
+```bash
+python -m src.cli backfill-fx-history            # all convertible currencies
+python -m src.cli backfill-fx-history --code gbp # just one
+```

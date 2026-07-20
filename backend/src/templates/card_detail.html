@@ -139,10 +139,34 @@
       </div>
       {% endif %}
 
-      {# Price history (#233): USD chart from recorded snapshots, for owned + tracked cards. #}
-      <div>
+      {# Price history (#233): recorded USD snapshots, shown in a chosen currency. The header holds a
+         currency dropdown; the first non-USD pick confirms a one-time historical-rate download. #}
+      <div x-data="histCurrency('{{ hist_currency }}')">
         <div class="flex items-baseline justify-between gap-2 mb-2">
-          <h3 class="text-sm font-semibold text-muted uppercase tracking-wide">Price history (USD)</h3>
+          <h3 class="text-sm font-semibold text-muted uppercase tracking-wide flex items-center gap-1.5">
+            Price history
+            {% if has_card_history %}
+            <span class="relative inline-flex items-center">
+              <label for="hist-currency" class="sr-only">Price history currency</label>
+              <select id="hist-currency" x-model="cur" @change="onChange()" :disabled="loading"
+                      class="appearance-none rounded bg-surface-2 border border-edge pl-2 pr-6 py-0.5
+                             text-xs font-medium normal-case tracking-normal text-fg
+                             hover:border-accent disabled:opacity-50 cursor-pointer">
+                {% for c in hist_currencies %}
+                <option value="{{ c.id }}">{{ c.label }}</option>
+                {% endfor %}
+              </select>
+              <svg x-show="!loading" class="pointer-events-none absolute right-1.5 h-3 w-3 text-muted"
+                   viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd"
+                   d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                   clip-rule="evenodd"/></svg>
+              <svg x-show="loading" x-cloak class="absolute right-1.5 h-3 w-3 animate-spin text-muted"
+                   viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10"
+                   stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor"
+                   d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+            </span>
+            {% else %}(USD){% endif %}
+          </h3>
           {% if has_card_history %}
           <a href="/prices" class="text-xs text-muted hover:text-fg">All prices →</a>
           {% endif %}
@@ -150,13 +174,81 @@
         {% if has_card_history %}
         {% import "_value_chart.html" as vc %}
         {{ vc.chart(price_chart, chart_ranges, chart_range,
-                    "/card/" ~ card.scryfall_id ~ "?", "Card price over time") }}
+                    "/card/" ~ card.scryfall_id ~ "?", "Card price over time",
+                    hist_symbol, hist_decimals, hist_approx) }}
+
+        {# One-time confirmation before the first non-USD selection downloads historical FX data. #}
+        <div x-show="showModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <button type="button" class="absolute inset-0 w-full h-full border-0 bg-black/50"
+                  @click="cancel()"><span class="sr-only">Cancel</span></button>
+          <div class="relative w-full max-w-md rounded-xl bg-surface ring-1 ring-edge shadow-2xl p-4">
+            <h3 class="font-semibold">Show prices in <span x-text="labels[pending]"></span>?</h3>
+            <p class="text-sm text-muted mt-2">
+              Card prices are recorded in USD. To chart past values in
+              <span x-text="labels[pending]"></span> accurately, scryme downloads historical
+              exchange-rate data once. It's cached afterwards, so this only happens the first time.
+            </p>
+            <div class="flex justify-end gap-2 mt-4">
+              <button type="button" @click="cancel()"
+                      class="rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-1.5 text-sm">Cancel</button>
+              <button type="button" @click="confirm()"
+                      class="rounded-lg bg-accent text-accent-fg px-3 py-1.5 text-sm font-medium">Continue</button>
+            </div>
+          </div>
+        </div>
         {% else %}
         <p class="text-sm text-muted">
           No price history yet — owned and tracked cards build history over time.
         </p>
         {% endif %}
       </div>
+      {# A global (plain script runs before deferred Alpine) so x-data can call it (#233). Pure JS
+         with no Jinja — labels are static, like settingsMenu — so SonarJS can parse it. The chosen
+         currency rides the scryme_hist_currency cookie, set client-side exactly like settingsMenu's
+         currency picker. #}
+      <script>
+        function histReload() { location.reload(); }
+        function histCurrency(initial) {
+          return {
+            cur: initial,
+            prev: initial,
+            confirmed: localStorage.getItem("scryme_hist_confirmed") === "1",
+            showModal: false,
+            pending: null,
+            loading: false,
+            labels: { usd: "USD", eur: "EUR", gbp: "GBP", cad: "CAD", aud: "AUD", jpy: "JPY" },
+            onChange() {
+              if (this.cur === this.prev) return;
+              if (this.cur === "usd") { this.apply("usd"); return; }
+              if (!this.confirmed) { this.pending = this.cur; this.showModal = true; return; }
+              this.apply(this.cur);
+            },
+            cancel() {
+              this.showModal = false;
+              this.pending = null;
+              this.cur = this.prev;  // revert the <select> to the active currency
+            },
+            confirm() {
+              this.confirmed = true;
+              localStorage.setItem("scryme_hist_confirmed", "1");
+              this.showModal = false;
+              this.apply(this.pending);
+            },
+            apply(code) {
+              this.loading = true;
+              document.cookie =
+                "scryme_hist_currency=" + code + ";path=/;max-age=31536000;samesite=lax";
+              // Pre-download the historical rates so the reload lands on cached data; reload either
+              // way (a failed fetch just means the page falls back to the approximate note).
+              fetch("/card/fx-history", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ code }),
+              }).finally(histReload);
+            },
+          };
+        }
+      </script>
 
       {# Price watch (#88) #}
       {% if not read_only %}

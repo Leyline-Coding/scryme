@@ -10,10 +10,11 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src import currency, fx
 from src.binder_service import all_binders, binders_for_card
 from src.box_service import all_boxes
 from src.config import get_settings
@@ -28,6 +29,8 @@ from src.prices import (
     DEFAULT_RANGE,
     build_value_chart,
     card_value_series,
+    convert_card_series,
+    earliest_snapshot_date,
     range_days,
 )
 from src.pricing import SOURCES, effective_prices, get_price_source
@@ -82,6 +85,23 @@ def _flip_rotate(card: Card) -> tuple[bool, str | None, bool]:
     keywords = [k.lower() for k in (card.keywords or [])]
     can_rotate = card.layout in ("battle", "planar") or "aftermath" in keywords
     return can_flip, flip_image, can_rotate
+
+
+def _hist_currency(request: Request) -> str:
+    """Display currency for the per-card price-history chart (#233).
+
+    Its own ``scryme_hist_currency`` cookie (set by the chart dropdown) takes precedence; otherwise
+    it follows the site-wide currency, so a EUR user sees the chart in EUR by default.
+    """
+    return currency.normalize(request.cookies.get("scryme_hist_currency")) or get_currency(request)
+
+
+def _hist_currencies() -> list[dict]:
+    """Chart-currency dropdown options: USD plus each convertible currency, in menu order."""
+    return [
+        {"id": c["code"], "label": c["label"], "symbol": c["symbol"]}
+        for c in currency.CURRENCIES.values()
+    ]
 
 
 def _price_rows(request: Request, card: Card) -> list[tuple[str, float]]:
@@ -150,9 +170,23 @@ async def card_detail(
             ).limit(1)
         )
     ) is not None
-    price_chart = build_value_chart(
-        await card_value_series(session, card.scryfall_id, range_days(chart_range))
-    )
+    usd_series = await card_value_series(session, card.scryfall_id, range_days(chart_range))
+    # Convert the USD series into the visitor's chosen chart currency using date-matched historical
+    # FX rates (#233), downloading them on first use. `hist_approx` flags a current-rate fallback
+    # (offline / download failed) so the chart can say so rather than imply exact history.
+    hist_code = _hist_currency(request)
+    hist_symbol = currency.info(hist_code)["symbol"]
+    hist_decimals = 0 if hist_code == "jpy" else 2
+    hist_approx = False
+    if hist_code != "usd" and usd_series:
+        start = await earliest_snapshot_date(session)
+        have = bool(start) and await fx.ensure_fx_history(session, hist_code, start)
+        hist_points = await fx.fx_history_points(session, hist_code) if have else []
+        hist_approx = not hist_points
+        usd_series = convert_card_series(
+            usd_series, hist_code, hist_points, fx.rate(hist_code) or 1.0
+        )
+    price_chart = build_value_chart(usd_series)
     legalities = card.legalities or {}
     legality_rows = [(fmt, legalities.get(fmt, "not_legal")) for fmt in LEGALITY_FORMATS]
 
@@ -186,6 +220,11 @@ async def card_detail(
             "price_chart": price_chart,
             "chart_range": chart_range,
             "chart_ranges": CHART_RANGES,
+            "hist_currencies": _hist_currencies(),
+            "hist_currency": hist_code,
+            "hist_symbol": hist_symbol,
+            "hist_decimals": hist_decimals,
+            "hist_approx": hist_approx,
             "tags": await card_tags(session, card.scryfall_id),
             "wishlisted": await is_wishlisted(session, card.scryfall_id),
             "price_target": await target_for(session, str(card.scryfall_id)),
@@ -204,6 +243,28 @@ async def card_detail(
             "printing_opts": await printing_options(session, card.scryfall_id),
         },
     )
+
+
+@router.post("/card/fx-history")
+async def fx_history(
+    code: str = Form(...),
+    session: AsyncSession = Depends(get_session),
+) -> JSONResponse:
+    """Ensure historical FX rates for ``code`` are downloaded so the chart can render in it (#233).
+
+    Called by the chart's currency dropdown before it reloads, so the download (and its spinner)
+    happen up front and the reloaded page renders off cached data. Idempotent and best-effort:
+    ``ok=false`` with ``approximate=true`` means no history is available and the chart will use the
+    current rate. Not gated by read-only — FX history is shared reference data, not the collection.
+    """
+    code = currency.normalize(code) or "usd"
+    if code == "usd" or code not in fx.HIST_CODES:
+        return JSONResponse({"ok": True, "approximate": False})
+    start = await earliest_snapshot_date(session)
+    if start is None:
+        return JSONResponse({"ok": True, "approximate": False})  # no snapshots to convert
+    have = await fx.ensure_fx_history(session, code, start)
+    return JSONResponse({"ok": have, "approximate": not have})
 
 
 @router.get("/card/{scryfall_id}/image")

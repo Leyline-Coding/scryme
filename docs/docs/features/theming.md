@@ -30,9 +30,11 @@ with the app so amounts render immediately, and `python -m src.cli refresh-fx` f
 demand.
 
 The default can be set per-deployment with `SCRYME_DEFAULT_CURRENCY` (e.g. `gbp`); each visitor's
-override is remembered in a cookie. **[Price history](prices.md)** — the value chart, per-card price
-history, profit/loss, and movers — always stays in **USD**: it's built on stored USD snapshots and
-recorded purchase prices, kept honest in their source currency rather than converted after the fact.
+override is remembered in a cookie. Collection **[price history](prices.md)** — the value chart,
+profit/loss, and movers — stays in **USD**: it's built on stored USD snapshots and recorded purchase
+prices, kept honest in their source currency rather than converted after the fact. The one exception
+is a **card's own [price-history chart](prices.md#chart-currency)**, which has its own currency
+dropdown and converts each past point at that date's historical exchange rate.
 
 ## Card effects
 

@@ -9,9 +9,10 @@ Click any card in the results grid (or a binder/stats list) to open its detail p
   power/toughness or loyalty.
 - Set, collector number, rarity, artist, language, and release date.
 - Prices (USD / USD foil / EUR / TIX when available).
-- A **price-history chart** (USD) for that printing, with the same time-range selector as the
-  collection [value chart](prices.md). Cards you own or track (on your [wishlist](wishlist.md) or
-  price watchlist) build history over time; other cards show a short "no history yet" note.
+- A **price-history chart** for that printing, with the same time-range selector as the
+  collection [value chart](prices.md) plus a [currency dropdown](prices.md#chart-currency). Cards you
+  own or track (on your [wishlist](wishlist.md) or price watchlist) build history over time; other
+  cards show a short "no history yet" note.
 - A **format legality** grid.
 - **In your collection** — every stack you own of that printing (quantity, finish, condition,
   language, binder). Own it in **foil** or **etched foil**? The card art gets an animated sheen (a

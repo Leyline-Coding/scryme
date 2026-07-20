@@ -202,7 +202,10 @@
         </p>
         {% endif %}
       </div>
-      {# Defined as a global (plain script runs before deferred Alpine) so x-data can call it (#233). #}
+      {# A global (plain script runs before deferred Alpine) so x-data can call it (#233). Pure JS
+         with no Jinja — labels are static, like settingsMenu — so SonarJS can parse it. The chosen
+         currency rides the scryme_hist_currency cookie, set client-side exactly like settingsMenu's
+         currency picker. #}
       <script>
         function histCurrency(initial) {
           return {
@@ -212,7 +215,7 @@
             showModal: false,
             pending: null,
             loading: false,
-            labels: { {% for c in hist_currencies %}"{{ c.id }}": "{{ c.label }}", {% endfor %} },
+            labels: { usd: "USD", eur: "EUR", gbp: "GBP", cad: "CAD", aud: "AUD", jpy: "JPY" },
             onChange() {
               if (this.cur === this.prev) return;
               if (this.cur === "usd") { this.apply("usd"); return; }
@@ -230,20 +233,18 @@
               this.showModal = false;
               this.apply(this.pending);
             },
-            async apply(code) {
+            apply(code) {
               this.loading = true;
-              try {
-                if (code && code !== "usd") {
-                  await fetch("/card/fx-history", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({ code: code }),
-                  });
-                }
-              } catch (e) { /* best-effort — the page render falls back to the approximate note */ }
               document.cookie =
                 "scryme_hist_currency=" + code + ";path=/;max-age=31536000;samesite=lax";
-              window.location.reload();
+              // Pre-download the historical rates so the reload lands on cached data; reload either
+              // way (a failed fetch just means the page falls back to the approximate note).
+              var reload = function () { window.location.reload(); };
+              fetch("/card/fx-history", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ code }),
+              }).then(reload, reload);
             },
           };
         }

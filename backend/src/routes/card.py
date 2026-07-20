@@ -253,9 +253,9 @@ async def fx_history(
     """Ensure historical FX rates for ``code`` are downloaded so the chart can render in it (#233).
 
     Called by the chart's currency dropdown before it reloads, so the download (and its spinner)
-    happen up front rather than blocking the reloaded page. Idempotent and best-effort: ``ok=false``
-    with ``approximate=true`` means no history is available and the chart will use the current rate.
-    Not gated by read-only — FX history is shared reference data, not the user's collection.
+    happen up front and the reloaded page renders off cached data. Idempotent and best-effort:
+    ``ok=false`` with ``approximate=true`` means no history is available and the chart will use the
+    current rate. Not gated by read-only — FX history is shared reference data, not the collection.
     """
     code = currency.normalize(code) or "usd"
     if code == "usd" or code not in fx.HIST_CODES:

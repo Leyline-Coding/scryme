@@ -101,7 +101,7 @@ async def test_card_page_currency_dropdown_present(client, session):
     await snapshot_prices(session)
 
     resp = await client.get(f"/card/{c.scryfall_id}")
-    assert 'aria-label="Price history currency"' in resp.text  # the dropdown replaces "(USD)"
+    assert 'id="hist-currency"' in resp.text  # the currency dropdown replaces "(USD)"
     assert ">GBP</option>" in resp.text and ">JPY</option>" in resp.text
 
 

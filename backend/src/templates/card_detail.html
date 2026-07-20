@@ -147,8 +147,8 @@
             Price history
             {% if has_card_history %}
             <span class="relative inline-flex items-center">
-              <select x-model="cur" @change="onChange()" :disabled="loading"
-                      aria-label="Price history currency"
+              <label for="hist-currency" class="sr-only">Price history currency</label>
+              <select id="hist-currency" x-model="cur" @change="onChange()" :disabled="loading"
                       class="appearance-none rounded bg-surface-2 border border-edge pl-2 pr-6 py-0.5
                              text-xs font-medium normal-case tracking-normal text-fg
                              hover:border-accent disabled:opacity-50 cursor-pointer">
@@ -180,7 +180,7 @@
         {# One-time confirmation before the first non-USD selection downloads historical FX data. #}
         <div x-show="showModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <button type="button" class="absolute inset-0 w-full h-full border-0 bg-black/50"
-                  aria-label="Cancel" @click="cancel()"></button>
+                  @click="cancel()"><span class="sr-only">Cancel</span></button>
           <div class="relative w-full max-w-md rounded-xl bg-surface ring-1 ring-edge shadow-2xl p-4">
             <h3 class="font-semibold">Show prices in <span x-text="labels[pending]"></span>?</h3>
             <p class="text-sm text-muted mt-2">
@@ -207,6 +207,7 @@
          currency rides the scryme_hist_currency cookie, set client-side exactly like settingsMenu's
          currency picker. #}
       <script>
+        function histReload() { location.reload(); }
         function histCurrency(initial) {
           return {
             cur: initial,
@@ -239,12 +240,11 @@
                 "scryme_hist_currency=" + code + ";path=/;max-age=31536000;samesite=lax";
               // Pre-download the historical rates so the reload lands on cached data; reload either
               // way (a failed fetch just means the page falls back to the approximate note).
-              var reload = function () { window.location.reload(); };
               fetch("/card/fx-history", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: new URLSearchParams({ code }),
-              }).then(reload, reload);
+              }).finally(histReload);
             },
           };
         }

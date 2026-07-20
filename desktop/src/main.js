@@ -241,7 +241,7 @@ function startBackend(dir, backendPort, pgPort) {
 // Windows has no process groups: kill the whole tree with taskkill /T. Resolve taskkill by its
 // absolute path in System32 so a writable PATH entry can't shadow it with a malicious binary.
 function taskkillTree(pid) {
-  const exe = path.join(process.env.SystemRoot || "C:\\Windows", "System32", "taskkill.exe");
+  const exe = path.join(process.env.SystemRoot || "C:/Windows", "System32", "taskkill.exe");
   spawn(exe, ["/pid", String(pid), "/T", "/F"], { stdio: "ignore" });
 }
 

@@ -1,7 +1,7 @@
 {
   "name": "scryme-desktop",
   "productName": "scryme",
-  "version": "0.25.2",
+  "version": "0.26.0",
   "description": "Self-hosted Scryfall-like search for your MTG collection — desktop app",
   "homepage": "https://github.com/Leyline-Coding/scryme",
   "author": {

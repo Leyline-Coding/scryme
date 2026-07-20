@@ -5,10 +5,12 @@ import uuid
 
 import pytest
 from sqlalchemy import select
+from src import fx
 from src.models import (
     Card,
     CardPricePoint,
     CollectionCard,
+    FxRateHistory,
     PriceSnapshot,
     PriceTarget,
     WishlistItem,
@@ -88,6 +90,82 @@ async def test_card_page_empty_state_when_no_history(client, session):
     resp = await client.get(f"/card/{c.scryfall_id}")
     assert resp.status_code == 200
     assert "No price history yet" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_card_page_currency_dropdown_present(client, session):
+    c = await _add(session, "Owned", "1.50", "1")
+    session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish="normal"))
+    await session.commit()
+    await snapshot_prices(session)
+    await snapshot_prices(session)
+
+    resp = await client.get(f"/card/{c.scryfall_id}")
+    assert 'aria-label="Price history currency"' in resp.text  # the dropdown replaces "(USD)"
+    assert ">GBP</option>" in resp.text and ">JPY</option>" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_card_page_converts_history_with_cookie(client, session):
+    c = await _add(session, "Owned", "10.00", "1")
+    session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish="normal"))
+    await session.commit()
+    await snapshot_prices(session)
+    await snapshot_prices(session)  # two $10 points -> a trend line
+    # Pre-seed today's GBP rate so the route converts without any network call.
+    today = datetime.datetime.now(datetime.UTC).date()
+    session.add(FxRateHistory(code="gbp", date=today, rate=0.5))
+    await session.commit()
+
+    resp = await client.get(f"/card/{c.scryfall_id}", cookies={"scryme_hist_currency": "gbp"})
+    assert resp.status_code == 200
+    assert "£5.00" in resp.text  # 10 USD * 0.5 GBP/USD, with the £ symbol
+    assert "Approximate" not in resp.text  # real historical rate, not a fallback
+
+
+@pytest.mark.asyncio
+async def test_card_page_approx_note_when_history_unavailable(client, session, monkeypatch):
+    c = await _add(session, "Owned", "10.00", "1")
+    session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish="normal"))
+    await session.commit()
+    await snapshot_prices(session)
+    await snapshot_prices(session)
+
+    async def no_history(*_a, **_k):
+        return False  # simulate an offline / failed download
+
+    monkeypatch.setattr(fx, "ensure_fx_history", no_history)
+    resp = await client.get(f"/card/{c.scryfall_id}", cookies={"scryme_hist_currency": "gbp"})
+    assert resp.status_code == 200
+    assert "Approximate — historical exchange rates unavailable" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_fx_history_endpoint(client, session, monkeypatch):
+    # USD is a no-op; a code with no snapshots is a no-op; a convertible code delegates to ensure.
+    assert (await client.post("/card/fx-history", data={"code": "usd"})).json() == {
+        "ok": True, "approximate": False}
+    assert (await client.post("/card/fx-history", data={"code": "gbp"})).json() == {
+        "ok": True, "approximate": False}  # no snapshots yet -> nothing to convert
+
+    c = await _add(session, "Owned", "1.00", "1")
+    session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish="normal"))
+    await session.commit()
+    await snapshot_prices(session)
+
+    async def ok_ensure(*_a, **_k):
+        return True
+
+    monkeypatch.setattr(fx, "ensure_fx_history", ok_ensure)
+    assert (await client.post("/card/fx-history", data={"code": "gbp"})).json() == {
+        "ok": True, "approximate": False}
+
+    async def fail_ensure(*_a, **_k):
+        return False
+
+    monkeypatch.setattr(fx, "ensure_fx_history", fail_ensure)
+    assert (await client.post("/card/fx-history", data={"code": "gbp"})).json() == {
+        "ok": False, "approximate": True}
 
 
 @pytest.mark.asyncio

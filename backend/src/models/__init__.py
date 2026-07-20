@@ -8,7 +8,7 @@ from src.models.collection import CollectionCard
 from src.models.deck import Deck, DeckCard
 from src.models.deck_chat import DeckChatMessage
 from src.models.embedding import CardEmbedding
-from src.models.fx_rate import FxRate
+from src.models.fx_rate import FxRate, FxRateHistory
 from src.models.import_snapshot import ImportSnapshot
 from src.models.ingest import IngestState
 from src.models.llm_settings import LLMSettings
@@ -22,7 +22,7 @@ from src.models.wishlist import WishlistItem
 
 __all__ = [
     "Binder", "BinderCard", "Box", "Card", "CardEmbedding", "CardPricePoint",
-    "Checklist", "ChecklistItem", "CollectionCard", "FxRate",
+    "Checklist", "ChecklistItem", "CollectionCard", "FxRate", "FxRateHistory",
     "Deck", "DeckCard", "DeckChatMessage", "ImportSnapshot", "IngestState", "ImportStaging",
     "LLMSettings",
     "PriceSnapshot", "PriceTarget", "RulesChunk", "SavedSearch", "SetRelease", "WishlistItem",

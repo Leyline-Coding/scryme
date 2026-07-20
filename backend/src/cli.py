@@ -57,6 +57,22 @@ async def _refresh_fx() -> None:
         print("FX rates unchanged (fetch failed or nothing returned).")
 
 
+async def _backfill_fx_history(code: str | None) -> None:
+    from src.db import SessionLocal
+    from src.fx import HIST_CODES, ensure_fx_history
+    from src.prices import earliest_snapshot_date
+
+    codes = [code.lower()] if code else list(HIST_CODES)
+    async with SessionLocal() as session:
+        start = await earliest_snapshot_date(session)
+        if start is None:
+            print("No price snapshots yet; nothing to backfill.")
+            return
+        for c in codes:
+            ok = await ensure_fx_history(session, c, start)
+            print(f"{c}: {'ok' if ok else 'no data (fetch failed?)'}")
+
+
 async def _prune_digital() -> None:
     from src.scryfall.ingest import prune_digital_only
 
@@ -173,6 +189,12 @@ def main() -> None:
 
     sub.add_parser("refresh-fx", help="Refresh FX rates for converted display currencies (#232)")
 
+    p_fxhist = sub.add_parser(
+        "backfill-fx-history",
+        help="Download historical FX rates for the card price-history chart (#233)",
+    )
+    p_fxhist.add_argument("--code", help="One currency code (default: all convertible currencies)")
+
     sub.add_parser("prune-digital", help="Remove digital-only (Arena/MTGO) cards from the DB")
 
     p_embed = sub.add_parser("backfill-embeddings",
@@ -214,6 +236,7 @@ def main() -> None:
         "seed-demo": _seed_demo,
         "snapshot-prices": _snapshot_prices,
         "refresh-fx": _refresh_fx,
+        "backfill-fx-history": lambda: _backfill_fx_history(args.code),
         "prune-digital": _prune_digital,
         "backfill-embeddings": lambda: _backfill_embeddings("all" if args.all else "owned"),
         "backfill-rules": lambda: _backfill_rules(args.file),

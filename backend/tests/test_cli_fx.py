@@ -1,5 +1,6 @@
-"""CLI `refresh-fx` command (#232). refresh_fx_rates is mocked — no network."""
+"""CLI `refresh-fx` / `backfill-fx-history` commands (#232/#233). FX layer mocked — no network."""
 
+import datetime
 import sys
 
 import pytest
@@ -35,3 +36,47 @@ def test_refresh_fx_unchanged(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["scryme", "refresh-fx"])
     cli.main()
     assert "unchanged" in capsys.readouterr().out
+
+
+def test_backfill_fx_history_no_snapshots(monkeypatch, capsys):
+    async def no_start(_session):
+        return None
+
+    monkeypatch.setattr("src.prices.earliest_snapshot_date", no_start)
+    monkeypatch.setattr(sys, "argv", ["scryme", "backfill-fx-history"])
+    cli.main()
+    assert "No price snapshots yet" in capsys.readouterr().out
+
+
+def test_backfill_fx_history_single_code(monkeypatch, capsys):
+    async def a_start(_session):
+        return datetime.date(2020, 1, 1)
+
+    calls = []
+
+    async def fake_ensure(_session, code, _start, _client=None):
+        calls.append(code)
+        return True
+
+    monkeypatch.setattr("src.prices.earliest_snapshot_date", a_start)
+    monkeypatch.setattr("src.fx.ensure_fx_history", fake_ensure)
+    monkeypatch.setattr(sys, "argv", ["scryme", "backfill-fx-history", "--code", "GBP"])
+    cli.main()
+    assert "gbp: ok" in capsys.readouterr().out
+    assert calls == ["gbp"]  # --code is normalized to lowercase, a single currency
+
+
+def test_backfill_fx_history_all_codes(monkeypatch, capsys):
+    async def a_start(_session):
+        return datetime.date(2020, 1, 1)
+
+    async def fake_ensure(_session, code, _start, _client=None):
+        return code != "jpy"  # jpy simulates a failed/empty download
+
+    monkeypatch.setattr("src.prices.earliest_snapshot_date", a_start)
+    monkeypatch.setattr("src.fx.ensure_fx_history", fake_ensure)
+    monkeypatch.setattr(sys, "argv", ["scryme", "backfill-fx-history"])
+    cli.main()
+    out = capsys.readouterr().out
+    assert "eur: ok" in out
+    assert "jpy: no data" in out

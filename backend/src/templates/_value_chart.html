@@ -5,8 +5,12 @@
      current_range  — the active range label
      range_base     — URL prefix ending in "?"/"&", e.g. "/card/<id>?" — range=<label> is appended
      label          — accessible chart title (optional)
+     symbol         — currency symbol for value labels (default "$"; card page passes £/€/¥/… #233)
+     decimals       — decimal places for value labels (default 2; 0 for JPY)
+     approx         — True when values use a current-rate fallback (historical FX unavailable)
 #}
-{% macro chart(chart, ranges, current_range, range_base, label="Value over time") %}
+{% macro chart(chart, ranges, current_range, range_base, label="Value over time",
+               symbol="$", decimals=2, approx=False) %}
   <div class="flex flex-wrap gap-1 mb-3">
     {% for rlabel, _days in ranges %}
     <a href="{{ range_base }}range={{ rlabel }}"
@@ -25,13 +29,18 @@
   </svg>
   <div class="mt-2 flex justify-between text-xs text-muted">
     <span>{{ chart.first_date }}</span>
-    <span>${{ '{:,.2f}'.format(chart.min_value) }} – ${{ '{:,.2f}'.format(chart.max_value) }}
+    <span>{{ symbol }}{{ '{:,.{}f}'.format(chart.min_value, decimals) }} –
+      {{ symbol }}{{ '{:,.{}f}'.format(chart.max_value, decimals) }}
       · {{ chart.points|length }} snapshots</span>
     <span>{{ chart.last_date }}</span>
   </div>
+  {% if approx %}
+  <p class="mt-1 text-xs text-muted italic">Approximate — historical exchange rates unavailable;
+    converted at the current rate.</p>
+  {% endif %}
   {% elif chart.available %}
   <p class="text-sm text-muted">
-    Only one snapshot in this range (${{ '{:,.2f}'.format(chart.current) }} on
+    Only one snapshot in this range ({{ symbol }}{{ '{:,.{}f}'.format(chart.current, decimals) }} on
     {{ chart.last_date }}). Pick a longer range to see the trend.
   </p>
   {% else %}

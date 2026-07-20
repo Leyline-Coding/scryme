@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, Float, String, func
+from sqlalchemy import Date, DateTime, Float, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.db import Base
@@ -23,3 +23,19 @@ class FxRate(Base):
     updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class FxRateHistory(Base):
+    """One daily historical rate (1 USD -> `rate` of `code`) so the per-card price-history chart can
+    convert each USD snapshot at *its own date's* rate rather than one flat current rate (#233).
+
+    Downloaded on demand from Frankfurter's time-series endpoint the first time a visitor views the
+    chart in a non-USD currency. Rows are immutable once written (past ECB rates never change); only
+    the recent tail is topped up as new snapshots accrue.
+    """
+
+    __tablename__ = "fx_rate_history"
+
+    code: Mapped[str] = mapped_column(String(3), primary_key=True)  # lowercase ISO, e.g. "gbp"
+    date: Mapped[datetime.date] = mapped_column(Date, primary_key=True)  # business day (UTC)
+    rate: Mapped[float] = mapped_column(Float)                      # 1 USD -> this many `code`

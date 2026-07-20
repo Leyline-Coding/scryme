@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import SessionLocal
@@ -245,6 +245,35 @@ async def card_value_series(
         step = len(rows) / _MAX_CHART_POINTS
         rows = [rows[int(i * step)] for i in range(_MAX_CHART_POINTS)] + [rows[-1]]
     return rows
+
+
+async def earliest_snapshot_date(session: AsyncSession):
+    """Date of the oldest price snapshot (or None) — the span historical FX must cover (#233)."""
+    dt = await session.scalar(select(func.min(PriceSnapshot.captured_at)))
+    return dt.date() if dt is not None else None
+
+
+def convert_card_series(
+    points: list[_CardPoint], code: str,
+    hist_points: list[tuple], current_rate: float,
+) -> list[_CardPoint]:
+    """Convert a USD card series into ``code`` using date-matched historical rates (#233).
+
+    Each point is multiplied by the USD->code rate effective on its snapshot date; where no
+    historical rate is stored the ``current_rate`` fallback applies. ``code == "usd"`` (or an empty
+    fallback) returns the series unchanged.
+    """
+    from src import fx
+
+    if code == "usd":
+        return points
+    return [
+        _CardPoint(
+            total_usd=p.total_usd * fx.rate_on(hist_points, p.captured_at.date(), current_rate),
+            captured_at=p.captured_at,
+        )
+        for p in points
+    ]
 
 
 @dataclass

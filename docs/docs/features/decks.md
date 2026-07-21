@@ -51,6 +51,27 @@ Commander, Pauper, Brawl, Historic, Oathbreaker). scryme reports:
 
 `restricted` cards (e.g. in Vintage) count as legal.
 
+## Commander bracket estimate
+
+For **Commander** decks (any deck that runs a legendary creature that can be your commander), the
+deck page shows an estimated **bracket** on WotC's 1–5 scale — **1 Exhibition · 2 Core · 3 Upgraded ·
+4 Optimized · 5 cEDH** — so you can sanity-check "is my precon a 2 or a 3?".
+
+It's a transparent **heuristic**, not an official rating: every signal that raised the estimate is
+listed underneath, drawn from data scryme already has:
+
+- **Game Changers** — cards on Scryfall's official Game Changers list. Any raises the deck to at
+  least Upgraded (3); several push it to Optimized (4).
+- **Mass land denial**, **extra-turn chaining** (two or more), and **known two-card infinite combos**
+  each push the deck to at least Optimized (4).
+- **Fast mana** (Mana Crypt, Mana Vault, Jeweled Lotus, rituals…) and **unconditional tutors** are
+  density signals that nudge a baseline deck up to Upgraded (3). Sol Ring is legal at every bracket,
+  so it doesn't count.
+
+The estimate is capped at **4** — separating Optimized (4) from cEDH (5) reliably needs human
+judgement, so a 4 is labelled "may be cEDH (5)". You can also search your collection for these cards
+with **`is:gamechanger`**.
+
 Legality is judged by the **card**, not the specific printing shown. Some printings — art-series
 cards, tokens, gold-bordered World Championship / Collector's Edition cards, oversized and acorn
 cards — are marked *not legal in every format* by Scryfall. scryme looks past those to a real

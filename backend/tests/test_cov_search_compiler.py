@@ -22,7 +22,7 @@ _RAW = [
      "mana_cost": "{0}", "oracle_text": "Add three mana.", "released_at": "1993-08-05",
      "lang": "en", "layout": "normal", "artist": "Christopher Rush", "watermark": "set",
      "border_color": "black", "frame": "1993", "set_type": "core", "security_stamp": "oval",
-     "games": ["paper"], "prices": {"usd": "9999.99"}, "promo": True,
+     "games": ["paper"], "prices": {"usd": "9999.99"}, "promo": True, "game_changer": True,
      "legalities": {"vintage": "restricted"}},
     {"id": BOLT, "name": "Lightning Bolt", "set": "MH2", "collector_number": "122",
      "rarity": "uncommon", "cmc": 1, "type_line": "Instant", "colors": ["R"],
@@ -91,6 +91,9 @@ async def test_border_frame_settype_stamp(seeded, session):
 async def test_game_and_boolean_flag(seeded, session):
     assert await _names(session, "game:mtgo") == {"Lightning Bolt"}
     assert await _names(session, "is:promo") == {"Black Lotus"}
+    # is:gamechanger is aliased to Scryfall's raw ``game_changer`` flag (#159).
+    assert await _names(session, "is:gamechanger") == {"Black Lotus"}
+    assert await _names(session, "is:game-changer") == {"Black Lotus"}
 
 
 # --- mana / colors ---------------------------------------------------------

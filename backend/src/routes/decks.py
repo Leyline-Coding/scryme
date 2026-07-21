@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.brackets import estimate_bracket
 from src.config import get_settings
 from src.currency import get_currency, info
 from src.db import get_session
@@ -130,6 +131,7 @@ async def view_deck(
         {
             "cov": coverage,
             "formats": LEGALITY_FORMATS,
+            "bracket": await estimate_bracket(session, deck),
             "stats": await deck_stats(session, deck, currency, source),
             "export_formats": EXPORT_FORMATS,
             "cur": info(currency),

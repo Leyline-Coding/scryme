@@ -233,6 +233,13 @@ def _location(term: Term) -> ColumnElement:
     return Card.scryfall_id.in_(located)
 
 
+# Aliases mapping an ``is:`` keyword to the underlying boolean flag on the raw Scryfall object,
+# where the friendly spelling differs from Scryfall's field name.
+_IS_FLAG_ALIASES = {
+    "gamechanger": "game_changer",
+    "game-changer": "game_changer",
+}
+
 _IS_LAYOUTS = {
     "split": ["split"],
     "flip": ["flip"],
@@ -267,8 +274,9 @@ def _is(term: Term) -> ColumnElement:
         # scryme is collection-first: is:foil / is:etched mean "you own a copy in that finish"
         # (matching the chip + card animation), not merely "this printing can be foil/etched".
         return _owned_finish(val)
-    # Fall back to a boolean flag on the raw card object (promo, reserved, reprint, ...).
-    return Card.raw[val].astext == "true"
+    # Fall back to a boolean flag on the raw card object (promo, reserved, reprint,
+    # game_changer, ...); some keywords are aliased to Scryfall's underlying field name.
+    return Card.raw[_IS_FLAG_ALIASES.get(val, val)].astext == "true"
 
 
 def _format(term: Term) -> ColumnElement:

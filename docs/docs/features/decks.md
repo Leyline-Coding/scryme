@@ -104,6 +104,19 @@ Each deck page shows a quick profile:
 - **Colors** — the mainboard's color identity breakdown (also excluding lands).
 - **Deck value** — the total USD value of every card in the deck at current Scryfall prices.
 
+## Upgrade from your collection
+
+Click **Suggest owned cards** on the deck page for deterministic, offline upgrade ideas drawn from
+cards **you already own** — no AI endpoint required.
+
+scryme buckets the deck's mainboard into roles (**ramp**, **card draw**, **removal**), spots the ones
+that are below a typical Commander count, and offers owned cards that fill them — restricted to the
+deck's **colour identity** and **Commander-legal**, and never a card already in the deck. Each
+suggestion is ranked by mana-curve fit then price and shows a one-line reason; **+ Add** drops a copy
+straight into the deck and refreshes the list. (Disabled on the read-only demo.)
+
+For AI-powered suggestions and buy-to-upgrade plans, see the ✨ AI tools on the same page.
+
 ## Export
 
 Use the **Export** buttons on the deck page to download the list:

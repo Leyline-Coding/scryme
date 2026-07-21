@@ -5,6 +5,8 @@ Mutations are blocked in read-only (demo) mode, mirroring uploads.
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,9 +18,11 @@ from src.db import get_session
 from src.deck_builder import BuildError, build_commander_deck, owned_commanders
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
 from src.deck_import import SUPPORTED, DeckImportError, fetch_deck_from_url
+from src.deck_suggest import suggest_owned_upgrades
 from src.decks import (
     DECK_LANGUAGES,
     LEGALITY_FORMATS,
+    add_card_to_deck,
     apply_deck_card_edit,
     create_deck,
     deck_coverage,
@@ -26,7 +30,7 @@ from src.decks import (
     deck_stats,
 )
 from src.llm import get_config
-from src.models import Deck, DeckCard
+from src.models import Card, Deck, DeckCard
 from src.pricing import get_price_source
 from src.templating import templates
 from src.wishlist import add_deck_missing
@@ -248,3 +252,50 @@ async def deck_to_wishlist(deck_id: int, session: AsyncSession = Depends(get_ses
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     await add_deck_missing(session, deck)
     return RedirectResponse(url="/wishlist", status_code=303)
+
+
+async def _render_owned_upgrades(
+    request: Request, deck: Deck, session: AsyncSession, added: str | None = None
+) -> HTMLResponse:
+    currency = get_currency(request)
+    source = get_price_source(request)
+    result = await suggest_owned_upgrades(session, deck, currency, source)
+    return templates.TemplateResponse(
+        request, "_deck_upgrade_owned.html",
+        {"result": result, "deck": deck, "cur": info(currency),
+         "read_only": get_settings().read_only, "added": added},
+    )
+
+
+@router.post("/decks/{deck_id}/suggest-owned", response_class=HTMLResponse)
+async def deck_suggest_owned(
+    request: Request, deck_id: int, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    """Heuristic owned-card upgrade suggestions by thin role (#181) — no LLM, read-only safe."""
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    return await _render_owned_upgrades(request, deck, session)
+
+
+@router.post("/decks/{deck_id}/add-owned", response_class=HTMLResponse)
+async def deck_add_owned(
+    request: Request, deck_id: int, scryfall_id: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Add one owned suggestion to the deck and re-render the panel so the pick drops off."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    added = None
+    try:
+        sid = uuid.UUID(scryfall_id)
+    except (ValueError, AttributeError):
+        sid = None
+    card = await session.get(Card, sid) if sid else None
+    if card is not None:
+        await add_card_to_deck(session, deck_id, card)
+        await session.refresh(deck)
+        added = card.name
+    return await _render_owned_upgrades(request, deck, session, added=added)

@@ -208,6 +208,21 @@
   </div>
   {% endif %}
 
+  {# Upgrade from your collection — heuristic owned-card swaps (#181), no AI required #}
+  <div class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
+    <div class="flex items-center gap-2 flex-wrap text-sm">
+      <span class="text-muted">🃏 Upgrade from your collection:</span>
+      <button hx-post="/decks/{{ cov.deck.id }}/suggest-owned" hx-target="#owned-out"
+              hx-swap="innerHTML" hx-indicator="#owned-spin"
+              class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Suggest owned cards</button>
+      <span id="owned-spin" class="htmx-indicator text-xs text-muted">finding…</span>
+    </div>
+    <div id="owned-out" class="mt-2"></div>
+    <p class="mt-1 text-[11px] text-muted">
+      Owned, in-colour, Commander-legal cards that fill this deck's thin roles — deterministic, no AI.
+    </p>
+  </div>
+
   {# Per-deck stats #}
   {% if stats.has_data %}
   <div class="grid md:grid-cols-3 gap-6 mb-6">

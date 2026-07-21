@@ -80,7 +80,7 @@ async def _deck_identity(session: AsyncSession, deck_sids: list) -> set[str]:
 
 async def _deck_role_counts(session: AsyncSession, deck: Deck) -> dict[str, int]:
     """Current mainboard count for each tunable role (by classify_role, quantity-weighted)."""
-    counts = {role: 0 for role in _TUNABLE_ROLES}
+    counts = dict.fromkeys(_TUNABLE_ROLES, 0)
     sids = [c.scryfall_id for c in deck.cards if c.board == "main" and c.scryfall_id]
     if not sids:
         return counts
@@ -101,6 +101,25 @@ async def _deck_role_counts(session: AsyncSession, deck: Deck) -> dict[str, int]
     return counts
 
 
+def _row_to_candidate(
+    row, deck_oracles: set, identity: set[str], currency: str, source: str
+) -> _Candidate | None:
+    """Turn one owned-card row into a tunable-role candidate, or None if it doesn't qualify."""
+    name, oracle, sid, ci, type_line, oracle_text, cmc, prices, market, legalities = row
+    if oracle in deck_oracles:
+        return None
+    if identity and not set(ci or []).issubset(identity):
+        return None
+    if (legalities or {}).get("commander") not in _ALLOWED_LEGAL:
+        return None
+    role = classify_role(type_line, oracle_text)
+    if role not in _TUNABLE_ROLES:
+        return None
+    price = unit_price(resolve_prices(prices, market, source) or {}, "normal", currency)
+    return _Candidate(name=name, scryfall_id=str(sid), role=role,
+                      cmc=cmc if cmc is not None else _MISSING_CMC, price=price)
+
+
 async def _candidate_pool(
     session: AsyncSession, deck: Deck, currency: str, source: str
 ) -> list[_Candidate]:
@@ -109,6 +128,7 @@ async def _candidate_pool(
     deck_oracles = {c.oracle_id for c in deck.cards if c.oracle_id}
     identity = await _deck_identity(session, deck_sids)
 
+    # DISTINCT ON (oracle_id) yields one row per card, so no extra de-duplication is needed.
     rows = (await session.execute(
         select(
             Card.name, Card.oracle_id, Card.scryfall_id, Card.color_identity, Card.type_line,
@@ -120,23 +140,8 @@ async def _candidate_pool(
         .order_by(Card.oracle_id, Card.released_at.desc().nulls_last())
     )).all()
 
-    pool: list[_Candidate] = []
-    seen: set = set()
-    for name, oracle, sid, ci, type_line, oracle_text, cmc, prices, market, legalities in rows:
-        if oracle in deck_oracles or oracle in seen:
-            continue
-        if identity and not set(ci or []).issubset(identity):
-            continue
-        if (legalities or {}).get("commander") not in _ALLOWED_LEGAL:
-            continue
-        role = classify_role(type_line, oracle_text)
-        if role not in _TUNABLE_ROLES:
-            continue
-        seen.add(oracle)
-        price = unit_price(resolve_prices(prices, market, source) or {}, "normal", currency)
-        pool.append(_Candidate(name=name, scryfall_id=str(sid), role=role,
-                               cmc=cmc if cmc is not None else _MISSING_CMC, price=price))
-    return pool
+    candidates = (_row_to_candidate(row, deck_oracles, identity, currency, source) for row in rows)
+    return [c for c in candidates if c is not None]
 
 
 async def suggest_owned_upgrades(

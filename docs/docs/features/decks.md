@@ -29,6 +29,19 @@ from silently landing on an art-series or oversized variant. Lines that don't ma
 are kept and flagged as **unrecognized**. You can change the printing per card afterward — see
 [Printings, language & proxies](#printings-language-proxies).
 
+### Do you own these cards?
+
+Both the paste and URL import forms ask whether you own the deck:
+
+- **Not owned** (default) — just create the deck; your collection is untouched.
+- **Fully owned** — every matched card is added to your collection at the deck's quantity, so
+  coverage reads complete right away.
+- **Partially owned** — you get a checklist of the deck's cards (all ticked by default); untick the
+  ones you don't have, and only the ticked cards are added to your collection.
+
+Unrecognized lines can't be added (there's no card to add), and adding is disabled on the read-only
+demo.
+
 ## Ownership coverage
 
 The deck page shows how complete the deck is against your collection:
@@ -71,6 +84,11 @@ listed underneath, drawn from data scryme already has:
 The estimate is capped at **4** — separating Optimized (4) from cEDH (5) reliably needs human
 judgement, so a 4 is labelled "may be cEDH (5)". You can also search your collection for these cards
 with **`is:gamechanger`**.
+
+**Set it yourself.** If you disagree with the estimate, pick a bracket (1–5) from the **Set**
+dropdown on the panel — including cEDH (5), which the estimate never assigns on its own. A manual
+bracket is badged **manual** and still shows the computed estimate underneath for reference; choose
+*— use estimate —* to clear it.
 
 Legality is judged by the **card**, not the specific printing shown. Some printings — art-series
 cards, tokens, gold-bordered World Championship / Collector's Edition cards, oversized and acorn

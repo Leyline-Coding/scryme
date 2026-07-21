@@ -5,11 +5,14 @@ import uuid
 import pytest
 from src.brackets import (
     BRACKET_LABELS,
+    BracketEstimate,
     Signal,
     _CardInfo,
     estimate_bracket,
+    normalize_bracket,
     score_bracket,
 )
+from src.config import get_settings
 from src.decks import create_deck
 from src.models import Card, CollectionCard
 from src.scryfall.mapping import card_to_columns
@@ -187,6 +190,80 @@ async def test_deck_page_shows_bracket_for_commander(client, session):
     assert resp.status_code == 200
     assert "Commander bracket" in resp.text
     assert "Mass land denial" in resp.text
+
+
+# --- manual bracket override (#159) ------------------------------------------
+
+def test_normalize_bracket():
+    assert normalize_bracket("3") == 3
+    assert normalize_bracket(5) == 5
+    assert normalize_bracket("9") is None   # out of range
+    assert normalize_bracket("") is None    # clear
+    assert normalize_bracket("x") is None
+    assert normalize_bracket(None) is None
+
+
+def test_estimate_effective_and_labels():
+    est = BracketEstimate(bracket=2, label="Core")
+    assert est.effective == 2 and est.effective_label == "Core"
+    assert est.is_overridden is False
+    est.override = 5
+    assert est.effective == 5 and est.effective_label == "cEDH"
+    assert est.is_overridden is True
+
+
+@pytest.mark.asyncio
+async def test_estimate_bracket_applies_override(session):
+    await _seed(session, [_raw("Some General", "Legendary Creature — Merfolk")])
+    deck = await create_deck(session, "EDH", "1 Some General")
+    deck.bracket_override = 5
+    await session.commit()
+    est = await estimate_bracket(session, deck)
+    assert est.bracket == 2 and est.override == 5 and est.effective == 5
+
+
+@pytest.mark.asyncio
+async def test_set_bracket_route_override_and_clear(client, session):
+    await _seed(session, [_raw("Some General", "Legendary Creature — Merfolk")])
+    deck = await create_deck(session, "EDH", "1 Some General")
+
+    # Set a manual bracket -> panel shows it, marks it manual, and keeps the estimate for reference.
+    resp = await client.post(f"/decks/{deck.id}/bracket", data={"bracket": "5"})
+    assert resp.status_code == 200
+    assert "cEDH" in resp.text and ">manual</span>" in resp.text and "Estimated 2" in resp.text
+    await session.refresh(deck)
+    assert deck.bracket_override == 5
+
+    # Clearing (blank) reverts to the estimate.
+    resp = await client.post(f"/decks/{deck.id}/bracket", data={"bracket": ""})
+    assert resp.status_code == 200
+    assert ">manual</span>" not in resp.text
+    await session.refresh(deck)
+    assert deck.bracket_override is None
+
+    # Out-of-range values clear rather than store garbage.
+    await client.post(f"/decks/{deck.id}/bracket", data={"bracket": "9"})
+    await session.refresh(deck)
+    assert deck.bracket_override is None
+
+    assert (await client.post("/decks/99999/bracket", data={"bracket": "3"})).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_set_bracket_read_only(client, session, monkeypatch):
+    await _seed(session, [_raw("Some General", "Legendary Creature — Merfolk")])
+    deck = await create_deck(session, "EDH", "1 Some General")
+    monkeypatch.setattr(get_settings(), "read_only", True)
+    assert (await client.post(f"/decks/{deck.id}/bracket",
+                              data={"bracket": "3"})).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_deck_page_shows_override_control(client, session):
+    await _seed(session, [_raw("Some General", "Legendary Creature — Merfolk")])
+    deck = await create_deck(session, "EDH", "1 Some General")
+    resp = await client.get(f"/decks/{deck.id}")
+    assert 'id="br-set"' in resp.text  # the manual-set dropdown renders on the deck page
 
 
 @pytest.mark.asyncio

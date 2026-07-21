@@ -26,6 +26,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models import Card, Deck
 
 BRACKET_LABELS = {1: "Exhibition", 2: "Core", 3: "Upgraded", 4: "Optimized", 5: "cEDH"}
+BRACKETS = list(BRACKET_LABELS)  # [1..5] — the full manual range (estimate caps lower)
+
+
+def normalize_bracket(value: str | int | None) -> int | None:
+    """Coerce a form value to a valid bracket (1–5), or None to clear the override."""
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return None
+    return n if n in BRACKET_LABELS else None
 _MAX_HEURISTIC_BRACKET = 4  # 4-vs-5 isn't reliably separable by heuristics; cap here.
 _BASELINE = 2               # a typical, unoptimised deck sits at Core (2).
 
@@ -77,10 +87,24 @@ class Signal:
 
 @dataclass
 class BracketEstimate:
-    bracket: int
+    bracket: int                       # the computed estimate (1–4)
     label: str
     signals: list[Signal] = field(default_factory=list)
     is_commander: bool = False
+    override: int | None = None        # manual override (1–5), or None to use the estimate
+
+    @property
+    def effective(self) -> int:
+        """The bracket to display: the manual override when set, else the estimate."""
+        return self.override if self.override else self.bracket
+
+    @property
+    def effective_label(self) -> str:
+        return BRACKET_LABELS.get(self.effective, "")
+
+    @property
+    def is_overridden(self) -> bool:
+        return self.override is not None
 
 
 @dataclass
@@ -189,4 +213,6 @@ async def estimate_bracket(session: AsyncSession, deck: Deck) -> BracketEstimate
                       game_changer=bool((raw or {}).get("game_changer")))
             for name, type_line, oracle_text, raw in rows
         ]
-    return score_bracket(cards)
+    estimate = score_bracket(cards)
+    estimate.override = deck.bracket_override
+    return estimate

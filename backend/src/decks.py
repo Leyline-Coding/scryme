@@ -173,6 +173,38 @@ async def add_card_to_deck(session: AsyncSession, deck_id: int, card: Card) -> b
     return True
 
 
+@dataclass
+class OwnershipRow:
+    name: str
+    quantity: int              # summed across boards (ownership is shared)
+    scryfall_id: str | None    # representative printing, or None when unmatched
+    matched: bool
+
+
+async def resolve_ownership_rows(session: AsyncSession, decklist_text: str) -> list[OwnershipRow]:
+    """One row per unique card in a decklist (quantities summed across boards), each resolved to a
+    representative printing — backs the import "which of these do you own?" checklist."""
+    merged: dict[str, ParsedLine] = {}
+    order: list[str] = []
+    for p in parse_decklist(decklist_text):
+        key = p.name.lower()
+        if key in merged:
+            merged[key].quantity += p.quantity
+        else:
+            merged[key] = ParsedLine(p.quantity, p.name, "main")
+            order.append(key)
+    lines = [merged[k] for k in order]
+
+    owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
+    resolved = await _resolve_names(session, [line.name for line in lines], owned_sids)
+    rows: list[OwnershipRow] = []
+    for line in lines:
+        _oracle, sid = resolved.get(line.name.lower(), (None, None))
+        rows.append(OwnershipRow(line.name, line.quantity,
+                                 str(sid) if sid else None, sid is not None))
+    return rows
+
+
 async def create_deck(session: AsyncSession, name: str, decklist_text: str) -> Deck:
     parsed = _merge_lines(parse_decklist(decklist_text))
     owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))

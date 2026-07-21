@@ -26,6 +26,8 @@ class Deck(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # Manual Commander bracket override (1–5). NULL = use the computed estimate (#159).
+    bracket_override: Mapped[int | None] = mapped_column(Integer)
 
     cards: Mapped[list[DeckCard]] = relationship(
         back_populates="deck", cascade="all, delete-orphan", lazy="selectin"

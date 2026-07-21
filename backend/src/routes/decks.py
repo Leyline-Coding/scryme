@@ -11,7 +11,8 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.brackets import estimate_bracket
+from src.brackets import BRACKET_LABELS, estimate_bracket, normalize_bracket
+from src.collection_edit import add_or_increment
 from src.config import get_settings
 from src.currency import get_currency, info
 from src.db import get_session
@@ -28,6 +29,7 @@ from src.decks import (
     deck_coverage,
     deck_printings,
     deck_stats,
+    resolve_ownership_rows,
 )
 from src.llm import get_config
 from src.models import Card, Deck, DeckCard
@@ -57,10 +59,39 @@ async def new_deck(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "deck_new.html", {"supported": SUPPORTED})
 
 
+async def _add_owned_pairs(session: AsyncSession, pairs: list[tuple[str, int]]) -> None:
+    """Add each (scryfall_id, quantity) to the collection (increments existing stacks)."""
+    for sid, qty in pairs:
+        await add_or_increment(session, sid, qty)
+
+
+async def _mark_all_owned(session: AsyncSession, decklist: str) -> None:
+    """Add every matched card in a decklist to the collection at its needed quantity."""
+    rows = await resolve_ownership_rows(session, decklist)
+    await _add_owned_pairs(session, [(r.scryfall_id, r.quantity) for r in rows if r.matched])
+
+
+async def _finish_import(
+    request: Request, session: AsyncSession, name: str, decklist: str, ownership: str,
+):
+    """Create a deck (unowned / fully-owned), or show the owned-cards checklist for partial."""
+    if ownership == "partial":
+        return templates.TemplateResponse(
+            request, "deck_ownership.html",
+            {"name": name, "decklist": decklist,
+             "rows": await resolve_ownership_rows(session, decklist)},
+        )
+    deck = await create_deck(session, name, decklist)
+    if ownership == "full":
+        await _mark_all_owned(session, decklist)
+    return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
+
+
 @router.post("/decks/import-url")
 async def import_url(
     request: Request,
     url: str = Form(""),
+    ownership: str = Form("unowned"),
     session: AsyncSession = Depends(get_session),
 ):
     _guard_writable()
@@ -70,18 +101,37 @@ async def import_url(
         return templates.TemplateResponse(
             request, "deck_new.html", {"supported": SUPPORTED, "error": str(exc), "url": url},
         )
-    deck = await create_deck(session, name, decklist)
-    return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
+    return await _finish_import(request, session, name, decklist, ownership)
 
 
 @router.post("/decks")
 async def create(
+    request: Request,
     name: str = Form(""),
     decklist: str = Form(""),
+    ownership: str = Form("unowned"),
     session: AsyncSession = Depends(get_session),
 ):
     _guard_writable()
+    return await _finish_import(request, session, name, decklist, ownership)
+
+
+@router.post("/decks/owned-confirm")
+async def owned_confirm(
+    name: str = Form(""),
+    decklist: str = Form(""),
+    owned: list[str] = Form(default=[]),
+    session: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    """Create the deck and add the cards the user checked as owned (values are "sid|qty")."""
+    _guard_writable()
     deck = await create_deck(session, name, decklist)
+    pairs: list[tuple[str, int]] = []
+    for token in owned:
+        sid, _, qty = token.partition("|")
+        if sid:
+            pairs.append((sid, int(qty) if qty.isdigit() else 1))
+    await _add_owned_pairs(session, pairs)
     return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
 
 
@@ -134,14 +184,35 @@ async def view_deck(
         "deck_detail.html",
         {
             "cov": coverage,
+            "deck": deck,
             "formats": LEGALITY_FORMATS,
             "bracket": await estimate_bracket(session, deck),
+            "bracket_labels": BRACKET_LABELS,
             "stats": await deck_stats(session, deck, currency, source),
             "export_formats": EXPORT_FORMATS,
             "cur": info(currency),
             "read_only": get_settings().read_only,
             "ai_ready": (await get_config(session)).ready,
         },
+    )
+
+
+@router.post("/decks/{deck_id}/bracket", response_class=HTMLResponse)
+async def set_deck_bracket(
+    request: Request, deck_id: int, bracket: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Manually set (or clear) a deck's Commander bracket, then re-render its panel (#159)."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    deck.bracket_override = normalize_bracket(bracket)
+    await session.commit()
+    return templates.TemplateResponse(
+        request, "_deck_bracket.html",
+        {"deck": deck, "bracket": await estimate_bracket(session, deck),
+         "bracket_labels": BRACKET_LABELS, "read_only": get_settings().read_only},
     )
 
 

@@ -72,7 +72,8 @@ async def test_new_deck_and_readonly(monkeypatch):
 @pytest.mark.asyncio
 async def test_create_and_view(session):
     await _add(session, _raw("Lightning Bolt"), owned=1)
-    redirect = await R.create(name="Burn", decklist="4 Lightning Bolt", session=session)
+    redirect = await R.create(_request("/decks"), name="Burn", decklist="4 Lightning Bolt",
+                              session=session)
     assert redirect.status_code == 303
     deck_id = int(redirect.headers["location"].split("/")[-1])
 
@@ -196,7 +197,7 @@ async def test_deck_to_wishlist(session):
 async def test_readonly_guards(session, monkeypatch):
     monkeypatch.setattr(get_settings(), "read_only", True)
     for coro in (
-        R.create(name="x", decklist="1 Forest", session=session),
+        R.create(_request("/decks"), name="x", decklist="1 Forest", session=session),
         R.import_url(_request("/i"), url="x", session=session),
         R.build_form(_request("/b"), session),
         R.build_preview(_request("/b"), commander="x", session=session),

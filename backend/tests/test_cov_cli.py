@@ -83,6 +83,24 @@ def test_snapshot_prices_no_cards(monkeypatch, capsys):
     assert "nothing to snapshot" in capsys.readouterr().out
 
 
+def test_seed_price_history_reports(monkeypatch, capsys):
+    async def fake_seed(session, months=24):
+        return months
+
+    monkeypatch.setattr("src.prices.seed_price_history", fake_seed)
+    _run(monkeypatch, ["seed-price-history", "--months", "12"])
+    assert "Seeded 12 monthly" in capsys.readouterr().out
+
+
+def test_seed_price_history_no_cards(monkeypatch, capsys):
+    async def fake_seed(session, months=24):
+        return 0
+
+    monkeypatch.setattr("src.prices.seed_price_history", fake_seed)
+    _run(monkeypatch, ["seed-price-history"])
+    assert "nothing to seed" in capsys.readouterr().out
+
+
 def test_prune_digital(monkeypatch, capsys):
     async def fake_prune(*a, **k):
         return 4

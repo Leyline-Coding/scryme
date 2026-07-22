@@ -1,0 +1,5 @@
+{# Infinite-scroll fragment (#10): the next page's grid cards + a fresh sentinel, appended in
+   place of the previous sentinel. #}
+{% import "_result_card.html" as rc %}
+{% for v in views %}{{ rc.grid_card(v, read_only) }}{% endfor %}
+{{ rc.scroll_sentinel(q, scope, sort, dir, result.page, result.total_pages) }}

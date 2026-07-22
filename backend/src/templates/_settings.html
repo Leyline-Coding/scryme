@@ -19,7 +19,7 @@
     x-show="open"
     @click.outside="open = false"
     x-transition
-    class="absolute top-12 right-0 w-64 rounded-xl bg-surface border border-edge shadow-xl p-4 space-y-4"
+    class="absolute top-12 right-0 w-80 max-w-[calc(100vw-1.5rem)] max-h-[calc(100vh-4.5rem)] overflow-y-auto overscroll-contain rounded-xl bg-surface border border-edge shadow-xl p-4 space-y-4"
     style="display: none"
   >
     <div>
@@ -119,11 +119,11 @@
     <div>
       <p class="text-xs font-semibold text-muted mb-2 uppercase tracking-wide">Card effects</p>
       <label class="flex items-center gap-2 text-sm mb-2">
-        <span class="w-24 shrink-0 text-muted">Foil speed</span>
-        <span class="text-xs text-muted">slow</span>
+        <span class="w-16 shrink-0 text-muted">Foil speed</span>
+        <span class="text-xs text-muted shrink-0">slow</span>
         <input type="range" min="1" max="10" x-model.number="foilSpeed" @input="applyFoilSpeed()"
-               class="flex-1 accent-[color:var(--c-accent)]" />
-        <span class="text-xs text-muted">fast</span>
+               class="flex-1 min-w-0 accent-[color:var(--c-accent)]" />
+        <span class="text-xs text-muted shrink-0">fast</span>
       </label>
       <label class="flex items-center gap-2 text-sm mb-2">
         <input type="checkbox" x-model="spinOn" @change="applySpin()"
@@ -131,11 +131,11 @@
         <span>Spin cards on hover</span>
       </label>
       <label class="flex items-center gap-2 text-sm" :class="spinOn ? '' : 'opacity-40'">
-        <span class="w-24 shrink-0 text-muted">Spin speed</span>
-        <span class="text-xs text-muted">slow</span>
+        <span class="w-16 shrink-0 text-muted">Spin speed</span>
+        <span class="text-xs text-muted shrink-0">slow</span>
         <input type="range" min="1" max="10" x-model.number="spinSpeed" @input="applySpinSpeed()"
-               :disabled="!spinOn" class="flex-1 accent-[color:var(--c-accent)]" />
-        <span class="text-xs text-muted">fast</span>
+               :disabled="!spinOn" class="flex-1 min-w-0 accent-[color:var(--c-accent)]" />
+        <span class="text-xs text-muted shrink-0">fast</span>
       </label>
     </div>
 

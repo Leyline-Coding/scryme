@@ -30,6 +30,26 @@ async def _seed(session):
 
 
 @pytest.mark.asyncio
+async def test_foil_etched_animation_by_treatment(client, session):
+    # Foil/etched shimmer is a property of the printing, regardless of ownership (#9):
+    # etched and foil-only printings shimmer; an ordinary nonfoil+foil card does not.
+    def raw(name, finishes):
+        return {"id": str(uuid.uuid4()), "oracle_id": str(uuid.uuid4()), "name": name,
+                "set": "TST", "collector_number": "1", "type_line": "Creature", "cmc": 1,
+                "finishes": finishes, "legalities": {},
+                "image_uris": {"normal": "https://img.test/x.png", "small": "https://img.test/s.png"}}
+    etched = Card(**card_to_columns(raw("Etchy", ["etched"])))
+    foil_only = Card(**card_to_columns(raw("Foily", ["foil"])))
+    normal = Card(**card_to_columns(raw("Normie", ["nonfoil", "foil"])))
+    session.add_all([etched, foil_only, normal])
+    await session.commit()
+    assert "card-art etched " in (await client.get(f"/card/{etched.scryfall_id}")).text
+    assert "card-art foil " in (await client.get(f"/card/{foil_only.scryfall_id}")).text
+    body = (await client.get(f"/card/{normal.scryfall_id}")).text
+    assert "card-art foil " not in body and "card-art etched " not in body
+
+
+@pytest.mark.asyncio
 async def test_card_page_renders(client, session):
     card = await _seed(session)
     resp = await client.get(f"/card/{card.scryfall_id}")
@@ -79,6 +99,7 @@ async def test_rotate_button_for_planar_and_aftermath(client, session):
     })
     body = (await client.get(f"/card/{plane.scryfall_id}")).text
     assert "⟳ Rotate" in body and "⇅ Transform" not in body
+    assert 'data-rotate-deg="-90"' in body  # planes turn counter-clockwise
 
     aftermath = await _add(session, {
         "name": "Commit // Memory", "set": "akh", "collector_number": "211", "rarity": "rare",
@@ -87,6 +108,19 @@ async def test_rotate_button_for_planar_and_aftermath(client, session):
     })
     body = (await client.get(f"/card/{aftermath.scryfall_id}")).text
     assert "⟳ Rotate" in body
+
+    # Battles are stored with layout "transform" (detected by type line): both buttons appear.
+    battle = await _add(session, {
+        "name": "Invasion of Test", "set": "mom", "collector_number": "1", "rarity": "rare",
+        "layout": "transform", "type_line": "Battle — Siege",
+        "card_faces": [
+            {"image_uris": {"normal": "https://img.test/front.jpg"}},
+            {"image_uris": {"normal": "https://img.test/back.jpg"}},
+        ],
+    })
+    body = (await client.get(f"/card/{battle.scryfall_id}")).text
+    assert "⟳ Rotate" in body and "⇅ Transform" in body
+    assert 'data-rotate-deg="90"' in body  # battles turn clockwise (opposite of planes/aftermath)
 
 
 @pytest.mark.asyncio

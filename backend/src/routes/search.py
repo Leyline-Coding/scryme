@@ -29,11 +29,28 @@ from src.routes.saved import list_saved
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
 from src.search import SearchError, SearchScope
-from src.search.engine import DEFAULT_SORT, SORT_KEYS, name_suggestions, run_search
+from src.search.engine import (
+    DEFAULT_PAGE_SIZE,
+    DEFAULT_SORT,
+    SORT_KEYS,
+    name_suggestions,
+    run_search,
+)
 from src.templating import templates
 
 router = APIRouter(tags=["search"])
 _cache = ImageCache()
+
+# Cards-per-page choices offered in the UI (#10); anything else falls back to the default.
+PAGE_SIZES = [30, 60, 120, 240]
+
+
+def _resolve_page_size(request) -> int:
+    try:
+        n = int(request.cookies.get("scryme_page_size", ""))
+    except (TypeError, ValueError):
+        return DEFAULT_PAGE_SIZE
+    return n if n in PAGE_SIZES else DEFAULT_PAGE_SIZE
 
 
 @dataclass
@@ -44,6 +61,17 @@ class CardView:
     scryfall_uri: str
     tags: list[str]
     flip_back: str | None = None  # back-face image for double-faced cards (grid hover-flip)
+    shimmer: str | None = None    # 'foil'/'etched' for a foil-only or etched treatment (#9)
+
+
+def _treatment(card) -> str | None:
+    """'etched'/'foil' when this printing is a foil-only or etched treatment (grid shimmer, #9)."""
+    finishes = [f.lower() for f in (card.raw.get("finishes") or [])]
+    if "etched" in finishes:
+        return "etched"
+    if "foil" in finishes and "nonfoil" not in finishes:
+        return "foil"
+    return None
 
 
 def _back_face_image(card) -> str | None:
@@ -82,6 +110,7 @@ def _to_views(result) -> list[CardView]:
                 scryfall_uri=card.raw.get("scryfall_uri", "#"),
                 tags=result.tags.get(sid, []),
                 flip_back=_back_face_image(card),
+                shimmer=_treatment(card),
             )
         )
     return views
@@ -126,11 +155,12 @@ async def search_nl(
 
 async def _run_into_ctx(
     ctx: dict, session, query: str, scope_enum, page: int, sort: str, descending: bool,
-    *, with_facets: bool,
+    *, with_facets: bool, page_size: int = DEFAULT_PAGE_SIZE,
 ) -> None:
     """Run the search and populate ctx with result/views, plus facets or name suggestions."""
     result = await run_search(
-        session, query, scope=scope_enum, page=page, sort=sort, descending=descending
+        session, query, scope=scope_enum, page=page, sort=sort, descending=descending,
+        page_size=page_size,
     )
     ctx["result"] = result
     ctx["views"] = _to_views(result)
@@ -152,22 +182,27 @@ async def search(
     sort: str = DEFAULT_SORT,
     dir: str = "asc",
     nl: str = "",
+    append: int = 0,
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     scope_enum = SearchScope.ALL if scope == SearchScope.ALL.value else SearchScope.COLLECTION
     sort = sort if sort in SORT_KEYS else DEFAULT_SORT
     descending = dir == "desc"
     view = "list" if request.cookies.get("scryme_view") == "list" else "grid"
+    page_size = _resolve_page_size(request)
+    infinite = request.cookies.get("scryme_infinite") == "1"
     # Universal search filter (#143): extra Scryfall syntax the user always wants applied
     # (e.g. -is:ub, legal:commander), saved in a browser cookie and ANDed into every query.
     universal = (request.cookies.get("scryme_search_filter") or "").strip()
     effective_q = _apply_universal(q, universal)
     ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir,
                  "read_only": get_settings().read_only, "view": view, "nl": nl,
-                 "universal": universal, "cur": info(get_currency(request))}
+                 "universal": universal, "cur": info(get_currency(request)),
+                 "page_sizes": PAGE_SIZES, "page_size": page_size, "infinite": infinite}
     try:
         await _run_into_ctx(
-            ctx, session, effective_q, scope_enum, page, sort, descending, with_facets=True
+            ctx, session, effective_q, scope_enum, page, sort, descending,
+            with_facets=True, page_size=page_size,
         )
     except SearchError as exc:
         # If the universal filter is what broke the query, fall back to the bare query so a bad
@@ -175,13 +210,18 @@ async def search(
         if universal:
             try:
                 await _run_into_ctx(
-                    ctx, session, q, scope_enum, page, sort, descending, with_facets=False
+                    ctx, session, q, scope_enum, page, sort, descending,
+                    with_facets=False, page_size=page_size,
                 )
                 ctx["universal_error"] = True
             except SearchError:
                 ctx["error"] = str(exc)
         else:
             ctx["error"] = str(exc)
+
+    # Infinite-scroll "load more": append just the next batch of cards + a fresh sentinel.
+    if append and request.headers.get("HX-Request") == "true":
+        return templates.TemplateResponse(request, "_search_more.html", ctx)
 
     # HTMX swaps just the results; a normal navigation gets the whole page (with the saved-search
     # menu + read-only flag, which the partial doesn't render).

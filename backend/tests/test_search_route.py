@@ -1,10 +1,47 @@
 """Search route tests: full page vs HTMX partial, scope, and error rendering."""
 
 import uuid
+from types import SimpleNamespace
 
 import pytest
 from src.models import Card, CollectionCard
+from src.routes.search import _treatment
 from src.scryfall.mapping import card_to_columns
+
+
+def test_resolve_page_size():
+    from src.routes.search import _resolve_page_size
+
+    def req(val):
+        return SimpleNamespace(cookies={} if val is None else {"scryme_page_size": val})
+    assert _resolve_page_size(req("120")) == 120
+    assert _resolve_page_size(req("999")) == 60   # not an offered size -> default
+    assert _resolve_page_size(req("abc")) == 60
+    assert _resolve_page_size(req(None)) == 60
+
+
+@pytest.mark.asyncio
+async def test_page_size_controls_and_infinite_append(client, session):
+    await _seed_owned(session)
+    # Page-size selector + infinite toggle render on the full page.
+    page = await client.get("/search?scope=all&q=Lightning")
+    assert 'id="page-size"' in page.text and "∞ scroll" in page.text
+    # The infinite-scroll "load more" request returns a minimal fragment (cards, no page header).
+    frag = await client.get("/search?scope=all&q=Lightning&page=1&append=1",
+                            headers={"HX-Request": "true"})
+    assert frag.status_code == 200
+    assert "in your collection" not in frag.text and 'id="page-size"' not in frag.text
+
+
+def test_treatment_foil_only_and_etched():
+    def card(finishes):
+        return SimpleNamespace(raw={"finishes": finishes})
+    assert _treatment(card(["etched"])) == "etched"
+    assert _treatment(card(["foil", "etched"])) == "etched"     # etched wins
+    assert _treatment(card(["foil"])) == "foil"                 # foil-only
+    assert _treatment(card(["nonfoil", "foil"])) is None        # ordinary card
+    assert _treatment(card([])) is None
+    assert _treatment(SimpleNamespace(raw={})) is None
 
 
 async def _seed_owned(session):

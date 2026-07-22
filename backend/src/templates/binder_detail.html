@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ label }} · Binders · scryme{% endblock %}
 {% block content %}
-<div class="max-w-6xl mx-auto px-4 py-6">
+<div class="max-w-6xl mx-auto px-4 py-6" x-data="binderRemove()">
   <header class="flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold truncate">{{ label }}</h1>
@@ -12,26 +12,81 @@
   <p class="text-sm text-muted mb-4">{{ views | length }} distinct card{{ '' if views|length == 1 else 's' }}</p>
   <div class="card-grid">
     {% for v in views %}
-    <a href="/card/{{ v.card.scryfall_id }}"
-       class="group relative block rounded-xl overflow-hidden bg-surface ring-1 ring-edge hover:ring-accent transition">
-      {% if v.image %}
-      <img src="{{ v.image }}" alt="{{ v.card.name }}" loading="lazy" class="w-full aspect-[5/7] object-cover" />
-      {% else %}
-      <div class="w-full aspect-[5/7] flex items-center justify-center text-center p-2 text-xs text-muted">{{ v.card.name }}</div>
-      {% endif %}
+    <div class="relative group">
+      <a href="/card/{{ v.card.scryfall_id }}"
+         class="block rounded-xl overflow-hidden bg-surface ring-1 ring-edge hover:ring-accent transition">
+        {% if v.image %}
+        <img src="{{ v.image }}" alt="{{ v.card.name }}" loading="lazy" class="w-full aspect-[5/7] object-cover" />
+        {% else %}
+        <div class="w-full aspect-[5/7] flex items-center justify-center text-center p-2 text-xs text-muted">{{ v.card.name }}</div>
+        {% endif %}
+        <div class="px-2 py-1 text-xs truncate text-fg">
+          {{ v.card.name }}
+          {{ set_symbol(v.card.set_code, v.card.rarity) }}
+          <span class="text-muted uppercase">{{ v.card.set_code }}</span>
+        </div>
+      </a>
       {% if v.quantity %}
-      <span class="absolute top-1.5 right-1.5 rounded-full bg-accent text-accent-fg text-xs font-semibold px-2 py-0.5 shadow">×{{ v.quantity }}</span>
+      <span class="absolute top-1.5 left-1.5 rounded-full bg-accent text-accent-fg text-xs font-semibold px-2 py-0.5 shadow">×{{ v.quantity }}</span>
       {% endif %}
-      <div class="px-2 py-1 text-xs truncate text-fg">
-        {{ v.card.name }}
-        {{ set_symbol(v.card.set_code, v.card.rarity) }}
-        <span class="text-muted uppercase">{{ v.card.set_code }}</span>
-      </div>
-    </a>
+      {% if not read_only %}
+      <button type="button" title="Remove from this binder"
+              @click="ask('{{ v.card.scryfall_id }}', {{ v.card.name | tojson }})"
+              class="absolute top-1.5 right-1.5 rounded bg-black/60 text-white text-xs px-1.5 leading-5 opacity-0 group-hover:opacity-100">✕</button>
+      {% endif %}
+    </div>
     {% endfor %}
   </div>
   {% else %}
   <div class="text-muted py-16 text-center">This binder is empty.</div>
   {% endif %}
+
+  {# Remove-from-binder modal (#14): remove from the collection outright, or relocate the card. #}
+  {% if not read_only %}
+  <div x-show="showModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-4">
+    <button type="button" class="absolute inset-0 w-full h-full border-0 bg-black/50"
+            @click="showModal = false"><span class="sr-only">Cancel</span></button>
+    <div class="relative w-full max-w-md rounded-xl bg-surface ring-1 ring-edge shadow-2xl p-4 space-y-3">
+      <p class="text-sm">Remove <span class="font-semibold" x-text="name"></span> from
+        <span class="font-semibold">{{ label }}</span>?</p>
+
+      <form method="post" action="/binders/cards/remove-from-collection">
+        <input type="hidden" name="binder" value="{{ binder_name }}" />
+        <input type="hidden" name="scryfall_id" :value="sid" />
+        <button type="submit" class="w-full rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 text-sm font-medium">
+          Remove from collection</button>
+        <p class="mt-1 text-[11px] text-muted">Deletes this card's copies filed here from your collection.</p>
+      </form>
+
+      <form method="post" action="/binders/cards/relocate" class="border-t border-edge pt-3">
+        <input type="hidden" name="binder" value="{{ binder_name }}" />
+        <input type="hidden" name="scryfall_id" :value="sid" />
+        <label class="block text-xs text-muted mb-1" for="relocate-to">Change location — move to a binder</label>
+        <div class="flex gap-2">
+          <input id="relocate-to" type="text" name="new_binder" list="binder-names"
+                 placeholder="binder name (blank = unfiled)"
+                 class="flex-1 rounded bg-surface-2 border border-edge px-2 py-1 text-sm" />
+          <datalist id="binder-names">
+            {% for b in other_binders %}<option value="{{ b }}"></option>{% endfor %}
+          </datalist>
+          <button type="submit" class="rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-1 text-sm">Move</button>
+        </div>
+        <p class="mt-1 text-[11px] text-muted">Keeps the card in your collection; just changes where it's filed.</p>
+      </form>
+
+      <button type="button" @click="showModal = false"
+              class="w-full rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-2 text-sm">Cancel</button>
+    </div>
+  </div>
+  {% endif %}
+
+  <script>
+    function binderRemove() {
+      return {
+        showModal: false, sid: "", name: "",
+        ask(sid, name) { this.sid = sid; this.name = name; this.showModal = true; },
+      };
+    }
+  </script>
 </div>
 {% endblock %}

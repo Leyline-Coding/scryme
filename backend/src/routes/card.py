@@ -83,7 +83,14 @@ def _flip_rotate(card: Card) -> tuple[bool, str | None, bool]:
     can_flip = sum(1 for u in face_images if u) >= 2
     flip_image = face_images[1] if can_flip else None
     keywords = [k.lower() for k in (card.keywords or [])]
-    can_rotate = card.layout in ("battle", "planar") or "aftermath" in keywords
+    # Sideways-read cards get a rotate button. Battles are stored with layout "transform" (so they
+    # also get the flip button — front battle ⇄ back permanent), so detect them by type line;
+    # planes use the "planar" layout; aftermath is a keyword.
+    can_rotate = (
+        "battle" in (card.type_line or "").lower()
+        or card.layout == "planar"
+        or "aftermath" in keywords
+    )
     return can_flip, flip_image, can_rotate
 
 
@@ -116,6 +123,41 @@ def _price_rows(request: Request, card: Card) -> list[tuple[str, float]]:
     return [
         (label, prices.get(key)) for label, key in [*ordered, ("TIX", "tix")] if prices.get(key)
     ]
+
+
+async def _price_history_ctx(request: Request, session: AsyncSession, card: Card,
+                             chart_range: str) -> dict:
+    """Per-card price-history chart context (#233): the series in the chosen currency + range meta.
+
+    Extracted from ``card_detail`` to keep that view under the cognitive-complexity limit.
+    """
+    has_card_history = (await session.scalar(
+        select(CardPricePoint.id).where(CardPricePoint.scryfall_id == card.scryfall_id).limit(1)
+    )) is not None
+    usd_series = await card_value_series(session, card.scryfall_id, range_days(chart_range))
+    # Convert the USD series into the visitor's chosen chart currency using date-matched historical
+    # FX rates, downloading them on first use. `hist_approx` flags a current-rate fallback.
+    hist_code = _hist_currency(request)
+    hist_approx = False
+    if hist_code != "usd" and usd_series:
+        start = await earliest_snapshot_date(session)
+        have = bool(start) and await fx.ensure_fx_history(session, hist_code, start)
+        hist_points = await fx.fx_history_points(session, hist_code) if have else []
+        hist_approx = not hist_points
+        usd_series = convert_card_series(
+            usd_series, hist_code, hist_points, fx.rate(hist_code) or 1.0
+        )
+    return {
+        "has_card_history": has_card_history,
+        "price_chart": build_value_chart(usd_series),
+        "chart_range": chart_range,
+        "chart_ranges": CHART_RANGES,
+        "hist_currencies": _hist_currencies(),
+        "hist_currency": hist_code,
+        "hist_symbol": currency.info(hist_code)["symbol"],
+        "hist_decimals": 0 if hist_code == "jpy" else 2,
+        "hist_approx": hist_approx,
+    }
 
 
 @router.get("/card/{scryfall_id}", response_class=HTMLResponse)
@@ -159,36 +201,19 @@ async def card_detail(
     # face — offer a Scryfall-style flip button. Battles, Planes/Phenomena, and Aftermath cards read
     # sideways, so offer a rotate button. Both get playful animations on the card page.
     can_flip, flip_image, can_rotate = _flip_rotate(card)
+    # Battles read by turning the card clockwise; planes/aftermath turn counter-clockwise (#11).
+    rotate_cw = "battle" in (card.type_line or "").lower()
     price_rows = _price_rows(request, card)
-
-    # Per-card price history (#233): a USD chart from recorded points, shown for owned + tracked
-    # cards. `has_card_history` guards the onboarding empty-state for cards with no points at all.
-    has_card_history = (
-        await session.scalar(
-            select(CardPricePoint.id).where(
-                CardPricePoint.scryfall_id == card.scryfall_id
-            ).limit(1)
-        )
-    ) is not None
-    usd_series = await card_value_series(session, card.scryfall_id, range_days(chart_range))
-    # Convert the USD series into the visitor's chosen chart currency using date-matched historical
-    # FX rates (#233), downloading them on first use. `hist_approx` flags a current-rate fallback
-    # (offline / download failed) so the chart can say so rather than imply exact history.
-    hist_code = _hist_currency(request)
-    hist_symbol = currency.info(hist_code)["symbol"]
-    hist_decimals = 0 if hist_code == "jpy" else 2
-    hist_approx = False
-    if hist_code != "usd" and usd_series:
-        start = await earliest_snapshot_date(session)
-        have = bool(start) and await fx.ensure_fx_history(session, hist_code, start)
-        hist_points = await fx.fx_history_points(session, hist_code) if have else []
-        hist_approx = not hist_points
-        usd_series = convert_card_series(
-            usd_series, hist_code, hist_points, fx.rate(hist_code) or 1.0
-        )
-    price_chart = build_value_chart(usd_series)
+    chart_ctx = await _price_history_ctx(request, session, card, chart_range)
     legalities = card.legalities or {}
     legality_rows = [(fmt, legalities.get(fmt, "not_legal")) for fmt in LEGALITY_FORMATS]
+
+    # Foil/etched shimmer is a property of the printing (a foil-only or etched *treatment*), shown
+    # regardless of ownership (#9). Etched printings shimmer; foil-only printings (offered in foil
+    # but not nonfoil) shimmer; ordinary cards that merely also come in foil do not.
+    finishes = [f.lower() for f in (card.raw.get("finishes") or [])]
+    anim_etched = "etched" in finishes
+    anim_foil = "foil" in finishes and "nonfoil" not in finishes
 
     # Show a "Similar cards" section only when embeddings exist for this card (#176). This is a
     # local vector query, so it doesn't require the AI endpoint to be reachable/enabled.
@@ -210,21 +235,16 @@ async def card_detail(
             "owned_total": sum(s.quantity for s in owned),
             "owned_foil": any((s.finish or "").lower() == "foil" for s in owned),
             "owned_etched": any((s.finish or "").lower() == "etched" for s in owned),
+            "anim_foil": anim_foil,
+            "anim_etched": anim_etched,
             "can_flip": can_flip,
             "flip_image": flip_image,
             "can_rotate": can_rotate,
+            "rotate_cw": rotate_cw,
             "printings": [(p, _image(p, "small")) for p in printings],
             "price_rows": price_rows,
             "legality_rows": legality_rows,
-            "has_card_history": has_card_history,
-            "price_chart": price_chart,
-            "chart_range": chart_range,
-            "chart_ranges": CHART_RANGES,
-            "hist_currencies": _hist_currencies(),
-            "hist_currency": hist_code,
-            "hist_symbol": hist_symbol,
-            "hist_decimals": hist_decimals,
-            "hist_approx": hist_approx,
+            **chart_ctx,
             "tags": await card_tags(session, card.scryfall_id),
             "wishlisted": await is_wishlisted(session, card.scryfall_id),
             "price_target": await target_for(session, str(card.scryfall_id)),

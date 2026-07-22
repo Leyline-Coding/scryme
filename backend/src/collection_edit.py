@@ -148,6 +148,41 @@ async def delete_stack(session: AsyncSession, stack_id: int):
     return sid
 
 
+def _binder_filter(binder_name: str | None):
+    """Match stacks filed under a physical binder (empty/None = unfiled)."""
+    return CollectionCard.binder_name.is_(None) if not binder_name \
+        else CollectionCard.binder_name == binder_name
+
+
+async def _binder_stacks(session: AsyncSession, scryfall_id, binder_name: str | None):
+    return list((await session.execute(
+        select(CollectionCard).where(
+            CollectionCard.scryfall_id == _as_uuid(scryfall_id), _binder_filter(binder_name)
+        )
+    )).scalars().all())
+
+
+async def delete_binder_stacks(session: AsyncSession, scryfall_id, binder_name: str | None) -> int:
+    """Delete every owned stack of a printing filed under a physical binder (#14)."""
+    stacks = await _binder_stacks(session, scryfall_id, binder_name)
+    for stack in stacks:
+        await session.delete(stack)
+    await session.commit()
+    return len(stacks)
+
+
+async def move_binder_stacks(
+    session: AsyncSession, scryfall_id, binder_name: str | None, new_binder: str | None
+) -> int:
+    """Move a printing's stacks from one physical binder to another (or unfiled) (#14)."""
+    stacks = await _binder_stacks(session, scryfall_id, binder_name)
+    cleaned = _clean(new_binder)
+    for stack in stacks:
+        stack.binder_name = cleaned
+    await session.commit()
+    return len(stacks)
+
+
 async def edit_stack(
     session: AsyncSession, stack_id: int, *,
     quantity: int | None = None, finish: str | None = None, scryfall_id=None,

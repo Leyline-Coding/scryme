@@ -20,20 +20,29 @@
     {% endfor %}
   </div>
   {% if chart.has_trend %}
-  <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" class="w-full h-32"
-       preserveAspectRatio="none" role="img" aria-label="{{ label }}">
-    <path d="{{ chart.area }}" fill="var(--c-accent)" fill-opacity="0.12" />
-    <polyline points="{{ chart.polyline }}" fill="none" stroke="var(--c-accent)"
-              stroke-width="2" vector-effect="non-scaling-stroke"
-              stroke-linejoin="round" stroke-linecap="round" />
-  </svg>
-  <div class="mt-2 flex justify-between text-xs text-muted">
-    <span>{{ chart.first_date }}</span>
-    <span>{{ symbol }}{{ '{:,.{}f}'.format(chart.min_value, decimals) }} –
-      {{ symbol }}{{ '{:,.{}f}'.format(chart.max_value, decimals) }}
-      · {{ chart.points|length }} snapshots</span>
-    <span>{{ chart.last_date }}</span>
+  <div class="flex gap-1.5">
+    {# Y axis: value scale (max at top, min at bottom) so the line's height is readable. #}
+    <div class="flex flex-col justify-between items-end shrink-0 py-0.5 text-[10px] text-muted tabular-nums">
+      <span>{{ symbol }}{{ '{:,.{}f}'.format(chart.max_value, decimals) }}</span>
+      <span>{{ symbol }}{{ '{:,.{}f}'.format(chart.min_value, decimals) }}</span>
+    </div>
+    <div class="flex-1 min-w-0">
+      <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" class="w-full h-32 border-l border-b border-edge"
+           preserveAspectRatio="none" role="img" aria-label="{{ label }}">
+        <path d="{{ chart.area }}" fill="var(--c-accent)" fill-opacity="0.12" />
+        <polyline points="{{ chart.polyline }}" fill="none" stroke="var(--c-accent)"
+                  stroke-width="2" vector-effect="non-scaling-stroke"
+                  stroke-linejoin="round" stroke-linecap="round" />
+      </svg>
+      {# X axis: date range. #}
+      <div class="mt-1 flex justify-between text-[10px] text-muted">
+        <span>{{ chart.first_date }}</span>
+        <span>{{ chart.last_date }}</span>
+      </div>
+    </div>
   </div>
+  <p class="mt-1 text-center text-[11px] text-muted">
+    Value ({{ symbol }}) over time · {{ chart.points|length }} snapshots</p>
   {% if approx %}
   <p class="mt-1 text-xs text-muted italic">Approximate — historical exchange rates unavailable;
     converted at the current rate.</p>

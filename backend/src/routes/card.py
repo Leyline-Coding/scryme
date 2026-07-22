@@ -166,6 +166,8 @@ async def card_detail(
     # face — offer a Scryfall-style flip button. Battles, Planes/Phenomena, and Aftermath cards read
     # sideways, so offer a rotate button. Both get playful animations on the card page.
     can_flip, flip_image, can_rotate = _flip_rotate(card)
+    # Battles read by turning the card clockwise; planes/aftermath turn counter-clockwise (#11).
+    rotate_cw = "battle" in (card.type_line or "").lower()
     price_rows = _price_rows(request, card)
 
     # Per-card price history (#233): a USD chart from recorded points, shown for owned + tracked
@@ -229,6 +231,7 @@ async def card_detail(
             "can_flip": can_flip,
             "flip_image": flip_image,
             "can_rotate": can_rotate,
+            "rotate_cw": rotate_cw,
             "printings": [(p, _image(p, "small")) for p in printings],
             "price_rows": price_rows,
             "legality_rows": legality_rows,

@@ -15,7 +15,7 @@
       {# Interactive art: Scryfall-style transform (flip) for double-faced cards and/or a rotate
          button for sideways-read cards (battles, planes, aftermath), each with an animation.
          Wired by the vanilla script below (no Alpine) so it can't collide with the hover-tilt. #}
-      <div class="art-stage" id="card-art-stage"
+      <div class="art-stage" id="card-art-stage" data-rotate-deg="{% if rotate_cw %}90{% else %}-90{% endif %}"
            {% if can_flip %}data-front="{{ image }}" data-back="{{ flip_image }}"{% endif %}>
         <div class="card-art {% if anim_etched %}etched {% elif anim_foil %}foil {% endif %}rounded-2xl ring-1 ring-edge shadow-lg"
              style="perspective: 1200px">
@@ -46,11 +46,11 @@
           if (rb) {
             stage.style.transition = "transform 0.3s ease";
             stage.style.transformOrigin = "center center";
+            var deg = stage.dataset.rotateDeg || "-90";  // battles turn CW (+90), others CCW (-90)
             rb.addEventListener("click", function () {
-              // Aftermath / battle / plane cards read sideways: first click rotates
-              // counter-clockwise AND enlarges them; second click rotates clockwise back upright.
+              // Sideways-read cards: first click rotates AND enlarges; second returns to upright.
               rotated = !rotated;
-              stage.style.transform = rotated ? "rotate(-90deg) scale(1.4)" : "rotate(0deg) scale(1)";
+              stage.style.transform = rotated ? "rotate(" + deg + "deg) scale(1.4)" : "rotate(0deg) scale(1)";
             });
           }
           var tb = document.getElementById("card-transform-btn");

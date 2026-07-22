@@ -1148,6 +1148,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Creating a deck">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#do-you-own-these-cards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Do you own these cards?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1199,6 +1216,17 @@
     <span class="md-ellipsis">
       
         Deck stats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrade-from-your-collection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrade from your collection
       
     </span>
   </a>
@@ -1933,6 +1961,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Creating a deck">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#do-you-own-these-cards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Do you own these cards?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1984,6 +2029,17 @@
     <span class="md-ellipsis">
       
         Deck stats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrade-from-your-collection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrade from your collection
       
     </span>
   </a>
@@ -2045,6 +2101,17 @@ your copy), then a <strong>tournament-legal</strong> printing, then the most rec
 from silently landing on an art-series or oversized variant. Lines that don't match a known card
 are kept and flagged as <strong>unrecognized</strong>. You can change the printing per card afterward — see
 <a href="#printings-language-proxies">Printings, language &amp; proxies</a>.</p>
+<h3 id="do-you-own-these-cards">Do you own these cards?</h3>
+<p>Both the paste and URL import forms ask whether you own the deck:</p>
+<ul>
+<li><strong>Not owned</strong> (default) — just create the deck; your collection is untouched.</li>
+<li><strong>Fully owned</strong> — every matched card is added to your collection at the deck's quantity, so
+  coverage reads complete right away.</li>
+<li><strong>Partially owned</strong> — you get a checklist of the deck's cards (all ticked by default); untick the
+  ones you don't have, and only the ticked cards are added to your collection.</li>
+</ul>
+<p>Unrecognized lines can't be added (there's no card to add), and adding is disabled on the read-only
+demo.</p>
 <h2 id="ownership-coverage">Ownership coverage</h2>
 <p>The deck page shows how complete the deck is against your collection:</p>
 <ul>
@@ -2082,6 +2149,10 @@ listed underneath, drawn from data scryme already has:</p>
 <p>The estimate is capped at <strong>4</strong> — separating Optimized (4) from cEDH (5) reliably needs human
 judgement, so a 4 is labelled "may be cEDH (5)". You can also search your collection for these cards
 with <strong><code>is:gamechanger</code></strong>.</p>
+<p><strong>Set it yourself.</strong> If you disagree with the estimate, pick a bracket (1–5) from the <strong>Set</strong>
+dropdown on the panel — including cEDH (5), which the estimate never assigns on its own. A manual
+bracket is badged <strong>manual</strong> and still shows the computed estimate underneath for reference; choose
+<em>— use estimate —</em> to clear it.</p>
 <p>Legality is judged by the <strong>card</strong>, not the specific printing shown. Some printings — art-series
 cards, tokens, gold-bordered World Championship / Collector's Edition cards, oversized and acorn
 cards — are marked <em>not legal in every format</em> by Scryfall. scryme looks past those to a real
@@ -2110,6 +2181,15 @@ you own the card, otherwise a tournament-legal one.</p>
 <li><strong>Colors</strong> — the mainboard's color identity breakdown (also excluding lands).</li>
 <li><strong>Deck value</strong> — the total USD value of every card in the deck at current Scryfall prices.</li>
 </ul>
+<h2 id="upgrade-from-your-collection">Upgrade from your collection</h2>
+<p>Click <strong>Suggest owned cards</strong> on the deck page for deterministic, offline upgrade ideas drawn from
+cards <strong>you already own</strong> — no AI endpoint required.</p>
+<p>scryme buckets the deck's mainboard into roles (<strong>ramp</strong>, <strong>card draw</strong>, <strong>removal</strong>), spots the ones
+that are below a typical Commander count, and offers owned cards that fill them — restricted to the
+deck's <strong>colour identity</strong> and <strong>Commander-legal</strong>, and never a card already in the deck. Each
+suggestion is ranked by mana-curve fit then price and shows a one-line reason; <strong>+ Add</strong> drops a copy
+straight into the deck and refreshes the list. (Disabled on the read-only demo.)</p>
+<p>For AI-powered suggestions and buy-to-upgrade plans, see the ✨ AI tools on the same page.</p>
 <h2 id="export">Export</h2>
 <p>Use the <strong>Export</strong> buttons on the deck page to download the list:</p>
 <ul>
@@ -2143,7 +2223,7 @@ you own the card, otherwise a tournament-legal one.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 21, 2026 22:21:44 UTC">July 21, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 22, 2026 01:02:20 UTC">July 22, 2026</span>
   </span>
 
     

@@ -10,17 +10,34 @@ from src.models import Card, CollectionCard, Deck
 from src.scryfall.mapping import card_to_columns
 
 
-def test_parse_strips_foil_markers():
-    rows = parse_decklist("1 Kaalia of the Vast (CMA) 180 *F*\n1 Anger (CMA) 76")
+def test_parse_captures_printing_and_finish():
+    rows = parse_decklist("1 Kaalia of the Vast (CMA) 180 *F*\n1 Anger (CMA) 76\n2 Sol Ring")
     assert rows[0].name == "Kaalia of the Vast"
+    assert (rows[0].set_code, rows[0].collector_number, rows[0].finish) == ("CMA", "180", "foil")
     assert rows[1].name == "Anger"
+    assert (rows[1].set_code, rows[1].collector_number, rows[1].finish) == ("CMA", "76", "normal")
+    # A bare line still parses, with no printing hint.
+    assert (rows[2].name, rows[2].set_code, rows[2].finish) == ("Sol Ring", "", "normal")
 
 
-def test_merge_lines_combines_duplicates():
+def test_parse_etched_marker():
+    row = parse_decklist("1 Command Tower (CMR) 350 *E*")[0]
+    assert row.finish == "etched" and row.collector_number == "350"
+
+
+def test_merge_lines_keeps_distinct_printings():
     from src.decks import _merge_lines
+    # Different collector numbers are different printings now — they must NOT be merged.
     merged = _merge_lines(parse_decklist("5 Forest (DD1) 28\n4 Forest (DD1) 31\n3 Llanowar Elves"))
-    by_name = {m.name: m.quantity for m in merged}
-    assert by_name == {"Forest": 9, "Llanowar Elves": 3}
+    assert [(m.name, m.quantity, m.collector_number) for m in merged] == [
+        ("Forest", 5, "28"), ("Forest", 4, "31"), ("Llanowar Elves", 3, ""),
+    ]
+    # Truly identical lines still combine.
+    same = _merge_lines(parse_decklist("2 Forest (DD1) 28\n3 Forest (DD1) 28"))
+    assert [(m.name, m.quantity) for m in same] == [("Forest", 5)]
+    # Same printing in different finishes stays separate.
+    finishes = _merge_lines(parse_decklist("1 Sol Ring (CMR) 1\n1 Sol Ring (CMR) 1 *F*"))
+    assert [(m.finish, m.quantity) for m in finishes] == [("normal", 1), ("foil", 1)]
 
 
 @pytest.mark.asyncio
@@ -78,6 +95,26 @@ async def test_create_deck_resolves_and_prefers_owned_printing(session):
     assert str(by_name["Lightning Bolt"].scryfall_id) == str(cards["Lightning BoltLEA"].scryfall_id)
     assert by_name["Forest"].oracle_id is not None
     assert by_name["MysteryCard"].oracle_id is None  # unrecognized
+
+
+@pytest.mark.asyncio
+async def test_create_deck_honours_explicit_printing(session):
+    """An explicit (SET) NUM wins over the 'prefer a printing you own' default."""
+    cards = await _seed_cards(session)   # the LEA Bolt is owned, the MH2 one isn't
+    deck = await create_deck(session, "Burn", "1 Lightning Bolt (MH2) 122")
+    line = deck.cards[0]
+    assert str(line.scryfall_id) == str(cards["Lightning BoltMH2"].scryfall_id)
+    # Sanity: without the hint it still falls back to the owned printing.
+    bare = await create_deck(session, "Burn2", "1 Lightning Bolt")
+    assert str(bare.cards[0].scryfall_id) == str(cards["Lightning BoltLEA"].scryfall_id)
+
+
+@pytest.mark.asyncio
+async def test_create_deck_unknown_printing_falls_back_to_name(session):
+    cards = await _seed_cards(session)
+    # A printing we don't have falls back to the by-name pick rather than going unmatched.
+    deck = await create_deck(session, "Burn", "1 Lightning Bolt (ZZZ) 999")
+    assert str(deck.cards[0].scryfall_id) == str(cards["Lightning BoltLEA"].scryfall_id)
 
 
 @pytest.mark.asyncio

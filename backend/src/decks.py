@@ -13,7 +13,7 @@ import re
 import uuid
 from dataclasses import dataclass, field
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.currency import unit_price
@@ -28,8 +28,12 @@ _LINE = re.compile(r"^\s*(\d+)(?:\s*+[xX])?\s+(.+)$")
 # Strip trailing export markers like "*F*" (foil) / "*E*" (etched). Possessive quantifiers
 # keep it linear (the char classes are disjoint, so no legitimate backtracking is lost).
 _MARKER = re.compile(r"\s*+(?:\*[^*]*+\*\s*+)++$")
-# Strip a trailing "(SET) 123" / "(SET)" printing hint from a card name (possessive = linear).
-_SET_SUFFIX = re.compile(r"\s*+\([A-Za-z0-9]{2,6}\)\s*+[A-Za-z0-9-]*+\s*+$")
+# One marker at a time, so the finish can be read off before the markers are stripped.
+_MARKER_ONE = re.compile(r"\*([^*]*+)\*")
+# A trailing "(SET) 123" / "(SET)" printing hint — captured so the exact printing is honoured.
+_SET_SUFFIX = re.compile(r"\s*+\(([A-Za-z0-9]{2,6})\)\s*+([A-Za-z0-9-]*+)\s*+$")
+# Export finish markers -> the finish they mean.
+_FINISH_MARKERS = {"f": "foil", "foil": "foil", "e": "etched", "etched": "etched"}
 
 
 @dataclass
@@ -37,21 +41,39 @@ class ParsedLine:
     quantity: int
     name: str
     board: str  # main | side
+    # Printing hints from the line, when the export carried them (#import fidelity):
+    set_code: str = ""
+    collector_number: str = ""
+    finish: str = "normal"  # normal | foil | etched
 
 
 def _parse_deck_line(s: str, board: str) -> ParsedLine | None:
-    """Parse one non-comment, non-header decklist line into a ParsedLine (or None)."""
+    """Parse one decklist line, keeping its printing hint and finish (or None if unparseable).
+
+    Understands the common export shape ``2 Lightning Bolt (MH2) 122 *F*`` — the set code and
+    collector number identify the exact printing, and ``*F*``/``*E*`` the finish.
+    """
     sb = False
     if s.lower().startswith("sb:"):
         sb, s = True, s[3:].strip()
     m = _LINE.match(s)
     if not m:
         return None
-    name = _MARKER.sub("", m.group(2).rstrip())
-    name = _SET_SUFFIX.sub("", name).strip()
+    rest = m.group(2).rstrip()
+    finish = "normal"
+    for mark in _MARKER_ONE.findall(rest):
+        finish = _FINISH_MARKERS.get(mark.strip().lower(), finish)
+    name = _MARKER.sub("", rest)
+    set_code = collector_number = ""
+    hint = _SET_SUFFIX.search(name)
+    if hint:
+        set_code, collector_number = hint.group(1), hint.group(2)
+        name = name[: hint.start()]
+    name = name.strip()
     if not name:
         return None
-    return ParsedLine(int(m.group(1)), name, "side" if sb else board)
+    return ParsedLine(int(m.group(1)), name, "side" if sb else board,
+                      set_code=set_code, collector_number=collector_number, finish=finish)
 
 
 def parse_decklist(text: str | None) -> list[ParsedLine]:
@@ -71,15 +93,20 @@ def parse_decklist(text: str | None) -> list[ParsedLine]:
 
 
 def _merge_lines(parsed: list[ParsedLine]) -> list[ParsedLine]:
-    """Combine lines with the same name + board (e.g. basic lands across collector numbers)."""
+    """Combine identical lines, keeping distinct printings/finishes as separate lines.
+
+    Two lines only merge when their card, board, printing hint *and* finish match — so a deck
+    running the same card in two printings (or foil + nonfoil) keeps both.
+    """
     merged: dict[tuple, ParsedLine] = {}
     order: list[tuple] = []
     for p in parsed:
-        key = (p.name.lower(), p.board)
+        key = (p.name.lower(), p.board, p.set_code.lower(), p.collector_number, p.finish)
         if key in merged:
             merged[key].quantity += p.quantity
         else:
-            merged[key] = ParsedLine(p.quantity, p.name, p.board)
+            merged[key] = ParsedLine(p.quantity, p.name, p.board, p.set_code,
+                                     p.collector_number, p.finish)
             order.append(key)
     return [merged[k] for k in order]
 
@@ -149,6 +176,31 @@ async def _resolve_names(session: AsyncSession, names: list[str], owned_sids: se
     return resolved
 
 
+async def _resolve_exact(session: AsyncSession, pairs: set[tuple[str, str]]) -> dict:
+    """(lowercased set code, collector number) -> (oracle_id, scryfall_id) for exact printings.
+
+    Lets an import honour the printing the source actually specified instead of re-picking one by
+    name — the difference between a deck's real value and a base-printing approximation.
+    """
+    wanted = {(s.lower(), cn) for s, cn in pairs if s and cn}
+    if not wanted:
+        return {}
+    rows = (await session.execute(
+        select(Card.set_code, Card.collector_number, Card.oracle_id, Card.scryfall_id)
+        .where(tuple_(func.lower(Card.set_code), Card.collector_number).in_(list(wanted)))
+    )).all()
+    return {(sc.lower(), cn): (oracle, sid) for sc, cn, oracle, sid in rows}
+
+
+def _printing_for(line: ParsedLine, exact: dict, by_name: dict) -> tuple:
+    """The printing a line asked for: its exact (SET) NUM if we have it, else the by-name pick."""
+    if line.set_code and line.collector_number:
+        hit = exact.get((line.set_code.lower(), line.collector_number))
+        if hit:
+            return hit
+    return by_name.get(line.name.lower(), (None, None))
+
+
 async def add_card_to_deck(session: AsyncSession, deck_id: int, card: Card) -> bool:
     """Add one copy of ``card`` to a deck's main board (bumps quantity if already present).
 
@@ -186,22 +238,25 @@ class OwnershipRow:
 async def resolve_ownership_rows(session: AsyncSession, decklist_text: str) -> list[OwnershipRow]:
     """One row per unique card in a decklist (quantities summed across boards), each resolved to a
     representative printing — backs the import "which of these do you own?" checklist."""
-    merged: dict[str, ParsedLine] = {}
-    order: list[str] = []
+    merged: dict[tuple, ParsedLine] = {}
+    order: list[tuple] = []
     for p in parse_decklist(decklist_text):
-        key = p.name.lower()
+        # Keep distinct printings apart so ownership lands on the printing the deck actually runs.
+        key = (p.name.lower(), p.set_code.lower(), p.collector_number)
         if key in merged:
             merged[key].quantity += p.quantity
         else:
-            merged[key] = ParsedLine(p.quantity, p.name, "main")
+            merged[key] = ParsedLine(p.quantity, p.name, "main", p.set_code,
+                                     p.collector_number, p.finish)
             order.append(key)
     lines = [merged[k] for k in order]
 
     owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
     resolved = await _resolve_names(session, [line.name for line in lines], owned_sids)
+    exact = await _resolve_exact(session, {(x.set_code, x.collector_number) for x in lines})
     rows: list[OwnershipRow] = []
     for line in lines:
-        _oracle, sid = resolved.get(line.name.lower(), (None, None))
+        _oracle, sid = _printing_for(line, exact, resolved)
         rows.append(OwnershipRow(line.name, line.quantity,
                                  str(sid) if sid else None, sid is not None))
     return rows
@@ -211,10 +266,11 @@ async def create_deck(session: AsyncSession, name: str, decklist_text: str) -> D
     parsed = _merge_lines(parse_decklist(decklist_text))
     owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
     resolved = await _resolve_names(session, [p.name for p in parsed], owned_sids)
+    exact = await _resolve_exact(session, {(p.set_code, p.collector_number) for p in parsed})
 
     deck = Deck(name=(name or "").strip()[:256] or "Untitled deck")
     for p in parsed:
-        oracle, sid = resolved.get(p.name.lower(), (None, None))
+        oracle, sid = _printing_for(p, exact, resolved)
         deck.cards.append(
             DeckCard(name=p.name, quantity=p.quantity, board=p.board,
                      oracle_id=oracle, scryfall_id=sid)

@@ -20,7 +20,8 @@ Sideboard
 
 - One card per line: `4 Lightning Bolt` (or `4x Lightning Bolt`).
 - A `Sideboard` line starts the sideboard; an `SB:` prefix marks a single sideboard line.
-- A trailing printing hint like `(MH2) 122` is ignored.
+- A trailing printing hint like `(MH2) 122` selects that **exact printing**, and a trailing
+  `*F*` / `*E*` marks the copy **foil** / **etched**.
 - `#` / `//` lines are treated as comments.
 
 Each line is resolved to a card — preferring a printing you **own** (so the image and price match

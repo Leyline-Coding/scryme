@@ -1,18 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Diff · {{ deck.name }} · scryme{% endblock %}
 
+{# The <ul> lives inside the macro (not the caller) so Sonar's HTML checker sees each <li>
+   within its list container. #}
 {% macro change_list(changes, symbol, tone, kind) %}
-  {% for c in changes %}
-  <li class="flex items-center gap-2 px-3 py-1 text-sm">
-    <span class="w-4 shrink-0 text-center {{ tone }}">{{ symbol }}</span>
-    <span class="min-w-0 truncate">{{ c.name }}</span>
-    <span class="ml-auto shrink-0 tabular-nums text-xs text-muted">
-      {%- if kind == 'added' %}{{ c.to_qty }}×
-      {%- elif kind == 'removed' %}{{ c.from_qty }}×
-      {%- else %}{{ c.from_qty }}× → {{ c.to_qty }}×{% endif -%}
-    </span>
-  </li>
-  {% endfor %}
+  {% if changes %}
+  <ul class="divide-y divide-edge rounded-lg bg-surface-2 mb-2">
+    {% for c in changes %}
+    <li class="flex items-center gap-2 px-3 py-1 text-sm">
+      <span class="w-4 shrink-0 text-center {{ tone }}">{{ symbol }}</span>
+      <span class="min-w-0 truncate">{{ c.name }}</span>
+      <span class="ml-auto shrink-0 tabular-nums text-xs text-muted">
+        {%- if kind == 'added' %}{{ c.to_qty }}×
+        {%- elif kind == 'removed' %}{{ c.from_qty }}×
+        {%- else %}{{ c.from_qty }}× → {{ c.to_qty }}×{% endif -%}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 {% endmacro %}
 
 {% block content %}
@@ -42,11 +48,9 @@
         +{{ bd.added|length }} / −{{ bd.removed|length }} / Δ{{ bd.changed|length }} · {{ bd.unchanged }} unchanged
       </span>
     </h2>
-    <ul class="divide-y divide-edge rounded-lg bg-surface-2">
-      {{ change_list(bd.added, '+', 'text-emerald-500', 'added') }}
-      {{ change_list(bd.removed, '−', 'text-rose-500', 'removed') }}
-      {{ change_list(bd.changed, 'Δ', 'text-amber-500', 'changed') }}
-    </ul>
+    {{ change_list(bd.added, '+', 'text-emerald-500', 'added') }}
+    {{ change_list(bd.removed, '−', 'text-rose-500', 'removed') }}
+    {{ change_list(bd.changed, 'Δ', 'text-amber-500', 'changed') }}
   </section>
   {% endif %}
   {% endfor %}

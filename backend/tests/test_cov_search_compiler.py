@@ -149,9 +149,14 @@ async def test_cn_lang_layout(seeded, session):
 
 @pytest.mark.asyncio
 async def test_tag_location_and_owned_finish(seeded, session):
+    # An etched copy of Niv, to check the foil/etched relationship.
+    session.add(CollectionCard(scryfall_id=NIV, quantity=1, finish="etched"))
+    await session.commit()
     assert await _names(session, "tag:for-trade") == {"Lightning Bolt"}
     assert await _names(session, "loc:box") == {"Lightning Bolt"}
-    assert await _names(session, "is:foil") == {"Lightning Bolt"}
+    # Etched is a kind of foil: is:foil includes etched copies, is:etched stays strict.
+    assert await _names(session, "is:foil") == {"Lightning Bolt", "Niv-Mizzet, Parun"}
+    assert await _names(session, "is:etched") == {"Niv-Mizzet, Parun"}
 
 
 @pytest.mark.asyncio

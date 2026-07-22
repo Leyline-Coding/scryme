@@ -120,12 +120,14 @@
 
       {# Meta grid #}
       <dl class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-sm">
-        <div><dt class="text-muted">Set</dt><dd>{{ set_symbol(card.set_code, card.rarity) }} {{ card.set_name }} <span class="uppercase text-muted">{{ card.set_code }}</span></dd></div>
+        <div><dt class="text-muted">Set</dt><dd>{{ set_symbol(card.set_code, card.rarity) }}
+          <a href="/search?scope=all&q={{ ('s:' ~ card.set_code) | urlencode }}" class="hover:text-accent">{{ card.set_name }}</a>
+          <span class="uppercase text-muted">{{ card.set_code }}</span></dd></div>
         <div><dt class="text-muted">Number</dt><dd>{{ card.collector_number }}</dd></div>
-        <div><dt class="text-muted">Rarity</dt><dd class="capitalize">{{ card.rarity }}</dd></div>
-        {% if artist %}<div><dt class="text-muted">Artist</dt><dd>{{ artist }}</dd></div>{% endif %}
+        <div><dt class="text-muted">Rarity</dt><dd class="capitalize"><a href="/search?scope=all&q={{ ('r:' ~ card.rarity) | urlencode }}" class="hover:text-accent">{{ card.rarity }}</a></dd></div>
+        {% if artist %}<div><dt class="text-muted">Artist</dt><dd><a href="/search?scope=all&q={{ ('a:\"' ~ artist ~ '\"') | urlencode }}" class="hover:text-accent">{{ artist }}</a></dd></div>{% endif %}
         <div><dt class="text-muted">Language</dt><dd class="uppercase">{{ card.lang }}</dd></div>
-        {% if card.released_at %}<div><dt class="text-muted">Released</dt><dd>{{ card.released_at }}</dd></div>{% endif %}
+        {% if card.released_at %}<div><dt class="text-muted">Released</dt><dd><a href="/search?scope=all&q={{ ('year:' ~ card.released_at.year) | urlencode }}" class="hover:text-accent">{{ card.released_at }}</a></dd></div>{% endif %}
       </dl>
 
       {# Prices #}

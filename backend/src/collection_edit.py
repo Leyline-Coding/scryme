@@ -148,6 +148,34 @@ async def delete_stack(session: AsyncSession, stack_id: int):
     return sid
 
 
+async def adjust_owned(session: AsyncSession, scryfall_id, delta: int) -> None:
+    """Apply a +/- quantity delta to a printing's default (normal/en, unfiled) stack (#298).
+
+    Used to mirror owned-deck edits into the collection. A positive delta increments (creating the
+    stack if needed); a negative delta reduces the default stack, deleting it at zero.
+    """
+    if delta > 0:
+        await add_or_increment(session, scryfall_id, delta)
+        return
+    if delta == 0:
+        return
+    stack = (await session.execute(
+        select(CollectionCard).where(
+            CollectionCard.scryfall_id == _as_uuid(scryfall_id),
+            func.lower(CollectionCard.finish) == "normal",
+            CollectionCard.language == "en",
+            CollectionCard.binder_name.is_(None),
+            CollectionCard.location.is_(None),
+        ).order_by(CollectionCard.id)
+    )).scalars().first()
+    if stack is None:
+        return
+    stack.quantity += delta
+    if stack.quantity <= 0:
+        await session.delete(stack)
+    await session.commit()
+
+
 def _binder_filter(binder_name: str | None):
     """Match stacks filed under a physical binder (empty/None = unfiled)."""
     return CollectionCard.binder_name.is_(None) if not binder_name \

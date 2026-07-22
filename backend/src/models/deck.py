@@ -28,6 +28,9 @@ class Deck(Base):
     )
     # Manual Commander bracket override (1–5). NULL = use the computed estimate (#159).
     bracket_override: Mapped[int | None] = mapped_column(Integer)
+    # How the deck relates to the collection (#298): 'none' (unowned), 'full', or 'partial'.
+    # When full/partial, edits to owned cards mirror into the collection.
+    ownership: Mapped[str] = mapped_column(String(8), nullable=False, server_default="none")
 
     cards: Mapped[list[DeckCard]] = relationship(
         back_populates="deck", cascade="all, delete-orphan", lazy="selectin"
@@ -55,6 +58,9 @@ class DeckCard(Base):
     proxy: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
     special: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
     language: Mapped[str] = mapped_column(String(8), nullable=False, server_default="en")
+    # True when this card is owned as part of an owned deck (#298): its quantity/printing edits
+    # sync to the collection. Set at import (full = all matched; partial = the cards you ticked).
+    owned: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
 
     deck: Mapped[Deck] = relationship(back_populates="cards")
 

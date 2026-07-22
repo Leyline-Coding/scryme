@@ -158,6 +158,8 @@ async def add_card_to_deck(session: AsyncSession, deck_id: int, card: Card) -> b
     deck = await session.get(Deck, deck_id)
     if deck is None:
         return False
+    # On an owned deck, a card filed in is owned too (its later edits sync to the collection, #298).
+    owned = deck.ownership in ("full", "partial")
     existing = next(
         (dc for dc in deck.cards if dc.board == "main"
          and dc.name.lower() == card.name.lower()), None
@@ -167,7 +169,7 @@ async def add_card_to_deck(session: AsyncSession, deck_id: int, card: Card) -> b
     else:
         deck.cards.append(DeckCard(
             name=card.name, quantity=1, board="main",
-            oracle_id=card.oracle_id, scryfall_id=card.scryfall_id,
+            oracle_id=card.oracle_id, scryfall_id=card.scryfall_id, owned=owned,
         ))
     await session.commit()
     return True

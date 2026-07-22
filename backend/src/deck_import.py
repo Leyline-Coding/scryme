@@ -103,24 +103,28 @@ def parse_moxfield(payload: dict) -> tuple[str, str]:
     return name, _lines(entries)
 
 
+def _archidekt_entry(item: dict) -> _Entry | None:
+    """One Archidekt card row → an entry, or None when the row carries no card name."""
+    card = item.get("card") or {}
+    oracle = card.get("oracleCard") or {}
+    card_name = oracle.get("name") or card.get("name")
+    if not card_name:
+        return None
+    cats = [c.lower() for c in (item.get("categories") or [])]
+    board = "side" if ("sideboard" in cats or "maybeboard" in cats) else "main"
+    edition = card.get("edition") or {}
+    return _Entry(
+        quantity=int(item.get("quantity", 1) or 1), name=card_name, board=board,
+        set_code=(edition.get("editioncode") or ""),
+        collector_number=str(card.get("collectorNumber") or ""),
+        finish=_finish_of(item.get("modifier")),
+    )
+
+
 def parse_archidekt(payload: dict) -> tuple[str, str]:
     """Archidekt deck JSON → (name, decklist text)."""
     name = (payload.get("name") or _DEFAULT_DECK_NAME).strip()
-    entries: list[_Entry] = []
-    for item in payload.get("cards") or []:
-        card = item.get("card") or {}
-        oracle = card.get("oracleCard") or {}
-        card_name = oracle.get("name") or card.get("name")
-        if not card_name:
-            continue
-        cats = [c.lower() for c in (item.get("categories") or [])]
-        board = "side" if ("sideboard" in cats or "maybeboard" in cats) else "main"
-        entries.append(_Entry(
-            quantity=int(item.get("quantity", 1) or 1), name=card_name, board=board,
-            set_code=((card.get("edition") or {}).get("editioncode") or ""),
-            collector_number=str(card.get("collectorNumber") or ""),
-            finish=_finish_of(item.get("modifier")),
-        ))
+    entries = [e for e in map(_archidekt_entry, payload.get("cards") or []) if e is not None]
     if not entries:
         raise DeckImportError("That Archidekt deck looks empty or private.")
     return name, _lines(entries)

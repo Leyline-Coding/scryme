@@ -25,13 +25,12 @@ from src.stats import Bar, _bars, _color_bucket
 # polynomially on trailing whitespace). The optional 'x' count marker uses a possessive
 # `\s*+` so its whitespace can't overlap the following `\s+` (keeps the match linear).
 _LINE = re.compile(r"^\s*(\d+)(?:\s*+[xX])?\s+(.+)$")
-# Strip trailing export markers like "*F*" (foil) / "*E*" (etched). Possessive quantifiers
-# keep it linear (the char classes are disjoint, so no legitimate backtracking is lost).
-_MARKER = re.compile(r"\s*+(?:\*[^*]*+\*\s*+)++$")
-# One marker at a time, so the finish can be read off before the markers are stripped.
-_MARKER_ONE = re.compile(r"\*([^*]*+)\*")
+# One trailing export marker like "*F*" (foil) / "*E*" (etched). Matched and stripped one at a
+# time in a loop rather than with a repeated group, so the pattern stays single-quantifier (a
+# nested `(...)+$` group is what makes this shape backtrack polynomially).
+_TRAILING_MARKER = re.compile(r"\*([^*]*)\*\s*$")
 # A trailing "(SET) 123" / "(SET)" printing hint — captured so the exact printing is honoured.
-_SET_SUFFIX = re.compile(r"\s*+\(([A-Za-z0-9]{2,6})\)\s*+([A-Za-z0-9-]*+)\s*+$")
+_SET_SUFFIX = re.compile(r"\(([A-Za-z0-9]{2,6})\)\s*([A-Za-z0-9-]*)\s*$")
 # Export finish markers -> the finish they mean.
 _FINISH_MARKERS = {"f": "foil", "foil": "foil", "e": "etched", "etched": "etched"}
 
@@ -59,11 +58,11 @@ def _parse_deck_line(s: str, board: str) -> ParsedLine | None:
     m = _LINE.match(s)
     if not m:
         return None
-    rest = m.group(2).rstrip()
+    name = m.group(2).rstrip()
     finish = "normal"
-    for mark in _MARKER_ONE.findall(rest):
-        finish = _FINISH_MARKERS.get(mark.strip().lower(), finish)
-    name = _MARKER.sub("", rest)
+    while (mark := _TRAILING_MARKER.search(name)) is not None:
+        finish = _FINISH_MARKERS.get(mark.group(1).strip().lower(), finish)
+        name = name[: mark.start()].rstrip()
     set_code = collector_number = ""
     hint = _SET_SUFFIX.search(name)
     if hint:

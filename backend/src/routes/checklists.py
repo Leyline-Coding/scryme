@@ -7,14 +7,19 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.checklists import (
+    add_checklist_items,
     add_checklist_missing,
     checklist_coverage,
     create_checklist,
+    remove_checklist_item,
+    rename_checklist_item,
 )
 from src.config import get_settings
 from src.db import get_session
 from src.models import Checklist
 from src.templating import templates
+
+_NOT_FOUND = "Checklist not found."
 
 router = APIRouter(tags=["checklists"])
 
@@ -70,6 +75,44 @@ async def checklist_to_wishlist(checklist_id: int, session: AsyncSession = Depen
     _guard_writable()
     checklist = await session.get(Checklist, checklist_id)
     if checklist is None:
-        raise HTTPException(status_code=404, detail="Checklist not found.")
+        raise HTTPException(status_code=404, detail=_NOT_FOUND)
     await add_checklist_missing(session, checklist)
     return RedirectResponse(url="/wishlist", status_code=303)
+
+
+def _back(checklist_id: int) -> RedirectResponse:
+    return RedirectResponse(url=f"/checklists/{checklist_id}", status_code=303)
+
+
+@router.post("/checklists/{checklist_id}/items")
+async def add_items(
+    checklist_id: int, cards: str = Form(""), session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    """Add one or more cards (pasted, one per line) to a checklist (#297)."""
+    _guard_writable()
+    checklist = await session.get(Checklist, checklist_id)
+    if checklist is None:
+        raise HTTPException(status_code=404, detail=_NOT_FOUND)
+    await add_checklist_items(session, checklist, cards)
+    return _back(checklist_id)
+
+
+@router.post("/checklists/{checklist_id}/items/{item_id}")
+async def edit_item(
+    checklist_id: int, item_id: int, name: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    """Rename (and re-resolve) a checklist item (#297)."""
+    _guard_writable()
+    await rename_checklist_item(session, checklist_id, item_id, name)
+    return _back(checklist_id)
+
+
+@router.post("/checklists/{checklist_id}/items/{item_id}/delete")
+async def delete_item(
+    checklist_id: int, item_id: int, session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    """Remove one card from a checklist (#297)."""
+    _guard_writable()
+    await remove_checklist_item(session, checklist_id, item_id)
+    return _back(checklist_id)

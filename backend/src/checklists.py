@@ -65,6 +65,7 @@ class ChecklistRow:
     scryfall_id: str | None
     matched: bool
     owned: bool
+    item_id: int = 0  # checklist_item row id, for inline edit/remove (#297)
 
 
 @dataclass
@@ -102,10 +103,59 @@ async def checklist_coverage(session: AsyncSession, checklist: Checklist) -> Che
             ChecklistRow(
                 name=item.name,
                 scryfall_id=str(item.scryfall_id) if item.scryfall_id else None,
-                matched=matched, owned=is_owned,
+                matched=matched, owned=is_owned, item_id=item.id,
             )
         )
     return cov
+
+
+async def _resolve_one(session: AsyncSession, name: str) -> tuple:
+    """Resolve a single card name to (oracle_id, scryfall_id), preferring an owned printing."""
+    owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
+    return (await _resolve_names(session, [name], owned_sids)).get(name.lower(), (None, None))
+
+
+async def add_checklist_items(session: AsyncSession, checklist: Checklist, text: str) -> int:
+    """Add one or more cards (pasted names, one per line) to a checklist, skipping duplicates."""
+    existing = {i.name.lower() for i in checklist.items}
+    names = [n for n in _distinct_names(text) if n.lower() not in existing]
+    if not names:
+        return 0
+    owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
+    resolved = await _resolve_names(session, names, owned_sids)
+    for n in names:
+        oracle, sid = resolved.get(n.lower(), (None, None))
+        checklist.items.append(ChecklistItem(name=n, oracle_id=oracle, scryfall_id=sid))
+    await session.commit()
+    return len(names)
+
+
+async def _get_item(session: AsyncSession, checklist_id: int, item_id: int) -> ChecklistItem | None:
+    item = await session.get(ChecklistItem, item_id)
+    return item if item is not None and item.checklist_id == checklist_id else None
+
+
+async def remove_checklist_item(session: AsyncSession, checklist_id: int, item_id: int) -> bool:
+    """Delete one item from a checklist. Returns False if it isn't in that checklist."""
+    item = await _get_item(session, checklist_id, item_id)
+    if item is None:
+        return False
+    await session.delete(item)
+    await session.commit()
+    return True
+
+
+async def rename_checklist_item(
+    session: AsyncSession, checklist_id: int, item_id: int, name: str
+) -> bool:
+    """Change an item's card (re-resolving the new name). Returns False if invalid."""
+    item = await _get_item(session, checklist_id, item_id)
+    name = (name or "").strip()[:512]
+    if item is None or not name:
+        return False
+    item.name, (item.oracle_id, item.scryfall_id) = name, await _resolve_one(session, name)
+    await session.commit()
+    return True
 
 
 async def add_checklist_missing(session: AsyncSession, checklist: Checklist) -> int:

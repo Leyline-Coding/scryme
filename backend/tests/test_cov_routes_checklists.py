@@ -72,12 +72,54 @@ async def test_checklist_to_wishlist(session):
 
 
 @pytest.mark.asyncio
+async def test_add_edit_remove_items(session):
+    await _card(session, "Black Lotus")
+    await _card(session, "Mox Sapphire")
+    cl = await create_checklist(session, "P9", "Black Lotus")
+    assert len(cl.items) == 1
+
+    # Add cards (one per line); duplicates of existing items are skipped.
+    await R.add_items(cl.id, cards="Mox Sapphire\nBlack Lotus\nMox Emerald", session=session)
+    await session.refresh(cl)
+    names = {i.name for i in cl.items}
+    assert names == {"Black Lotus", "Mox Sapphire", "Mox Emerald"}
+    lotus = next(i for i in cl.items if i.name == "Black Lotus")
+    emerald = next(i for i in cl.items if i.name == "Mox Emerald")
+    assert lotus.scryfall_id is not None       # resolved
+    assert emerald.scryfall_id is None          # not in the card DB
+
+    # Rename an item -> re-resolves (Mox Emerald -> Mox Sapphire, which exists).
+    await R.edit_item(cl.id, emerald.id, name="Mox Sapphire", session=session)
+    renamed = await session.get(type(emerald), emerald.id)
+    assert renamed.name == "Mox Sapphire" and renamed.scryfall_id is not None
+
+    # Remove an item.
+    await R.delete_item(cl.id, lotus.id, session=session)
+    await session.refresh(cl)
+    assert "Black Lotus" not in {i.name for i in cl.items}
+    # Adding only cards already present adds nothing; a blank/foreign rename is a no-op.
+    before = len(cl.items)
+    await R.add_items(cl.id, cards="Mox Sapphire", session=session)
+    await session.refresh(cl)
+    assert len(cl.items) == before
+    await R.edit_item(cl.id, 999999, name="X", session=session)     # foreign item -> no-op
+    await R.edit_item(cl.id, renamed.id, name="   ", session=session)  # blank name -> no-op
+    # Missing checklist / foreign item are graceful.
+    with pytest.raises(HTTPException):
+        await R.add_items(999999, cards="X", session=session)
+    assert (await R.delete_item(cl.id, 999999, session=session)).status_code == 303
+
+
+@pytest.mark.asyncio
 async def test_readonly_guards(session, monkeypatch):
     monkeypatch.setattr(get_settings(), "read_only", True)
     for coro in (
         R.create(name="x", cards="Black Lotus", session=session),
         R.delete_checklist(1, session),
         R.checklist_to_wishlist(1, session),
+        R.add_items(1, cards="Black Lotus", session=session),
+        R.edit_item(1, 1, name="X", session=session),
+        R.delete_item(1, 1, session=session),
     ):
         with pytest.raises(HTTPException) as e:
             await coro

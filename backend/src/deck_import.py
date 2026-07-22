@@ -17,6 +17,9 @@ from src import __version__
 from src.config import get_settings
 
 SUPPORTED = "Moxfield, Archidekt, and TappedOut"
+MOXFIELD = "moxfield"
+ARCHIDEKT = "archidekt"
+TAPPEDOUT = "tappedout"
 _UA = f"scryme/{__version__} (+https://github.com/Leyline-Coding/scryme)"
 _TIMEOUT = 15.0
 _DEFAULT_DECK_NAME = "Imported deck"
@@ -33,11 +36,11 @@ _TAPPEDOUT = re.compile(r"tappedout\.net/mtg-decks/([A-Za-z0-9_-]+)")
 
 def detect_host(url: str) -> str | None:
     if _MOXFIELD.search(url):
-        return "moxfield"
+        return MOXFIELD
     if _ARCHIDEKT.search(url):
-        return "archidekt"
+        return ARCHIDEKT
     if _TAPPEDOUT.search(url):
-        return "tappedout"
+        return TAPPEDOUT
     return None
 
 
@@ -90,7 +93,7 @@ def _slug_name(slug: str) -> str:
 
 # --- public-profile deck listing (#299) ---------------------------------------------------------
 
-PROFILE_PROVIDERS = ("moxfield", "archidekt")
+PROFILE_PROVIDERS = (MOXFIELD, ARCHIDEKT)
 _MOX_PROFILE = re.compile(r"moxfield\.com/users/([A-Za-z0-9_.-]+)")
 _ARCH_PROFILE = re.compile(r"archidekt\.com/u/([A-Za-z0-9_.-]+)")
 # Archidekt's numeric deckFormat codes -> readable names (best-effort; blank when unknown).
@@ -113,10 +116,10 @@ def detect_profile(text: str) -> tuple[str, str] | None:
     """A profile URL -> (provider, username); None if it's not a recognized profile link."""
     m = _MOX_PROFILE.search(text or "")
     if m:
-        return "moxfield", m.group(1)
+        return MOXFIELD, m.group(1)
     m = _ARCH_PROFILE.search(text or "")
     if m:
-        return "archidekt", m.group(1)
+        return ARCHIDEKT, m.group(1)
     return None
 
 
@@ -159,7 +162,7 @@ async def fetch_profile_decks(
     own = client is None
     client = client or httpx.AsyncClient(timeout=_TIMEOUT, headers=headers, follow_redirects=True)
     try:
-        if provider == "moxfield":
+        if provider == MOXFIELD:
             resp = await client.get(
                 "https://api2.moxfield.com/v2/decks/search",
                 params={"authorUserNames": username, "pageSize": limit, "pageNumber": 1},
@@ -200,12 +203,12 @@ async def fetch_deck_from_url(
     own = client is None
     client = client or httpx.AsyncClient(timeout=_TIMEOUT, headers=headers, follow_redirects=True)
     try:
-        if host == "moxfield":
+        if host == MOXFIELD:
             deck_id = _MOXFIELD.search(url).group(1)
             resp = await client.get(f"https://api.moxfield.com/v2/decks/all/{deck_id}")
             resp.raise_for_status()
             return parse_moxfield(resp.json())
-        if host == "archidekt":
+        if host == ARCHIDEKT:
             deck_id = _ARCHIDEKT.search(url).group(1)
             resp = await client.get(f"https://archidekt.com/api/decks/{deck_id}/")
             resp.raise_for_status()

@@ -44,6 +44,17 @@ class CardView:
     scryfall_uri: str
     tags: list[str]
     flip_back: str | None = None  # back-face image for double-faced cards (grid hover-flip)
+    shimmer: str | None = None    # 'foil'/'etched' for a foil-only or etched treatment (#9)
+
+
+def _treatment(card) -> str | None:
+    """'etched'/'foil' when this printing is a foil-only or etched treatment (grid shimmer, #9)."""
+    finishes = [f.lower() for f in (card.raw.get("finishes") or [])]
+    if "etched" in finishes:
+        return "etched"
+    if "foil" in finishes and "nonfoil" not in finishes:
+        return "foil"
+    return None
 
 
 def _back_face_image(card) -> str | None:
@@ -82,6 +93,7 @@ def _to_views(result) -> list[CardView]:
                 scryfall_uri=card.raw.get("scryfall_uri", "#"),
                 tags=result.tags.get(sid, []),
                 flip_back=_back_face_image(card),
+                shimmer=_treatment(card),
             )
         )
     return views

@@ -83,7 +83,14 @@ def _flip_rotate(card: Card) -> tuple[bool, str | None, bool]:
     can_flip = sum(1 for u in face_images if u) >= 2
     flip_image = face_images[1] if can_flip else None
     keywords = [k.lower() for k in (card.keywords or [])]
-    can_rotate = card.layout in ("battle", "planar") or "aftermath" in keywords
+    # Sideways-read cards get a rotate button. Battles are stored with layout "transform" (so they
+    # also get the flip button — front battle ⇄ back permanent), so detect them by type line;
+    # planes use the "planar" layout; aftermath is a keyword.
+    can_rotate = (
+        "battle" in (card.type_line or "").lower()
+        or card.layout == "planar"
+        or "aftermath" in keywords
+    )
     return can_flip, flip_image, can_rotate
 
 

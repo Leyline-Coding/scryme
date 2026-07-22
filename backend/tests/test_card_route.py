@@ -108,6 +108,18 @@ async def test_rotate_button_for_planar_and_aftermath(client, session):
     body = (await client.get(f"/card/{aftermath.scryfall_id}")).text
     assert "⟳ Rotate" in body
 
+    # Battles are stored with layout "transform" (detected by type line): both buttons appear.
+    battle = await _add(session, {
+        "name": "Invasion of Test", "set": "mom", "collector_number": "1", "rarity": "rare",
+        "layout": "transform", "type_line": "Battle — Siege",
+        "card_faces": [
+            {"image_uris": {"normal": "https://img.test/front.jpg"}},
+            {"image_uris": {"normal": "https://img.test/back.jpg"}},
+        ],
+    })
+    body = (await client.get(f"/card/{battle.scryfall_id}")).text
+    assert "⟳ Rotate" in body and "⇅ Transform" in body
+
 
 @pytest.mark.asyncio
 async def test_normal_card_has_no_flip_or_rotate(client, session):

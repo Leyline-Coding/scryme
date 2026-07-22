@@ -1,10 +1,23 @@
 """Search route tests: full page vs HTMX partial, scope, and error rendering."""
 
 import uuid
+from types import SimpleNamespace
 
 import pytest
 from src.models import Card, CollectionCard
+from src.routes.search import _treatment
 from src.scryfall.mapping import card_to_columns
+
+
+def test_treatment_foil_only_and_etched():
+    def card(finishes):
+        return SimpleNamespace(raw={"finishes": finishes})
+    assert _treatment(card(["etched"])) == "etched"
+    assert _treatment(card(["foil", "etched"])) == "etched"     # etched wins
+    assert _treatment(card(["foil"])) == "foil"                 # foil-only
+    assert _treatment(card(["nonfoil", "foil"])) is None        # ordinary card
+    assert _treatment(card([])) is None
+    assert _treatment(SimpleNamespace(raw={})) is None
 
 
 async def _seed_owned(session):

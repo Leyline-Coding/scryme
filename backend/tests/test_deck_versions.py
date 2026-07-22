@@ -126,6 +126,14 @@ async def test_diff_route_current_vs_version(client, session):
 
 
 @pytest.mark.asyncio
+async def test_deck_page_with_only_unmatched_card(client, session):
+    # A deck whose lines don't resolve has no image sids -> _deck_images returns {} (grid empty).
+    deck = await create_deck(session, "Ghost", "1 TotallyNotARealCard")
+    resp = await client.get(f"/decks/{deck.id}")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_diff_no_versions_defaults_current_vs_current(client, session):
     await _seed(session)
     deck = await create_deck(session, "D", "1 Sol Ring")

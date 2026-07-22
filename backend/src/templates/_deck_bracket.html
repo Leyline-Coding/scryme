@@ -1,0 +1,54 @@
+{# Commander bracket panel (#159): the estimate, its signals, and a manual override control.
+   Re-rendered on its own by POST /decks/{id}/bracket (hx-swap outerHTML on #bracket-panel). #}
+{% set _BR_TONE = {1: "text-emerald-500", 2: "text-sky-500", 3: "text-amber-500",
+                   4: "text-rose-500", 5: "text-fuchsia-500"} %}
+{% set _SIG_TONE = {3: "text-rose-500", 2: "text-amber-500", 1: "text-muted"} %}
+<div class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6" id="bracket-panel">
+  <div class="flex items-center gap-3">
+    <div class="{{ _BR_TONE.get(bracket.effective, 'text-fg') }} text-4xl font-bold tabular-nums leading-none">
+      {{ bracket.effective }}{% if not bracket.is_overridden and bracket.effective >= 4 %}<span class="text-xl font-semibold">+</span>{% endif %}
+    </div>
+    <div class="min-w-0">
+      <div class="text-sm font-semibold uppercase tracking-wide text-muted">Commander bracket
+        {% if bracket.is_overridden %}<span class="ml-1 rounded bg-surface-2 px-1 text-[10px] text-accent">manual</span>{% endif %}
+      </div>
+      <div class="text-lg font-medium">{{ bracket.effective_label }}
+        {% if not bracket.is_overridden and bracket.effective >= 4 %}<span class="text-sm text-muted">— may be cEDH (5)</span>{% endif %}
+      </div>
+      {% if bracket.is_overridden %}
+      <div class="text-xs text-muted">Estimated {{ bracket.bracket }} · {{ bracket.label }}</div>
+      {% endif %}
+    </div>
+    {% if not read_only %}
+    <form class="ml-auto flex items-center gap-1 text-xs" hx-post="/decks/{{ deck.id }}/bracket"
+          hx-target="#bracket-panel" hx-swap="outerHTML">
+      <label class="text-muted" for="br-set">Set</label>
+      <select id="br-set" name="bracket" onchange="this.form.requestSubmit()"
+              class="rounded bg-surface-2 border border-edge px-1.5 py-0.5">
+        <option value="">— use estimate —</option>
+        {% for b, lbl in bracket_labels.items() %}
+        <option value="{{ b }}" {% if bracket.override == b %}selected{% endif %}>{{ b }} · {{ lbl }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    {% endif %}
+  </div>
+  {% if bracket.signals %}
+  <ul class="mt-3 pt-3 border-t border-edge space-y-1.5 text-sm">
+    {% for s in bracket.signals %}
+    <li class="flex gap-2">
+      <span class="w-40 shrink-0 font-medium {{ _SIG_TONE.get(s.weight, 'text-muted') }}">{{ s.label }}</span>
+      <span class="min-w-0 text-muted">{{ s.detail }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="mt-3 pt-3 border-t border-edge text-sm text-muted">
+    No high-power signals detected — reads as a typical {{ bracket.label }} deck.
+  </p>
+  {% endif %}
+  <p class="mt-2 text-[11px] text-muted">
+    A heuristic <strong>estimate</strong> from Game Changers, mass land denial, fast mana, tutors,
+    and known combos — not an official rating. Set it manually above to override.
+  </p>
+</div>

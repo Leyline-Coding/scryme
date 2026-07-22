@@ -1,0 +1,37 @@
+{# Heuristic owned-card upgrade suggestions (#181), grouped by thin role, with one-click add. #}
+{% if added %}
+<p class="mb-2 text-xs text-emerald-500">✓ Added {{ added }} to the deck.</p>
+{% endif %}
+{% if result.picks %}
+<div class="space-y-3">
+  {% for role, picks in result.by_role.items() %}
+  <div>
+    <p class="text-xs font-medium text-muted">{{ picks[0].reason }}</p>
+    <ul class="mt-1 divide-y divide-edge rounded-lg bg-surface-2">
+      {% for p in picks %}
+      <li class="px-3 py-2 text-sm flex items-center gap-2">
+        <a href="/card/{{ p.scryfall_id }}" class="font-medium hover:text-accent shrink-0 truncate">{{ p.name }}</a>
+        <span class="shrink-0 text-[10px] uppercase tracking-wide text-muted">{{ role }}</span>
+        <span class="ml-auto shrink-0 tabular-nums text-muted">{{ cur.symbol }}{{ '{:,.2f}'.format(p.price) }}</span>
+        {% if not read_only %}
+        <button hx-post="/decks/{{ deck.id }}/add-owned" hx-target="#owned-out" hx-swap="innerHTML"
+                hx-vals='{"scryfall_id": "{{ p.scryfall_id }}"}'
+                title="Add one copy to the deck"
+                class="shrink-0 rounded bg-surface hover:bg-surface-3 px-1.5 py-0.5 text-xs">+ Add</button>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+<p class="mt-1.5 text-xs text-muted">
+  Chosen from {{ result.considered }} owned, in-colour, Commander-legal card(s) not already in the deck.
+</p>
+{% else %}
+<div class="rounded-lg bg-surface-2 text-muted text-sm px-3 py-2">
+  {% if result.considered %}No thin roles to fill — the deck's ramp, draw, and removal already look
+  well-stocked.{% else %}No owned in-colour cards to suggest — add more cards to your collection,
+  or this deck already runs your in-colour staples.{% endif %}
+</div>
+{% endif %}

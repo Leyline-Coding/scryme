@@ -171,42 +171,25 @@
     {% endif %}
   </div>
 
-  {# Commander bracket estimate (#159) — Commander decks only #}
+  {# Commander bracket estimate + manual override (#159) — Commander decks only #}
   {% if bracket.is_commander or cov.fmt in ('commander', 'oathbreaker', 'brawl') %}
-  {% set _BR_TONE = {1: "text-emerald-500", 2: "text-sky-500", 3: "text-amber-500", 4: "text-rose-500"} %}
-  {% set _SIG_TONE = {3: "text-rose-500", 2: "text-amber-500", 1: "text-muted"} %}
+  {% include "_deck_bracket.html" %}
+  {% endif %}
+
+  {# Upgrade from your collection — heuristic owned-card swaps (#181), no AI required #}
   <div class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
-    <div class="flex items-center gap-3">
-      <div class="{{ _BR_TONE.get(bracket.bracket, 'text-fg') }} text-4xl font-bold tabular-nums leading-none">
-        {{ bracket.bracket }}{% if bracket.bracket >= 4 %}<span class="text-xl font-semibold">+</span>{% endif %}
-      </div>
-      <div class="min-w-0">
-        <div class="text-sm font-semibold uppercase tracking-wide text-muted">Commander bracket</div>
-        <div class="text-lg font-medium">{{ bracket.label }}
-          {% if bracket.bracket >= 4 %}<span class="text-sm text-muted">— may be cEDH (5)</span>{% endif %}
-        </div>
-      </div>
+    <div class="flex items-center gap-2 flex-wrap text-sm">
+      <span class="text-muted">🃏 Upgrade from your collection:</span>
+      <button hx-post="/decks/{{ cov.deck.id }}/suggest-owned" hx-target="#owned-out"
+              hx-swap="innerHTML" hx-indicator="#owned-spin"
+              class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Suggest owned cards</button>
+      <span id="owned-spin" class="htmx-indicator text-xs text-muted">finding…</span>
     </div>
-    {% if bracket.signals %}
-    <ul class="mt-3 pt-3 border-t border-edge space-y-1.5 text-sm">
-      {% for s in bracket.signals %}
-      <li class="flex gap-2">
-        <span class="w-40 shrink-0 font-medium {{ _SIG_TONE.get(s.weight, 'text-muted') }}">{{ s.label }}</span>
-        <span class="min-w-0 text-muted">{{ s.detail }}</span>
-      </li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <p class="mt-3 pt-3 border-t border-edge text-sm text-muted">
-      No high-power signals detected — reads as a typical {{ bracket.label }} deck.
-    </p>
-    {% endif %}
-    <p class="mt-2 text-[11px] text-muted">
-      A heuristic <strong>estimate</strong> from Game Changers, mass land denial, fast mana, tutors,
-      and known combos — not an official rating. Brackets 4 and 5 aren't reliably separable here.
+    <div id="owned-out" class="mt-2"></div>
+    <p class="mt-1 text-[11px] text-muted">
+      Owned, in-colour, Commander-legal cards that fill this deck's thin roles — deterministic, no AI.
     </p>
   </div>
-  {% endif %}
 
   {# Per-deck stats #}
   {% if stats.has_data %}

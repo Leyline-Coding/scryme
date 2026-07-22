@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Which cards do you own? · scryme{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-6" x-data="{ }">
+  <header class="flex flex-wrap items-center gap-3 mb-4">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold truncate">Which cards do you own?</h1>
+    <a href="/collection?tab=decks" class="ml-auto text-sm text-muted hover:text-fg">Cancel</a>
+  </header>
+
+  <p class="mb-4 text-sm text-muted">
+    Tick the cards from <strong>{{ name or "this deck" }}</strong> that you already own — they'll be
+    added to your collection at the deck's quantity, so deck coverage reflects what you have.
+  </p>
+
+  <form action="/decks/owned-confirm" method="post">
+    <input type="hidden" name="name" value="{{ name }}" />
+    <input type="hidden" name="decklist" value="{{ decklist }}" />
+
+    <div class="mb-3 flex items-center gap-3 text-xs">
+      <button type="button" class="rounded bg-surface-2 hover:bg-surface-3 px-2 py-1"
+              @click="$root.querySelectorAll('input[name=owned]').forEach(c => c.checked = true)">Select all</button>
+      <button type="button" class="rounded bg-surface-2 hover:bg-surface-3 px-2 py-1"
+              @click="$root.querySelectorAll('input[name=owned]').forEach(c => c.checked = false)">Select none</button>
+    </div>
+
+    <ul class="divide-y divide-edge rounded-lg border border-edge bg-surface">
+      {% for r in rows %}
+      <li class="flex items-center gap-2 px-3 py-2 text-sm">
+        {% if r.matched %}
+        <label class="flex items-center gap-2 min-w-0 flex-1 cursor-pointer">
+          <input type="checkbox" name="owned" value="{{ r.scryfall_id }}|{{ r.quantity }}" checked
+                 class="shrink-0" />
+          <span class="w-8 shrink-0 text-right text-muted tabular-nums">{{ r.quantity }}×</span>
+          <span class="min-w-0 truncate">{{ r.name }}</span>
+        </label>
+        {% else %}
+        <span class="flex items-center gap-2 min-w-0 flex-1 text-amber-500">
+          <span class="w-4 shrink-0"></span>
+          <span class="w-8 shrink-0 text-right tabular-nums">{{ r.quantity }}×</span>
+          <span class="min-w-0 truncate" title="Not found in the card database — can't add to collection">{{ r.name }}</span>
+          <span class="shrink-0 text-xs">unrecognized</span>
+        </span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+
+    <div class="mt-4 flex gap-3">
+      <button type="submit" class="rounded-lg bg-accent text-accent-fg px-5 py-2.5 font-medium hover:opacity-90">
+        Create deck & add owned
+      </button>
+      <a href="/decks/new" class="rounded-lg px-5 py-2.5 text-muted hover:text-fg">Back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

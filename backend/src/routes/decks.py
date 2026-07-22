@@ -21,6 +21,7 @@ from src.deck_builder import BuildError, build_commander_deck, owned_commanders
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
 from src.deck_import import SUPPORTED, DeckImportError, fetch_deck_from_url
 from src.deck_suggest import suggest_owned_upgrades
+from src.deck_sync import sync_printing, sync_quantity
 from src.deck_versions import diff_cards, list_versions, save_version, snapshot_cards
 from src.decks import (
     DECK_LANGUAGES,
@@ -105,6 +106,10 @@ async def _finish_import(
         )
     deck = await create_deck(session, name, decklist)
     if ownership == "full":
+        deck.ownership = "full"
+        for dc in deck.cards:
+            dc.owned = dc.oracle_id is not None  # every matched card is owned
+        await session.commit()
         await _mark_all_owned(session, decklist)
     return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
 
@@ -153,6 +158,11 @@ async def owned_confirm(
         sid, _, qty = token.partition("|")
         if sid:
             pairs.append((sid, int(qty) if qty.isdigit() else 1))
+    owned_sids = {sid for sid, _ in pairs}
+    deck.ownership = "partial"
+    for dc in deck.cards:
+        dc.owned = dc.scryfall_id is not None and str(dc.scryfall_id) in owned_sids
+    await session.commit()
     await _add_owned_pairs(session, pairs)
     return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
 
@@ -291,6 +301,7 @@ async def update_deck_card(
     """Set the printing/language for a deck line and toggle its proxy/special flags."""
     _guard_writable()
     dc = await _get_deck_card(session, deck_id, card_id)
+    old_sid = dc.scryfall_id
     await apply_deck_card_edit(
         session, dc,
         scryfall_id=scryfall_id or None,
@@ -298,9 +309,31 @@ async def update_deck_card(
         proxy=proxy is not None,
         special=special is not None,
     )
+    # Mirror a printing change into the collection for an owned deck card (#298).
+    deck = await session.get(Deck, deck_id)
+    await sync_printing(session, deck, dc, old_sid, dc.quantity)
     url = f"/decks/{deck_id}" + (f"?format={format}" if format in LEGALITY_FORMATS else "")
     # HTMX form post -> refresh the whole deck page (coverage + legality change).
     return Response(status_code=204, headers={"HX-Redirect": url})
+
+
+@router.post("/decks/{deck_id}/card/{card_id}/qty")
+async def change_deck_card_qty(
+    deck_id: int, card_id: int, delta: int = Form(0),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Nudge a deck line's quantity by ±1 (#298); mirror it to the collection for an owned card."""
+    _guard_writable()
+    dc = await _get_deck_card(session, deck_id, card_id)
+    delta = 1 if delta > 0 else -1
+    new_qty = max(1, dc.quantity + delta)
+    applied = new_qty - dc.quantity  # 0 when already at the floor of 1
+    dc.quantity = new_qty
+    await session.commit()
+    if applied:
+        deck = await session.get(Deck, deck_id)
+        await sync_quantity(session, deck, dc, applied)
+    return Response(status_code=204, headers={"HX-Redirect": f"/decks/{deck_id}"})
 
 
 def _slug(name: str) -> str:

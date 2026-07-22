@@ -32,19 +32,50 @@
 
   <ul class="divide-y divide-edge rounded-xl bg-surface ring-1 ring-edge overflow-hidden">
     {% for r in cov.rows %}
-    <li class="flex items-center gap-3 px-4 py-2 text-sm {% if not r.matched %}text-amber-500{% endif %}">
-      <span class="w-5 shrink-0 text-center">
-        {% if r.owned %}<span class="text-emerald-500">✓</span>{% else %}<span class="text-muted">○</span>{% endif %}
-      </span>
-      {% if r.scryfall_id %}
-      <a href="/card/{{ r.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">{{ r.name }}</a>
-      {% else %}
-      <span class="flex-1 min-w-0 truncate" title="Not found in the card database">{{ r.name }}</span>
+    <li class="px-4 py-2 text-sm {% if not r.matched %}text-amber-500{% endif %}"
+        x-data="{ editing: false }">
+      <div class="flex items-center gap-3">
+        <span class="w-5 shrink-0 text-center">
+          {% if r.owned %}<span class="text-emerald-500">✓</span>{% else %}<span class="text-muted">○</span>{% endif %}
+        </span>
+        {% if r.scryfall_id %}
+        <a href="/card/{{ r.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">{{ r.name }}</a>
+        {% else %}
+        <span class="flex-1 min-w-0 truncate" title="Not found in the card database">{{ r.name }}</span>
+        {% endif %}
+        {% if not r.matched %}<span class="text-xs shrink-0">unrecognized</span>
+        {% elif not r.owned %}<span class="text-xs text-muted shrink-0">missing</span>{% endif %}
+        {% if not read_only %}
+        <button type="button" title="Rename / change card" @click="editing = !editing"
+                class="shrink-0 text-xs text-muted hover:text-accent">✎</button>
+        <form method="post" action="/checklists/{{ cov.checklist.id }}/items/{{ r.item_id }}/delete"
+              class="shrink-0">
+          <button type="submit" title="Remove from checklist" class="text-xs text-muted hover:text-rose-500">✕</button>
+        </form>
+        {% endif %}
+      </div>
+      {% if not read_only %}
+      <form method="post" action="/checklists/{{ cov.checklist.id }}/items/{{ r.item_id }}"
+            x-show="editing" x-cloak class="mt-1.5 pl-8 flex gap-1">
+        <label class="sr-only" for="rename-{{ r.item_id }}">Card name</label>
+        <input id="rename-{{ r.item_id }}" type="text" name="name" value="{{ r.name }}"
+               class="flex-1 rounded bg-surface-2 border border-edge px-2 py-1 text-sm" />
+        <button type="submit" class="rounded bg-surface-2 hover:bg-surface-3 px-2 py-1 text-xs">Save</button>
+      </form>
       {% endif %}
-      {% if not r.matched %}<span class="text-xs shrink-0">unrecognized</span>
-      {% elif not r.owned %}<span class="text-xs text-muted shrink-0">missing</span>{% endif %}
     </li>
     {% endfor %}
   </ul>
+
+  {% if not read_only %}
+  <form method="post" action="/checklists/{{ cov.checklist.id }}/items" class="mt-4">
+    <label class="text-sm text-muted" for="add-cards">Add cards</label>
+    <div class="mt-1 flex gap-2">
+      <textarea id="add-cards" name="cards" rows="2" placeholder="One card name per line"
+                class="flex-1 rounded-lg bg-surface border border-edge px-3 py-2 font-mono text-sm"></textarea>
+      <button type="submit" class="self-start rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:opacity-90">Add</button>
+    </div>
+  </form>
+  {% endif %}
 </div>
 {% endblock %}

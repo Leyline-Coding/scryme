@@ -71,6 +71,31 @@
   </ul>
 {% endmacro %}
 
+{# Grid view of a board (#1): card images with a quantity + ownership badge. #}
+{% macro grid(cards) %}
+  <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+    {% for r in cards %}
+    <div class="relative">
+      {% if r.scryfall_id and images.get(r.scryfall_id) %}
+      <a href="/card/{{ r.scryfall_id }}"
+         class="block rounded-lg overflow-hidden ring-1 ring-edge hover:ring-accent transition">
+        <img src="{{ images[r.scryfall_id] }}" alt="{{ r.name }}" loading="lazy"
+             class="w-full aspect-[5/7] object-cover" />
+      </a>
+      {% else %}
+      <div class="rounded-lg ring-1 ring-edge aspect-[5/7] flex items-center justify-center text-center p-1 text-[10px] text-muted">{{ r.name }}</div>
+      {% endif %}
+      <span class="absolute top-1 left-1 rounded-full bg-black/70 text-white text-[10px] px-1.5 py-0.5 tabular-nums">{{ r.quantity }}×</span>
+      {% if r.matched and r.owned >= r.quantity %}
+      <span class="absolute bottom-1 right-1 rounded bg-emerald-600/90 text-white text-[9px] px-1 py-0.5" title="You own enough">✓</span>
+      {% elif r.matched %}
+      <span class="absolute bottom-1 right-1 rounded bg-amber-600/90 text-white text-[9px] px-1 py-0.5">{{ r.owned }}/{{ r.quantity }}</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+{% endmacro %}
+
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 py-6">
   <header class="flex flex-wrap items-center gap-3 mb-6">
@@ -259,21 +284,41 @@
   </div>
   {% endif %}
 
-  <div class="grid md:grid-cols-2 gap-6">
+  <div x-data="deckView()" class="grid md:grid-cols-2 gap-6">
+    <div class="md:col-span-2 flex items-center justify-end gap-1 -mb-3">
+      <span class="text-xs text-muted mr-1">View:</span>
+      <button type="button" @click="setView('list')"
+              :class="view === 'list' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
+              class="rounded px-2 py-0.5 text-xs">List</button>
+      <button type="button" @click="setView('grid')"
+              :class="view === 'grid' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
+              class="rounded px-2 py-0.5 text-xs">Grid</button>
+    </div>
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
       <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
         Mainboard ({{ cov.main | map(attribute='quantity') | sum }})
       </h2>
-      {{ rows(cov.main) }}
+      <div x-show="view === 'list'">{{ rows(cov.main) }}</div>
+      <div x-show="view === 'grid'" x-cloak>{{ grid(cov.main) }}</div>
     </section>
     {% if cov.side %}
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
       <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
         Sideboard ({{ cov.side | map(attribute='quantity') | sum }})
       </h2>
-      {{ rows(cov.side) }}
+      <div x-show="view === 'list'">{{ rows(cov.side) }}</div>
+      <div x-show="view === 'grid'" x-cloak>{{ grid(cov.side) }}</div>
     </section>
     {% endif %}
   </div>
+
+  <script>
+    function deckView() {
+      return {
+        view: localStorage.getItem("scryme_deck_view") || "list",
+        setView(v) { this.view = v; localStorage.setItem("scryme_deck_view", v); },
+      };
+    }
+  </script>
 </div>
 {% endblock %}

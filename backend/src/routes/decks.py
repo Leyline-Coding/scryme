@@ -9,6 +9,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.brackets import BRACKET_LABELS, estimate_bracket, normalize_bracket
@@ -35,12 +36,31 @@ from src.decks import (
 from src.llm import get_config
 from src.models import Card, Deck, DeckCard, DeckVersion
 from src.pricing import get_price_source
+from src.scryfall.images import ImageCache
+from src.scryfall.mapping import image_url as cdn_image_url
 from src.templating import templates
 from src.wishlist import add_deck_missing
 
 router = APIRouter(tags=["decks"])
 
 _DECK_NOT_FOUND = "Deck not found."
+_img_cache = ImageCache()
+
+
+async def _deck_images(session: AsyncSession, deck: Deck) -> dict[str, str]:
+    """Map each deck card's scryfall_id -> image URL (cached path, else CDN) for the grid view."""
+    sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
+    if not sids:
+        return {}
+    rows = (await session.execute(
+        select(Card.scryfall_id, Card.raw).where(Card.scryfall_id.in_(sids))
+    )).all()
+    out: dict[str, str] = {}
+    for sid, raw in rows:
+        s = str(sid)
+        cached = _img_cache.is_cached(s)
+        out[s] = _img_cache.url_path(s) if cached else (cdn_image_url(raw or {}) or "")
+    return out
 _CURRENT = "current"  # diff source referring to the deck's live state (vs a saved version)
 
 
@@ -189,6 +209,7 @@ async def view_deck(
             "deck": deck,
             "formats": LEGALITY_FORMATS,
             "versions": await list_versions(session, deck_id),
+            "images": await _deck_images(session, deck),
             "bracket": await estimate_bracket(session, deck),
             "bracket_labels": BRACKET_LABELS,
             "stats": await deck_stats(session, deck, currency, source),

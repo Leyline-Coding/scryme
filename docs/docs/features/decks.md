@@ -135,6 +135,20 @@ straight into the deck and refreshes the list. (Disabled on the read-only demo.)
 
 For AI-powered suggestions and buy-to-upgrade plans, see the ✨ AI tools on the same page.
 
+## Versions & diff
+
+Tuning a deck over time? Save named **versions** and compare them to answer "what changed since last
+week?".
+
+- **Save version** snapshots the deck's current card list (with an optional label; otherwise `v1`,
+  `v2`, …). Snapshots are immutable — later edits don't change them.
+- Each saved version has a **Diff vs current** link, or use the **Compare A → B** picker to diff any
+  two versions (or a version against the live deck).
+- The diff is split by board and shows what's **added** (`+`), **removed** (`−`), and **changed in
+  quantity** (`Δ from → to`), plus an unchanged count — a simple line diff keyed by card name.
+
+Saving and deleting versions is disabled on the read-only demo; deleting a deck removes its versions.
+
 ## Export
 
 Use the **Export** buttons on the deck page to download the list:

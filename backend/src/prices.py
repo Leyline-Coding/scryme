@@ -7,6 +7,7 @@ recent snapshots to find the cards whose price changed most.
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
@@ -100,6 +101,47 @@ async def snapshot_prices(session: AsyncSession) -> PriceSnapshot | None:
     await session.commit()
     await session.refresh(snap)
     return snap
+
+
+async def seed_price_history(session: AsyncSession, months: int = 24, seed: int = 1337) -> int:
+    """Synthesize monthly per-card price history for the owned collection (#5).
+
+    Creates one back-dated ``PriceSnapshot`` per month for the past ``months`` months, each with a
+    ``CardPricePoint`` for every owned, priced printing — giving the per-card history chart a real
+    multi-range trend on dev / self-hosted instances that haven't accumulated snapshots yet. Each
+    card walks its own gentle trend (some rise, some fall) so charts differ. Deterministic.
+    """
+    rng = random.Random(seed)
+    now = datetime.now(UTC)
+    owned = (await session.execute(
+        select(Card.scryfall_id, Card.prices["usd"].astext)
+        .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
+        .where(Card.prices["usd"].astext.is_not(None))
+        .distinct()
+    )).all()
+    cards = [(sid, _f(usd)) for sid, usd in owned if _f(usd) > 0]
+    if not cards:
+        return 0
+
+    snaps = [
+        (m, PriceSnapshot(captured_at=now - timedelta(days=30 * m),
+                          total_usd=0.0, card_count=len(cards)))
+        for m in range(months, 0, -1)  # oldest month first
+    ]
+    session.add_all([s for _, s in snaps])
+    await session.flush()
+
+    totals: dict = {snap.id: 0.0 for _, snap in snaps}
+    for sid, current in cards:
+        drift = rng.uniform(-0.015, 0.03)  # per-card monthly trend
+        for m, snap in snaps:
+            usd = max(0.01, current * max(0.1, 1 - drift * m) * rng.uniform(0.93, 1.07))
+            session.add(CardPricePoint(snapshot_id=snap.id, scryfall_id=sid, usd=round(usd, 2)))
+            totals[snap.id] += usd
+    for _, snap in snaps:
+        snap.total_usd = round(totals[snap.id], 2)
+    await session.commit()
+    return len(snaps)
 
 
 async def take_snapshot() -> PriceSnapshot | None:

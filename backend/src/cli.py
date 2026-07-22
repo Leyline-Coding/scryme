@@ -46,6 +46,16 @@ async def _snapshot_prices() -> None:
         print(f"Captured snapshot: ${snap.total_usd:,.2f} across {snap.card_count} cards.")
 
 
+async def _seed_price_history(months: int) -> None:
+    from src.db import SessionLocal
+    from src.prices import seed_price_history
+
+    async with SessionLocal() as session:
+        n = await seed_price_history(session, months=months)
+    print(f"Seeded {n} monthly price snapshots with per-card history."
+          if n else "No owned, priced cards; nothing to seed.")
+
+
 async def _refresh_fx() -> None:
     from src.fx import FX_RATES, refresh_fx_rates
 
@@ -187,6 +197,13 @@ def main() -> None:
 
     sub.add_parser("snapshot-prices", help="Capture a price snapshot of the owned collection")
 
+    p_seedhist = sub.add_parser(
+        "seed-price-history",
+        help="Synthesize monthly per-card price history for the owned collection (dev/demo #5)",
+    )
+    p_seedhist.add_argument("--months", type=int, default=24,
+                            help="How many months of history to generate (default: 24)")
+
     sub.add_parser("refresh-fx", help="Refresh FX rates for converted display currencies (#232)")
 
     p_fxhist = sub.add_parser(
@@ -235,6 +252,7 @@ def main() -> None:
         "backfill-images": _backfill,
         "seed-demo": _seed_demo,
         "snapshot-prices": _snapshot_prices,
+        "seed-price-history": lambda: _seed_price_history(args.months),
         "refresh-fx": _refresh_fx,
         "backfill-fx-history": lambda: _backfill_fx_history(args.code),
         "prune-digital": _prune_digital,

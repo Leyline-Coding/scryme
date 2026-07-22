@@ -39,6 +39,23 @@ async def _seed(session):
     return ca, cb
 
 
+@pytest.mark.asyncio
+async def test_seed_price_history_makes_ranges_differ(session):
+    from src.prices import card_value_series, seed_price_history
+    ca, _cb = await _seed(session)
+    assert await seed_price_history(session, months=6) == 6
+    # All 6 back-dated months vs only the ~last 3 (90 days) -> the range filter now differs.
+    all_pts = await card_value_series(session, ca.scryfall_id, None)
+    recent = await card_value_series(session, ca.scryfall_id, 90)
+    assert len(all_pts) == 6 and 1 <= len(recent) < len(all_pts)
+
+
+@pytest.mark.asyncio
+async def test_seed_price_history_no_owned(session):
+    from src.prices import seed_price_history
+    assert await seed_price_history(session, months=6) == 0
+
+
 # --- small helpers -------------------------------------------------------------------------
 
 def test_f_handles_bad_values():

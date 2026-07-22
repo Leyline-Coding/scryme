@@ -190,6 +190,13 @@ async def card_detail(
     legalities = card.legalities or {}
     legality_rows = [(fmt, legalities.get(fmt, "not_legal")) for fmt in LEGALITY_FORMATS]
 
+    # Foil/etched shimmer is a property of the printing (a foil-only or etched *treatment*), shown
+    # regardless of ownership (#9). Etched printings shimmer; foil-only printings (offered in foil
+    # but not nonfoil) shimmer; ordinary cards that merely also come in foil do not.
+    finishes = [f.lower() for f in (card.raw.get("finishes") or [])]
+    anim_etched = "etched" in finishes
+    anim_foil = "foil" in finishes and "nonfoil" not in finishes
+
     # Show a "Similar cards" section only when embeddings exist for this card (#176). This is a
     # local vector query, so it doesn't require the AI endpoint to be reachable/enabled.
     show_similar = bool(
@@ -210,6 +217,8 @@ async def card_detail(
             "owned_total": sum(s.quantity for s in owned),
             "owned_foil": any((s.finish or "").lower() == "foil" for s in owned),
             "owned_etched": any((s.finish or "").lower() == "etched" for s in owned),
+            "anim_foil": anim_foil,
+            "anim_etched": anim_etched,
             "can_flip": can_flip,
             "flip_image": flip_image,
             "can_rotate": can_rotate,

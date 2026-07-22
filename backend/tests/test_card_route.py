@@ -30,6 +30,26 @@ async def _seed(session):
 
 
 @pytest.mark.asyncio
+async def test_foil_etched_animation_by_treatment(client, session):
+    # Foil/etched shimmer is a property of the printing, regardless of ownership (#9):
+    # etched and foil-only printings shimmer; an ordinary nonfoil+foil card does not.
+    def raw(name, finishes):
+        return {"id": str(uuid.uuid4()), "oracle_id": str(uuid.uuid4()), "name": name,
+                "set": "TST", "collector_number": "1", "type_line": "Creature", "cmc": 1,
+                "finishes": finishes, "legalities": {},
+                "image_uris": {"normal": "https://img.test/x.png", "small": "https://img.test/s.png"}}
+    etched = Card(**card_to_columns(raw("Etchy", ["etched"])))
+    foil_only = Card(**card_to_columns(raw("Foily", ["foil"])))
+    normal = Card(**card_to_columns(raw("Normie", ["nonfoil", "foil"])))
+    session.add_all([etched, foil_only, normal])
+    await session.commit()
+    assert "card-art etched " in (await client.get(f"/card/{etched.scryfall_id}")).text
+    assert "card-art foil " in (await client.get(f"/card/{foil_only.scryfall_id}")).text
+    body = (await client.get(f"/card/{normal.scryfall_id}")).text
+    assert "card-art foil " not in body and "card-art etched " not in body
+
+
+@pytest.mark.asyncio
 async def test_card_page_renders(client, session):
     card = await _seed(session)
     resp = await client.get(f"/card/{card.scryfall_id}")

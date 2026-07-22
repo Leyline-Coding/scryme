@@ -125,6 +125,41 @@ def _price_rows(request: Request, card: Card) -> list[tuple[str, float]]:
     ]
 
 
+async def _price_history_ctx(request: Request, session: AsyncSession, card: Card,
+                             chart_range: str) -> dict:
+    """Per-card price-history chart context (#233): the series in the chosen currency + range meta.
+
+    Extracted from ``card_detail`` to keep that view under the cognitive-complexity limit.
+    """
+    has_card_history = (await session.scalar(
+        select(CardPricePoint.id).where(CardPricePoint.scryfall_id == card.scryfall_id).limit(1)
+    )) is not None
+    usd_series = await card_value_series(session, card.scryfall_id, range_days(chart_range))
+    # Convert the USD series into the visitor's chosen chart currency using date-matched historical
+    # FX rates, downloading them on first use. `hist_approx` flags a current-rate fallback.
+    hist_code = _hist_currency(request)
+    hist_approx = False
+    if hist_code != "usd" and usd_series:
+        start = await earliest_snapshot_date(session)
+        have = bool(start) and await fx.ensure_fx_history(session, hist_code, start)
+        hist_points = await fx.fx_history_points(session, hist_code) if have else []
+        hist_approx = not hist_points
+        usd_series = convert_card_series(
+            usd_series, hist_code, hist_points, fx.rate(hist_code) or 1.0
+        )
+    return {
+        "has_card_history": has_card_history,
+        "price_chart": build_value_chart(usd_series),
+        "chart_range": chart_range,
+        "chart_ranges": CHART_RANGES,
+        "hist_currencies": _hist_currencies(),
+        "hist_currency": hist_code,
+        "hist_symbol": currency.info(hist_code)["symbol"],
+        "hist_decimals": 0 if hist_code == "jpy" else 2,
+        "hist_approx": hist_approx,
+    }
+
+
 @router.get("/card/{scryfall_id}", response_class=HTMLResponse)
 async def card_detail(
     request: Request,
@@ -169,33 +204,7 @@ async def card_detail(
     # Battles read by turning the card clockwise; planes/aftermath turn counter-clockwise (#11).
     rotate_cw = "battle" in (card.type_line or "").lower()
     price_rows = _price_rows(request, card)
-
-    # Per-card price history (#233): a USD chart from recorded points, shown for owned + tracked
-    # cards. `has_card_history` guards the onboarding empty-state for cards with no points at all.
-    has_card_history = (
-        await session.scalar(
-            select(CardPricePoint.id).where(
-                CardPricePoint.scryfall_id == card.scryfall_id
-            ).limit(1)
-        )
-    ) is not None
-    usd_series = await card_value_series(session, card.scryfall_id, range_days(chart_range))
-    # Convert the USD series into the visitor's chosen chart currency using date-matched historical
-    # FX rates (#233), downloading them on first use. `hist_approx` flags a current-rate fallback
-    # (offline / download failed) so the chart can say so rather than imply exact history.
-    hist_code = _hist_currency(request)
-    hist_symbol = currency.info(hist_code)["symbol"]
-    hist_decimals = 0 if hist_code == "jpy" else 2
-    hist_approx = False
-    if hist_code != "usd" and usd_series:
-        start = await earliest_snapshot_date(session)
-        have = bool(start) and await fx.ensure_fx_history(session, hist_code, start)
-        hist_points = await fx.fx_history_points(session, hist_code) if have else []
-        hist_approx = not hist_points
-        usd_series = convert_card_series(
-            usd_series, hist_code, hist_points, fx.rate(hist_code) or 1.0
-        )
-    price_chart = build_value_chart(usd_series)
+    chart_ctx = await _price_history_ctx(request, session, card, chart_range)
     legalities = card.legalities or {}
     legality_rows = [(fmt, legalities.get(fmt, "not_legal")) for fmt in LEGALITY_FORMATS]
 
@@ -235,15 +244,7 @@ async def card_detail(
             "printings": [(p, _image(p, "small")) for p in printings],
             "price_rows": price_rows,
             "legality_rows": legality_rows,
-            "has_card_history": has_card_history,
-            "price_chart": price_chart,
-            "chart_range": chart_range,
-            "chart_ranges": CHART_RANGES,
-            "hist_currencies": _hist_currencies(),
-            "hist_currency": hist_code,
-            "hist_symbol": hist_symbol,
-            "hist_decimals": hist_decimals,
-            "hist_approx": hist_approx,
+            **chart_ctx,
             "tags": await card_tags(session, card.scryfall_id),
             "wishlisted": await is_wishlisted(session, card.scryfall_id),
             "price_target": await target_for(session, str(card.scryfall_id)),

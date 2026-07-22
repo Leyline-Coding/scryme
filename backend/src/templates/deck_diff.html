@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Diff · {{ deck.name }} · scryme{% endblock %}
+
+{# The <ul> lives inside the macro (not the caller) so Sonar's HTML checker sees each <li>
+   within its list container. #}
+{% macro change_list(changes, symbol, tone, kind) %}
+  {% if changes %}
+  <ul class="divide-y divide-edge rounded-lg bg-surface-2 mb-2">
+    {% for c in changes %}
+    <li class="flex items-center gap-2 px-3 py-1 text-sm">
+      <span class="w-4 shrink-0 text-center {{ tone }}">{{ symbol }}</span>
+      <span class="min-w-0 truncate">{{ c.name }}</span>
+      <span class="ml-auto shrink-0 tabular-nums text-xs text-muted">
+        {%- if kind == 'added' %}{{ c.to_qty }}×
+        {%- elif kind == 'removed' %}{{ c.from_qty }}×
+        {%- else %}{{ c.from_qty }}× → {{ c.to_qty }}×{% endif -%}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+{% endmacro %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-6">
+  <header class="flex flex-wrap items-center gap-3 mb-4">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold truncate">Diff · {{ deck.name }}</h1>
+    <a href="/decks/{{ deck.id }}" class="ml-auto text-sm text-muted hover:text-fg shrink-0">← Deck</a>
+  </header>
+
+  <p class="mb-4 text-sm text-muted">
+    Comparing <span class="font-medium text-fg">{{ a_label }}</span>
+    → <span class="font-medium text-fg">{{ b_label }}</span>
+    <span class="text-xs">(added / removed / changed are relative to the second)</span>
+  </p>
+
+  {% if not diff.has_changes %}
+  <div class="rounded-xl bg-surface ring-1 ring-edge p-6 text-center text-muted">No differences.</div>
+  {% endif %}
+
+  {% for bd in diff.boards %}
+  {% if bd.has_changes %}
+  <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-4">
+    <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
+      {{ bd.label }}
+      <span class="ml-1 normal-case font-normal text-xs">
+        +{{ bd.added|length }} / −{{ bd.removed|length }} / Δ{{ bd.changed|length }} · {{ bd.unchanged }} unchanged
+      </span>
+    </h2>
+    {{ change_list(bd.added, '+', 'text-emerald-500', 'added') }}
+    {{ change_list(bd.removed, '−', 'text-rose-500', 'removed') }}
+    {{ change_list(bd.changed, 'Δ', 'text-amber-500', 'changed') }}
+  </section>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endblock %}

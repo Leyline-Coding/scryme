@@ -12,7 +12,7 @@ import datetime
 import uuid
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, false, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db import Base
@@ -57,3 +57,23 @@ class DeckCard(Base):
     language: Mapped[str] = mapped_column(String(8), nullable=False, server_default="en")
 
     deck: Mapped[Deck] = relationship(back_populates="cards")
+
+
+class DeckVersion(Base):
+    """An immutable snapshot of a deck's card list at a point in time (#100).
+
+    The snapshot lives in ``cards`` (JSONB) — a list of ``{name, quantity, board, oracle_id,
+    scryfall_id}`` — so a version is self-contained and diffing is a pure in-memory operation that
+    doesn't depend on the deck's later edits.
+    """
+    __tablename__ = "deck_version"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    deck_id: Mapped[int] = mapped_column(
+        ForeignKey("deck.id", ondelete="CASCADE"), index=True
+    )
+    label: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    cards: Mapped[list[dict]] = mapped_column(JSONB)

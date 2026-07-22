@@ -20,6 +20,7 @@ from src.deck_builder import BuildError, build_commander_deck, owned_commanders
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
 from src.deck_import import SUPPORTED, DeckImportError, fetch_deck_from_url
 from src.deck_suggest import suggest_owned_upgrades
+from src.deck_versions import diff_cards, list_versions, save_version, snapshot_cards
 from src.decks import (
     DECK_LANGUAGES,
     LEGALITY_FORMATS,
@@ -32,7 +33,7 @@ from src.decks import (
     resolve_ownership_rows,
 )
 from src.llm import get_config
-from src.models import Card, Deck, DeckCard
+from src.models import Card, Deck, DeckCard, DeckVersion
 from src.pricing import get_price_source
 from src.templating import templates
 from src.wishlist import add_deck_missing
@@ -40,6 +41,7 @@ from src.wishlist import add_deck_missing
 router = APIRouter(tags=["decks"])
 
 _DECK_NOT_FOUND = "Deck not found."
+_CURRENT = "current"  # diff source referring to the deck's live state (vs a saved version)
 
 
 def _guard_writable() -> None:
@@ -186,6 +188,7 @@ async def view_deck(
             "cov": coverage,
             "deck": deck,
             "formats": LEGALITY_FORMATS,
+            "versions": await list_versions(session, deck_id),
             "bracket": await estimate_bracket(session, deck),
             "bracket_labels": BRACKET_LABELS,
             "stats": await deck_stats(session, deck, currency, source),
@@ -323,6 +326,69 @@ async def deck_to_wishlist(deck_id: int, session: AsyncSession = Depends(get_ses
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     await add_deck_missing(session, deck)
     return RedirectResponse(url="/wishlist", status_code=303)
+
+
+# --- deck versions + diff (#100) ----------------------------------------------------------------
+
+@router.post("/decks/{deck_id}/versions")
+async def save_deck_version(
+    deck_id: int, label: str = Form(""), session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    """Snapshot the deck's current card list as a named version."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    await save_version(session, deck, label)
+    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+
+
+@router.post("/decks/{deck_id}/versions/{version_id}/delete")
+async def delete_deck_version(
+    deck_id: int, version_id: int, session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    _guard_writable()
+    version = await session.get(DeckVersion, version_id)
+    if version is not None and version.deck_id == deck_id:
+        await session.delete(version)
+        await session.commit()
+    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+
+
+async def _diff_source(session: AsyncSession, deck: Deck, src: str):
+    """Resolve a diff source — the literal ``current`` or a version id — to (label, cards)."""
+    if src == _CURRENT:
+        return _CURRENT, snapshot_cards(deck)
+    try:
+        version = await session.get(DeckVersion, int(src))
+    except (ValueError, TypeError):
+        return None
+    if version is None or version.deck_id != deck.id:
+        return None
+    return version.label, version.cards
+
+
+@router.get("/decks/{deck_id}/diff", response_class=HTMLResponse)
+async def deck_diff_view(
+    request: Request, deck_id: int, a: str = "", b: str = _CURRENT,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Diff two of a deck's versions (or a version and its current state)."""
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    versions = await list_versions(session, deck_id)
+    if not a:  # default: newest saved version -> current ("what changed since my last save?")
+        a = str(versions[0].id) if versions else _CURRENT
+    src_a = await _diff_source(session, deck, a)
+    src_b = await _diff_source(session, deck, b)
+    if src_a is None or src_b is None:
+        raise HTTPException(status_code=404, detail="Version not found.")
+    return templates.TemplateResponse(
+        request, "deck_diff.html",
+        {"deck": deck, "versions": versions, "a": a, "b": b,
+         "a_label": src_a[0], "b_label": src_b[0], "diff": diff_cards(src_a[1], src_b[1])},
+    )
 
 
 async def _render_owned_upgrades(

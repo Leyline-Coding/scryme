@@ -191,6 +191,55 @@
     </p>
   </div>
 
+  {# Versions & diff (#100) #}
+  <div class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
+    <div class="flex items-center gap-2 flex-wrap text-sm mb-2">
+      <span class="text-muted">🕑 Versions</span>
+      {% if not read_only %}
+      <form method="post" action="/decks/{{ cov.deck.id }}/versions" class="flex items-center gap-1 ml-auto">
+        <label class="sr-only" for="ver-label">Version label</label>
+        <input id="ver-label" type="text" name="label" maxlength="128" placeholder="label (optional)"
+               class="w-40 rounded bg-surface-2 border border-edge px-2 py-1 text-xs" />
+        <button type="submit" class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Save version</button>
+      </form>
+      {% endif %}
+    </div>
+    {% if versions %}
+    <ul class="divide-y divide-edge rounded-lg bg-surface-2 mb-3">
+      {% for v in versions %}
+      <li class="flex items-center gap-2 px-3 py-1.5 text-sm">
+        <span class="font-medium truncate">{{ v.label }}</span>
+        <span class="text-xs text-muted">{{ v.created_at.strftime('%Y-%m-%d %H:%M') }} · {{ v.cards|length }} cards</span>
+        <span class="flex-1"></span>
+        <a href="/decks/{{ cov.deck.id }}/diff?a={{ v.id }}&b=current"
+           class="shrink-0 rounded bg-surface hover:bg-surface-3 px-2 py-0.5 text-xs">Diff vs current</a>
+        {% if not read_only %}
+        <form method="post" action="/decks/{{ cov.deck.id }}/versions/{{ v.id }}/delete" class="shrink-0">
+          <button type="submit" title="Delete version" class="text-xs text-muted hover:text-rose-500">✕</button>
+        </form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    <form method="get" action="/decks/{{ cov.deck.id }}/diff" class="flex items-center gap-1.5 flex-wrap text-xs">
+      <span class="text-muted">Compare</span>
+      {% for side in ['a', 'b'] %}
+      <label class="sr-only" for="cmp-{{ side }}">Compare {{ side|upper }}</label>
+      <select id="cmp-{{ side }}" name="{{ side }}" class="rounded bg-surface-2 border border-edge px-1.5 py-0.5">
+        <option value="current">current</option>
+        {% for v in versions %}
+        <option value="{{ v.id }}" {% if side == 'a' and loop.first %}selected{% endif %}>{{ v.label }}</option>
+        {% endfor %}
+      </select>
+      {% if side == 'a' %}<span class="text-muted">→</span>{% endif %}
+      {% endfor %}
+      <button type="submit" class="rounded-lg bg-surface hover:bg-surface-3 px-2.5 py-0.5">Diff</button>
+    </form>
+    {% else %}
+    <p class="text-xs text-muted">No saved versions yet. Save one to track changes over time.</p>
+    {% endif %}
+  </div>
+
   {# Per-deck stats #}
   {% if stats.has_data %}
   <div class="grid md:grid-cols-3 gap-6 mb-6">

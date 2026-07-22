@@ -41,6 +41,7 @@ from src.wishlist import add_deck_missing
 router = APIRouter(tags=["decks"])
 
 _DECK_NOT_FOUND = "Deck not found."
+_CURRENT = "current"  # diff source referring to the deck's live state (vs a saved version)
 
 
 def _guard_writable() -> None:
@@ -356,8 +357,8 @@ async def delete_deck_version(
 
 async def _diff_source(session: AsyncSession, deck: Deck, src: str):
     """Resolve a diff source — the literal ``current`` or a version id — to (label, cards)."""
-    if src == "current":
-        return "current", snapshot_cards(deck)
+    if src == _CURRENT:
+        return _CURRENT, snapshot_cards(deck)
     try:
         version = await session.get(DeckVersion, int(src))
     except (ValueError, TypeError):
@@ -369,7 +370,7 @@ async def _diff_source(session: AsyncSession, deck: Deck, src: str):
 
 @router.get("/decks/{deck_id}/diff", response_class=HTMLResponse)
 async def deck_diff_view(
-    request: Request, deck_id: int, a: str = "", b: str = "current",
+    request: Request, deck_id: int, a: str = "", b: str = _CURRENT,
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     """Diff two of a deck's versions (or a version and its current state)."""
@@ -378,7 +379,7 @@ async def deck_diff_view(
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     versions = await list_versions(session, deck_id)
     if not a:  # default: newest saved version -> current ("what changed since my last save?")
-        a = str(versions[0].id) if versions else "current"
+        a = str(versions[0].id) if versions else _CURRENT
     src_a = await _diff_source(session, deck, a)
     src_b = await _diff_source(session, deck, b)
     if src_a is None or src_b is None:

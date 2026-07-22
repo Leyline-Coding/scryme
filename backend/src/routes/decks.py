@@ -51,6 +51,7 @@ from src.wishlist import add_deck_missing
 router = APIRouter(tags=["decks"])
 
 _DECK_NOT_FOUND = "Deck not found."
+_DECK_NEW_TMPL = "deck_new.html"
 _img_cache = ImageCache()
 
 
@@ -86,7 +87,7 @@ async def list_decks() -> RedirectResponse:
 async def new_deck(request: Request) -> HTMLResponse:
     _guard_writable()
     return templates.TemplateResponse(
-        request, "deck_new.html", {"supported": SUPPORTED, "providers": PROFILE_PROVIDERS})
+        request, _DECK_NEW_TMPL, {"supported": SUPPORTED, "providers": PROFILE_PROVIDERS})
 
 
 async def _add_owned_pairs(session: AsyncSession, pairs: list[tuple[str, int]]) -> None:
@@ -129,7 +130,7 @@ async def import_url(
         name, decklist = await fetch_deck_from_url(url.strip())
     except DeckImportError as exc:
         return templates.TemplateResponse(
-            request, "deck_new.html", {"supported": SUPPORTED, "error": str(exc), "url": url},
+            request, _DECK_NEW_TMPL, {"supported": SUPPORTED, "error": str(exc), "url": url},
         )
     return await _finish_import(request, session, name, decklist, ownership)
 
@@ -151,7 +152,7 @@ async def import_profile(
         decks = await fetch_profile_decks(provider, username)
     except DeckImportError as exc:
         return templates.TemplateResponse(
-            request, "deck_new.html",
+            request, _DECK_NEW_TMPL,
             {"supported": SUPPORTED, "error": str(exc), "providers": PROFILE_PROVIDERS},
         )
     return templates.TemplateResponse(

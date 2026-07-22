@@ -121,6 +121,33 @@ async def test_binder_cards_browse_named_and_unsorted(session):
 
 
 @pytest.mark.asyncio
+async def test_binder_remove_from_collection_and_relocate(session):
+    from sqlalchemy import func, select
+    a = await _own(session, "Alpha", binder_name="Reds")   # 1 stack in Reds
+    b = await _own(session, "Beta", binder_name="Reds")
+    # "Remove from collection": delete Alpha's stacks filed in Reds.
+    await R.binder_remove_from_collection(binder="Reds", scryfall_id=str(a.scryfall_id),
+                                          session=session)
+    assert await session.scalar(
+        select(func.count()).select_from(CollectionCard)
+        .where(CollectionCard.scryfall_id == a.scryfall_id)) == 0
+    # "Change location": move Beta from Reds to Blues.
+    await R.binder_relocate(binder="Reds", scryfall_id=str(b.scryfall_id), new_binder="Blues",
+                            session=session)
+    moved = await session.scalar(
+        select(CollectionCard.binder_name).where(CollectionCard.scryfall_id == b.scryfall_id))
+    assert moved == "Blues"
+
+
+@pytest.mark.asyncio
+async def test_binder_browse_offers_other_binders(session):
+    await _own(session, "Alpha", binder_name="Reds")
+    await _own(session, "Gamma", binder_name="Blues")
+    page = await R.binder_cards_browse(_request("/binders/cards"), name="Reds", session=session)
+    assert b"Blues" in page.body  # the relocate datalist lists other binders
+
+
+@pytest.mark.asyncio
 async def test_readonly_guards(session, monkeypatch):
     monkeypatch.setattr(get_settings(), "read_only", True)
     for coro in (
@@ -130,6 +157,10 @@ async def test_readonly_guards(session, monkeypatch):
         R.remove_card_route(1, scryfall_id=str(uuid.uuid4()), session=session),
         R.card_binder_add(_request("/c"), str(uuid.uuid4()), binder_id="1", session=session),
         R.card_binder_remove(_request("/c"), str(uuid.uuid4()), binder_id="1", session=session),
+        R.binder_remove_from_collection(binder="x", scryfall_id=str(uuid.uuid4()),
+                                        session=session),
+        R.binder_relocate(binder="x", scryfall_id=str(uuid.uuid4()), new_binder="y",
+                          session=session),
     ):
         with pytest.raises(HTTPException) as e:
             await coro

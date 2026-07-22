@@ -8,6 +8,7 @@ column.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -24,6 +25,7 @@ from src.binder_service import (
     remove_card,
     rename_binder,
 )
+from src.collection_edit import delete_binder_stacks, move_binder_stacks
 from src.config import get_settings
 from src.db import get_session
 from src.models import Binder, Card, CollectionCard
@@ -169,8 +171,39 @@ async def binder_cards_browse(
         )
     ).all()
     views = [CardView(card=c, quantity=int(q), image=_image(c)) for c, q in rows]
+    other_binders = [
+        n for (n,) in (await session.execute(
+            select(CollectionCard.binder_name)
+            .where(CollectionCard.binder_name.is_not(None)).distinct()
+            .order_by(CollectionCard.binder_name)
+        )).all() if n and n != name
+    ]
     return templates.TemplateResponse(
         request,
         "binder_detail.html",
-        {"views": views, "label": "Unsorted" if is_none else name},
+        {"views": views, "label": "Unsorted" if is_none else name,
+         "binder_name": "" if is_none else name, "other_binders": other_binders,
+         "read_only": get_settings().read_only},
     )
+
+
+@router.post("/binders/cards/remove-from-collection")
+async def binder_remove_from_collection(
+    binder: str = Form(""), scryfall_id: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    """#14: delete a card's stacks in a physical binder (the 'remove from collection' choice)."""
+    _guard_writable()
+    await delete_binder_stacks(session, scryfall_id, binder or None)
+    return local_redirect(f"/binders/cards?name={quote(binder)}")
+
+
+@router.post("/binders/cards/relocate")
+async def binder_relocate(
+    binder: str = Form(""), scryfall_id: str = Form(""), new_binder: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    """#14: move a card's stacks between physical binders (the 'change location' choice)."""
+    _guard_writable()
+    await move_binder_stacks(session, scryfall_id, binder or None, new_binder)
+    return local_redirect(f"/binders/cards?name={quote(new_binder)}")

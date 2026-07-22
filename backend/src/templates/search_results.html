@@ -10,11 +10,25 @@
       {% if result.total_pages > 1 %}· page {{ result.page }} of {{ result.total_pages }}{% endif %}
     </p>
     {% if views %}
-    <div class="inline-flex rounded-lg ring-1 ring-edge overflow-hidden shrink-0 text-base leading-none">
-      <button type="button" onclick="setView('grid')" title="Grid view" aria-label="Grid view"
-        class="px-2.5 py-1 {% if view != 'list' %}bg-surface-2 text-fg{% else %}text-muted hover:text-fg{% endif %}">▦</button>
-      <button type="button" onclick="setView('list')" title="List view" aria-label="List view"
-        class="px-2.5 py-1 border-l border-edge {% if view == 'list' %}bg-surface-2 text-fg{% else %}text-muted hover:text-fg{% endif %}">☰</button>
+    <div class="flex items-center gap-2 shrink-0 text-xs">
+      <label class="sr-only" for="page-size">Cards per page</label>
+      <select id="page-size" onchange="setPageSize(this.value)"
+              class="rounded bg-surface-2 border border-edge px-1.5 py-1">
+        {% for n in page_sizes %}
+        <option value="{{ n }}" {% if n == page_size %}selected{% endif %}>{{ n }}/page</option>
+        {% endfor %}
+      </select>
+      <label class="flex items-center gap-1 cursor-pointer text-muted"
+             title="Load more automatically as you scroll (grid view)">
+        <input type="checkbox" onchange="setInfinite(this.checked)" {% if infinite %}checked{% endif %}
+               class="accent-[color:var(--c-accent)]" /> ∞ scroll
+      </label>
+      <div class="inline-flex rounded-lg ring-1 ring-edge overflow-hidden text-base leading-none">
+        <button type="button" onclick="setView('grid')" title="Grid view" aria-label="Grid view"
+          class="px-2.5 py-1 {% if view != 'list' %}bg-surface-2 text-fg{% else %}text-muted hover:text-fg{% endif %}">▦</button>
+        <button type="button" onclick="setView('list')" title="List view" aria-label="List view"
+          class="px-2.5 py-1 border-l border-edge {% if view == 'list' %}bg-surface-2 text-fg{% else %}text-muted hover:text-fg{% endif %}">☰</button>
+      </div>
     </div>
     {% endif %}
   </div>
@@ -89,59 +103,15 @@
     </table>
   </div>
   {% else %}
+  {% import "_result_card.html" as rc %}
   <div class="card-grid">
-    {% for v in views %}
-    <div class="relative">
-    {% if not read_only %}
-    <input type="checkbox" name="scryfall_ids" value="{{ v.card.scryfall_id }}"
-           onchange="bulkCount()" title="Select for bulk edit"
-           class="absolute top-1.5 left-1.5 z-10 w-4 h-4 cursor-pointer accent-[color:var(--c-accent)]" />
-    {% endif %}
-    <a href="/card/{{ v.card.scryfall_id }}"
-       class="group relative block rounded-xl overflow-hidden bg-surface ring-1 ring-edge
-              hover:ring-accent transition {{ v.shimmer or '' }}">
-      {% if v.image %}
-      <img src="{{ v.image }}" alt="{{ v.card.name }}" loading="lazy"
-           class="grid-card-img w-full aspect-[5/7] object-cover"
-           {% if v.flip_back %}data-front="{{ v.image }}" data-back="{{ v.flip_back }}"
-           data-face="front"{% endif %} />
-      {% if v.flip_back %}
-      {# Double-faced: hover shows an accent overlay + a flip button (doesn't navigate). #}
-      <span class="grid-flip-overlay absolute inset-0 z-10 flex items-center justify-center
-                   opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-        <button type="button" title="Flip to the other face" aria-label="Flip card"
-                class="grid-flip-btn pointer-events-auto grid place-items-center w-10 h-10 rounded-full
-                       bg-black/60 text-white text-xl leading-none hover:bg-black/80 shadow-lg">↻</button>
-      </span>
-      {% endif %}
-      {% else %}
-      <div class="w-full aspect-[5/7] flex items-center justify-center text-center p-2 text-xs text-muted">
-        {{ v.card.name }}
-      </div>
-      {% endif %}
-      {% if v.quantity %}
-      <span class="absolute top-1.5 right-1.5 rounded-full bg-accent text-accent-fg text-xs
-                   font-semibold px-2 py-0.5 shadow">×{{ v.quantity }}</span>
-      {% endif %}
-      <div class="px-2 py-1 text-xs truncate text-fg">
-        {{ v.card.name }}
-        {{ set_symbol(v.card.set_code, v.card.rarity) }}
-        <span class="text-muted uppercase">{{ v.card.set_code }}</span>
-      </div>
-      {% if v.tags %}
-      <div class="px-2 pb-1.5 flex flex-wrap gap-1">
-        {% for t in v.tags %}
-        <span class="rounded bg-surface-2 text-muted text-[10px] leading-none px-1.5 py-0.5">{{ t }}</span>
-        {% endfor %}
-      </div>
-      {% endif %}
-    </a>
-    </div>
-    {% endfor %}
+    {% for v in views %}{{ rc.grid_card(v, read_only) }}{% endfor %}
+    {% if infinite %}{{ rc.scroll_sentinel(q, scope, sort, dir, result.page, result.total_pages) }}{% endif %}
   </div>
   {% endif %}
 
-  {% if result.total_pages > 1 %}
+  {# Paged nav — hidden in infinite-scroll mode (except the list view, which always pages). #}
+  {% if result.total_pages > 1 and not (infinite and view != 'list') %}
   <nav class="flex items-center justify-center gap-3 mt-6 text-sm">
     {% if result.page > 1 %}
     <button class="px-3 py-1.5 rounded bg-surface-2 hover:bg-surface-3"

@@ -156,11 +156,14 @@
     });
     // Grid/list toggle: persist in a cookie (read server-side) and re-run the search so the
     // results partial re-renders in the chosen layout.
-    function setView(v) {
-      document.cookie = "scryme_view=" + v + ";path=/;max-age=31536000;samesite=lax";
+    function setCookiePref(name, value) {
+      document.cookie = name + "=" + value + ";path=/;max-age=31536000;samesite=lax";
       var input = document.querySelector('input[name=q]');
-      if (input) input.dispatchEvent(new Event('change', { bubbles: true }));
+      if (input) input.dispatchEvent(new Event('change', { bubbles: true }));  // re-run the search
     }
+    function setView(v) { setCookiePref("scryme_view", v); }
+    function setPageSize(n) { setCookiePref("scryme_page_size", n); }
+    function setInfinite(on) { setCookiePref("scryme_infinite", on ? "1" : "0"); }
     function exportMenu() {
       return {
         open: false,

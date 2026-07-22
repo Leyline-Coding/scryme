@@ -46,6 +46,10 @@
         <span class="shrink-0 text-[10px] uppercase tracking-wide text-muted"
               title="{{ r.set_name }} · #{{ r.collector_number }} · {{ r.language|upper }}">{{ r.set_code }}·{{ r.collector_number }}·{{ r.language|upper }}</span>
         {% endif %}
+        {% if r.finish and r.finish != 'normal' %}
+        <span class="shrink-0 rounded px-1 text-[10px] font-medium {% if r.finish == 'etched' %}etched-chip{% else %}foil-chip{% endif %}"
+              title="{{ r.finish|capitalize }} copy">{{ '❖' if r.finish == 'etched' else '✦' }} {{ r.finish|upper }}</span>
+        {% endif %}
         {% if r.proxy %}
         <span class="shrink-0 rounded bg-surface-2 px-1 text-[10px] font-medium text-accent"
               title="Printed proxy">PROXY</span>
@@ -167,6 +171,32 @@
         {% endif %}
       {% endif %}
     </div>
+
+    {% if not read_only %}
+    <div class="mt-3 pt-3 border-t border-edge text-sm">
+      {% if deck.source_url %}
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-muted">Source:</span>
+        <a href="{{ deck.source_url }}" target="_blank" rel="noopener"
+           class="text-xs text-muted hover:text-accent truncate max-w-[18rem]">{{ deck.source_url }}</a>
+        <form method="post" action="/decks/{{ cov.deck.id }}/resync" class="ml-auto">
+          <button type="submit" title="Re-fetch the source and correct each line's printing + finish"
+                  class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">↻ Re-sync printings</button>
+        </form>
+      </div>
+      {% else %}
+      <form method="post" action="/decks/{{ cov.deck.id }}/resync" class="flex items-center gap-2 flex-wrap">
+        <label class="text-muted shrink-0" for="resync-url">Re-sync printings from</label>
+        <input id="resync-url" type="url" name="url" required placeholder="https://moxfield.com/decks/… or archidekt.com/decks/…"
+               class="flex-1 min-w-[12rem] rounded bg-surface-2 border border-edge px-2 py-1 text-xs" />
+        <button type="submit" title="Fetch this source and correct each line's printing + finish"
+                class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">↻ Re-sync</button>
+      </form>
+      <p class="mt-1 text-[11px] text-muted">Link a deck imported before printings were tracked to
+        its source to correct each line's printing and foil/etched finish.</p>
+      {% endif %}
+    </div>
+    {% endif %}
 
     {# Export #}
     <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm">

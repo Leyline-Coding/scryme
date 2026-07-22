@@ -33,6 +33,7 @@ from src.decks import (
     deck_printings,
     deck_stats,
     resolve_ownership_rows,
+    resync_printings,
 )
 from src.llm import get_config
 from src.models import Card, Deck, DeckCard, DeckVersion
@@ -82,20 +83,22 @@ async def new_deck(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "deck_new.html", {"supported": SUPPORTED})
 
 
-async def _add_owned_pairs(session: AsyncSession, pairs: list[tuple[str, int]]) -> None:
-    """Add each (scryfall_id, quantity) to the collection (increments existing stacks)."""
-    for sid, qty in pairs:
-        await add_or_increment(session, sid, qty)
+async def _add_owned_pairs(session: AsyncSession, pairs: list[tuple[str, int, str]]) -> None:
+    """Add each (scryfall_id, quantity, finish) to the collection (increments matching stacks)."""
+    for sid, qty, finish in pairs:
+        await add_or_increment(session, sid, qty, finish=finish)
 
 
 async def _mark_all_owned(session: AsyncSession, decklist: str) -> None:
-    """Add every matched card in a decklist to the collection at its needed quantity."""
+    """Add every matched card to the collection at its needed quantity, in the deck's finish."""
     rows = await resolve_ownership_rows(session, decklist)
-    await _add_owned_pairs(session, [(r.scryfall_id, r.quantity) for r in rows if r.matched])
+    await _add_owned_pairs(
+        session, [(r.scryfall_id, r.quantity, r.finish) for r in rows if r.matched])
 
 
 async def _finish_import(
     request: Request, session: AsyncSession, name: str, decklist: str, ownership: str,
+    source_url: str = "",
 ):
     """Create a deck (unowned / fully-owned), or show the owned-cards checklist for partial."""
     if ownership == "partial":
@@ -104,7 +107,7 @@ async def _finish_import(
             {"name": name, "decklist": decklist,
              "rows": await resolve_ownership_rows(session, decklist)},
         )
-    deck = await create_deck(session, name, decklist)
+    deck = await create_deck(session, name, decklist, source_url=source_url)
     if ownership == "full":
         deck.ownership = "full"
         for dc in deck.cards:
@@ -128,7 +131,9 @@ async def import_url(
         return templates.TemplateResponse(
             request, "deck_new.html", {"supported": SUPPORTED, "error": str(exc), "url": url},
         )
-    return await _finish_import(request, session, name, decklist, ownership)
+    # Remember where it came from so its printings can be re-synced from the source later.
+    return await _finish_import(request, session, name, decklist, ownership,
+                                source_url=url.strip())
 
 
 @router.post("/decks")
@@ -153,12 +158,13 @@ async def owned_confirm(
     """Create the deck and add the cards the user checked as owned (values are "sid|qty")."""
     _guard_writable()
     deck = await create_deck(session, name, decklist)
-    pairs: list[tuple[str, int]] = []
+    pairs: list[tuple[str, int, str]] = []
     for token in owned:
-        sid, _, qty = token.partition("|")
+        sid, _, rest = token.partition("|")
+        qty, _, finish = rest.partition("|")
         if sid:
-            pairs.append((sid, int(qty) if qty.isdigit() else 1))
-    owned_sids = {sid for sid, _ in pairs}
+            pairs.append((sid, int(qty) if qty.isdigit() else 1, finish or "normal"))
+    owned_sids = {sid for sid, _qty, _finish in pairs}
     deck.ownership = "partial"
     for dc in deck.cards:
         dc.owned = dc.scryfall_id is not None and str(dc.scryfall_id) in owned_sids
@@ -359,6 +365,32 @@ async def export_deck(
         media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post("/decks/{deck_id}/resync")
+async def resync_deck_printings(
+    deck_id: int, url: str = Form(""), session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    """Re-fetch a deck's source and correct its printings + finishes in place.
+
+    ``url`` lets a deck imported before source URLs were recorded be linked to its source, so decks
+    imported when printings were ignored can still be repaired.
+    """
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    if url.strip():
+        deck.source_url = url.strip()
+        await session.commit()
+    if not deck.source_url:
+        raise HTTPException(status_code=400, detail="Give this deck a source URL to re-sync from.")
+    try:
+        _name, decklist = await fetch_deck_from_url(deck.source_url)
+    except DeckImportError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    await resync_printings(session, deck, decklist)
+    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
 
 
 @router.post("/decks/{deck_id}/delete")

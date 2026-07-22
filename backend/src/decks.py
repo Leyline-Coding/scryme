@@ -217,6 +217,40 @@ def _printing_for(line: ParsedLine, exact: dict, by_name: dict) -> tuple:
     return by_name.get(line.name.lower(), (None, None))
 
 
+async def resync_printings(session: AsyncSession, deck: Deck, decklist_text: str) -> int:
+    """Correct an existing deck's printings + finishes from a freshly-fetched decklist.
+
+    Matches each source line to a deck line by name + board (each deck line is used once) and
+    updates only its printing and finish — quantities, extra lines and the deck itself are left
+    alone, so a deck imported before printings were honoured can be repaired in place. Returns how
+    many lines changed.
+    """
+    lines = _merge_lines(parse_decklist(decklist_text))
+    owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
+    resolved = await _resolve_names(session, [x.name for x in lines], owned_sids)
+    exact = await _resolve_exact(session, {(x.set_code, x.collector_number) for x in lines})
+
+    remaining: dict[tuple, list[DeckCard]] = {}
+    for dc in deck.cards:
+        remaining.setdefault((dc.name.lower(), dc.board), []).append(dc)
+
+    changed = 0
+    for line in lines:
+        bucket = remaining.get((line.name.lower(), line.board))
+        if not bucket:
+            continue
+        dc = bucket.pop(0)
+        oracle, sid = _printing_for(line, exact, resolved)
+        if sid is None:
+            continue
+        if dc.scryfall_id != sid or dc.finish != line.finish:
+            dc.oracle_id, dc.scryfall_id, dc.finish = oracle, sid, line.finish
+            changed += 1
+    if changed:
+        await session.commit()
+    return changed
+
+
 async def add_card_to_deck(session: AsyncSession, deck_id: int, card: Card) -> bool:
     """Add one copy of ``card`` to a deck's main board (bumps quantity if already present).
 
@@ -249,6 +283,7 @@ class OwnershipRow:
     quantity: int              # summed across boards (ownership is shared)
     scryfall_id: str | None    # representative printing, or None when unmatched
     matched: bool
+    finish: str = "normal"     # the finish the deck runs, so owned copies land as foil/etched
 
 
 async def resolve_ownership_rows(session: AsyncSession, decklist_text: str) -> list[OwnershipRow]:
@@ -274,22 +309,24 @@ async def resolve_ownership_rows(session: AsyncSession, decklist_text: str) -> l
     for line in lines:
         _oracle, sid = _printing_for(line, exact, resolved)
         rows.append(OwnershipRow(line.name, line.quantity,
-                                 str(sid) if sid else None, sid is not None))
+                                 str(sid) if sid else None, sid is not None, line.finish))
     return rows
 
 
-async def create_deck(session: AsyncSession, name: str, decklist_text: str) -> Deck:
+async def create_deck(session: AsyncSession, name: str, decklist_text: str,
+                      source_url: str = "") -> Deck:
     parsed = _merge_lines(parse_decklist(decklist_text))
     owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
     resolved = await _resolve_names(session, [p.name for p in parsed], owned_sids)
     exact = await _resolve_exact(session, {(p.set_code, p.collector_number) for p in parsed})
 
-    deck = Deck(name=(name or "").strip()[:256] or "Untitled deck")
+    deck = Deck(name=(name or "").strip()[:256] or "Untitled deck",
+                source_url=(source_url or None))
     for p in parsed:
         oracle, sid = _printing_for(p, exact, resolved)
         deck.cards.append(
             DeckCard(name=p.name, quantity=p.quantity, board=p.board,
-                     oracle_id=oracle, scryfall_id=sid)
+                     oracle_id=oracle, scryfall_id=sid, finish=p.finish)
         )
     session.add(deck)
     await session.commit()
@@ -337,6 +374,7 @@ class CardRow:
     proxy: bool = False             # printed proxy
     special: bool = False           # art card / alter / other genuine non-standard copy
     language: str = "en"            # language the copy is played in (Scryfall code)
+    finish: str = "normal"          # normal | foil | etched — drives this line's price
 
 
 async def _legalities_by_oracle(session: AsyncSession, oracles: set) -> dict:
@@ -474,14 +512,19 @@ def _card_legality(c, fmt: str | None, legal_by_oracle: dict, illegal_oracles: s
 
 
 def _tally_missing(cov, deck, needed_by_oracle, owned, price_by_sid, oracle_sid, currency) -> None:
-    """Missing counts/cost: once per oracle for matched cards, per line for unmatched."""
+    """Missing counts/cost: once per oracle for matched cards, per line for unmatched.
+
+    Each oracle is costed at the finish the deck runs it in, so a foil deck quotes foil prices.
+    """
+    finish_by_oracle = {c.oracle_id: c.finish for c in deck.cards if c.oracle_id}
     for oracle, needed in needed_by_oracle.items():
         miss = max(0, needed - owned.get(oracle, 0))
         if miss:
             cov.missing_count += miss
             cov.unique_missing += 1
             cov.missing_cost += miss * unit_price(
-                price_by_sid.get(oracle_sid.get(oracle, ""), {}), "normal", currency
+                price_by_sid.get(oracle_sid.get(oracle, ""), {}),
+                finish_by_oracle.get(oracle, "normal"), currency,
             )
     for c in deck.cards:
         if not c.oracle_id:
@@ -523,7 +566,7 @@ async def deck_coverage(
             legality=legality,
             card_id=c.id,
             set_code=set_code, set_name=set_name, collector_number=collector,
-            proxy=c.proxy, special=c.special, language=c.language,
+            proxy=c.proxy, special=c.special, language=c.language, finish=c.finish,
         )
         (cov.main if c.board == "main" else cov.side).append(row)
         cov.total_needed += c.quantity
@@ -606,7 +649,7 @@ async def deck_stats(
     total = 0.0
     for c in deck.cards:
         cmc, ci, type_line, prices = info.get(c.scryfall_id, (None, None, None, None))
-        total += c.quantity * unit_price(prices, "normal", currency)
+        total += c.quantity * unit_price(prices, c.finish, currency)
         # Curve + color pie cover mainboard nonland spells, so basics don't dominate.
         if not c.scryfall_id or c.board != "main" or (type_line and "Land" in type_line):
             continue

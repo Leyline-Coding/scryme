@@ -9,6 +9,7 @@ without the network. Public decks only.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 import httpx
 
@@ -85,6 +86,105 @@ def parse_archidekt(payload: dict) -> tuple[str, str]:
 
 def _slug_name(slug: str) -> str:
     return slug.replace("-", " ").replace("_", " ").strip().title() or _DEFAULT_DECK_NAME
+
+
+# --- public-profile deck listing (#299) ---------------------------------------------------------
+
+PROFILE_PROVIDERS = ("moxfield", "archidekt")
+_MOX_PROFILE = re.compile(r"moxfield\.com/users/([A-Za-z0-9_.-]+)")
+_ARCH_PROFILE = re.compile(r"archidekt\.com/u/([A-Za-z0-9_.-]+)")
+# Archidekt's numeric deckFormat codes -> readable names (best-effort; blank when unknown).
+_ARCH_FORMATS = {
+    1: "Standard", 2: "Modern", 3: "Commander", 4: "Legacy", 5: "Vintage", 6: "Pauper",
+    7: "Custom", 8: "Frontier", 10: "Penny Dreadful", 11: "1v1 Commander", 12: "Pioneer",
+    13: "Brawl", 14: "Oathbreaker", 15: "Pauper EDH",
+}
+
+
+@dataclass
+class ProfileDeck:
+    name: str
+    url: str      # a single-deck URL that fetch_deck_from_url can import
+    format: str
+    count: int
+
+
+def detect_profile(text: str) -> tuple[str, str] | None:
+    """A profile URL -> (provider, username); None if it's not a recognized profile link."""
+    m = _MOX_PROFILE.search(text or "")
+    if m:
+        return "moxfield", m.group(1)
+    m = _ARCH_PROFILE.search(text or "")
+    if m:
+        return "archidekt", m.group(1)
+    return None
+
+
+def _profile_moxfield(payload: dict) -> list[ProfileDeck]:
+    out: list[ProfileDeck] = []
+    for d in payload.get("data") or []:
+        if (d.get("visibility") or "public") != "public":
+            continue  # public decks only
+        url = d.get("publicUrl") or (
+            f"https://moxfield.com/decks/{d['publicId']}" if d.get("publicId") else None)
+        if not url:
+            continue
+        out.append(ProfileDeck(name=(d.get("name") or "Untitled deck").strip(), url=url,
+                               format=(d.get("format") or "").strip(),
+                               count=int(d.get("mainboardCount") or 0)))
+    return out
+
+
+def _profile_archidekt(payload: dict) -> list[ProfileDeck]:
+    out: list[ProfileDeck] = []
+    for d in payload.get("results") or []:
+        if d.get("private") or not d.get("id"):
+            continue
+        out.append(ProfileDeck(name=(d.get("name") or "Untitled deck").strip(),
+                               url=f"https://archidekt.com/decks/{d['id']}",
+                               format=_ARCH_FORMATS.get(d.get("deckFormat"), ""),
+                               count=int(d.get("size") or 0)))
+    return out
+
+
+async def fetch_profile_decks(
+    provider: str, username: str, *, limit: int = 60, client: httpx.AsyncClient | None = None
+) -> list[ProfileDeck]:
+    """A user's public decks on Moxfield/Archidekt (capped at ``limit``). Raises DeckImportError."""
+    username = (username or "").strip()
+    if provider not in PROFILE_PROVIDERS or not username:
+        raise DeckImportError("Enter a Moxfield or Archidekt username or profile URL.")
+    settings = get_settings()
+    headers = {"User-Agent": settings.scryfall_user_agent or _UA, "Accept": "application/json"}
+    own = client is None
+    client = client or httpx.AsyncClient(timeout=_TIMEOUT, headers=headers, follow_redirects=True)
+    try:
+        if provider == "moxfield":
+            resp = await client.get(
+                "https://api2.moxfield.com/v2/decks/search",
+                params={"authorUserNames": username, "pageSize": limit, "pageNumber": 1},
+            )
+            resp.raise_for_status()
+            decks = _profile_moxfield(resp.json())
+        else:
+            resp = await client.get(
+                "https://archidekt.com/api/decks/v3/",
+                params={"ownerUsername": username, "pageSize": limit},
+            )
+            resp.raise_for_status()
+            decks = _profile_archidekt(resp.json())
+        if not decks:
+            raise DeckImportError(f"No public decks found for “{username}”.")
+        return decks
+    except httpx.HTTPStatusError as exc:
+        raise DeckImportError(
+            f"Couldn't fetch that profile (HTTP {exc.response.status_code})."
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise DeckImportError(f"Couldn't reach {provider}: {exc}") from exc
+    finally:
+        if own:
+            await client.aclose()
 
 
 async def fetch_deck_from_url(

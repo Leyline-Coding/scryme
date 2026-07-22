@@ -19,7 +19,14 @@ from src.currency import get_currency, info
 from src.db import get_session
 from src.deck_builder import BuildError, build_commander_deck, owned_commanders
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
-from src.deck_import import SUPPORTED, DeckImportError, fetch_deck_from_url
+from src.deck_import import (
+    PROFILE_PROVIDERS,
+    SUPPORTED,
+    DeckImportError,
+    detect_profile,
+    fetch_deck_from_url,
+    fetch_profile_decks,
+)
 from src.deck_suggest import suggest_owned_upgrades
 from src.deck_versions import diff_cards, list_versions, save_version, snapshot_cards
 from src.decks import (
@@ -78,7 +85,8 @@ async def list_decks() -> RedirectResponse:
 @router.get("/decks/new", response_class=HTMLResponse)
 async def new_deck(request: Request) -> HTMLResponse:
     _guard_writable()
-    return templates.TemplateResponse(request, "deck_new.html", {"supported": SUPPORTED})
+    return templates.TemplateResponse(
+        request, "deck_new.html", {"supported": SUPPORTED, "providers": PROFILE_PROVIDERS})
 
 
 async def _add_owned_pairs(session: AsyncSession, pairs: list[tuple[str, int]]) -> None:
@@ -124,6 +132,51 @@ async def import_url(
             request, "deck_new.html", {"supported": SUPPORTED, "error": str(exc), "url": url},
         )
     return await _finish_import(request, session, name, decklist, ownership)
+
+
+@router.post("/decks/import-profile", response_class=HTMLResponse)
+async def import_profile(
+    request: Request,
+    provider: str = Form("moxfield"),
+    who: str = Form(""),
+    ownership: str = Form("unowned"),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """List a Moxfield/Archidekt profile's public decks to pick from (#299)."""
+    _guard_writable()
+    # A pasted profile URL wins over the provider dropdown; otherwise it's a bare username.
+    found = detect_profile(who)
+    provider, username = found if found else (provider, who.strip())
+    try:
+        decks = await fetch_profile_decks(provider, username)
+    except DeckImportError as exc:
+        return templates.TemplateResponse(
+            request, "deck_new.html",
+            {"supported": SUPPORTED, "error": str(exc), "providers": PROFILE_PROVIDERS},
+        )
+    return templates.TemplateResponse(
+        request, "deck_profile_select.html",
+        {"decks": decks, "provider": provider, "username": username, "ownership": ownership},
+    )
+
+
+@router.post("/decks/import-profile/confirm")
+async def import_profile_confirm(
+    urls: list[str] = Form(default=[]),
+    ownership: str = Form("unowned"),
+    session: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    """Bulk-import the ticked profile decks; a deck that fails is skipped, not fatal (#299)."""
+    _guard_writable()
+    for url in urls:
+        try:
+            name, decklist = await fetch_deck_from_url(url)
+        except DeckImportError:
+            continue  # skip this deck, keep importing the rest
+        await create_deck(session, name, decklist)
+        if ownership == "full":
+            await _mark_all_owned(session, decklist)
+    return RedirectResponse(url="/collection?tab=decks", status_code=303)
 
 
 @router.post("/decks")

@@ -197,7 +197,8 @@
       <span class="text-muted">🕑 Versions</span>
       {% if not read_only %}
       <form method="post" action="/decks/{{ cov.deck.id }}/versions" class="flex items-center gap-1 ml-auto">
-        <input type="text" name="label" maxlength="128" placeholder="label (optional)"
+        <label class="sr-only" for="ver-label">Version label</label>
+        <input id="ver-label" type="text" name="label" maxlength="128" placeholder="label (optional)"
                class="w-40 rounded bg-surface-2 border border-edge px-2 py-1 text-xs" />
         <button type="submit" class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Save version</button>
       </form>
@@ -223,7 +224,8 @@
     <form method="get" action="/decks/{{ cov.deck.id }}/diff" class="flex items-center gap-1.5 flex-wrap text-xs">
       <span class="text-muted">Compare</span>
       {% for side in ['a', 'b'] %}
-      <select name="{{ side }}" class="rounded bg-surface-2 border border-edge px-1.5 py-0.5">
+      <label class="sr-only" for="cmp-{{ side }}">Compare {{ side|upper }}</label>
+      <select id="cmp-{{ side }}" name="{{ side }}" class="rounded bg-surface-2 border border-edge px-1.5 py-0.5">
         <option value="current">current</option>
         {% for v in versions %}
         <option value="{{ v.id }}" {% if side == 'a' and loop.first %}selected{% endif %}>{{ v.label }}</option>

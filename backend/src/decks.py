@@ -22,9 +22,10 @@ from src.pricing import resolve_prices
 from src.stats import Bar, _bars, _color_bucket
 
 # Capture the name greedily and rstrip() it in code (a lazy `(.+?)\s*$` tail backtracks
-# polynomially on trailing whitespace). The optional 'x' count marker uses a possessive
-# `\s*+` so its whitespace can't overlap the following `\s+` (keeps the match linear).
-_LINE = re.compile(r"^\s*(\d+)(?:\s*+[xX])?\s+(.+)$")
+# polynomially on trailing whitespace). Every adjacent construct here matches a disjoint set of
+# characters (`\s` vs `\d` vs `[xX]`), so there is exactly one way to match and no backtracking:
+# the "2x Bolt" count marker is written without whitespace around it for that reason.
+_LINE = re.compile(r"^\s*(\d+)[xX]?\s+(.+)$")
 # One trailing export marker like "*F*" (foil) / "*E*" (etched). Matched and stripped one at a
 # time in a loop rather than with a repeated group, so the pattern stays single-quantifier (a
 # nested `(...)+$` group is what makes this shape backtrack polynomially).

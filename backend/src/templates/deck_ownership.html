@@ -29,7 +29,7 @@
       <li class="flex items-center gap-2 px-3 py-2 text-sm">
         {% if r.matched %}
         <label class="flex items-center gap-2 min-w-0 flex-1 cursor-pointer">
-          <input type="checkbox" name="owned" value="{{ r.scryfall_id }}|{{ r.quantity }}" checked
+          <input type="checkbox" name="owned" value="{{ r.scryfall_id }}|{{ r.quantity }}|{{ r.finish }}" checked
                  class="shrink-0" />
           <span class="w-8 shrink-0 text-right text-muted tabular-nums">{{ r.quantity }}×</span>
           <span class="min-w-0 truncate">{{ r.name }}</span>

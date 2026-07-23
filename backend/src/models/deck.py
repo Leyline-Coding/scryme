@@ -31,6 +31,8 @@ class Deck(Base):
     # How the deck relates to the collection (#298): 'none' (unowned), 'full', or 'partial'.
     # When full/partial, edits to owned cards mirror into the collection.
     ownership: Mapped[str] = mapped_column(String(8), nullable=False, server_default="none")
+    # Where the deck was imported from, so its printings can be re-synced from the source later.
+    source_url: Mapped[str | None] = mapped_column(String(512))
 
     cards: Mapped[list[DeckCard]] = relationship(
         back_populates="deck", cascade="all, delete-orphan", lazy="selectin"
@@ -58,6 +60,9 @@ class DeckCard(Base):
     proxy: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
     special: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
     language: Mapped[str] = mapped_column(String(8), nullable=False, server_default="en")
+    # The copy's finish (normal | foil | etched) — drives this line's price and what a
+    # fully-owned import puts in the collection.
+    finish: Mapped[str] = mapped_column(String(16), nullable=False, server_default="normal")
     # True when this card is owned as part of an owned deck (#298): its quantity/printing edits
     # sync to the collection. Set at import (full = all matched; partial = the cards you ticked).
     owned: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())

@@ -41,7 +41,9 @@ pipeline {
   agent none
 
   options {
-    timeout(time: 30, unit: 'MINUTES')
+    // Headroom for the unRAID VMs, which run the suite slower than the GitHub
+    // Actions runners. Still bounded so a genuine hang can't run forever.
+    timeout(time: 45, unit: 'MINUTES')
   }
 
   environment {
@@ -57,8 +59,14 @@ pipeline {
       steps {
         script {
           // Ephemeral Postgres sidecar; torn down automatically when the closure exits.
+          // fsync/synchronous_commit/full_page_writes OFF: this DB is thrown away at the
+          // end of the build, so durability is worthless — and turning it off removes the
+          // per-commit disk-flush that dominated runtime on the VM's storage (the suite is
+          // very DB-write heavy). The second withRun arg is the container command; the
+          // postgres image prepends `postgres` when it starts with `-`.
           docker.image('postgres:16-alpine').withRun(
-            '-e POSTGRES_USER=scryme -e POSTGRES_PASSWORD=scryme -e POSTGRES_DB=scryme_test'
+            '-e POSTGRES_USER=scryme -e POSTGRES_PASSWORD=scryme -e POSTGRES_DB=scryme_test',
+            '-c fsync=off -c synchronous_commit=off -c full_page_writes=off'
           ) { pg ->
             // Link the sidecar in as alias `postgres` so SCRYME_DATABASE_URL resolves.
             docker.image('python:3.12').inside("--link ${pg.id}:postgres") {

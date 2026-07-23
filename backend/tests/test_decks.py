@@ -20,6 +20,12 @@ def test_parse_captures_printing_and_finish():
     assert (rows[2].name, rows[2].set_code, rows[2].finish) == ("Sol Ring", "", "normal")
 
 
+def test_parse_tolerates_a_stray_asterisk():
+    """A lone trailing "*" isn't a finish marker, so it stays part of the name."""
+    row = parse_decklist("1 Weird Name*")[0]
+    assert row.name == "Weird Name*" and row.finish == "normal"
+
+
 def test_parse_etched_marker():
     row = parse_decklist("1 Command Tower (CMR) 350 *E*")[0]
     assert row.finish == "etched" and row.collector_number == "350"

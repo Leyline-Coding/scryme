@@ -21,17 +21,19 @@ from src.models import Card, CollectionCard, Deck, DeckCard
 from src.pricing import resolve_prices
 from src.stats import Bar, _bars, _color_bucket
 
-# Capture the name greedily and rstrip() it in code (a lazy `(.+?)\s*$` tail backtracks
-# polynomially on trailing whitespace). Every adjacent construct here matches a disjoint set of
-# characters (`\s` vs `\d` vs `[xX]`), so there is exactly one way to match and no backtracking:
-# the "2x Bolt" count marker is written without whitespace around it for that reason.
-_LINE = re.compile(r"^\s*(\d+)[xX]?\s+(.+)$")
-# One trailing export marker like "*F*" (foil) / "*E*" (etched). Matched and stripped one at a
-# time in a loop rather than with a repeated group, so the pattern stays single-quantifier (a
-# nested `(...)+$` group is what makes this shape backtrack polynomially).
-_TRAILING_MARKER = re.compile(r"\*([^*]*)\*\s*$")
+# These patterns are written so each has exactly one way to match, which is what keeps them
+# linear: no `$` anchor (in Python `$` also matches *before* a trailing newline, so a `\s*$` tail
+# has two valid end positions and backtracks over trailing whitespace — `\Z` is unambiguous), and
+# no two adjacent constructs that accept the same character. Trailing whitespace is removed with
+# rstrip() in code rather than absorbed by the pattern.
+#
+# A decklist line: an optional count, an optional "x" marker, then the name. `\s+` is followed by
+# `\S` so the whitespace run has a single end point; "2x Bolt" and "2 Bolt" are both accepted,
+# "2 x Bolt" is not (no exporter emits it).
+_LINE = re.compile(r"^\s*(\d+)[xX]?\s+(\S.*)")
 # A trailing "(SET) 123" / "(SET)" printing hint — captured so the exact printing is honoured.
-_SET_SUFFIX = re.compile(r"\(([A-Za-z0-9]{2,6})\)\s*([A-Za-z0-9-]*)\s*$")
+# `name` is already rstripped, so the pattern needs no trailing whitespace of its own.
+_SET_SUFFIX = re.compile(r"\(([A-Za-z0-9]{2,6})\)\s*([A-Za-z0-9-]*)\Z")
 # Export finish markers -> the finish they mean.
 _FINISH_MARKERS = {"f": "foil", "foil": "foil", "e": "etched", "etched": "etched"}
 
@@ -45,6 +47,20 @@ class ParsedLine:
     set_code: str = ""
     collector_number: str = ""
     finish: str = "normal"  # normal | foil | etched
+
+
+def _peel_marker(text: str) -> tuple[str, str] | None:
+    """Peel one trailing ``*F*``-style export marker off ``text``.
+
+    Returns ``(marker_body, remainder)``, or None when ``text`` doesn't end in a marker. Done with
+    string operations rather than a pattern so the scan is unambiguously linear.
+    """
+    if not text.endswith("*"):
+        return None
+    start = text.rfind("*", 0, len(text) - 1)
+    if start < 0:
+        return None
+    return text[start + 1 : -1], text[:start].rstrip()
 
 
 def _parse_deck_line(s: str, board: str) -> ParsedLine | None:
@@ -61,9 +77,9 @@ def _parse_deck_line(s: str, board: str) -> ParsedLine | None:
         return None
     name = m.group(2).rstrip()
     finish = "normal"
-    while (mark := _TRAILING_MARKER.search(name)) is not None:
-        finish = _FINISH_MARKERS.get(mark.group(1).strip().lower(), finish)
-        name = name[: mark.start()].rstrip()
+    while (mark := _peel_marker(name)) is not None:
+        body, name = mark
+        finish = _FINISH_MARKERS.get(body.strip().lower(), finish)
     set_code = collector_number = ""
     hint = _SET_SUFFIX.search(name)
     if hint:

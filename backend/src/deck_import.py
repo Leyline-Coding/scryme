@@ -9,6 +9,7 @@ without the network. Public decks only.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 import httpx
 
@@ -40,10 +41,40 @@ def detect_host(url: str) -> str | None:
     return None
 
 
-def _lines(entries: list[tuple[int, str, str]]) -> str:
-    """Build decklist text from (quantity, name, board) tuples."""
-    main = [f"{q} {n}" for q, n, b in entries if b != "side" and n]
-    side = [f"{q} {n}" for q, n, b in entries if b == "side" and n]
+@dataclass
+class _Entry:
+    quantity: int
+    name: str
+    board: str
+    set_code: str = ""
+    collector_number: str = ""
+    finish: str = "normal"  # normal | foil | etched
+
+
+# Provider finish labels (Moxfield "nonFoil"/"foil"/"etched", Archidekt "Normal"/"Foil"/"Etched").
+_FINISH_TOKENS = {"foil": "foil", "etched": "etched", "etchedfoil": "etched"}
+
+
+def _finish_of(value: str | None) -> str:
+    return _FINISH_TOKENS.get((value or "").replace(" ", "").lower(), "normal")
+
+
+def _render(e: _Entry) -> str:
+    """One decklist line, carrying the exact printing and finish the source specified."""
+    s = f"{e.quantity} {e.name}"
+    if e.set_code and e.collector_number:
+        s += f" ({e.set_code.upper()}) {e.collector_number}"
+    if e.finish == "foil":
+        s += " *F*"
+    elif e.finish == "etched":
+        s += " *E*"
+    return s
+
+
+def _lines(entries: list[_Entry]) -> str:
+    """Build decklist text, preserving each line's printing + finish so imports stay faithful."""
+    main = [_render(e) for e in entries if e.board != "side" and e.name]
+    side = [_render(e) for e in entries if e.board == "side" and e.name]
     text = "\n".join(main)
     if side:
         text += "\nSideboard\n" + "\n".join(side)
@@ -53,31 +84,47 @@ def _lines(entries: list[tuple[int, str, str]]) -> str:
 def parse_moxfield(payload: dict) -> tuple[str, str]:
     """Moxfield v2 deck JSON → (name, decklist text)."""
     name = (payload.get("name") or _DEFAULT_DECK_NAME).strip()
-    entries: list[tuple[int, str, str]] = []
-    # Commanders + mainboard are "main", sideboard is "side"; each board maps name -> {quantity}.
+    entries: list[_Entry] = []
+    # Commanders + mainboard are "main", sideboard is "side"; each board maps name -> entry, where
+    # the entry carries the chosen printing (card.set / card.cn) and finish.
     for board_key, board in [("commanders", "main"), ("mainboard", "main"), ("sideboard", "side")]:
         cards = payload.get(board_key) or {}
         for card_name, info in cards.items():
-            qty = int((info or {}).get("quantity", 1) or 1)
-            entries.append((qty, card_name, board))
+            info = info or {}
+            card = info.get("card") or {}
+            entries.append(_Entry(
+                quantity=int(info.get("quantity", 1) or 1), name=card_name, board=board,
+                set_code=(card.get("set") or ""),
+                collector_number=str(card.get("cn") or ""),
+                finish=_finish_of(info.get("finish")),
+            ))
     if not entries:
         raise DeckImportError("That Moxfield deck looks empty or private.")
     return name, _lines(entries)
 
 
+def _archidekt_entry(item: dict) -> _Entry | None:
+    """One Archidekt card row → an entry, or None when the row carries no card name."""
+    card = item.get("card") or {}
+    oracle = card.get("oracleCard") or {}
+    card_name = oracle.get("name") or card.get("name")
+    if not card_name:
+        return None
+    cats = [c.lower() for c in (item.get("categories") or [])]
+    board = "side" if ("sideboard" in cats or "maybeboard" in cats) else "main"
+    edition = card.get("edition") or {}
+    return _Entry(
+        quantity=int(item.get("quantity", 1) or 1), name=card_name, board=board,
+        set_code=(edition.get("editioncode") or ""),
+        collector_number=str(card.get("collectorNumber") or ""),
+        finish=_finish_of(item.get("modifier")),
+    )
+
+
 def parse_archidekt(payload: dict) -> tuple[str, str]:
     """Archidekt deck JSON → (name, decklist text)."""
     name = (payload.get("name") or _DEFAULT_DECK_NAME).strip()
-    entries: list[tuple[int, str, str]] = []
-    for item in payload.get("cards") or []:
-        card = item.get("card") or {}
-        oracle = card.get("oracleCard") or {}
-        card_name = oracle.get("name") or card.get("name")
-        if not card_name:
-            continue
-        cats = [c.lower() for c in (item.get("categories") or [])]
-        board = "side" if ("sideboard" in cats or "maybeboard" in cats) else "main"
-        entries.append((int(item.get("quantity", 1) or 1), card_name, board))
+    entries = [e for e in map(_archidekt_entry, payload.get("cards") or []) if e is not None]
     if not entries:
         raise DeckImportError("That Archidekt deck looks empty or private.")
     return name, _lines(entries)

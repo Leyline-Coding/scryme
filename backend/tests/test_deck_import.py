@@ -11,6 +11,41 @@ from src.deck_import import (
     parse_moxfield,
 )
 
+
+def test_parse_moxfield_keeps_printing_and_finish():
+    """The exact printing + finish the deck specifies survive into the decklist text."""
+    payload = {"name": "D", "mainboard": {
+        "Sol Ring": {"quantity": 1, "finish": "foil", "card": {"set": "cmr", "cn": "1"}},
+        "Command Tower": {"quantity": 1, "finish": "etched",
+                          "card": {"set": "cmr", "cn": "350"}},
+        "Island": {"quantity": 2, "finish": "nonFoil", "card": {"set": "znr", "cn": "270"}},
+        "Mystery Card": {"quantity": 1},   # no card block -> plain line
+    }}
+    _name, text = parse_moxfield(payload)
+    assert "1 Sol Ring (CMR) 1 *F*" in text
+    assert "1 Command Tower (CMR) 350 *E*" in text
+    assert "2 Island (ZNR) 270" in text and "2 Island (ZNR) 270 *F*" not in text
+    assert "1 Mystery Card" in text
+
+
+def test_parse_archidekt_keeps_printing_and_finish():
+    payload = {"name": "D", "cards": [
+        {"quantity": 1, "modifier": "Foil", "card": {
+            "oracleCard": {"name": "Sol Ring"}, "edition": {"editioncode": "cmr"},
+            "collectorNumber": "1"}},
+        {"quantity": 1, "modifier": "Etched", "card": {
+            "oracleCard": {"name": "Command Tower"}, "edition": {"editioncode": "cmr"},
+            "collectorNumber": "350"}},
+        {"quantity": 3, "modifier": "Normal", "card": {
+            "oracleCard": {"name": "Island"}, "edition": {"editioncode": "znr"},
+            "collectorNumber": "270"}},
+    ]}
+    _name, text = parse_archidekt(payload)
+    assert "1 Sol Ring (CMR) 1 *F*" in text
+    assert "1 Command Tower (CMR) 350 *E*" in text
+    assert "3 Island (ZNR) 270" in text
+
+
 MOX = {
     "name": "Atraxa Superfriends",
     "commanders": {"Atraxa, Praetors' Voice": {"quantity": 1}},

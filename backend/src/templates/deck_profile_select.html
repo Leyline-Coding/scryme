@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ username }}'s decks · scryme{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-6" x-data>
+  <header class="flex flex-wrap items-center gap-3 mb-4">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold truncate">Public decks — {{ username }}</h1>
+    <a href="/decks/new" class="ml-auto text-sm text-muted hover:text-fg shrink-0">← Back</a>
+  </header>
+
+  <p class="mb-4 text-sm text-muted">
+    {{ decks | length }} public deck{{ '' if decks|length == 1 else 's' }} on
+    <span class="capitalize">{{ provider }}</span>. Tick the ones to import
+    {% if ownership == 'full' %}<strong>as fully owned</strong> (their cards are added to your
+    collection){% else %}(not added to your collection){% endif %}.
+  </p>
+
+  <form method="post" action="/decks/import-profile/confirm">
+    <input type="hidden" name="ownership" value="{{ ownership }}" />
+
+    <div class="mb-3 flex items-center gap-3 text-xs">
+      <button type="button" class="rounded bg-surface-2 hover:bg-surface-3 px-2 py-1"
+              @click="$root.querySelectorAll('input[name=urls]').forEach(c => c.checked = true)">Select all</button>
+      <button type="button" class="rounded bg-surface-2 hover:bg-surface-3 px-2 py-1"
+              @click="$root.querySelectorAll('input[name=urls]').forEach(c => c.checked = false)">Select none</button>
+    </div>
+
+    <ul class="divide-y divide-edge rounded-lg border border-edge bg-surface">
+      {% for d in decks %}
+      <li class="px-3 py-2 text-sm">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" name="urls" value="{{ d.url }}" class="shrink-0" />
+          <span class="min-w-0 flex-1 truncate">{{ d.name }}</span>
+          {% if d.format %}
+          <span class="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">{{ d.format }}</span>
+          {% endif %}
+          {% if d.count %}<span class="shrink-0 text-xs text-muted tabular-nums">{{ d.count }} cards</span>{% endif %}
+        </label>
+      </li>
+      {% endfor %}
+    </ul>
+
+    <div class="mt-4 flex gap-3">
+      <button type="submit" class="rounded-lg bg-accent text-accent-fg px-5 py-2.5 font-medium hover:opacity-90">
+        Import selected
+      </button>
+      <a href="/decks/new" class="rounded-lg px-5 py-2.5 text-muted hover:text-fg">Cancel</a>
+    </div>
+    <p class="mt-2 text-xs text-muted">Importing several decks fetches each one, so it can take a
+      moment. Any deck that can't be fetched is skipped.</p>
+  </form>
+</div>
+{% endblock %}

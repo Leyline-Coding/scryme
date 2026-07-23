@@ -43,6 +43,22 @@ Both the paste and URL import forms ask whether you own the deck:
 Unrecognized lines can't be added (there's no card to add), and adding is disabled on the read-only
 demo.
 
+### Import a whole profile
+
+Got a lot of decks on Moxfield or Archidekt? Use **Import from a profile** on the New deck page
+instead of pasting one link at a time:
+
+1. Pick the site, then enter a **username** (or paste a profile URL like
+   `moxfield.com/users/yourname` — the URL wins over the dropdown).
+2. scryme lists that user's **public** decks — name, format, and card count.
+3. Tick the ones you want (there's a select all / none), then **Import selected**.
+
+Ownership applies to the whole batch — **Not owned** or **Fully owned**. (*Partially owned* is
+per-deck, since it needs a per-card checklist, so it isn't offered for a bulk import.)
+
+Private and unlisted decks are skipped, the list is capped at the first ~60 decks, and any deck that
+can't be fetched is skipped rather than failing the whole batch.
+
 ## Ownership coverage
 
 The deck page shows how complete the deck is against your collection:

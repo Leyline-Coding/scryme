@@ -91,6 +91,12 @@ PY
                 # await that crosses the greenlet boundary, under-reporting every async
                 # route/service. Needed for accurate coverage in the SonarQube report.
                 COVERAGE_CORE=sysmon pytest tests/   # pyproject addopts emit coverage.xml (Cobertura)
+                # The Sonar scan runs on a SEPARATE agent (in-cluster pod) whose workspace
+                # path differs from this VM's. coverage.py bakes this VM's absolute path into
+                # the Cobertura <source>, so over there it resolves to nothing and Sonar maps
+                # 0% coverage. Rewrite <source> to the repo-root-relative "backend" dir so
+                # SonarPython resolves backend/src/<file> against the scan's projectBaseDir.
+                sed -i 's#<source>.*</source>#<source>backend</source>#' coverage.xml
               '''
             }
           }

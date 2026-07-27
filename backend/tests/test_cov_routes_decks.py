@@ -86,6 +86,17 @@ async def test_create_and_view(session):
 
 
 @pytest.mark.asyncio
+async def test_deck_page_includes_goldfish(session):
+    """The deck page embeds the client-side sample-hand tester with the mainboard as its
+    library JSON (#180)."""
+    await _add(session, _raw("Lightning Bolt"))
+    deck = await create_deck(session, "Burn", "4 Lightning Bolt")
+    body = (await R.view_deck(_request(f"/decks/{deck.id}"), deck.id, "", session)).body.decode()
+    assert 'x-data="goldfish(' in body and "Test hand" in body
+    assert '"n": "Lightning Bolt"' in body and '"q": 4' in body  # quantity-carrying library line
+
+
+@pytest.mark.asyncio
 async def test_import_url_success_and_error(session, monkeypatch):
     await _add(session, _raw("Lightning Bolt"))
 

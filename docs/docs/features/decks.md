@@ -139,6 +139,20 @@ Each deck page shows a quick profile:
 - **Colors** — the mainboard's color identity breakdown (also excluding lands).
 - **Deck value** — the total USD value of every card in the deck at current Scryfall prices.
 
+## Playtest (sample hand)
+
+The **Playtest** panel goldfishes a deck right in the browser — no shuffling required — to get a
+feel for its consistency:
+
+- **Test hand** shuffles the mainboard and draws an opening seven.
+- **Mulligan (London)** reshuffles and draws seven again; then you click *N* cards to put on the
+  bottom (one more each mulligan), matching the London rule.
+- **Draw** takes the next card; **Scry 1** peeks at the top and lets you keep it or bottom it.
+- **New hand** starts over.
+
+It runs entirely client-side over the deck's cached card images (sideboard excluded); nothing is
+saved.
+
 ## Upgrade from your collection
 
 Click **Suggest owned cards** on the deck page for deterministic, offline upgrade ideas drawn from

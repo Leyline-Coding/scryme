@@ -4,7 +4,9 @@
    inline script block, which stays pure JS); it's expanded to individual cards client-side. #}
 {% set ns = namespace(lines=[]) %}
 {% for r in cov.main %}{% set ns.lines = ns.lines + [{'n': r.name, 'i': images.get(r.scryfall_id, ''), 'q': r.quantity}] %}{% endfor %}
-<section x-data="goldfish({{ ns.lines | tojson }})" x-cloak
+{# tojson emits double-quoted JSON, so the x-data attribute MUST be single-quoted or the first
+   `"` closes it and Alpine gets a broken expression; tojson escapes ' < > & for exactly this. #}
+<section x-data='goldfish({{ ns.lines | tojson }})' x-cloak
          class="rounded-xl bg-surface ring-1 ring-edge p-4">
   <div class="flex items-center gap-2 flex-wrap">
     <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">Playtest</h2>

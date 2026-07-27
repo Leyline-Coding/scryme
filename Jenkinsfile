@@ -92,11 +92,29 @@ PY
                 # route/service. Needed for accurate coverage in the SonarQube report.
                 COVERAGE_CORE=sysmon pytest tests/   # pyproject addopts emit coverage.xml (Cobertura)
                 # The Sonar scan runs on a SEPARATE agent (in-cluster pod) whose workspace
-                # path differs from this VM's. coverage.py bakes this VM's absolute path into
-                # the Cobertura <source>, so over there it resolves to nothing and Sonar maps
-                # 0% coverage. Rewrite <source> to the repo-root-relative "backend" dir so
-                # SonarPython resolves backend/src/<file> against the scan's projectBaseDir.
-                sed -i 's#<source>.*</source>#<source>backend</source>#' coverage.xml
+                # path differs from this VM's, and coverage.py bakes THIS VM's absolute path
+                # into the Cobertura <source>. Over there it resolves to nothing -> Sonar maps
+                # 0% coverage. Rewrite <source> so SonarPython resolves each file to
+                # backend/src/<...> (matching sonar.sources) against the scan's projectBaseDir.
+                #
+                # Which prefix is correct depends on coverage.py's version-dependent rooting:
+                #   * coverage >= ~7.14: <source>=.../backend/src, filenames bare ("routes/x.py")
+                #                        -> need <source>backend/src
+                #   * older:             <source>=.../backend,     filenames "src/routes/x.py"
+                #                        -> need <source>backend
+                # Detect from the first class filename so a coverage bump can't silently
+                # re-zero coverage.
+                python - <<'PY'
+import re
+s = open("coverage.xml").read()
+m = re.search(r'<class[^>]*filename="([^"]*)"', s)
+if not m:
+    raise SystemExit("no class filename in coverage.xml")
+prefix = "backend" if m.group(1).startswith("src/") else "backend/src"
+s = re.sub(r'<source>.*?</source>', "<source>%s</source>" % prefix, s, flags=re.S)
+open("coverage.xml", "w").write(s)
+print("rewrote coverage.xml <source> ->", prefix)
+PY
               '''
             }
           }

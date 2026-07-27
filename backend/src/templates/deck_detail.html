@@ -345,7 +345,9 @@
               :class="view === 'grid' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
               class="rounded px-2 py-0.5 text-xs">Grid</button>
     </div>
-    <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+    {# Full width unless there's a sideboard to sit beside it — otherwise a Commander deck's
+       grid is squeezed into one column and the cards are unreadable. #}
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4{% if not cov.side %} md:col-span-2{% endif %}">
       <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
         Mainboard ({{ cov.main | map(attribute='quantity') | sum }})
       </h2>

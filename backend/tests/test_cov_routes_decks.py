@@ -123,6 +123,32 @@ async def test_build_form_and_preview(session):
 
 
 @pytest.mark.asyncio
+async def test_proxy_sheet_route(session):
+    """/decks/{id}/proxies (#161): flagged/all sources, quantity expansion, empty + 404."""
+    await _add(session, _raw("Sol Ring", set_code="cmm", cn="1"))
+    deck = await create_deck(session, "C", "2 Sol Ring")
+
+    # Nothing flagged yet -> the 'proxy' sheet is empty and says so.
+    empty = await R.proxy_sheet(_request("/p"), deck.id, source="proxy", session=session)
+    assert empty.status_code == 200
+    assert b"Nothing to proxy" in empty.body and b"Sol Ring" not in empty.body
+
+    # Flag the line as a proxy, then it prints one card per copy (quantity 2).
+    deck.cards[0].proxy = True
+    await session.commit()
+    sheet = await R.proxy_sheet(_request("/p"), deck.id, source="proxy", session=session)
+    assert sheet.status_code == 200 and sheet.body.count(b"Sol Ring") >= 2
+
+    # 'all' includes it too; an unknown source falls back to 'proxy'.
+    allsheet = await R.proxy_sheet(_request("/p"), deck.id, source="all", session=session)
+    bogus = await R.proxy_sheet(_request("/p"), deck.id, source="bogus", session=session)
+    assert b"Sol Ring" in allsheet.body and bogus.status_code == 200
+
+    with pytest.raises(HTTPException):
+        await R.proxy_sheet(_request("/p"), 999999, session=session)
+
+
+@pytest.mark.asyncio
 async def test_edit_and_update_deck_card(session):
     oracle = str(uuid.uuid4())
     await _add(session, _raw("Boros Signet", oracle=oracle, set_code="cmm", cn="1"))

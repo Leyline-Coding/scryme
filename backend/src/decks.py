@@ -479,6 +479,44 @@ class DeckCoverage:
         return bool(self.fmt) and self.illegal_count == 0 and self.unmatched == 0
 
 
+# Proxy print sheets (#161): which cards to lay out, and basics we skip by default
+# (nobody needs to proxy a Plains). Snow-Covered basics count as basics too.
+_BASICS = ("Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes")
+BASIC_LAND_NAMES = frozenset([*_BASICS, *(f"Snow-Covered {b}" for b in _BASICS)])
+PROXY_SOURCES = ("proxy", "missing", "all")
+
+
+@dataclass
+class ProxyCard:
+    name: str
+    scryfall_id: str | None
+    special: bool = False
+
+
+def proxy_cards(cov: DeckCoverage, source: str = "proxy",
+                include_lands: bool = False) -> list[ProxyCard]:
+    """Flat, quantity-expanded list of cards to print as proxies for a deck (#161).
+
+    source: 'proxy' = lines flagged Proxy; 'missing' = copies not yet owned; 'all' = the
+    whole deck. Basic lands are skipped unless ``include_lands``. Main + sideboard are both
+    considered so you can proxy a missing sideboard card too.
+    """
+    if source not in PROXY_SOURCES:
+        source = "proxy"
+    out: list[ProxyCard] = []
+    for row in [*cov.main, *cov.side]:
+        if not include_lands and row.name in BASIC_LAND_NAMES:
+            continue
+        if source == "proxy":
+            copies = row.quantity if row.proxy else 0
+        elif source == "missing":
+            copies = max(0, row.quantity - row.owned)
+        else:  # all
+            copies = row.quantity
+        out.extend(ProxyCard(row.name, row.scryfall_id, row.special) for _ in range(copies))
+    return out
+
+
 async def _load_deck_printings(session: AsyncSession, sids: list, source: str):
     """Per-sid price map, printing tuple, and oracle→sid map for the deck's resolved cards."""
     price_by_sid: dict[str, dict] = {}

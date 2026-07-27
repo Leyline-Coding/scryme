@@ -179,3 +179,19 @@ Use the **Export** buttons on the deck page to download the list:
 
 Cards scryme couldn't resolve are exported by name only (no set/number).
 
+## Print proxies
+
+The **Print proxies** buttons open a print-and-cut proxy sheet in a new tab — cards laid out
+3×3 at true playing-card size (63 × 88 mm) with light cut guides, ready to print, cut, and sleeve
+for playtesting. Pick what to include:
+
+- **Flagged proxies** — only cards you've marked **Proxy** on the deck.
+- **Missing cards** — the copies you don't own yet (proxy what you'd otherwise have to buy).
+- **Whole deck** — a full proxy playtest set.
+
+Images come from the local cache (falling back to Scryfall's CDN, or a plain text frame when a
+card's image isn't available offline). Each line prints one card per copy, and a subtle **PROXY**
+stamp keeps sheets clearly non-tournament. Basic lands are skipped by default — use the **Basics**
+toggle in the sheet's toolbar to include them, and the **Cut lines** toggle to hide the guides.
+Then just use your browser's Print (⌘/Ctrl-P).
+

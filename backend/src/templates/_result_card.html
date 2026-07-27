@@ -3,8 +3,9 @@
 {% macro grid_card(v, read_only) %}
 <div class="relative">
   {% if not read_only %}
-  <input type="checkbox" name="scryfall_ids" value="{{ v.card.scryfall_id }}"
-         onchange="bulkCount()" title="Select for bulk edit" aria-label="Select for bulk edit"
+  <label for="bulk-{{ v.card.scryfall_id }}" class="sr-only">Select for bulk edit</label>
+  <input id="bulk-{{ v.card.scryfall_id }}" type="checkbox" name="scryfall_ids" value="{{ v.card.scryfall_id }}"
+         onchange="bulkCount()" title="Select for bulk edit"
          class="absolute top-1.5 left-1.5 z-10 w-4 h-4 cursor-pointer accent-[color:var(--c-accent)]" />
   {% endif %}
   <a href="/card/{{ v.card.scryfall_id }}"

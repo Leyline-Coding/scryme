@@ -1,0 +1,141 @@
+{# Goldfish / sample-hand playtester (#180): pure client-side Alpine over the deck's mainboard.
+   Shuffle → draw 7 → London mulligan (draw 7, put N on the bottom) → draw / scry. No backend
+   state. The library is passed as JSON via the x-data attribute (server values never enter the
+   inline script block, which stays pure JS); it's expanded to individual cards client-side. #}
+{% set ns = namespace(lines=[]) %}
+{% for r in cov.main %}{% set ns.lines = ns.lines + [{'n': r.name, 'i': images.get(r.scryfall_id, ''), 'q': r.quantity}] %}{% endfor %}
+{# tojson emits double-quoted JSON, so the x-data attribute MUST be single-quoted or the first
+   `"` closes it and Alpine gets a broken expression; tojson escapes ' < > & for exactly this. #}
+<section x-data='goldfish({{ ns.lines | tojson }})' x-cloak
+         class="rounded-xl bg-surface ring-1 ring-edge p-4">
+  <div class="flex items-center gap-2 flex-wrap">
+    <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">Playtest</h2>
+    <button type="button" @click="start()"
+            class="rounded-lg bg-accent text-accent-fg px-2.5 py-1 text-xs font-medium">🎴 Test hand</button>
+    <span x-show="open" class="text-xs text-muted" x-text="libCount + ' in library'"></span>
+    <span x-show="open && mulligans > 0" class="text-xs text-muted" x-text="'· ' + mulligans + ' mulligan' + (mulligans > 1 ? 's' : '')"></span>
+    <button type="button" x-show="open" @click="open = false"
+            class="ml-auto text-xs text-muted hover:text-fg">Close</button>
+  </div>
+
+  <div x-show="open" class="mt-3" x-cloak>
+    {# controls #}
+    <div class="flex items-center gap-2 flex-wrap text-xs mb-3">
+      <button type="button" @click="newHand()"
+              class="rounded bg-surface-2 hover:bg-surface-3 px-2 py-1">New hand</button>
+      <button type="button" @click="mulligan()"
+              class="rounded bg-surface-2 hover:bg-surface-3 px-2 py-1">Mulligan (London)</button>
+      <button type="button" @click="draw()" :disabled="bottomNeeded > 0 || libCount === 0"
+              class="rounded bg-surface-2 hover:bg-surface-3 px-2 py-1 disabled:opacity-40">Draw</button>
+      <button type="button" @click="scry()" :disabled="bottomNeeded > 0 || libCount === 0"
+              class="rounded bg-surface-2 hover:bg-surface-3 px-2 py-1 disabled:opacity-40">Scry 1</button>
+    </div>
+
+    {# London mulligan: choose N cards to put on the bottom #}
+    <div x-show="bottomNeeded > 0" class="mb-3 text-xs rounded-lg bg-surface-2 px-3 py-2">
+      Click <strong x-text="bottomNeeded"></strong> card<span x-show="bottomNeeded > 1">s</span>
+      to put on the bottom (<span x-text="selected.length"></span>/<span x-text="bottomNeeded"></span>).
+      <button type="button" @click="keep()" :disabled="selected.length !== bottomNeeded"
+              class="ml-1 rounded bg-accent text-accent-fg px-2 py-0.5 disabled:opacity-40">Keep</button>
+    </div>
+
+    {# Scry: preview the top card (image), then keep or bottom it #}
+    <div x-show="scryCard" class="mb-3 rounded-lg bg-surface-2 px-3 py-2 flex items-center gap-3">
+      <template x-if="scryCard && scryCard.img">
+        <img :src="scryCard && scryCard.img" :alt="scryCard && scryCard.name"
+             class="w-20 shrink-0 rounded-lg ring-1 ring-edge" />
+      </template>
+      <div class="text-xs min-w-0">
+        <div class="mb-1.5 text-muted">Top of library</div>
+        <div class="mb-2 font-medium truncate" x-text="scryCard && scryCard.name"></div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button type="button" @click="scryKeep()" class="rounded bg-surface-3 hover:bg-surface px-2 py-0.5">Keep on top</button>
+          <button type="button" @click="scryBottom()" class="rounded bg-surface-3 hover:bg-surface px-2 py-0.5">To bottom</button>
+        </div>
+      </div>
+    </div>
+
+    {# The hand #}
+    <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2">
+      <template x-for="(c, i) in hand" :key="i">
+        <button type="button" @click="toggle(i)" :title="c.name"
+                :class="selected.includes(i) ? 'ring-2 ring-accent' : 'ring-1 ring-edge'"
+                class="relative block rounded-lg overflow-hidden bg-surface-2 aspect-[5/7]">
+          {# Direct-child accessible name for screen readers (and a static label the HTML
+             analyzer can see; the card art/name below sit in nested templates it skips). #}
+          <span class="sr-only" x-text="c.name">Card</span>
+          <template x-if="c.img">
+            <img :src="c.img" :alt="c.name" class="w-full h-full object-cover" />
+          </template>
+          <template x-if="!c.img">
+            <span class="absolute inset-0 flex items-center justify-center text-center p-1 text-[10px] leading-tight text-muted"
+                  x-text="c.name"></span>
+          </template>
+        </button>
+      </template>
+    </div>
+    <p x-show="hand.length === 0" class="text-xs text-muted">Library empty — draw back or start a new hand.</p>
+  </div>
+</section>
+
+<script>
+  function goldfish(lines) {
+    const deck = [];
+    lines.forEach((l) => { for (let k = 0; k < l.q; k++) deck.push({ name: l.n, img: l.i }); });
+    return {
+      open: false,
+      deck,
+      library: [],
+      hand: [],
+      mulligans: 0,
+      bottomNeeded: 0,   // London: how many cards still to put on the bottom
+      selected: [],      // indices in `hand` chosen to bottom
+      scryCard: null,
+      get libCount() { return this.library.length; },
+      shuffle(a) {
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      },
+      deal() {
+        this.library = this.shuffle(this.deck.slice());
+        this.hand = this.library.splice(0, Math.min(7, this.library.length));
+        this.selected = [];
+        this.scryCard = null;
+      },
+      start() { this.open = true; if (!this.hand.length) this.newHand(); },
+      newHand() { this.mulligans = 0; this.bottomNeeded = 0; this.deal(); },
+      mulligan() {
+        this.mulligans += 1;
+        this.deal();
+        this.bottomNeeded = Math.min(this.mulligans, this.hand.length);
+      },
+      toggle(i) {
+        if (this.bottomNeeded <= 0) return;
+        const k = this.selected.indexOf(i);
+        if (k >= 0) { this.selected.splice(k, 1); }
+        else if (this.selected.length < this.bottomNeeded) { this.selected.push(i); }
+      },
+      keep() {
+        if (this.selected.length !== this.bottomNeeded) return;
+        this.selected.slice().sort((a, b) => b - a)
+          .forEach((i) => this.library.push(this.hand.splice(i, 1)[0]));
+        this.bottomNeeded = 0;
+        this.selected = [];
+      },
+      draw() {
+        if (this.bottomNeeded === 0 && this.library.length) this.hand.push(this.library.shift());
+      },
+      scry() {
+        if (this.bottomNeeded === 0 && this.library.length) this.scryCard = this.library[0];
+      },
+      scryKeep() { this.scryCard = null; },
+      scryBottom() {
+        if (this.library.length) this.library.push(this.library.shift());
+        this.scryCard = null;
+      },
+    };
+  }
+</script>

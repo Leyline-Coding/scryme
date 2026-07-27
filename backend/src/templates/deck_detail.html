@@ -335,6 +335,10 @@
   </div>
   {% endif %}
 
+  {% if cov.main %}
+  <div class="mt-6">{% include "_goldfish.html" %}</div>
+  {% endif %}
+
   <div x-data="deckView()" class="grid md:grid-cols-2 gap-6">
     <div class="md:col-span-2 flex items-center justify-end gap-1 -mb-3">
       <span class="text-xs text-muted mr-1">View:</span>

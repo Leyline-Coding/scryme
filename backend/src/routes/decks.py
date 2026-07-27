@@ -33,12 +33,14 @@ from src.deck_versions import diff_cards, list_versions, save_version, snapshot_
 from src.decks import (
     DECK_LANGUAGES,
     LEGALITY_FORMATS,
+    PROXY_SOURCES,
     add_card_to_deck,
     apply_deck_card_edit,
     create_deck,
     deck_coverage,
     deck_printings,
     deck_stats,
+    proxy_cards,
     resolve_ownership_rows,
     resync_printings,
 )
@@ -418,6 +420,41 @@ async def export_deck(
         content,
         media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/decks/{deck_id}/proxies", response_class=HTMLResponse)
+async def proxy_sheet(
+    request: Request,
+    deck_id: int,
+    source: str = "proxy",
+    lands: int = 0,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Print-optimized proxy sheet (3x3 @ 63x88 mm) of a deck's proxy-flagged, missing, or
+    all cards, ready to print and cut for playtesting (#161). Images come from the local
+    cache (CDN fallback); a text frame stands in when an image is unavailable."""
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    if source not in PROXY_SOURCES:
+        source = "proxy"
+    coverage = await deck_coverage(session, deck)
+    images = await _deck_images(session, deck)
+    cards = [
+        {"name": c.name, "image": images.get(c.scryfall_id or "", ""), "special": c.special}
+        for c in proxy_cards(coverage, source=source, include_lands=bool(lands))
+    ]
+    return templates.TemplateResponse(
+        request,
+        "proxy_sheet.html",
+        {
+            "deck": deck,
+            "cards": cards,
+            "source": source,
+            "sources": PROXY_SOURCES,
+            "lands": bool(lands),
+        },
     )
 
 

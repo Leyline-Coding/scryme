@@ -207,6 +207,17 @@
       {% endfor %}
     </div>
 
+    {# Print proxies (#161): print-and-cut proxy sheets at true card size, in a new tab #}
+    <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm">
+      <span class="text-muted">Print proxies:</span>
+      <a href="/decks/{{ cov.deck.id }}/proxies?source=proxy" target="_blank" rel="noopener"
+         class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Flagged proxies</a>
+      <a href="/decks/{{ cov.deck.id }}/proxies?source=missing" target="_blank" rel="noopener"
+         class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Missing cards</a>
+      <a href="/decks/{{ cov.deck.id }}/proxies?source=all" target="_blank" rel="noopener"
+         class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Whole deck</a>
+    </div>
+
     {# AI assist #}
     {% if ai_ready %}
     <div class="mt-3 pt-3 border-t border-edge text-sm">

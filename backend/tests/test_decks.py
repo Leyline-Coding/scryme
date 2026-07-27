@@ -150,6 +150,37 @@ async def test_legality_check(session):
     assert (await deck_coverage(session, deck, fmt="bogus")).fmt is None
 
 
+def test_proxy_cards_sources_lands_and_expansion():
+    """proxy_cards (#161): source filtering, quantity expansion, and basic-land skipping."""
+    from src.decks import CardRow, DeckCoverage, proxy_cards
+
+    def row(name, qty, owned, proxy=False):
+        return CardRow(name=name, quantity=qty, board="main", owned=owned, matched=True,
+                       scryfall_id=name.lower(), proxy=proxy)
+
+    cov = DeckCoverage(deck=None, main=[
+        row("Sol Ring", 1, 0, proxy=True),      # flagged, unowned
+        row("Lightning Bolt", 4, 1),            # 3 missing
+        row("Forest", 10, 3),                   # basic land — skipped unless include_lands
+    ], side=[row("Naturalize", 2, 0, proxy=True)])
+
+    # 'proxy' = only flagged lines (main + side), quantity-expanded.
+    names = [c.name for c in proxy_cards(cov, source="proxy")]
+    assert sorted(names) == ["Naturalize", "Naturalize", "Sol Ring"]
+    # 'missing' = unowned copies; Forest is a basic so it's skipped.
+    miss = [c.name for c in proxy_cards(cov, source="missing")]
+    assert miss.count("Lightning Bolt") == 3 and miss.count("Sol Ring") == 1
+    assert miss.count("Naturalize") == 2 and "Forest" not in miss
+    # 'all' = whole deck, basics still skipped by default.
+    assert len(proxy_cards(cov, source="all")) == 1 + 4 + 2  # Sol Ring, Bolt, Naturalize
+    # include_lands brings the 10 Forests in.
+    withlands = proxy_cards(cov, source="all", include_lands=True)
+    assert [c.name for c in withlands].count("Forest") == 10 and len(withlands) == 17
+    # Unknown source falls back to 'proxy'.
+    assert [c.name for c in proxy_cards(cov, source="bogus")] == \
+        [c.name for c in proxy_cards(cov, source="proxy")]
+
+
 async def _seed_signet(session):
     """A card with a tournament-legal printing and a NEWER non-playable variant (art-series style,
     ``not_legal`` in every format) sharing one oracle id."""

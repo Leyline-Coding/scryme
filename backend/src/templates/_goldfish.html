@@ -61,6 +61,9 @@
         <button type="button" @click="toggle(i)" :title="c.name"
                 :class="selected.includes(i) ? 'ring-2 ring-accent' : 'ring-1 ring-edge'"
                 class="relative block rounded-lg overflow-hidden bg-surface-2 aspect-[5/7]">
+          {# Direct-child accessible name for screen readers (and a static label the HTML
+             analyzer can see; the card art/name below sit in nested templates it skips). #}
+          <span class="sr-only" x-text="c.name">Card</span>
           <template x-if="c.img">
             <img :src="c.img" :alt="c.name" class="w-full h-full object-cover" />
           </template>

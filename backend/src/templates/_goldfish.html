@@ -39,11 +39,20 @@
               class="ml-1 rounded bg-accent text-accent-fg px-2 py-0.5 disabled:opacity-40">Keep</button>
     </div>
 
-    {# Scry: look at the top card, keep or bottom it #}
-    <div x-show="scryCard" class="mb-3 text-xs rounded-lg bg-surface-2 px-3 py-2 flex items-center gap-2 flex-wrap">
-      <span>Top of library: <strong x-text="scryCard && scryCard.name"></strong></span>
-      <button type="button" @click="scryKeep()" class="rounded bg-surface-3 hover:bg-surface px-2 py-0.5">Keep on top</button>
-      <button type="button" @click="scryBottom()" class="rounded bg-surface-3 hover:bg-surface px-2 py-0.5">To bottom</button>
+    {# Scry: preview the top card (image), then keep or bottom it #}
+    <div x-show="scryCard" class="mb-3 rounded-lg bg-surface-2 px-3 py-2 flex items-center gap-3">
+      <template x-if="scryCard && scryCard.img">
+        <img :src="scryCard && scryCard.img" :alt="scryCard && scryCard.name"
+             class="w-20 shrink-0 rounded-lg ring-1 ring-edge" />
+      </template>
+      <div class="text-xs min-w-0">
+        <div class="mb-1.5 text-muted">Top of library</div>
+        <div class="mb-2 font-medium truncate" x-text="scryCard && scryCard.name"></div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button type="button" @click="scryKeep()" class="rounded bg-surface-3 hover:bg-surface px-2 py-0.5">Keep on top</button>
+          <button type="button" @click="scryBottom()" class="rounded bg-surface-3 hover:bg-surface px-2 py-0.5">To bottom</button>
+        </div>
+      </div>
     </div>
 
     {# The hand #}

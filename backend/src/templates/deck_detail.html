@@ -24,7 +24,7 @@
 {% macro rows(cards) %}
   <ul class="divide-y divide-edge">
     {% for r in cards %}
-    <li class="py-1.5 text-sm" x-data="{ editing: false }">
+    <li class="py-1.5 text-sm break-inside-avoid" x-data="{ editing: false }">
       <div class="flex items-center gap-2 {% if not r.matched %}text-amber-500{% endif %}">
         {% if not read_only and r.matched %}
         <span class="shrink-0 flex items-center gap-0.5">
@@ -85,9 +85,10 @@
   </ul>
 {% endmacro %}
 
-{# Grid view of a board (#1): card images with a quantity + ownership badge. #}
+{# Grid view of a board (#1): card images with a quantity + ownership badge. Uses the shared fluid
+   .card-grid so it reflows to fill wide screens and honors the Settings card-size slider. #}
 {% macro grid(cards) %}
-  <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+  <div class="card-grid">
     {% for r in cards %}
     <div class="relative">
       {% if r.scryfall_id and images.get(r.scryfall_id) %}
@@ -111,7 +112,7 @@
 {% endmacro %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto px-4 py-6">
+<div class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
   <header class="flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold truncate">{{ cov.deck.name }}</h1>
@@ -355,7 +356,9 @@
       <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
         Mainboard ({{ cov.main | map(attribute='quantity') | sum }})
       </h2>
-      <div x-show="view === 'list'">{{ rows(cov.main) }}</div>
+      {# Full-width mainboard: flow the (often long) list into columns on wide screens so it doesn't
+         become one endless narrow column. Beside a sideboard it stays single-column. #}
+      <div x-show="view === 'list'"{% if not cov.side %} class="lg:columns-2 xl:columns-3 [column-gap:2rem]"{% endif %}>{{ rows(cov.main) }}</div>
       <div x-show="view === 'grid'" x-cloak>{{ grid(cov.main) }}</div>
     </section>
     {% if cov.side %}

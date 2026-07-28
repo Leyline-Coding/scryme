@@ -42,6 +42,9 @@ from src.routes import (
     watch,
     wishlist,
 )
+from src.routes import (
+    settings as settings_routes,
+)
 from src.scheduler import shutdown_scheduler, start_scheduler
 from src.templating import STATIC_DIR, templates
 
@@ -113,6 +116,39 @@ def _install_cache_headers(app: FastAPI) -> None:
         return response
 
 
+def _install_prefs_loader(app: FastAPI) -> None:
+    """Resolve the collection preferences singleton once per HTML request onto
+    ``request.state.prefs`` (#203), so the sync currency/price-source/search read helpers and the
+    template context processor can consult it without threading a session everywhere.
+
+    Skips static/image/health/metrics and the token-gated ``/api`` surface. Never 500s a request
+    over prefs: a DB hiccup (or the table not yet migrated) falls back to ``None``, and the read
+    helpers use their existing cookie/default path.
+    """
+    from sqlalchemy.exc import SQLAlchemyError
+
+    from src.db import SessionLocal
+    from src.models import Preferences
+    from src.preferences import resolve
+
+    _skip = ("/static/", "/images/", "/api/")
+
+    @app.middleware("http")
+    async def load_prefs(request, call_next):
+        path = request.url.path
+        if not (path.startswith(_skip) or path in ("/health", "/metrics")):
+            try:
+                async with SessionLocal() as s:
+                    row = await s.get(Preferences, 1)
+                request.state.prefs = resolve(
+                    row, request.cookies, writable=not get_settings().read_only
+                )
+                request.state.prefs_saved = row is not None  # a value has actually been saved
+            except SQLAlchemyError:
+                request.state.prefs = None
+        return await call_next(request)
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="scryme", version=__version__, lifespan=lifespan)
@@ -123,6 +159,7 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     _install_cache_headers(app)
+    _install_prefs_loader(app)
     if settings.lan_guard:
         _install_lan_guard(app)
 
@@ -148,6 +185,7 @@ def create_app() -> FastAPI:
     app.include_router(mycollection.router)
     app.include_router(api.router)
     app.include_router(preferences.router)
+    app.include_router(settings_routes.router)
     app.include_router(lan.router)
     app.include_router(watch.router)
     app.include_router(ai.router)

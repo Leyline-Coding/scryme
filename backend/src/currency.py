@@ -67,6 +67,11 @@ def unit_price(prices: dict | None, finish: str, currency: str) -> float:
 
 
 def get_currency(request: Request) -> str:
-    """Active display currency from the cookie, falling back to the configured default."""
+    """Active display currency. Prefers the resolved preferences (singleton + cookie merge set on
+    ``request.state.prefs`` by the prefs middleware); falls back to the raw cookie/default when the
+    middleware didn't run (e.g. a unit test constructing a bare request)."""
+    prefs = getattr(getattr(request, "state", None), "prefs", None)
+    if prefs is not None and prefs.currency:
+        return prefs.currency
     cookie = normalize(request.cookies.get("scryme_currency"))
     return cookie or normalize(get_settings().default_currency) or DEFAULT

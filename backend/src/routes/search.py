@@ -54,6 +54,32 @@ def _resolve_page_size(request) -> int:
 
 
 @dataclass
+class _DisplayPrefs:
+    view: str
+    page_size: int
+    infinite: bool
+    search_filter: str
+    movers: bool
+
+
+def _display_prefs(request) -> _DisplayPrefs:
+    """View / page-size / infinite / universal-filter / movers for the search page. Prefers the
+    resolved preferences on ``request.state.prefs`` (singleton + cookie merge); falls back to the
+    raw cookies when the prefs middleware didn't run (e.g. a bare unit-test request)."""
+    p = getattr(getattr(request, "state", None), "prefs", None)
+    if p is not None:
+        return _DisplayPrefs(p.view, p.page_size, p.infinite, p.search_filter, p.movers)
+    c = request.cookies
+    return _DisplayPrefs(
+        view="list" if c.get("scryme_view") == "list" else "grid",
+        page_size=_resolve_page_size(request),
+        infinite=c.get("scryme_infinite") == "1",
+        search_filter=c.get("scryme_search_filter") or "",
+        movers=c.get("scryme_movers") == "1",
+    )
+
+
+@dataclass
 class CardView:
     card: Card
     quantity: int
@@ -188,12 +214,11 @@ async def search(
     scope_enum = SearchScope.ALL if scope == SearchScope.ALL.value else SearchScope.COLLECTION
     sort = sort if sort in SORT_KEYS else DEFAULT_SORT
     descending = dir == "desc"
-    view = "list" if request.cookies.get("scryme_view") == "list" else "grid"
-    page_size = _resolve_page_size(request)
-    infinite = request.cookies.get("scryme_infinite") == "1"
+    dp = _display_prefs(request)
+    view, page_size, infinite = dp.view, dp.page_size, dp.infinite
     # Universal search filter (#143): extra Scryfall syntax the user always wants applied
-    # (e.g. -is:ub, legal:commander), saved in a browser cookie and ANDed into every query.
-    universal = (request.cookies.get("scryme_search_filter") or "").strip()
+    # (e.g. -is:ub, legal:commander), ANDed into every query.
+    universal = dp.search_filter.strip()
     effective_q = _apply_universal(q, universal)
     ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir,
                  "read_only": get_settings().read_only, "view": view, "nl": nl,
@@ -233,7 +258,7 @@ async def search(
     ctx["read_only"] = get_settings().read_only
     ctx["ai_ready"] = (await get_config(session)).ready
     ctx["binders"] = await all_binders(session)
-    # Optional biggest-movers panel (opt-in via a Settings cookie).
-    if request.cookies.get("scryme_movers") == "1":
+    # Optional biggest-movers panel (opt-in via Settings).
+    if dp.movers:
         ctx["movers"] = await memoize("movers", lambda: biggest_movers(session, limit=5))
     return templates.TemplateResponse(request, "search.html", ctx)

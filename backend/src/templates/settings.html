@@ -97,6 +97,7 @@
       foilSpeed: Number.parseInt(localStorage.getItem("scryme-foil-speed") || "6", 10),
       spinOn: localStorage.getItem("scryme-spin") !== "0",   // default on
       spinSpeed: Number.parseInt(localStorage.getItem("scryme-spin-speed") || "6", 10),
+      cardSize: Number.parseInt(localStorage.getItem("scryme-card-size") || "5", 10),
       moversOn: (document.cookie.match(/(?:^|; )scryme_movers=([^;]+)/) || [])[1] === "1",
       // id, name, dark/light swatch bg, and per-mode default accent (for the accent picker reset).
       palettes: [
@@ -203,6 +204,12 @@
           "--spin-speed", ((12 - this.spinSpeed) * 0.06).toFixed(2) + "s");
         localStorage.setItem("scryme-spin-speed", this.spinSpeed);
         this.savePref({ spin_speed: Number(this.spinSpeed) });
+      },
+      applyCardSize() {
+        // Slider 1–10 -> 6rem–15rem min column width (matches base.html pre-paint).
+        document.documentElement.style.setProperty("--card-min", (5 + Number(this.cardSize)) + "rem");
+        localStorage.setItem("scryme-card-size", this.cardSize);
+        this.savePref({ card_size: Number(this.cardSize) });
       },
     };
   }

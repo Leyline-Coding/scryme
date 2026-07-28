@@ -24,6 +24,7 @@ def _inject_prefs(request) -> dict:
     appearance = {
         "mode": prefs.mode, "palette": prefs.palette, "accent": prefs.accent,
         "foil_speed": prefs.foil_speed, "spin": prefs.spin, "spin_speed": prefs.spin_speed,
+        "card_size": prefs.card_size,
     }
     writable = not get_settings().read_only
     # Server appearance wins over localStorage only when writable AND actually saved (a row exists),

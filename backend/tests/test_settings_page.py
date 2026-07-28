@@ -9,9 +9,12 @@ async def test_settings_page_renders_both_tabs(client):
     # Collection tab: the shared preference controls live here now.
     assert "function settingsMenu" in body and "setPalette" in body
     assert "tab === 'collection'" in body and "tab === 'instance'" in body
-    # Instance tab: read-only operator config + entry points.
+    # Instance tab: read-only operator config + entry points; bools render as on/off, not True/False.
     assert "Operator configuration" in body and "SCRYME_" in body
     assert "Database" in body and "Scryfall" in body
+    assert "Read-only mode" in body and ">False<" not in body and ">True<" not in body
+    # The gear is hidden on /settings itself (it would just link to this page).
+    assert 'href="/settings" title="Settings"' not in body
 
 
 @pytest.mark.asyncio

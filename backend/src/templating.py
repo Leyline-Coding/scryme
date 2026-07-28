@@ -12,7 +12,28 @@ BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = BASE_DIR / "templates"
 STATIC_DIR = BASE_DIR / "static"
 
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+def _inject_prefs(request) -> dict:
+    """Make the resolved appearance preferences + a writable flag available to every template (for
+    base.html's pre-paint theme hydration, #203). Empty/writable=False when the prefs middleware
+    didn't populate ``request.state.prefs`` — base.html then falls back to localStorage only."""
+    state = getattr(request, "state", None)
+    prefs = getattr(state, "prefs", None)
+    if prefs is None:
+        return {"theme_prefs": None, "prefs_writable": False, "theme_authoritative": False}
+    appearance = {
+        "mode": prefs.mode, "palette": prefs.palette, "accent": prefs.accent,
+        "foil_speed": prefs.foil_speed, "spin": prefs.spin, "spin_speed": prefs.spin_speed,
+    }
+    writable = not get_settings().read_only
+    # Server appearance wins over localStorage only when writable AND actually saved (a row exists),
+    # so a fresh instance's defaults never overwrite an upgrading user's existing device theme.
+    authoritative = writable and getattr(state, "prefs_saved", False)
+    return {"theme_prefs": appearance, "prefs_writable": writable,
+            "theme_authoritative": authoritative}
+
+
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR), context_processors=[_inject_prefs])
 
 # Render Scryfall {…} symbol tokens and set symbols via the vendored Mana/Keyrune fonts.
 templates.env.filters["mana"] = mana_symbols

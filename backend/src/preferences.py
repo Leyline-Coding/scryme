@@ -116,3 +116,48 @@ async def update_preferences(session: AsyncSession, **fields_in: Any) -> Prefs:
             setattr(row, name, _normalize_field(name, value))
     await session.commit()
     return _from_row(row)
+
+
+# Cookie-backed prefs and the cookies they read (appearance prefs are localStorage-only — the client
+# pre-paint applies those, so they never appear here).
+_PAGE_SIZES = (30, 60, 120, 240)
+
+
+def _apply_cookies(prefs: Prefs, cookies: dict) -> Prefs:
+    """Overlay a device's cookie choices onto ``prefs`` (only where a cookie is present)."""
+    if (c := normalize_currency(cookies.get("scryme_currency"))):
+        prefs.currency = c
+    if (c := normalize_source(cookies.get("scryme_price_source"))):
+        prefs.price_source = c
+    if "scryme_search_filter" in cookies:
+        prefs.search_filter = cookies["scryme_search_filter"]
+    if "scryme_movers" in cookies:
+        prefs.movers = cookies["scryme_movers"] == "1"
+    if "scryme_view" in cookies:
+        prefs.view = "list" if cookies["scryme_view"] == "list" else "grid"
+    if "scryme_infinite" in cookies:
+        prefs.infinite = cookies["scryme_infinite"] == "1"
+    if (hc := normalize_currency(cookies.get("scryme_hist_currency"))):
+        prefs.hist_currency = hc
+    try:
+        n = int(cookies.get("scryme_page_size", ""))
+        if n in _PAGE_SIZES:
+            prefs.page_size = n
+    except (TypeError, ValueError):
+        pass
+    return prefs
+
+
+def resolve(row: PreferencesRow | None, cookies: dict, *, writable: bool) -> Prefs:
+    """Effective per-request preferences.
+
+    Precedence: when the instance is writable AND a saved singleton row exists, the singleton is
+    authoritative (a synced device sees the account's choice). Otherwise — a fresh instance with no
+    row yet, or the read-only demo — a device's own cookie wins so per-visitor choices still work.
+    Appearance prefs are never cookie-backed here; the client pre-paint applies any localStorage
+    device override on top of the injected singleton value.
+    """
+    base = _from_row(row) if row is not None else _defaults()
+    if writable and row is not None:
+        return base
+    return _apply_cookies(base, cookies or {})

@@ -42,6 +42,9 @@ from src.routes import (
     watch,
     wishlist,
 )
+from src.routes import (
+    settings as settings_routes,
+)
 from src.scheduler import shutdown_scheduler, start_scheduler
 from src.templating import STATIC_DIR, templates
 
@@ -182,6 +185,7 @@ def create_app() -> FastAPI:
     app.include_router(mycollection.router)
     app.include_router(api.router)
     app.include_router(preferences.router)
+    app.include_router(settings_routes.router)
     app.include_router(lan.router)
     app.include_router(watch.router)
     app.include_router(ai.router)

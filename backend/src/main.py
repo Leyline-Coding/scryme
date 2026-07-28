@@ -30,6 +30,7 @@ from src.routes import (
     home,
     lan,
     mycollection,
+    preferences,
     prices,
     saved,
     search,
@@ -146,6 +147,7 @@ def create_app() -> FastAPI:
     app.include_router(checklists.router)
     app.include_router(mycollection.router)
     app.include_router(api.router)
+    app.include_router(preferences.router)
     app.include_router(lan.router)
     app.include_router(watch.router)
     app.include_router(ai.router)

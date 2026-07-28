@@ -188,12 +188,16 @@ async def search(
     scope_enum = SearchScope.ALL if scope == SearchScope.ALL.value else SearchScope.COLLECTION
     sort = sort if sort in SORT_KEYS else DEFAULT_SORT
     descending = dir == "desc"
-    view = "list" if request.cookies.get("scryme_view") == "list" else "grid"
-    page_size = _resolve_page_size(request)
-    infinite = request.cookies.get("scryme_infinite") == "1"
+    # Prefer the resolved preferences (singleton + cookie merge on request.state.prefs); fall back
+    # to the raw cookies when the prefs middleware didn't run.
+    p = getattr(getattr(request, "state", None), "prefs", None)
+    view = p.view if p else ("list" if request.cookies.get("scryme_view") == "list" else "grid")
+    page_size = p.page_size if p else _resolve_page_size(request)
+    infinite = p.infinite if p else request.cookies.get("scryme_infinite") == "1"
     # Universal search filter (#143): extra Scryfall syntax the user always wants applied
-    # (e.g. -is:ub, legal:commander), saved in a browser cookie and ANDed into every query.
-    universal = (request.cookies.get("scryme_search_filter") or "").strip()
+    # (e.g. -is:ub, legal:commander), ANDed into every query.
+    _filter = p.search_filter if p else (request.cookies.get("scryme_search_filter") or "")
+    universal = _filter.strip()
     effective_q = _apply_universal(q, universal)
     ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir,
                  "read_only": get_settings().read_only, "view": view, "nl": nl,
@@ -233,7 +237,7 @@ async def search(
     ctx["read_only"] = get_settings().read_only
     ctx["ai_ready"] = (await get_config(session)).ready
     ctx["binders"] = await all_binders(session)
-    # Optional biggest-movers panel (opt-in via a Settings cookie).
-    if request.cookies.get("scryme_movers") == "1":
+    # Optional biggest-movers panel (opt-in via Settings).
+    if p.movers if p else request.cookies.get("scryme_movers") == "1":
         ctx["movers"] = await memoize("movers", lambda: biggest_movers(session, limit=5))
     return templates.TemplateResponse(request, "search.html", ctx)

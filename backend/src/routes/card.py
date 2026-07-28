@@ -97,9 +97,12 @@ def _flip_rotate(card: Card) -> tuple[bool, str | None, bool]:
 def _hist_currency(request: Request) -> str:
     """Display currency for the per-card price-history chart (#233).
 
-    Its own ``scryme_hist_currency`` cookie (set by the chart dropdown) takes precedence; otherwise
-    it follows the site-wide currency, so a EUR user sees the chart in EUR by default.
+    Its own ``scryme_hist_currency`` preference (set by the chart dropdown) takes precedence;
+    otherwise it follows the site-wide currency, so a EUR user sees the chart in EUR by default.
     """
+    prefs = getattr(getattr(request, "state", None), "prefs", None)
+    if prefs is not None:
+        return prefs.hist_currency or get_currency(request)
     return currency.normalize(request.cookies.get("scryme_hist_currency")) or get_currency(request)
 
 

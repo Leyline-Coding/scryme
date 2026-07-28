@@ -32,7 +32,11 @@ def normalize_source(value: str | None) -> str | None:
 
 
 def get_price_source(request: Request) -> str:
-    """Active price source from the cookie, falling back to the configured default."""
+    """Active price source. Prefers the resolved preferences on ``request.state.prefs`` (set by the
+    prefs middleware); falls back to the raw cookie/default when the middleware didn't run."""
+    prefs = getattr(getattr(request, "state", None), "prefs", None)
+    if prefs is not None and prefs.price_source:
+        return prefs.price_source
     cookie = normalize_source(request.cookies.get("scryme_price_source"))
     return cookie or normalize_source(get_settings().default_price_source) or DEFAULT
 

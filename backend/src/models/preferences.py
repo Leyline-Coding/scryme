@@ -54,6 +54,8 @@ class Preferences(Base):
     foil_speed: Mapped[int] = mapped_column(Integer, default=6, server_default=text("6"))
     spin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=true())
     spin_speed: Mapped[int] = mapped_column(Integer, default=6, server_default=text("6"))
+    # Grid card size (1–10; the search/collection grid's min column width). 5 == today's 10rem.
+    card_size: Mapped[int] = mapped_column(Integer, default=5, server_default=text("5"))
 
     # Forward-compat bucket for future toggles so we don't migrate per checkbox.
     extra: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))

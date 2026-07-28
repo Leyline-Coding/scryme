@@ -162,14 +162,14 @@
 [x-cloak] { display: none !important; }
 
 /* Fluid card grid: columns reflow continuously with the viewport instead of stepping at fixed
-   breakpoints, so resizing the window always re-lays-out the cards. */
+   breakpoints, so resizing the window always re-lays-out the cards. The per-column minimum width is
+   driven by --card-min (the Settings "card size" slider retunes it, 6rem–15rem; default 10rem). The
+   min(…, 47vw) cap keeps at least ~2 columns on a phone no matter how large a size is chosen. */
+:root { --card-min: 10rem; }
 .card-grid {
   display: grid;
   gap: 0.75rem;
-  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
-}
-@media (min-width: 640px) {
-  .card-grid { grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min), 47vw), 1fr));
 }
 /* Smaller variant for thumbnail rows (printings, similar cards, binder pages). */
 .card-grid-sm {

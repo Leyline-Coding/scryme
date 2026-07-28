@@ -13,6 +13,7 @@ async def test_get_preferences_defaults_when_no_row(session):
     assert prefs.currency == s.default_currency and prefs.price_source == s.default_price_source
     assert prefs.mode == "dark" and prefs.palette == "trop-orange" and prefs.view == "grid"
     assert prefs.page_size == 60 and prefs.movers is False and prefs.spin is True
+    assert prefs.card_size == 5
     # get is read-only: still no row afterwards.
     from src.models import Preferences
     assert await session.get(Preferences, 1) is None
@@ -21,9 +22,11 @@ async def test_get_preferences_defaults_when_no_row(session):
 @pytest.mark.asyncio
 async def test_update_preferences_upserts_and_normalizes(session):
     # First update creates id==1 and applies only the given fields.
-    p = await update_preferences(session, currency="eur", palette="midnight", foil_speed=20)
+    p = await update_preferences(session, currency="eur", palette="midnight", foil_speed=20,
+                                 card_size=99)
     assert p.currency == "eur" and p.palette == "midnight"
     assert p.foil_speed == 10  # clamped to 1..10
+    assert p.card_size == 10  # clamped to 1..10
     assert p.price_source == "tcgplayer"  # untouched -> default
     # A bad currency falls back to the default rather than persisting garbage.
     p2 = await update_preferences(session, currency="zzz", movers=True, extra={"beta": 1})

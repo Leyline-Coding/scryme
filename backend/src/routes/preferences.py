@@ -39,6 +39,7 @@ class PreferencesOut(BaseModel):
     foil_speed: int
     spin: bool
     spin_speed: int
+    card_size: int
     extra: dict
 
 
@@ -58,6 +59,7 @@ class PreferencesUpdateIn(BaseModel):
     foil_speed: int | None = None
     spin: bool | None = None
     spin_speed: int | None = None
+    card_size: int | None = None
     extra: dict | None = None
 
 

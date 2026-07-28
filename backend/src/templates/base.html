@@ -49,6 +49,10 @@
         if (ss) d.style.setProperty("--spin-speed", ((12 - Number.parseInt(ss, 10)) * 0.06).toFixed(2) + "s");
         var spin = pick("scryme-spin", P ? (P.spin ? "1" : "0") : null);
         if (spin !== "0") d.classList.add("spin-on");  // default on (null or "1")
+        // Grid card size (1–10 -> 6rem–15rem min column width). Applied before paint so the grid
+        // doesn't reflow after load.
+        var cs = pick("scryme-card-size", P ? String(P.card_size) : null);
+        if (cs) d.style.setProperty("--card-min", (5 + Number.parseInt(cs, 10)) + "rem");
       } catch (e) {
         console.warn("theme init skipped (storage unavailable):", e);
       }

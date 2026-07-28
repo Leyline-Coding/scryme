@@ -31,7 +31,9 @@ from src.importers.merge import MergeStrategy
 from src.importers.service import confirm_upload, stage_upload
 from src.llm import ChatClient, get_config, nl_to_query
 from src.models import Card, Checklist, ChecklistItem, CollectionCard, Deck, DeckCard, SavedSearch
+from src.preferences import get_preferences, update_preferences
 from src.prices import biggest_movers, collection_pl, value_series
+from src.routes.preferences import PreferencesOut, PreferencesUpdateIn
 from src.scryfall.mapping import image_url
 from src.search import SearchError, SearchScope
 from src.search.engine import DEFAULT_SORT, SORT_KEYS, run_search
@@ -937,3 +939,19 @@ async def api_import_confirm(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return ImportResultOut(strategy=summary.strategy.value, inserted=summary.inserted,
                            updated=summary.updated, total_quantity=summary.total_quantity)
+
+
+# --- Preferences (#203) — same data as the browser /prefs router, for external clients ----------
+
+@router.get("/preferences", response_model=PreferencesOut)
+async def api_preferences(session: AsyncSession = Depends(get_session)) -> PreferencesOut:
+    return PreferencesOut(**(await get_preferences(session)).to_dict())
+
+
+@router.patch("/preferences", response_model=PreferencesOut)
+async def api_preferences_update(
+    body: PreferencesUpdateIn, session: AsyncSession = Depends(get_session)
+) -> PreferencesOut:
+    _guard_writable()
+    prefs = await update_preferences(session, **body.model_dump(exclude_unset=True))
+    return PreferencesOut(**prefs.to_dict())

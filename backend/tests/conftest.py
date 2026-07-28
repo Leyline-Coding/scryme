@@ -64,6 +64,7 @@ async def _clean_tables():
         await conn.execute(text("TRUNCATE import_snapshot RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE wishlist RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE llm_settings RESTART IDENTITY CASCADE"))
+        await conn.execute(text("TRUNCATE preferences RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE card_embedding CASCADE"))
         await conn.execute(text("TRUNCATE rules_chunk RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE binder_card RESTART IDENTITY CASCADE"))

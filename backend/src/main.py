@@ -140,6 +140,7 @@ def _install_prefs_loader(app: FastAPI) -> None:
                 request.state.prefs = resolve(
                     row, request.cookies, writable=not get_settings().read_only
                 )
+                request.state.prefs_saved = row is not None  # a value has actually been saved
             except SQLAlchemyError:
                 request.state.prefs = None
         return await call_next(request)

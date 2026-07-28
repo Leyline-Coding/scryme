@@ -17,14 +17,20 @@ def _inject_prefs(request) -> dict:
     """Make the resolved appearance preferences + a writable flag available to every template (for
     base.html's pre-paint theme hydration, #203). Empty/writable=False when the prefs middleware
     didn't populate ``request.state.prefs`` — base.html then falls back to localStorage only."""
-    prefs = getattr(getattr(request, "state", None), "prefs", None)
+    state = getattr(request, "state", None)
+    prefs = getattr(state, "prefs", None)
     if prefs is None:
-        return {"theme_prefs": None, "prefs_writable": False}
+        return {"theme_prefs": None, "prefs_writable": False, "theme_authoritative": False}
     appearance = {
         "mode": prefs.mode, "palette": prefs.palette, "accent": prefs.accent,
         "foil_speed": prefs.foil_speed, "spin": prefs.spin, "spin_speed": prefs.spin_speed,
     }
-    return {"theme_prefs": appearance, "prefs_writable": not get_settings().read_only}
+    writable = not get_settings().read_only
+    # Server appearance wins over localStorage only when writable AND actually saved (a row exists),
+    # so a fresh instance's defaults never overwrite an upgrading user's existing device theme.
+    authoritative = writable and getattr(state, "prefs_saved", False)
+    return {"theme_prefs": appearance, "prefs_writable": writable,
+            "theme_authoritative": authoritative}
 
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR), context_processors=[_inject_prefs])

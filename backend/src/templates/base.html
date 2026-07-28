@@ -5,32 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}scryme{% endblock %}</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
-  <!-- Apply the saved theme + custom accent before paint to avoid a flash of the default theme. -->
+  <!-- Apply the theme + accent before paint (no flash). Precedence (#203): on a WRITABLE instance
+       the server-side preferences singleton wins and is mirrored into localStorage; on the READ-ONLY
+       demo a device's own localStorage choice wins, falling back to the injected server default.
+       P + writable are injected server-side (no fetch, no window global). P is null when the prefs
+       middleware didn't run -> pure-localStorage behavior, exactly as before. -->
   <script>
     (function () {
       try {
         var d = document.documentElement;
-        // Theme = palette + light/dark mode. Migrate the pre-split `scryme-theme` once.
-        var pal = localStorage.getItem("scryme-palette");
-        var mode = localStorage.getItem("scryme-mode");
-        if (!pal) {
+        var P = {{ theme_prefs | tojson }};
+        // Authoritative = writable AND a preference was actually saved; only then does the server
+        // value win over (and get mirrored into) localStorage. A fresh instance's defaults never
+        // clobber an existing device's theme.
+        var authoritative = {{ 'true' if theme_authoritative else 'false' }};
+        function pick(key, serverVal) {
+          var ls = localStorage.getItem(key);
+          if (authoritative && P && serverVal != null) {
+            if (serverVal === "") localStorage.removeItem(key);
+            else localStorage.setItem(key, serverVal);
+            return serverVal;
+          }
+          return ls != null ? ls : (P && serverVal != null ? serverVal : null);
+        }
+        // Migrate the pre-split `scryme-theme` key once (only if that legacy key actually exists).
+        var legacy = localStorage.getItem("scryme-theme");
+        if (legacy != null && localStorage.getItem("scryme-palette") == null) {
           var map = { midnight: ["midnight", "dark"], slate: ["slate", "dark"],
                       light: ["slate", "light"], parchment: ["midnight", "light"] };
-          var m = map[localStorage.getItem("scryme-theme")] || ["trop-orange", "dark"];
-          pal = m[0]; mode = mode || m[1];
-          localStorage.setItem("scryme-palette", pal);
-          localStorage.setItem("scryme-mode", mode);
+          var m = map[legacy] || ["trop-orange", "dark"];
+          localStorage.setItem("scryme-palette", m[0]);
+          if (localStorage.getItem("scryme-mode") == null) localStorage.setItem("scryme-mode", m[1]);
         }
-        if (!mode) { mode = "dark"; localStorage.setItem("scryme-mode", mode); }
+        var pal = pick("scryme-palette", P && P.palette) || "trop-orange";
+        var mode = pick("scryme-mode", P && P.mode) || "dark";
         d.dataset.theme = pal + "-" + mode;
-        var a = localStorage.getItem("scryme-accent");
-        if (a) d.style.setProperty("--c-accent", a);
+        var accent = pick("scryme-accent", P ? P.accent : null);
+        if (accent) d.style.setProperty("--c-accent", accent);
         // Card-effect settings (foil animation speed, hover spin) — applied before paint.
-        var fs = localStorage.getItem("scryme-foil-speed");
+        var fs = pick("scryme-foil-speed", P ? String(P.foil_speed) : null);
         if (fs) d.style.setProperty("--foil-speed", (11 - Number.parseInt(fs, 10)) + "s");
-        var ss = localStorage.getItem("scryme-spin-speed");
+        var ss = pick("scryme-spin-speed", P ? String(P.spin_speed) : null);
         if (ss) d.style.setProperty("--spin-speed", ((12 - Number.parseInt(ss, 10)) * 0.06).toFixed(2) + "s");
-        if (localStorage.getItem("scryme-spin") !== "0") d.classList.add("spin-on");  // default on
+        var spin = pick("scryme-spin", P ? (P.spin ? "1" : "0") : null);
+        if (spin !== "0") d.classList.add("spin-on");  // default on (null or "1")
       } catch (e) {
         console.warn("theme init skipped (storage unavailable):", e);
       }

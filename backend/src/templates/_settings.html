@@ -154,6 +154,10 @@
   function settingsMenu() {
     return {
       open: false,
+      // Injected: whether this instance persists preferences server-side (#203). When true, setters
+      // also PATCH /prefs so choices survive a device change; when false (read-only demo) they stay
+      // in localStorage/cookies only.
+      writable: {{ 'true' if prefs_writable else 'false' }},
       palette: localStorage.getItem("scryme-palette") || "trop-orange",
       mode: localStorage.getItem("scryme-mode") || "dark",
       custom: localStorage.getItem("scryme-accent") || "",
@@ -197,6 +201,17 @@
       accentValue() {
         return this.custom || this.themeDefault();
       },
+      // Persist to the preferences singleton when writable (survives device changes). Returns the
+      // request promise so cookie-backed setters can await it before reloading; a no-op resolved
+      // promise otherwise. Best-effort — the live localStorage/cookie apply happens regardless.
+      savePref(fields) {
+        if (!this.writable) return Promise.resolve();
+        return fetch("/prefs", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(fields),
+        }).catch(() => {});
+      },
       applyTheme() {
         document.documentElement.dataset.theme = this.palette + "-" + this.mode;
       },
@@ -204,61 +219,72 @@
         this.palette = id;
         localStorage.setItem("scryme-palette", id);
         this.applyTheme();
+        this.savePref({ palette: id });
       },
       setMode(m) {
         this.mode = m;
         localStorage.setItem("scryme-mode", m);
         this.applyTheme();
+        this.savePref({ mode: m });
       },
       setAccent(c) {
         this.custom = c;
         localStorage.setItem("scryme-accent", c);
         document.documentElement.style.setProperty("--c-accent", c);
+        this.savePref({ accent: c });
       },
       resetAccent() {
         this.custom = "";
         localStorage.removeItem("scryme-accent");
         document.documentElement.style.removeProperty("--c-accent");
+        this.savePref({ accent: "" });
       },
-      setCurrency(id) {
+      // Cookie-backed prefs reload so server-rendered totals update. On a writable instance the
+      // server reads the singleton, so await the PATCH before reloading or the reload shows stale.
+      async setCurrency(id) {
         this.currency = id;
-        // Server-read cookie so server-rendered totals (stats/decks/wishlist) use this currency.
         document.cookie = "scryme_currency=" + id + ";path=/;max-age=31536000;samesite=lax";
+        await this.savePref({ currency: id });
         globalThis.location.reload();
       },
-      setPriceSource(id) {
+      async setPriceSource(id) {
         this.priceSource = id;
         document.cookie = "scryme_price_source=" + id + ";path=/;max-age=31536000;samesite=lax";
+        await this.savePref({ price_source: id });
         globalThis.location.reload();
       },
-      setSearchFilter() {
-        // Server-read cookie (#143) so /search ANDs it into every query. Empty clears it.
+      async setSearchFilter() {
+        // Server-read (#143) so /search ANDs it into every query. Empty clears it.
         var v = (this.searchFilter || "").trim();
         var age = v ? ";max-age=31536000" : ";max-age=0";
         document.cookie = "scryme_search_filter=" + encodeURIComponent(v) +
                           ";path=/" + age + ";samesite=lax";
         this.open = false;
+        await this.savePref({ search_filter: v });
         if (location.pathname === "/search") location.reload();
       },
-      setMovers() {
-        // Server-read cookie so /search can render the movers panel.
+      async setMovers() {
         document.cookie = "scryme_movers=" + (this.moversOn ? "1" : "0") +
                           ";path=/;max-age=31536000;samesite=lax";
+        await this.savePref({ movers: this.moversOn });
         if (location.pathname === "/search") location.reload();
       },
       applyFoilSpeed() {
         // Higher slider = faster = shorter duration.
         document.documentElement.style.setProperty("--foil-speed", (11 - this.foilSpeed) + "s");
         localStorage.setItem("scryme-foil-speed", this.foilSpeed);
+        this.savePref({ foil_speed: Number(this.foilSpeed) });
       },
       applySpin() {
         document.documentElement.classList.toggle("spin-on", this.spinOn);
         localStorage.setItem("scryme-spin", this.spinOn ? "1" : "0");
+        this.savePref({ spin: this.spinOn });
       },
       applySpinSpeed() {
         document.documentElement.style.setProperty(
           "--spin-speed", ((12 - this.spinSpeed) * 0.06).toFixed(2) + "s");
         localStorage.setItem("scryme-spin-speed", this.spinSpeed);
+        this.savePref({ spin_speed: Number(this.spinSpeed) });
       },
     };
   }

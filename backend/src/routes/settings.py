@@ -16,11 +16,16 @@ from src.templating import templates
 router = APIRouter(tags=["settings"])
 
 
+def _onoff(value: bool) -> str:
+    return "on" if value else "off"
+
+
 def _instance_groups(s) -> list[dict]:
     """Grouped, read-only operator config for display. Values are process-lifetime."""
     return [
         {"title": "General", "rows": [
-            ("Environment", s.environment), ("Read-only mode", s.read_only), ("Debug", s.debug)]},
+            ("Environment", s.environment),
+            ("Read-only mode", _onoff(s.read_only)), ("Debug", _onoff(s.debug))]},
         {"title": "Storage", "rows": [
             ("Data directory", str(s.data_dir)), ("Image cache", str(s.image_cache_dir))]},
         {"title": "Database", "rows": [

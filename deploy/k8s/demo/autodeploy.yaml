@@ -55,6 +55,11 @@ spec:
     spec:
       backoffLimit: 1
       activeDeadlineSeconds: 120
+      # Garbage-collect finished Jobs (including failed ones). Without this, a transient
+      # GHCR outage leaves failed Jobs pinned by failedJobsHistoryLimit and KubeJobFailed
+      # (for: 15m) stays firing until they're deleted by hand — which is what happened on
+      # 2026-08-02, when ghcr.io was unreachable for ~15 minutes and three polls failed.
+      ttlSecondsAfterFinished: 3600
       template:
         spec:
           serviceAccountName: scryme-demo-autodeploy
@@ -77,11 +82,16 @@ spec:
                   AUTH=$(jq -r '(.auths["ghcr.io"] // .auths["https://ghcr.io"])
                                  | (.auth // ((.username + ":" + .password) | @base64))' \
                         /ghcr/.dockerconfigjson)
-                  TOKEN=$(curl -fsSL -H "Authorization: Basic ${AUTH}" \
+                  # Bounded + retried: an unreachable ghcr.io used to hang the whole 120s
+                  # deadline on a single connect. Worst case here is ~51s per curl (3
+                  # attempts x 15s + backoff), so two calls still fit inside the deadline
+                  # and a genuine outage fails with a real error instead of DeadlineExceeded.
+                  CURL_OPTS="--connect-timeout 5 --max-time 15 --retry 2 --retry-delay 3 --retry-all-errors"
+                  TOKEN=$(curl -fsSL ${CURL_OPTS} -H "Authorization: Basic ${AUTH}" \
                     "https://ghcr.io/token?service=ghcr.io&scope=repository:${REPO}:pull" | jq -r .token)
 
                   # The digest the :latest tag currently points to (the manifest-list/index digest).
-                  DIGEST=$(curl -fsSL -D - -o /dev/null -H "Authorization: Bearer ${TOKEN}" \
+                  DIGEST=$(curl -fsSL ${CURL_OPTS} -D - -o /dev/null -H "Authorization: Bearer ${TOKEN}" \
                     -H "Accept: application/vnd.oci.image.index.v1+json" \
                     -H "Accept: application/vnd.docker.distribution.manifest.list.v2+json" \
                     -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \

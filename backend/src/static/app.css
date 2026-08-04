@@ -161,11 +161,16 @@
 /* Hide x-cloak elements until Alpine initializes (avoids a flash of the busy state). */
 [x-cloak] { display: none !important; }
 
+/* Tunable custom properties, retuned live from the Settings menu (persisted to :root). Kept in a
+   single :root block so the declarations don't duplicate the selector.
+   --card-min drives the fluid card grid below (the "card size" slider, 6rem–15rem; default 10rem);
+   --foil-speed / --spin-speed drive the card-effect animations further down. */
+:root { --card-min: 10rem; --foil-speed: 5s; --spin-speed: 0.5s; }
+
 /* Fluid card grid: columns reflow continuously with the viewport instead of stepping at fixed
    breakpoints, so resizing the window always re-lays-out the cards. The per-column minimum width is
-   driven by --card-min (the Settings "card size" slider retunes it, 6rem–15rem; default 10rem). The
-   min(…, 47vw) cap keeps at least ~2 columns on a phone no matter how large a size is chosen. */
-:root { --card-min: 10rem; }
+   driven by --card-min (see above). The min(…, 47vw) cap keeps at least ~2 columns on a phone no
+   matter how large a size is chosen. */
 .card-grid {
   display: grid;
   gap: 0.75rem;
@@ -181,8 +186,8 @@
   .card-grid-sm { grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); }
 }
 
-/* Card-effect knobs, tunable from Settings (persisted to :root by the settings menu). */
-:root { --foil-speed: 5s; --spin-speed: 0.5s; }
+/* Card-effect knobs (--foil-speed / --spin-speed) are declared with --card-min in the single :root
+   block near the top of this file and retuned live from the Settings menu. */
 
 /* Foil / holographic sheen for foil printings — an animated rainbow that drifts across the card,
    plus a diagonal glare sweep. Purely decorative (pointer-events off) and respects reduced motion. */

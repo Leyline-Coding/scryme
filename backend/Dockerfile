@@ -13,10 +13,11 @@ FROM python:3.12-slim AS production
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PATH=/home/scryme/.local/bin:$PATH
 WORKDIR /app
 
-# The base image ships pip 25.0.1, which Trivy flags (CVE-2026-8643 et al). pip is never
-# invoked at runtime here -- deps are baked into the builder stage -- but upgrade it anyway
-# so image scans stay clean.
-RUN pip install --no-cache-dir --upgrade "pip>=26.1.2"
+# pip is never invoked at runtime -- deps are installed in the builder stage and COPYed in, and
+# docker-entrypoint.sh only runs alembic + uvicorn. Upgrading it isn't enough to clear image
+# scans because pip vendors its own dependencies (msgpack, setuptools) under pip/_vendor, so
+# remove it outright and retire the whole alert class.
+RUN python -m pip uninstall -y pip
 
 # Non-root runtime user; owns the data volume mount point.
 RUN useradd --create-home --uid 1000 scryme \

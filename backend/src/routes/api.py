@@ -18,7 +18,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.checklists import checklist_coverage
+from src.checklists import (
+    add_checklist_items,
+    add_checklist_missing,
+    checklist_coverage,
+    create_checklist,
+    remove_checklist_item,
+    rename_checklist_item,
+)
 from src.collection_edit import add_or_increment, delete_stack, update_stack
 from src.config import get_settings
 from src.currency import normalize as normalize_currency
@@ -845,6 +852,7 @@ class ChecklistSummaryOut(BaseModel):
 
 
 class ChecklistRowOut(BaseModel):
+    item_id: int
     name: str
     scryfall_id: str | None = None
     matched: bool
@@ -859,6 +867,46 @@ class ChecklistDetailOut(BaseModel):
     unmatched: int
     pct_complete: int
     rows: list[ChecklistRowOut]
+
+
+class ChecklistCreateIn(BaseModel):
+    name: str = ""
+    cards: str = ""
+
+
+class ChecklistItemsIn(BaseModel):
+    cards: str = ""
+
+
+class ChecklistItemUpdateIn(BaseModel):
+    name: str
+
+
+class ChecklistItemsAddedOut(BaseModel):
+    added: int
+    checklist: ChecklistDetailOut
+
+
+async def _get_checklist(session: AsyncSession, checklist_id: int) -> Checklist:
+    cl = (
+        await session.execute(
+            select(Checklist).where(Checklist.id == checklist_id)
+            .options(selectinload(Checklist.items))
+        )
+    ).scalar_one_or_none()
+    if cl is None:
+        raise HTTPException(status_code=404, detail="Checklist not found.")
+    return cl
+
+
+async def _checklist_out(session: AsyncSession, cl: Checklist) -> ChecklistDetailOut:
+    cov = await checklist_coverage(session, cl)
+    return ChecklistDetailOut(
+        id=cl.id, name=cl.name, total=cov.total, owned_count=cov.owned_count,
+        unmatched=cov.unmatched, pct_complete=cov.pct_complete,
+        rows=[ChecklistRowOut(item_id=r.item_id, name=r.name, scryfall_id=r.scryfall_id,
+                              matched=r.matched, owned=r.owned) for r in cov.rows],
+    )
 
 
 @router.get("/checklists", response_model=list[ChecklistSummaryOut])
@@ -876,21 +924,96 @@ async def api_checklists(session: AsyncSession = Depends(get_session)) -> list[C
 async def api_checklist_detail(
     checklist_id: int, session: AsyncSession = Depends(get_session)
 ) -> ChecklistDetailOut:
-    cl = (
-        await session.execute(
-            select(Checklist).where(Checklist.id == checklist_id)
-            .options(selectinload(Checklist.items))
-        )
-    ).scalar_one_or_none()
-    if cl is None:
-        raise HTTPException(status_code=404, detail="Checklist not found.")
-    cov = await checklist_coverage(session, cl)
-    return ChecklistDetailOut(
-        id=cl.id, name=cl.name, total=cov.total, owned_count=cov.owned_count,
-        unmatched=cov.unmatched, pct_complete=cov.pct_complete,
-        rows=[ChecklistRowOut(name=r.name, scryfall_id=r.scryfall_id, matched=r.matched,
-                              owned=r.owned) for r in cov.rows],
+    return await _checklist_out(session, await _get_checklist(session, checklist_id))
+
+
+@router.post("/checklists", response_model=ChecklistDetailOut, status_code=201)
+async def api_checklist_create(
+    body: ChecklistCreateIn, session: AsyncSession = Depends(get_session)
+) -> ChecklistDetailOut:
+    """Create a checklist from pasted card names, one per line.
+
+    Accepts decklist-shaped lines too — a leading count, a trailing ``(set) 123`` printing hint and
+    ``*foil*`` markers are stripped, comment/sideboard lines are skipped, and duplicates collapse.
+    Names that don't resolve are **kept** as unmatched rows rather than dropped.
+    """
+    _guard_writable()
+    cl = await create_checklist(session, body.name, body.cards)
+    return await _checklist_out(session, await _get_checklist(session, cl.id))
+
+
+@router.delete("/checklists/{checklist_id}", response_model=OkOut)
+async def api_checklist_delete(
+    checklist_id: int, session: AsyncSession = Depends(get_session)
+) -> OkOut:
+    """Delete a checklist and its items.
+
+    Idempotent, so a replayed offline delete still returns ok.
+    """
+    _guard_writable()
+    cl = await session.get(Checklist, checklist_id)
+    if cl is not None:
+        await session.delete(cl)
+        await session.commit()
+    return OkOut()
+
+
+@router.post("/checklists/{checklist_id}/items", response_model=ChecklistItemsAddedOut)
+async def api_checklist_add_items(
+    checklist_id: int, body: ChecklistItemsIn, session: AsyncSession = Depends(get_session)
+) -> ChecklistItemsAddedOut:
+    """Add cards to a checklist. Names already on it are skipped; ``added`` reports how many
+    were actually new, so a client can tell a no-op apart from a success."""
+    _guard_writable()
+    cl = await _get_checklist(session, checklist_id)
+    added = await add_checklist_items(session, cl, body.cards)
+    return ChecklistItemsAddedOut(
+        added=added, checklist=await _checklist_out(session, await _get_checklist(session, cl.id))
     )
+
+
+@router.patch("/checklists/{checklist_id}/items/{item_id}", response_model=ChecklistDetailOut)
+async def api_checklist_edit_item(
+    checklist_id: int, item_id: int, body: ChecklistItemUpdateIn,
+    session: AsyncSession = Depends(get_session),
+) -> ChecklistDetailOut:
+    """Change an item's card, re-resolving the new name against the collection."""
+    _guard_writable()
+    await _get_checklist(session, checklist_id)
+    if not body.name.strip():
+        raise HTTPException(status_code=400, detail="A card name is required.")
+    if not await rename_checklist_item(session, checklist_id, item_id, body.name):
+        raise HTTPException(status_code=404, detail="Checklist item not found.")
+    return await _checklist_out(session, await _get_checklist(session, checklist_id))
+
+
+@router.delete("/checklists/{checklist_id}/items/{item_id}", response_model=OkOut)
+async def api_checklist_delete_item(
+    checklist_id: int, item_id: int, session: AsyncSession = Depends(get_session)
+) -> OkOut:
+    """Remove one card from a checklist.
+
+    404s on an unknown *checklist* (a client addressing the wrong list should hear about it), but
+    an already-removed item still returns ok so a replayed offline delete isn't a spurious failure.
+    """
+    _guard_writable()
+    await _get_checklist(session, checklist_id)
+    await remove_checklist_item(session, checklist_id, item_id)
+    return OkOut()
+
+
+@router.post("/checklists/{checklist_id}/wishlist", response_model=OkOut)
+async def api_checklist_to_wishlist(
+    checklist_id: int, session: AsyncSession = Depends(get_session)
+) -> OkOut:
+    """Add every missing (matched) card on the checklist to the wishlist.
+
+    ``quantity`` reports how many were added. Unmatched rows are skipped — there is no printing to
+    wishlist — which is why ``unmatched`` on the detail response is worth surfacing to the user.
+    """
+    _guard_writable()
+    cl = await _get_checklist(session, checklist_id)
+    return OkOut(quantity=await add_checklist_missing(session, cl))
 
 
 class SavedSearchOut(BaseModel):

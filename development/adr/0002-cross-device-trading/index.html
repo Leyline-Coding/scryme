@@ -12,31 +12,29 @@
         <meta name="author" content="Taylor Cohron">
       
       
-        <link rel="canonical" href="https://docs.scryme.app/import/merge/">
+        <link rel="canonical" href="https://docs.scryme.app/development/adr/0002-cross-device-trading/">
       
       
-        <link rel="prev" href="../formats/">
+        <link rel="prev" href="../0001-single-collection-accounts/">
       
-      
-        <link rel="next" href="../../search/syntax/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>Merge Strategies - scryme Documentation</title>
+        <title>Cross-device trading - scryme Documentation</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -55,7 +53,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -80,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#merge-strategies" class="md-skip">
+        <a href="#adr-0002-cross-device-trading-what-has-to-be-decided-before-it-is-built" class="md-skip">
           Skip to content
         </a>
       
@@ -94,7 +92,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="scryme Documentation" class="md-header__button md-logo" aria-label="scryme Documentation" data-md-component="logo">
+    <a href="../../.." title="scryme Documentation" class="md-header__button md-logo" aria-label="scryme Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -114,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Merge Strategies
+              Cross-device trading
             
           </span>
         </div>
@@ -227,7 +225,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
+      <a href="../../.." class="md-tabs__link">
         
   
   
@@ -248,7 +246,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../getting-started/self-hosting/" class="md-tabs__link">
+        <a href="../../../getting-started/self-hosting/" class="md-tabs__link">
           
   
   
@@ -266,13 +264,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../overview/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../../import/overview/" class="md-tabs__link">
           
   
   
@@ -294,7 +290,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../search/syntax/" class="md-tabs__link">
+        <a href="../../../search/syntax/" class="md-tabs__link">
           
   
   
@@ -316,7 +312,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../features/cards/" class="md-tabs__link">
+        <a href="../../../features/cards/" class="md-tabs__link">
           
   
   
@@ -336,7 +332,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../roadmap/" class="md-tabs__link">
+      <a href="../../../roadmap/" class="md-tabs__link">
         
   
   
@@ -353,11 +349,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../development/architecture/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../architecture/" class="md-tabs__link">
           
   
   
@@ -393,7 +391,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="scryme Documentation" class="md-nav__button md-logo" aria-label="scryme Documentation" data-md-component="logo">
+    <a href="../../.." title="scryme Documentation" class="md-nav__button md-logo" aria-label="scryme Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -423,7 +421,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -514,7 +512,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/self-hosting/" class="md-nav__link">
+      <a href="../../../getting-started/self-hosting/" class="md-nav__link">
         
   
   
@@ -542,7 +540,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/desktop/" class="md-nav__link">
+      <a href="../../../getting-started/desktop/" class="md-nav__link">
         
   
   
@@ -570,7 +568,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/configuration/" class="md-nav__link">
+      <a href="../../../getting-started/configuration/" class="md-nav__link">
         
   
   
@@ -598,7 +596,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/kubernetes/" class="md-nav__link">
+      <a href="../../../getting-started/kubernetes/" class="md-nav__link">
         
   
   
@@ -626,7 +624,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/demo/" class="md-nav__link">
+      <a href="../../../getting-started/demo/" class="md-nav__link">
         
   
   
@@ -658,10 +656,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -675,22 +671,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -708,7 +701,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -726,7 +719,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../overview/" class="md-nav__link">
+      <a href="../../../import/overview/" class="md-nav__link">
         
   
   
@@ -754,7 +747,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../formats/" class="md-nav__link">
+      <a href="../../../import/formats/" class="md-nav__link">
         
   
   
@@ -779,37 +772,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Merge Strategies
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../import/merge/" class="md-nav__link">
         
   
   
@@ -825,59 +791,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#add-increment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Add (increment)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#replace" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Replace
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#decide-per-card" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Decide per card
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -957,7 +870,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/syntax/" class="md-nav__link">
+      <a href="../../../search/syntax/" class="md-nav__link">
         
   
   
@@ -985,7 +898,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/regex/" class="md-nav__link">
+      <a href="../../../search/regex/" class="md-nav__link">
         
   
   
@@ -1013,7 +926,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../search/advanced/" class="md-nav__link">
+      <a href="../../../search/advanced/" class="md-nav__link">
         
   
   
@@ -1132,7 +1045,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/cards/" class="md-nav__link">
+      <a href="../../../features/cards/" class="md-nav__link">
         
   
   
@@ -1160,7 +1073,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/decks/" class="md-nav__link">
+      <a href="../../../features/decks/" class="md-nav__link">
         
   
   
@@ -1188,7 +1101,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/ai/" class="md-nav__link">
+      <a href="../../../features/ai/" class="md-nav__link">
         
   
   
@@ -1216,7 +1129,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/binders/" class="md-nav__link">
+      <a href="../../../features/binders/" class="md-nav__link">
         
   
   
@@ -1244,7 +1157,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/locations/" class="md-nav__link">
+      <a href="../../../features/locations/" class="md-nav__link">
         
   
   
@@ -1272,7 +1185,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/sets/" class="md-nav__link">
+      <a href="../../../features/sets/" class="md-nav__link">
         
   
   
@@ -1300,7 +1213,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/grading/" class="md-nav__link">
+      <a href="../../../features/grading/" class="md-nav__link">
         
   
   
@@ -1328,7 +1241,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/checklists/" class="md-nav__link">
+      <a href="../../../features/checklists/" class="md-nav__link">
         
   
   
@@ -1356,7 +1269,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/wishlist/" class="md-nav__link">
+      <a href="../../../features/wishlist/" class="md-nav__link">
         
   
   
@@ -1384,7 +1297,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/trade/" class="md-nav__link">
+      <a href="../../../features/trade/" class="md-nav__link">
         
   
   
@@ -1412,7 +1325,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/sell/" class="md-nav__link">
+      <a href="../../../features/sell/" class="md-nav__link">
         
   
   
@@ -1440,7 +1353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/stats/" class="md-nav__link">
+      <a href="../../../features/stats/" class="md-nav__link">
         
   
   
@@ -1468,7 +1381,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/prices/" class="md-nav__link">
+      <a href="../../../features/prices/" class="md-nav__link">
         
   
   
@@ -1496,7 +1409,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/theming/" class="md-nav__link">
+      <a href="../../../features/theming/" class="md-nav__link">
         
   
   
@@ -1524,7 +1437,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../features/backup/" class="md-nav__link">
+      <a href="../../../features/backup/" class="md-nav__link">
         
   
   
@@ -1559,7 +1472,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../roadmap/" class="md-nav__link">
+      <a href="../../../roadmap/" class="md-nav__link">
         
   
   
@@ -1583,8 +1496,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1602,19 +1517,22 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
             
   
   
@@ -1632,7 +1550,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1650,7 +1568,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/architecture/" class="md-nav__link">
+      <a href="../../architecture/" class="md-nav__link">
         
   
   
@@ -1678,7 +1596,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/api/" class="md-nav__link">
+      <a href="../../api/" class="md-nav__link">
         
   
   
@@ -1706,7 +1624,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/contributing/" class="md-nav__link">
+      <a href="../../contributing/" class="md-nav__link">
         
   
   
@@ -1734,7 +1652,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/quality-and-security/" class="md-nav__link">
+      <a href="../../quality-and-security/" class="md-nav__link">
         
   
   
@@ -1759,8 +1677,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1773,18 +1693,21 @@
     
       
       
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" >
         
           
-          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="0">
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7_5" id="__nav_7_5_label" tabindex="">
             
   
   
@@ -1802,7 +1725,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_7_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1820,7 +1743,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/adr/0001-single-collection-accounts/" class="md-nav__link">
+      <a href="../0001-single-collection-accounts/" class="md-nav__link">
         
   
   
@@ -1845,10 +1768,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../development/adr/0002-cross-device-trading/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-device trading
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1864,6 +1814,165 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Context">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-this-adr-exists-now-and-what-it-deliberately-does-not-do" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this ADR exists now, and what it deliberately does not do
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-decisions-to-make" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The decisions to make
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The decisions to make">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#d1-what-the-qr-encodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D1 — What the QR encodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d2-where-the-matching-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D2 — Where the matching runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d3-committing-against-optimistic-concurrency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D3 — Committing against optimistic concurrency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d4-trust-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D4 — Trust boundary
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#options-considered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options considered
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#triggers-to-revisit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Triggers to revisit
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consequences
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1911,10 +2020,127 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#add-increment" class="md-nav__link">
+  <a href="#context" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Add (increment)
+        Context
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Context">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-this-adr-exists-now-and-what-it-deliberately-does-not-do" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this ADR exists now, and what it deliberately does not do
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-decisions-to-make" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The decisions to make
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The decisions to make">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#d1-what-the-qr-encodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D1 — What the QR encodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d2-where-the-matching-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D2 — Where the matching runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d3-committing-against-optimistic-concurrency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D3 — Committing against optimistic concurrency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d4-trust-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D4 — Trust boundary
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#options-considered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options considered
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#triggers-to-revisit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Triggers to revisit
       
     </span>
   </a>
@@ -1922,21 +2148,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#replace" class="md-nav__link">
+  <a href="#consequences" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Replace
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#decide-per-card" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Decide per card
+        Consequences
       
     </span>
   </a>
@@ -1963,39 +2178,182 @@
   
 
 
-<h1 id="merge-strategies">Merge Strategies</h1>
-<p>When you confirm an import, scryme combines it with your existing collection using one of three
-strategies. A <strong>stack</strong> is a distinct combination of <em>(card, finish, condition, language, binder)</em>
-— the same identity used in storage — so the same card in foil vs. non-foil, or in two different
-binders, are tracked separately.</p>
-<h2 id="add-increment">Add (increment)</h2>
-<p>Adds the imported quantities on top of what you already own.</p>
+<h1 id="adr-0002-cross-device-trading-what-has-to-be-decided-before-it-is-built">ADR 0002 — Cross-device trading: what has to be decided before it is built</h1>
 <ul>
-<li>New stacks are inserted.</li>
-<li>Stacks you already own have their quantity <strong>increased</strong> by the imported amount.</li>
+<li><strong>Status:</strong> Proposed — decisions open, recorded here so scryme and scanme design against one document</li>
+<li><strong>Deciders:</strong> scryme maintainers, scanme maintainers</li>
+<li><strong>Related issues:</strong> <a href="https://github.com/Leyline-Coding/scryme/issues/286">#286</a> (QR matched trading),
+  <a href="https://github.com/Leyline-Coding/scryme/issues/331">#331</a> (trade pool selector),
+  <a href="https://github.com/Leyline-Coding/scryme/issues/332">#332</a> (in/out confirmation and reconciliation),
+  <a href="https://github.com/Leyline-Coding/scryme/issues/207">#207</a> (optimistic concurrency),
+  <a href="https://github.com/Leyline-Coding/scanme/issues/325">scanme#325</a> (mobile consumer),
+  <a href="https://github.com/Leyline-Coding/scryme/issues/209">#209</a> (cross-app dependency map)</li>
 </ul>
-<blockquote>
-<p>Example: you own <code>1× Black Lotus</code>; importing <code>1× Black Lotus</code> leaves you with <code>2×</code>.</p>
-</blockquote>
-<h2 id="replace">Replace</h2>
-<p>Wipes the current collection entirely, then inserts the import.</p>
+<h2 id="context">Context</h2>
+<p>The <strong>Trade Function</strong> milestone introduces something scryme has not done before: an operation
+whose two halves live on <strong>two different collections, on two different devices, owned by two
+different people</strong>. Everything scryme does today is single-collection and single-instance — even
+the shared-household case in <a href="../0001-single-collection-accounts/">ADR 0001</a> is <em>one</em> collection
+edited by two people.</p>
+<p><a href="https://github.com/Leyline-Coding/scryme/issues/286">#286</a> sketches the flow: user 1 shows a QR
+code, user 2 scans it, a mutual trade list is established by searching each side's collection
+against the other's wants, and on mutual confirmation cards are removed from and added to the
+respective collections.</p>
+<p>The sibling scanner app <strong><a href="https://github.com/Leyline-Coding/scanme">scanme</a></strong> is the natural
+second device — it already has a camera, QR handling (device pairing, and a nearby decklist
+handoff), and a local collection. It has filed
+<a href="https://github.com/Leyline-Coding/scanme/issues/325">scanme#325</a> as the consumer.</p>
+<h3 id="why-this-adr-exists-now-and-what-it-deliberately-does-not-do">Why this ADR exists now, and what it deliberately does not do</h3>
+<p>Both sides are unbuilt. The temptation is to fix the QR payload and the trade endpoints first,
+because that is the part two repos have to agree on. <strong>That is the wrong order.</strong> The wire format
+is downstream of the trade-pool data model from
+<a href="https://github.com/Leyline-Coding/scryme/issues/331">#331</a>/<a href="https://github.com/Leyline-Coding/scryme/issues/332">#332</a>,
+which does not exist yet. A protocol designed against a model that has not been written will
+encode guesses, and both repos will then implement the guesses.</p>
+<p>So this ADR <strong>frames the decisions and records the constraints they must satisfy</strong>. It does not
+specify a payload. The concrete protocol belongs in a follow-up ADR once
+<a href="https://github.com/Leyline-Coding/scryme/issues/331">#331</a> has landed a trade pool worth
+serializing.</p>
+<h2 id="the-decisions-to-make">The decisions to make</h2>
+<h3 id="d1-what-the-qr-encodes">D1 — What the QR encodes</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Shape</th>
+<th>Trade-offs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A. Session pointer</strong></td>
+<td><code>{instance_url, session_id, token}</code> — the scanner fetches the offer from user 1's instance</td>
+<td>Small, fixed-size code. <strong>Requires user 2 to reach user 1's instance</strong> — fine on shared Wi-Fi at an LGS, useless at a kitchen table on cellular, and it exposes an instance to a stranger's device</td>
+</tr>
+<tr>
+<td><strong>B. Self-contained offer</strong></td>
+<td>The pool itself, compressed, in the code</td>
+<td>Works with <strong>no connectivity between the two parties</strong> and leaks no instance. Bounded by QR capacity (~2–3 KB realistically), so a large pool needs chunking or a compact card encoding</td>
+</tr>
+<tr>
+<td><strong>C. Hybrid</strong></td>
+<td>Self-contained offer, with an optional URL for pools too large to inline</td>
+<td>Covers both, at the cost of two code paths and two failure modes</td>
+</tr>
+</tbody>
+</table>
+<p>The scenario that should drive this: <strong>two people at a table, at least one on cellular, possibly
+in a venue with hostile Wi-Fi.</strong> That is the common case for trading, and it argues against A as
+the only mechanism. Note that scanme's constitution requires it to keep working offline, which
+makes a connectivity-dependent-only design a poor fit for the app most likely to implement it.</p>
+<h3 id="d2-where-the-matching-runs">D2 — Where the matching runs</h3>
+<p>"Search each side's collection against the other's wants" is the interesting half of
+<a href="https://github.com/Leyline-Coding/scryme/issues/286">#286</a>.</p>
 <ul>
-<li>The collection becomes exactly what's in the uploaded file.</li>
-<li>Use this to re-sync from an authoritative export.</li>
+<li><strong>Server-side</strong> — one instance receives both pools and computes the match. Reuses scryme's
+  search engine and pricing directly, so valuations are consistent. But it requires one party to
+  send their collection/wants to <em>the other party's server</em>, which is a meaningful disclosure to
+  make casually.</li>
+<li><strong>On-device</strong> — each side computes the match locally against the offer it received. No
+  collection data leaves either instance beyond what is deliberately offered. Requires the
+  matching rules to be implemented in both apps identically — precisely the divergence risk that
+  scanme's Principle V exists to control, and that this repo has already been bitten by (two card
+  name resolvers that drifted apart until DFCs matched from a decklist but not from a CSV).</li>
 </ul>
-<h2 id="decide-per-card">Decide per card</h2>
-<p>For each card that <strong>already exists</strong> in your collection, you choose individually:</p>
+<p><strong>Constraint either way:</strong> whatever runs, the <em>valuation</em> must agree with what each side sees in
+its own app — same <code>price_source</code>, same <code>currency</code> (see
+<a href="https://github.com/Leyline-Coding/scryme/issues/231">#231</a>/<a href="https://github.com/Leyline-Coding/scryme/issues/232">#232</a>).
+Two people looking at the same proposed trade and seeing different totals is the fastest way to
+lose trust in the feature. Note this cuts against pure on-device matching when the two parties
+have <em>different</em> price-source preferences: the trade needs one agreed basis, and it should be
+stated in the UI rather than silently taken from whoever initiated.</p>
+<h3 id="d3-committing-against-optimistic-concurrency">D3 — Committing against optimistic concurrency</h3>
+<p><a href="../0001-single-collection-accounts/">ADR 0001</a> commits scryme to optimistic concurrency control:
+a version guard on mutable rows, HTTP <code>409</code> on mismatch rather than last-write-wins
+(<a href="https://github.com/Leyline-Coding/scryme/issues/207">#207</a>).</p>
+<p>A trade commit is the hardest case that model will face, because <strong>both collections change at
+once and the two commits are not in the same transaction</strong> — they are not even on the same
+machine. Open questions:</p>
 <ul>
-<li><strong>Add</strong> — increment that stack's quantity, or</li>
-<li><strong>Replace</strong> — set that stack's quantity to the imported amount.</li>
+<li>If side A commits and side B's commit <code>409</code>s on a stale row, what state is the trade in? A
+  half-applied trade is strictly worse than a failed one.</li>
+<li><a href="https://github.com/Leyline-Coding/scryme/issues/332">#332</a> already asks for <strong>partial trades</strong>
+  ("a trade falls through on some cards mid-session") to be representable. So "atomic" cannot mean
+  "all or nothing" at the <em>trade</em> level — but it must mean it at the <em>card</em> level, and the two
+  sides must end up agreeing on which subset actually happened.</li>
+<li>Household sharing makes this concrete rather than theoretical: someone else may be editing the
+  same stack on the same collection while a trade is being committed.</li>
 </ul>
-<p>Cards that are new to your collection are always inserted. This is the most flexible option when an
-export overlaps your collection only partially.</p>
-<div class="admonition info">
-<p class="admonition-title">Within a single file</p>
-<p>If the same stack appears on multiple rows of one upload, those quantities are summed first,
-then the chosen strategy is applied.</p>
-</div>
+<p><strong>Constraint:</strong> the two sides must converge on the same outcome, and a failure must be
+distinguishable from a success by both parties without asking each other. Neither side may be left
+believing a card moved when it did not.</p>
+<h3 id="d4-trust-boundary">D4 — Trust boundary</h3>
+<p>Every option above involves accepting structured data from <strong>a stranger's device</strong>. scryme has no
+accounts and no identity (<a href="../0001-single-collection-accounts/">ADR 0001</a>), so there is nothing to
+authenticate a trading partner <em>as</em>. That is acceptable — the parties are standing in front of
+each other, and the social protocol is the authentication — but it means:</p>
+<ul>
+<li>A scanned payload is <strong>untrusted input</strong> and must be validated at the boundary like any import.</li>
+<li>A trade offer must never be able to name a card that does not resolve, inject a price, or
+  address a row in the receiving collection that the receiver did not select themselves.</li>
+<li>The receiving side decides what leaves its collection. Nothing in the payload should be capable
+  of <em>instructing</em> a removal — it can only <em>propose</em> one.</li>
+</ul>
+<h2 id="decision">Decision</h2>
+<ol>
+<li><strong>Do not specify the QR payload or the trade endpoints yet.</strong> Build
+   <a href="https://github.com/Leyline-Coding/scryme/issues/331">#331</a> (pool selector) and
+   <a href="https://github.com/Leyline-Coding/scryme/issues/332">#332</a> (in/out reconciliation) <strong>first</strong>,
+   as a single-collection, single-device feature. A trade pool that works locally is useful on its
+   own, and it produces the data model the protocol has to carry.</li>
+<li><strong>Treat D1–D4 as binding constraints on that work</strong>, not as later concerns. Specifically, the
+   pool model should be serializable to something compact enough for D1 option B to stay open, and
+   the commit path in <a href="https://github.com/Leyline-Coding/scryme/issues/332">#332</a> should be built
+   so that "apply this set of in/out moves atomically at the card level, reporting exactly which
+   ones applied" is a real operation — because that is what D3 will need.</li>
+<li><strong>Write the protocol as ADR 0003, jointly</strong>, once (1) has landed. Both repos implement against
+   that document rather than against each other's code.</li>
+<li><strong>Until then, no cross-repo commitment exists.</strong> scanme's
+   <a href="https://github.com/Leyline-Coding/scanme/issues/325">#325</a> is a consumer placeholder and should
+   not be implemented against a guessed format.</li>
+</ol>
+<h3 id="options-considered">Options considered</h3>
+<ul>
+<li><strong>Specify the protocol now, build to it.</strong> Rejected: it fixes a wire format against a data model
+  that does not exist, and the cost of getting it wrong is paid in two repos.</li>
+<li><strong>Let scanme define the format, scryme conforms.</strong> Rejected: the valuation basis and the
+  concurrency semantics (D2, D3) are scryme's, and a format that does not respect them would have
+  to be renegotiated anyway.</li>
+<li><strong>Ship trading as a scryme-only feature, no second device.</strong> Reasonable and possibly the right
+  first release — but it does not resolve anything here, since
+  <a href="https://github.com/Leyline-Coding/scryme/issues/286">#286</a> is explicitly the two-device flow.
+  This ADR's decision (1) is effectively this, staged.</li>
+</ul>
+<h2 id="triggers-to-revisit">Triggers to revisit</h2>
+<ul>
+<li><a href="https://github.com/Leyline-Coding/scryme/issues/331">#331</a> and
+  <a href="https://github.com/Leyline-Coding/scryme/issues/332">#332</a> land → <strong>write ADR 0003</strong> with the
+  concrete payload and endpoints.</li>
+<li>The trade pool model turns out <strong>not</strong> to be compactly serializable → D1 option B is off the
+  table, and the connectivity assumptions have to be revisited before the protocol is written.</li>
+<li>scryme grows accounts or federation (a <a href="../0001-single-collection-accounts/">ADR 0001</a> trigger) →
+  D4's trust boundary changes materially and this ADR should be reconsidered whole.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li><strong>The trade feature ships in two stages, and the first is genuinely useful on its own.</strong> A local
+  trade pool with in/out reconciliation stands alone; the cross-device handoff is additive.</li>
+<li><strong>The cross-repo dependency stays explicit and unresolved rather than implicitly assumed.</strong>
+  <a href="https://github.com/Leyline-Coding/scryme/issues/209">#209</a> records it as a decision-pending item,
+  so neither repo builds against a format the other has not agreed to.</li>
+<li><strong><a href="https://github.com/Leyline-Coding/scryme/issues/332">#332</a> inherits a requirement it would not
+  otherwise have:</strong> card-level atomic application with a precise report of what applied. That is
+  slightly more than a purely local trade needs, and it is a deliberate cost paid now to avoid
+  reworking the commit path later.</li>
+<li><strong>Valuation consistency becomes a cross-app contract</strong>, not just a display preference. The
+  price-source and currency preferences already exposed on <code>/api/v1/preferences</code> are load-bearing
+  for trading, which raises the stakes on any future change to them.</li>
+</ul>
 
 
 
@@ -2018,7 +2376,7 @@ then the chosen strategy is applied.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="June 25, 2026 17:08:59 UTC">June 25, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 17, 2026 19:47:45 UTC">August 17, 2026</span>
   </span>
 
     
@@ -2028,7 +2386,7 @@ then the chosen strategy is applied.</p>
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="June 25, 2026 17:08:59 UTC">June 25, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 17, 2026 19:47:45 UTC">August 17, 2026</span>
   </span>
 
     
@@ -2063,7 +2421,7 @@ then the chosen strategy is applied.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../formats/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Supported Formats">
+          <a href="../0001-single-collection-accounts/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Single collection, no accounts">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -2073,27 +2431,11 @@ then the chosen strategy is applied.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Supported Formats
+                Single collection, no accounts
               </div>
             </div>
           </a>
         
-        
-          
-          <a href="../../search/syntax/" class="md-footer__link md-footer__link--next" aria-label="Next: Search Syntax">
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              <div class="md-ellipsis">
-                Search Syntax
-              </div>
-            </div>
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
-            </div>
-          </a>
         
       </nav>
     
@@ -2139,10 +2481,10 @@ then the chosen strategy is applied.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.footer", "navigation.indexes", "navigation.tracking", "search.suggest", "search.highlight", "toc.follow", "content.code.copy", "content.code.annotate", "content.tooltips"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.footer", "navigation.indexes", "navigation.tracking", "search.suggest", "search.highlight", "toc.follow", "content.code.copy", "content.code.annotate", "content.tooltips"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

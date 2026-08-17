@@ -32,7 +32,15 @@ from src.importers.service import confirm_upload, stage_upload
 from src.llm import ChatClient, get_config, nl_to_query
 from src.models import Card, Checklist, ChecklistItem, CollectionCard, Deck, DeckCard, SavedSearch
 from src.preferences import get_preferences, update_preferences
-from src.prices import biggest_movers, collection_pl, value_series
+from src.prices import (
+    CHART_RANGES,
+    DEFAULT_RANGE,
+    biggest_movers,
+    card_series_in_currency,
+    collection_pl,
+    range_days,
+    value_series,
+)
 from src.routes.preferences import PreferencesOut, PreferencesUpdateIn
 from src.scryfall.mapping import image_url
 from src.search import SearchError, SearchScope
@@ -730,6 +738,43 @@ async def api_prices(session: AsyncSession = Depends(get_session)) -> PricesOut:
             cost_basis=round(pl.cost_basis, 2), market_value=round(pl.market_value, 2),
             unrealized=round(pl.unrealized, 2), pct=round(pl.pct, 1),
             winners=[_pl_out(c) for c in pl.winners], losers=[_pl_out(c) for c in pl.losers]),
+    )
+
+
+class CardPricesOut(BaseModel):
+    scryfall_id: str
+    currency: str
+    range: str
+    approximate: bool = False
+    series: list[PricePointOut] = []
+
+
+@router.get("/cards/{scryfall_id}/prices", response_model=CardPricesOut)
+async def api_card_prices(
+    scryfall_id: str,
+    chart_range: str = Query(DEFAULT_RANGE, alias="range"),
+    currency_code: str | None = Query(None, alias="currency"),
+    session: AsyncSession = Depends(get_session),
+) -> CardPricesOut:
+    """One card's price history (#233) — the JSON twin of the card page's chart.
+
+    History is recorded in USD and converted on read. ``currency`` overrides the collection
+    preference (``hist_currency``, falling back to ``currency``); ``approximate`` is True when no
+    historical FX rates were available and today's rate stood in for every point.
+    """
+    card = await _get_card(session, scryfall_id)
+    prefs = await get_preferences(session)
+    code = normalize_currency(currency_code) or prefs.hist_currency or prefs.currency
+    series, approximate = await card_series_in_currency(
+        session, card.scryfall_id, range_days(chart_range), code
+    )
+    return CardPricesOut(
+        scryfall_id=str(card.scryfall_id),
+        currency=code,
+        range=chart_range if chart_range in dict(CHART_RANGES) else DEFAULT_RANGE,
+        approximate=approximate,
+        series=[PricePointOut(date=p.captured_at.date().isoformat(), value=round(p.total_usd, 2))
+                for p in series],
     )
 
 

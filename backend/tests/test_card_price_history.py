@@ -15,6 +15,7 @@ from src.models import (
     PriceTarget,
     WishlistItem,
 )
+from src.preferences import update_preferences
 from src.prices import card_value_series, snapshot_prices
 from src.scryfall.mapping import card_to_columns
 
@@ -185,3 +186,96 @@ async def test_card_value_series_downsamples_over_400_points(session):
     series = await card_value_series(session, c.scryfall_id, None)
     assert len(series) == 401  # downsampled to 400 + the retained latest
     assert series[-1].total_usd == 401.0
+
+
+# --- JSON API: GET /api/v1/cards/{scryfall_id}/prices (#233) ------------------------------------
+
+@pytest.mark.asyncio
+async def test_api_card_prices_returns_series(client, session):
+    c = await _add(session, "Owned", "1.00", "1")
+    session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish="normal"))
+    await session.commit()
+    await snapshot_prices(session)
+    c.prices = {"usd": "2.50"}
+    await session.commit()
+    await snapshot_prices(session)
+
+    resp = await client.get(f"/api/v1/cards/{c.scryfall_id}/prices?range=all")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["scryfall_id"] == str(c.scryfall_id)
+    assert data["currency"] == "usd" and data["range"] == "all"
+    assert data["approximate"] is False
+    assert [p["value"] for p in data["series"]] == [1.00, 2.50]
+
+
+@pytest.mark.asyncio
+async def test_api_card_prices_empty_without_history(client, session):
+    c = await _add(session, "Lonely", "1.00", "1")
+    await session.commit()
+    resp = await client.get(f"/api/v1/cards/{c.scryfall_id}/prices")
+    assert resp.status_code == 200
+    assert resp.json()["series"] == []
+
+
+@pytest.mark.asyncio
+async def test_api_card_prices_404_for_unknown_card(client, session):
+    resp = await client.get(f"/api/v1/cards/{uuid.uuid4()}/prices")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_api_card_prices_converts_with_currency_param(client, session):
+    c = await _add(session, "Owned", "10.00", "1")
+    session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish="normal"))
+    await session.commit()
+    await snapshot_prices(session)
+    today = datetime.datetime.now(datetime.UTC).date()
+    session.add(FxRateHistory(code="gbp", date=today, rate=0.5))
+    await session.commit()
+
+    resp = await client.get(f"/api/v1/cards/{c.scryfall_id}/prices?currency=gbp")
+    data = resp.json()
+    assert data["currency"] == "gbp"
+    assert data["series"][0]["value"] == 5.00  # 10 USD * 0.5
+    assert data["approximate"] is False
+
+
+@pytest.mark.asyncio
+async def test_api_card_prices_flags_approximate_without_fx_history(client, session, monkeypatch):
+    c = await _add(session, "Owned", "10.00", "1")
+    session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish="normal"))
+    await session.commit()
+    await snapshot_prices(session)
+
+    async def no_history(*_a, **_k):
+        return False
+
+    monkeypatch.setattr(fx, "ensure_fx_history", no_history)
+    resp = await client.get(f"/api/v1/cards/{c.scryfall_id}/prices?currency=gbp")
+    assert resp.json()["approximate"] is True
+
+
+@pytest.mark.asyncio
+async def test_api_card_prices_follows_preference(client, session):
+    """With no ?currency=, the collection's hist_currency preference wins."""
+    c = await _add(session, "Owned", "10.00", "1")
+    session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish="normal"))
+    await session.commit()
+    await snapshot_prices(session)
+    today = datetime.datetime.now(datetime.UTC).date()
+    session.add(FxRateHistory(code="gbp", date=today, rate=0.5))
+    await session.commit()
+    await update_preferences(session, hist_currency="gbp")
+
+    resp = await client.get(f"/api/v1/cards/{c.scryfall_id}/prices")
+    data = resp.json()
+    assert data["currency"] == "gbp" and data["series"][0]["value"] == 5.00
+
+
+@pytest.mark.asyncio
+async def test_api_card_prices_unknown_range_falls_back_to_default(client, session):
+    c = await _add(session, "Owned", "1.00", "1")
+    await session.commit()
+    resp = await client.get(f"/api/v1/cards/{c.scryfall_id}/prices?range=nonsense")
+    assert resp.json()["range"] == "90d"

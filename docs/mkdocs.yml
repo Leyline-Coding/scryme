@@ -101,6 +101,7 @@ nav:
       - Quality & Security: development/quality-and-security.md
       - Decision Records:
           - Single collection, no accounts: development/adr/0001-single-collection-accounts.md
+          - Cross-device trading: development/adr/0002-cross-device-trading.md
 
 plugins:
   - search

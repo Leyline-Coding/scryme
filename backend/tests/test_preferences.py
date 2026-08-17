@@ -66,3 +66,116 @@ async def test_prefs_router_is_not_token_gated(client, monkeypatch):
     assert (await client.get("/api/v1/preferences")).status_code == 401  # token-gated
     ok = await client.get("/api/v1/preferences", headers={"Authorization": "Bearer secret"})
     assert ok.status_code == 200 and ok.json()["currency"] == get_settings().default_currency
+
+
+# --- PATCH /api/v1/preferences (the programmatic twin of /prefs) ---------------------------------
+
+@pytest.mark.asyncio
+async def test_api_preferences_patch_updates_and_persists(client):
+    r = await client.patch("/api/v1/preferences", json={"currency": "eur", "movers": True})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["currency"] == "eur" and body["movers"] is True
+    # Same singleton as the browser router — a write here is visible there.
+    assert (await client.get("/prefs")).json()["currency"] == "eur"
+
+
+@pytest.mark.asyncio
+async def test_api_preferences_patch_is_partial(client):
+    await client.patch("/api/v1/preferences", json={"palette": "midnight", "card_size": 8})
+    body = (await client.patch("/api/v1/preferences", json={"mode": "light"})).json()
+    assert body["mode"] == "light"
+    assert body["palette"] == "midnight" and body["card_size"] == 8  # exclude_unset
+
+
+@pytest.mark.asyncio
+async def test_api_preferences_patch_normalizes_bad_values(client):
+    """Garbage never persists: unknown enums fall back, numbers clamp."""
+    body = (await client.patch("/api/v1/preferences", json={
+        "currency": "zzz", "price_source": "not-a-shop", "view": "sideways",
+        "page_size": 9999, "card_size": 99, "foil_speed": 0, "spin_speed": 42,
+    })).json()
+    assert body["currency"] == get_settings().default_currency
+    assert body["price_source"] == get_settings().default_price_source
+    assert body["view"] == "grid"          # anything but "list"
+    assert body["page_size"] == 500        # clamped to 1..500
+    assert body["card_size"] == 10         # clamped to 1..10
+    assert body["foil_speed"] == 1 and body["spin_speed"] == 10
+
+
+@pytest.mark.asyncio
+async def test_api_preferences_patch_accepts_a_real_price_source(client):
+    body = (await client.patch("/api/v1/preferences",
+                               json={"price_source": "cardkingdom"})).json()
+    assert body["price_source"] == "cardkingdom"
+
+
+@pytest.mark.asyncio
+async def test_api_preferences_patch_explicit_null_is_ignored(client):
+    """A null means "not set" and must not wipe a stored value."""
+    await client.patch("/api/v1/preferences", json={"palette": "midnight"})
+    body = (await client.patch("/api/v1/preferences", json={"palette": None})).json()
+    assert body["palette"] == "midnight"
+
+
+@pytest.mark.asyncio
+async def test_api_preferences_patch_ignores_unknown_fields(client):
+    body = (await client.patch("/api/v1/preferences",
+                               json={"mode": "light", "not_a_pref": "x"})).json()
+    assert body["mode"] == "light" and "not_a_pref" not in body
+
+
+@pytest.mark.asyncio
+async def test_api_preferences_patch_blocked_read_only(client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "read_only", True)
+    assert (await client.patch("/api/v1/preferences", json={"mode": "light"})).status_code == 403
+    assert (await client.get("/api/v1/preferences")).status_code == 200  # reads still fine
+
+
+@pytest.mark.asyncio
+async def test_api_preferences_patch_is_token_gated(client, monkeypatch):
+    """Unlike /prefs, the versioned router requires the token when one is configured."""
+    monkeypatch.setattr(get_settings(), "api_token", "secret")
+    assert (await client.patch("/api/v1/preferences",
+                               json={"mode": "light"})).status_code == 401
+    ok = await client.patch("/api/v1/preferences", json={"mode": "light"},
+                            headers={"X-API-Key": "secret"})
+    assert ok.status_code == 200 and ok.json()["mode"] == "light"
+
+
+@pytest.mark.asyncio
+async def test_update_preferences_clamp_falls_back_on_non_numeric(session):
+    """Reachable from the CLI/service layer — the API's typed model rejects these first."""
+    p = await update_preferences(session, page_size="not-a-number", foil_speed=None)
+    assert p.page_size == 60   # default, not a crash
+    assert p.foil_speed == 6   # None is skipped entirely
+
+
+# --- cookie overlay (resolve): a device's own choices win until a row is saved -------------------
+
+def test_resolve_applies_cookies_when_no_row_saved():
+    from src.preferences import resolve
+
+    prefs = resolve(None, {
+        "scryme_currency": "eur", "scryme_price_source": "manapool",
+        "scryme_search_filter": "t:creature", "scryme_movers": "1",
+        "scryme_view": "list", "scryme_infinite": "1",
+        "scryme_hist_currency": "gbp", "scryme_page_size": "120",
+    }, writable=True)
+    assert prefs.currency == "eur" and prefs.price_source == "manapool"
+    assert prefs.search_filter == "t:creature" and prefs.movers is True
+    assert prefs.view == "list" and prefs.infinite is True
+    assert prefs.hist_currency == "gbp" and prefs.page_size == 120
+
+
+def test_resolve_ignores_junk_and_off_menu_cookie_values():
+    from src.preferences import resolve
+
+    prefs = resolve(None, {
+        "scryme_page_size": "999",   # not one of the offered sizes -> ignored
+        "scryme_view": "carousel",   # anything but "list" -> grid
+        "scryme_infinite": "0",
+    }, writable=True)
+    assert prefs.page_size == 60 and prefs.view == "grid" and prefs.infinite is False
+
+    assert resolve(None, {"scryme_page_size": "abc"}, writable=True).page_size == 60

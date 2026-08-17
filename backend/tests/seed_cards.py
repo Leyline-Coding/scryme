@@ -17,6 +17,25 @@ _CARDS = [
     {"id": "00000000-0000-0000-0000-0000000000a1", "name": "Goblin Guide", "set": "ZEN",
      "collector_number": "145", "rarity": "rare", "cmc": 1, "type_line": "Creature — Goblin",
      "colors": ["R"], "released_at": "2010-04-23"},
+    # A double-faced card: Scryfall names it "Front // Back", but exports usually write "Front".
+    {"id": "00000000-0000-0000-0000-0000000000d1",
+     "name": "Delver of Secrets // Insectile Aberration", "set": "ISD", "collector_number": "51",
+     "rarity": "common", "cmc": 1, "layout": "transform", "released_at": "2011-09-30",
+     "legalities": {"modern": "legal", "standard": "not_legal"},
+     "card_faces": [
+         {"name": "Delver of Secrets", "type_line": "Creature — Human Wizard", "colors": ["U"]},
+         {"name": "Insectile Aberration", "type_line": "Creature — Human Insect",
+          "colors": ["U"]},
+     ]},
+    # Art-series printing of the same card: named "Name // Name" and not_legal everywhere, so the
+    # front-face fallback must rank it below the real printing.
+    {"id": "00000000-0000-0000-0000-0000000000d2",
+     "name": "Delver of Secrets // Delver of Secrets", "set": "SLD", "collector_number": "999",
+     "rarity": "common", "layout": "art_series", "released_at": "2021-01-01",
+     "legalities": {"modern": "not_legal", "standard": "not_legal"},
+     "card_faces": [
+         {"name": "Delver of Secrets"}, {"name": "Delver of Secrets"},
+     ]},
 ]
 
 

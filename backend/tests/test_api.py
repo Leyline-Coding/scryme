@@ -232,6 +232,178 @@ async def test_api_checklists(client, session):
     assert detail["total"] == 2 and detail["owned_count"] == 1
     assert any(r["owned"] for r in detail["rows"]) and any(not r["owned"] for r in detail["rows"])
     assert (await client.get("/api/v1/checklists/9999")).status_code == 404
+    assert all("item_id" in r for r in detail["rows"])  # items must be addressable
+
+
+# --- checklist writes (/api/v1/checklists) -------------------------------------------------------
+
+async def _checklist(client, name="List", cards="Owned Card"):
+    resp = await client.post("/api/v1/checklists", json={"name": name, "cards": cards})
+    assert resp.status_code == 201
+    return resp.json()
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_create(client, session):
+    await _card(session, name="Owned Card", n=1, owned=1)
+    body = await _checklist(client, "Power", "Owned Card\nMissing Card")
+    assert body["name"] == "Power" and body["total"] == 2
+    assert body["owned_count"] == 1 and body["unmatched"] == 1
+    assert (await client.get("/api/v1/checklists")).json()[0]["id"] == body["id"]
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_create_strips_decklist_noise(client, session):
+    """Decklist-shaped lines paste in: counts, printing hints, markers, comments, duplicates."""
+    await _card(session, name="Owned Card", n=1, owned=1)
+    body = await _checklist(
+        client, "Pasted", "# comment\n2x Owned Card\nOwned Card (tst) 1 *F*\n\nMissing Card",
+    )
+    names = sorted(r["name"] for r in body["rows"])
+    assert names == ["Missing Card", "Owned Card"]  # deduped, stripped
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_keeps_unresolvable_lines(client, session):
+    """An unmatched name is kept as a row, never silently dropped."""
+    body = await _checklist(client, "Junk", "Definitely Not A Card")
+    assert body["total"] == 1 and body["unmatched"] == 1
+    assert body["rows"][0]["matched"] is False
+    assert body["rows"][0]["scryfall_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_delete(client, session):
+    body = await _checklist(client, "Bye", "Missing Card")
+    resp = await client.delete(f"/api/v1/checklists/{body['id']}")
+    assert resp.status_code == 200 and resp.json()["ok"] is True
+    assert (await client.get("/api/v1/checklists")).json() == []
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_delete_is_idempotent(client, session):
+    resp = await client.delete("/api/v1/checklists/9999")
+    assert resp.status_code == 200 and resp.json()["ok"] is True
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_add_items(client, session):
+    await _card(session, name="Owned Card", n=1, owned=1)
+    body = await _checklist(client, "Growing", "Owned Card")
+    resp = await client.post(f"/api/v1/checklists/{body['id']}/items",
+                             json={"cards": "Missing Card\nAnother Card"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["added"] == 2 and data["checklist"]["total"] == 3
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_add_items_skips_duplicates(client, session):
+    """`added` distinguishes a no-op from a success — the list already had it."""
+    await _card(session, name="Owned Card", n=1, owned=1)
+    body = await _checklist(client, "Dupes", "Owned Card")
+    resp = await client.post(f"/api/v1/checklists/{body['id']}/items",
+                             json={"cards": "Owned Card"})
+    data = resp.json()
+    assert data["added"] == 0 and data["checklist"]["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_add_items_404_unknown_list(client, session):
+    resp = await client.post("/api/v1/checklists/9999/items", json={"cards": "X"})
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_edit_item_reresolves(client, session):
+    await _card(session, name="Owned Card", n=1, owned=1)
+    body = await _checklist(client, "Fixme", "Typoed Card")
+    assert body["rows"][0]["matched"] is False
+    item_id = body["rows"][0]["item_id"]
+
+    resp = await client.patch(f"/api/v1/checklists/{body['id']}/items/{item_id}",
+                              json={"name": "Owned Card"})
+    assert resp.status_code == 200
+    row = resp.json()["rows"][0]
+    assert row["name"] == "Owned Card" and row["matched"] is True and row["owned"] is True
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_edit_item_rejects_blank_name(client, session):
+    body = await _checklist(client, "Blank", "Missing Card")
+    item_id = body["rows"][0]["item_id"]
+    resp = await client.patch(f"/api/v1/checklists/{body['id']}/items/{item_id}",
+                              json={"name": "   "})
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_edit_item_404_unknown_item(client, session):
+    body = await _checklist(client, "Nope", "Missing Card")
+    resp = await client.patch(f"/api/v1/checklists/{body['id']}/items/9999",
+                              json={"name": "Owned Card"})
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_edit_item_rejects_item_from_another_list(client, session):
+    """An item id is only valid within its own checklist."""
+    a = await _checklist(client, "A", "Card A")
+    b = await _checklist(client, "B", "Card B")
+    stolen = b["rows"][0]["item_id"]
+    resp = await client.patch(f"/api/v1/checklists/{a['id']}/items/{stolen}",
+                              json={"name": "Owned Card"})
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_delete_item(client, session):
+    body = await _checklist(client, "Trim", "Card A\nCard B")
+    item_id = body["rows"][0]["item_id"]
+    resp = await client.delete(f"/api/v1/checklists/{body['id']}/items/{item_id}")
+    assert resp.status_code == 200
+    detail = (await client.get(f"/api/v1/checklists/{body['id']}")).json()
+    assert detail["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_delete_item_idempotent_but_404s_unknown_list(client, session):
+    body = await _checklist(client, "Edges", "Card A")
+    # already-gone item on a real list -> ok (offline replay)
+    assert (await client.delete(f"/api/v1/checklists/{body['id']}/items/9999")).status_code == 200
+    # wrong list entirely -> 404
+    assert (await client.delete("/api/v1/checklists/9999/items/1")).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_to_wishlist(client, session):
+    await _card(session, name="Owned Card", n=1, owned=1)
+    await _card(session, name="Wanted Card", n=2)
+    body = await _checklist(client, "Wants", "Owned Card\nWanted Card\nNot A Real Card")
+
+    resp = await client.post(f"/api/v1/checklists/{body['id']}/wishlist")
+    assert resp.status_code == 200
+    assert resp.json()["quantity"] == 1  # owned skipped, unmatched skipped
+    wish = (await client.get("/api/v1/wishlist")).json()
+    assert [i["name"] for i in wish["items"]] == ["Wanted Card"]
+
+
+@pytest.mark.asyncio
+async def test_api_checklist_writes_blocked_read_only(client, session, monkeypatch):
+    from src.config import get_settings
+    body = await _checklist(client, "RO", "Card A")
+    cid, item_id = body["id"], body["rows"][0]["item_id"]
+    monkeypatch.setattr(get_settings(), "read_only", True)
+
+    assert (await client.post("/api/v1/checklists", json={"name": "x"})).status_code == 403
+    assert (await client.delete(f"/api/v1/checklists/{cid}")).status_code == 403
+    assert (await client.post(f"/api/v1/checklists/{cid}/items",
+                              json={"cards": "y"})).status_code == 403
+    assert (await client.patch(f"/api/v1/checklists/{cid}/items/{item_id}",
+                               json={"name": "y"})).status_code == 403
+    assert (await client.delete(
+        f"/api/v1/checklists/{cid}/items/{item_id}")).status_code == 403
+    assert (await client.post(f"/api/v1/checklists/{cid}/wishlist")).status_code == 403
 
 
 @pytest.mark.asyncio

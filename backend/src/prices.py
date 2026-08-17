@@ -318,6 +318,27 @@ def convert_card_series(
     ]
 
 
+async def card_series_in_currency(
+    session: AsyncSession, scryfall_id, days: int | None, code: str
+) -> tuple[list[_CardPoint], bool]:
+    """One card's price points converted into ``code``, plus an "approximate" flag (#233).
+
+    History is stored in USD and converted with date-matched historical FX rates, downloaded on
+    first use; the flag is True when none were available and the current rate stood in for every
+    point. Shared by the card page and the JSON API so the two cannot drift apart.
+    """
+    from src import fx
+
+    points = await card_value_series(session, scryfall_id, days)
+    if code == "usd" or not points:
+        return points, False
+    start = await earliest_snapshot_date(session)
+    have = bool(start) and await fx.ensure_fx_history(session, code, start)
+    hist_points = await fx.fx_history_points(session, code) if have else []
+    converted = convert_card_series(points, code, hist_points, fx.rate(code) or 1.0)
+    return converted, not hist_points
+
+
 @dataclass
 class Mover:
     name: str

@@ -39,6 +39,46 @@ async def list_saved(session: AsyncSession) -> list[SavedSearch]:
     return list(rows.scalars().all())
 
 
+async def upsert_saved(
+    session: AsyncSession, name: str, query: str, scope: str, sort: str, direction: str
+) -> SavedSearch:
+    """Create or overwrite a saved search by name, normalizing scope/sort/direction.
+
+    Single-user, so the name is the unique key: saving an existing name overwrites it rather
+    than erroring. Shared by the HTML form and the JSON API. Raises 400 on a blank name.
+    """
+    name = name.strip()[:128]
+    if not name:
+        raise HTTPException(status_code=400, detail="A name is required.")
+
+    scope = scope if scope == SearchScope.ALL.value else SearchScope.COLLECTION.value
+    sort = sort if sort in SORT_KEYS else DEFAULT_SORT
+    direction = "desc" if direction == "desc" else "asc"
+
+    obj = await session.scalar(select(SavedSearch).where(SavedSearch.name == name))
+    if obj is None:
+        obj = SavedSearch(name=name, query=query, scope=scope, sort=sort, direction=direction)
+        session.add(obj)
+    else:  # same name overwrites (single-user)
+        obj.query = query
+        obj.scope = scope
+        obj.sort = sort
+        obj.direction = direction
+    await session.commit()
+    await session.refresh(obj)
+    return obj
+
+
+async def delete_saved_by_id(session: AsyncSession, saved_id: int) -> bool:
+    """Delete a saved search; True if one was removed. Missing is not an error (idempotent)."""
+    obj = await session.get(SavedSearch, saved_id)
+    if obj is None:
+        return False
+    await session.delete(obj)
+    await session.commit()
+    return True
+
+
 @router.post("/saved")
 async def create_saved(
     name: str = Form(...),
@@ -49,27 +89,10 @@ async def create_saved(
     session: AsyncSession = Depends(get_session),
 ):
     _guard_writable()
-    name = name.strip()[:128]
-    if not name:
-        raise HTTPException(status_code=400, detail="A name is required.")
-
-    scope = scope if scope == SearchScope.ALL.value else SearchScope.COLLECTION.value
-    sort = sort if sort in SORT_KEYS else DEFAULT_SORT
-    direction = "desc" if dir == "desc" else "asc"
-
-    existing = await session.scalar(select(SavedSearch).where(SavedSearch.name == name))
-    if existing is None:
-        session.add(
-            SavedSearch(name=name, query=q, scope=scope, sort=sort, direction=direction)
-        )
-    else:  # same name overwrites (single-user)
-        existing.query = q
-        existing.scope = scope
-        existing.sort = sort
-        existing.direction = direction
-    await session.commit()
-
-    return RedirectResponse(url=_run_url(q, scope, sort, direction), status_code=303)
+    obj = await upsert_saved(session, name, q, scope, sort, dir)
+    return RedirectResponse(
+        url=_run_url(obj.query, obj.scope, obj.sort, obj.direction), status_code=303
+    )
 
 
 @router.post("/saved/{saved_id}/delete")
@@ -78,10 +101,7 @@ async def delete_saved(
     session: AsyncSession = Depends(get_session),
 ):
     _guard_writable()
-    obj = await session.get(SavedSearch, saved_id)
-    if obj is not None:
-        await session.delete(obj)
-        await session.commit()
+    await delete_saved_by_id(session, saved_id)
     return RedirectResponse(url="/search", status_code=303)
 
 

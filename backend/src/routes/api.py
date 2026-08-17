@@ -42,6 +42,8 @@ from src.prices import (
     value_series,
 )
 from src.routes.preferences import PreferencesOut, PreferencesUpdateIn
+from src.routes.saved import delete_saved_by_id, upsert_saved
+from src.saved_alerts import clear_new
 from src.scryfall.mapping import image_url
 from src.search import SearchError, SearchScope
 from src.search.engine import DEFAULT_SORT, SORT_KEYS, run_search
@@ -901,13 +903,70 @@ class SavedSearchOut(BaseModel):
     new_count: int
 
 
+def _saved_out(s: SavedSearch) -> SavedSearchOut:
+    return SavedSearchOut(id=s.id, name=s.name, query=s.query, scope=s.scope, sort=s.sort,
+                          direction=s.direction, new_count=len(s.new_ids or []))
+
+
 @router.get("/saved", response_model=list[SavedSearchOut])
 async def api_saved(session: AsyncSession = Depends(get_session)) -> list[SavedSearchOut]:
     rows = (
         await session.execute(select(SavedSearch).order_by(SavedSearch.created_at.desc()))
     ).scalars().all()
-    return [SavedSearchOut(id=s.id, name=s.name, query=s.query, scope=s.scope, sort=s.sort,
-                           direction=s.direction, new_count=len(s.new_ids or [])) for s in rows]
+    return [_saved_out(s) for s in rows]
+
+
+class SavedSearchIn(BaseModel):
+    name: str
+    query: str = ""
+    scope: str = SearchScope.COLLECTION.value
+    sort: str = DEFAULT_SORT
+    direction: str = "asc"
+
+
+@router.post("/saved", response_model=SavedSearchOut, status_code=201)
+async def api_saved_create(
+    body: SavedSearchIn, session: AsyncSession = Depends(get_session)
+) -> SavedSearchOut:
+    """Create or overwrite a saved search.
+
+    Single-user, so the name is the unique key: posting an existing name updates it in place
+    rather than erroring, which also makes a replayed offline write safe.
+    """
+    _guard_writable()
+    saved = await upsert_saved(session, body.name, body.query, body.scope, body.sort,
+                               body.direction)
+    return _saved_out(saved)
+
+
+@router.delete("/saved/{saved_id}", response_model=OkOut)
+async def api_saved_delete(
+    saved_id: int, session: AsyncSession = Depends(get_session)
+) -> OkOut:
+    """Delete a saved search. Idempotent: deleting one that is already gone still returns ok,
+    so an offline client replaying its queue does not see a spurious failure."""
+    _guard_writable()
+    await delete_saved_by_id(session, saved_id)
+    return OkOut()
+
+
+@router.post("/saved/{saved_id}/reviewed", response_model=SavedSearchOut)
+async def api_saved_reviewed(
+    saved_id: int, session: AsyncSession = Depends(get_session)
+) -> SavedSearchOut:
+    """Mark a saved search's new matches as seen, clearing ``new_count``.
+
+    The write half of the alert loop: ``GET /saved`` reports how many cards newly match, and a
+    client that has shown them to the user calls this to reset the badge — the same thing the
+    web UI does when you open a saved search.
+    """
+    _guard_writable()
+    saved = await session.get(SavedSearch, saved_id)
+    if saved is None:
+        raise HTTPException(status_code=404, detail="Saved search not found.")
+    await clear_new(session, saved_id)
+    await session.refresh(saved)
+    return _saved_out(saved)
 
 
 # --- collection import (two-phase: stage -> confirm) --------------------------------------------

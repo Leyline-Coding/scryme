@@ -128,7 +128,12 @@ async def _apply_line(
         applied = outstanding if stack is not None else 0
 
     item.applied_quantity += applied
-    status = APPLIED if applied == outstanding else (PARTIAL if applied else FAILED)
+    if applied == outstanding:
+        status = APPLIED
+    elif applied:
+        status = PARTIAL
+    else:
+        status = FAILED
     return LineResult(item_id=item.id, direction=item.direction, name=name,
                       requested=outstanding, applied=applied, status=status)
 

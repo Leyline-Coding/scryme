@@ -12,6 +12,8 @@
       <li class="px-3 py-2 text-sm flex items-center gap-2">
         <a href="/card/{{ p.scryfall_id }}" class="font-medium hover:text-accent shrink-0 truncate">{{ p.name }}</a>
         <span class="shrink-0 text-[10px] uppercase tracking-wide text-muted">{{ role }}</span>
+        {# Why this card and not another legal one (#294) — an unexplained pick can't be argued with. #}
+        {% if p.fit %}<span class="min-w-0 truncate text-xs text-accent" title="{{ p.fit }}">{{ p.fit }}</span>{% endif %}
         <span class="ml-auto shrink-0 tabular-nums text-muted">{{ cur.symbol }}{{ '{:,.2f}'.format(p.price) }}</span>
         {% if not read_only %}
         <button hx-post="/decks/{{ deck.id }}/add-owned" hx-target="#owned-out" hx-swap="innerHTML"
@@ -26,7 +28,9 @@
   {% endfor %}
 </div>
 <p class="mt-1.5 text-xs text-muted">
-  Chosen from {{ result.considered }} owned, in-colour, Commander-legal card(s) not already in the deck.
+  Chosen from {{ result.considered }} owned, in-colour, Commander-legal card(s) not already in the deck{%
+  if result.themes %}, ranked by fit with this deck's <b class="text-fg">{{ result.themes[:3]|join(', ') }}</b>{%
+  endif %}.
 </p>
 {% else %}
 <div class="rounded-lg bg-surface-2 text-muted text-sm px-3 py-2">

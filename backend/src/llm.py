@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import __version__
 from src.config import get_settings
+from src.deck_synergy import deck_themes
 from src.decks import deck_coverage, deck_stats
 from src.models import Card, CollectionCard, LLMSettings
 from src.search import SearchError, build_search
@@ -172,11 +173,6 @@ _DECKBUILD_GUIDE = (
     "card advance the deck's plan and synergize with the commander / theme."
 )
 
-_THEME_TEXT_SIGNALS = {
-    "+1/+1 counters": "+1/+1 counter", "tokens": "token", "sacrifice": "sacrifice",
-    "graveyard recursion": "from your graveyard", "lifegain": "gain life",
-    "spellslinger": "instant or sorcery", "mill": "mill",
-}
 
 
 @dataclass
@@ -259,13 +255,6 @@ def _scan_deck_cards(info: dict) -> _DeckScan:
     return scan
 
 
-def _deck_themes(kw_counts: Counter, text_cards: list) -> list[str]:
-    """Themes from repeated keywords, plus text-signal themes seen in >=4 cards."""
-    themes = [k for k, n in kw_counts.most_common(5) if n >= 2]
-    for label, sig in _THEME_TEXT_SIGNALS.items():
-        if label not in themes and sum(1 for t in text_cards if sig in t) >= 4:
-            themes.append(label)
-    return themes
 
 
 async def deck_ai_context(session: AsyncSession, deck) -> DeckContext:
@@ -285,7 +274,7 @@ async def deck_ai_context(session: AsyncSession, deck) -> DeckContext:
             info[row[0]] = row[1:]
 
     scan = _scan_deck_cards(info)
-    themes = _deck_themes(scan.kw_counts, scan.text_cards)
+    themes = deck_themes(scan.kw_counts, scan.text_cards)
     key_cards = [n for _v, n, _t in sorted(scan.valued, reverse=True)[:5]]
 
     return DeckContext(

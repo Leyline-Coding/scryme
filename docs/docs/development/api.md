@@ -48,6 +48,20 @@ your instance.
 
 Mutating endpoints additionally respect `SCRYME_READ_ONLY` (they return `403` on the demo).
 
+### Concurrent edits
+
+Collection rows carry a `version`. Send it back on `PATCH /api/v1/collection/{id}` (in the body) or
+`DELETE /api/v1/collection/{id}?version=` and the write is refused with **`409`** if the row changed
+since you read it, instead of overwriting whatever changed:
+
+```json
+{"detail": {"error": "stale", "message": "This stack changed since it was loaded.",
+            "current_version": 7}}
+```
+
+The current version comes back with the error so you can retry deliberately rather than blindly.
+Omitting `version` applies the write regardless, so existing clients are unaffected.
+
 ## Endpoints
 
 | Method | Path | Purpose |

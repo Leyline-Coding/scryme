@@ -87,6 +87,17 @@
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"
           integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
           crossorigin="anonymous" defer></script>
+  <script>
+    // htmx does not swap non-2xx responses. A 409 from a concurrent-edit conflict (#207) carries
+    // the panel's current state as its body — the whole point is to show the editor what the row
+    // is now — so allow that one status through and don't treat it as a transport error.
+    document.addEventListener('htmx:beforeSwap', function (e) {
+      if (e.detail.xhr && e.detail.xhr.status === 409) {
+        e.detail.shouldSwap = true;
+        e.detail.isError = false;
+      }
+    });
+  </script>
   <script src="https://unpkg.com/alpinejs@3.15.12/dist/cdn.min.js"
           integrity="sha384-pb6hrQvo4s23cEUFtj0CZkzGE3jyK3pj26RIupXXxhSrrcUA/Cn0lZgcCrGH0t6L"
           crossorigin="anonymous" defer></script>

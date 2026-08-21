@@ -2,7 +2,7 @@
 {% block title %}Settings · scryme{% endblock %}
 {% block content %}
 
-<div class="max-w-3xl mx-auto px-4 py-6" x-data="{ tab: 'collection' }">
+<div class="max-w-3xl mx-auto px-4 py-6" x-data="{ tab: '{{ initial_tab|default('collection') }}' }">
   <header class="flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold">Settings</h1>
@@ -16,6 +16,9 @@
     <button @click="tab = 'instance'" class="px-4 py-2 border-b-2 -mb-px font-medium"
             :class="tab === 'instance' ? 'border-accent text-fg' : 'border-transparent text-muted hover:text-fg'">
       Instance</button>
+    <button @click="tab = 'devices'" class="px-4 py-2 border-b-2 -mb-px font-medium"
+            :class="tab === 'devices' ? 'border-accent text-fg' : 'border-transparent text-muted hover:text-fg'">
+      Devices</button>
   </div>
 
   {# --- Collection preferences: same controls as the gear panel, one source of truth --- #}
@@ -65,6 +68,92 @@
       </div>
       {% endfor %}
     </div>
+  </section>
+
+  {# --- Devices: per-app API credentials (#204). Not "accounts" — no identity, just revocable
+         per-client tokens and a record of which app is actually talking. --- #}
+  <section x-show="tab === 'devices'" x-cloak id="devices">
+    <p class="text-sm text-muted mb-4">
+      Give each app that talks to this instance its own token, so you can see what's connected and
+      cut off a single device without changing anything else.
+      {% if env_token_set %}
+      A shared <code class="text-fg">SCRYME_API_TOKEN</code> is also configured and keeps working.
+      {% endif %}
+    </p>
+
+    {% if issued_token %}
+    {# Shown exactly once — only the hash is stored, so there is no way to show it again. #}
+    <div class="rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/40 p-4 mb-6">
+      <p class="text-sm font-semibold text-emerald-500 mb-1">Token created</p>
+      <p class="text-xs text-muted mb-2">
+        Copy it now — this is the only time it is shown. Only a hash is stored, so it can't be
+        recovered later; if you lose it, revoke it and issue another.
+      </p>
+      <code class="block break-all rounded bg-bg px-3 py-2 text-sm select-all">{{ issued_token }}</code>
+      <p class="text-xs text-muted mt-2">
+        Send it as <code class="text-fg">Authorization: Bearer &lt;token&gt;</code> or
+        <code class="text-fg">X-API-Key: &lt;token&gt;</code>.
+      </p>
+    </div>
+    {% endif %}
+
+    {% if tokens %}
+    <ul class="divide-y divide-edge rounded-xl bg-surface ring-1 ring-edge overflow-hidden mb-6">
+      {% for t in tokens %}
+      <li class="px-4 py-2.5 text-sm flex flex-wrap items-center gap-x-3 gap-y-1
+                 {% if not t.active %}opacity-60{% endif %}">
+        <span class="font-medium truncate">{{ t.label }}</span>
+        <code class="text-xs text-muted">scryme_{{ t.prefix }}…</code>
+        <span class="text-xs rounded-full px-2 py-0.5
+          {% if t.scope == 'read' %}bg-surface-2 text-muted{% else %}bg-accent/15 text-accent{% endif %}">
+          {{ t.scope }}</span>
+        {% if t.active %}
+        <span class="text-xs text-muted">
+          {% if t.last_used_at %}last used {{ t.last_used_at.strftime('%Y-%m-%d %H:%M') }}
+          {% else %}never used{% endif %}
+        </span>
+        {% if not read_only %}
+        <form method="post" action="/settings/devices/{{ t.id }}/revoke" class="ml-auto"
+              onsubmit="return confirm('Revoke this token? The device using it stops working immediately.')">
+          <button type="submit" class="text-xs text-muted hover:text-rose-500">Revoke</button>
+        </form>
+        {% endif %}
+        {% else %}
+        <span class="ml-auto text-xs text-rose-500">
+          revoked {{ t.revoked_at.strftime('%Y-%m-%d') }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted text-sm mb-6">
+      No device tokens yet. <code class="text-fg">/api/v1</code> is
+      {% if env_token_set %}gated by the shared token.{% else %}open on this instance.{% endif %}
+    </p>
+    {% endif %}
+
+    {% if not read_only %}
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <h2 class="text-sm font-semibold mb-2">New device token</h2>
+      <form method="post" action="/settings/devices" class="flex flex-wrap items-end gap-2 text-sm">
+        <label class="flex flex-col">Label
+          <input name="label" placeholder="Pixel scanner" required
+                 class="w-48 rounded-lg bg-bg border border-edge px-2.5 py-1.5" /></label>
+        <label class="flex flex-col">Access
+          <select name="scope" class="rounded-lg bg-bg border border-edge px-2.5 py-1.5">
+            <option value="write">Read and write</option>
+            <option value="read">Read only</option>
+          </select></label>
+        <button type="submit" class="rounded-lg bg-accent text-accent-fg px-3 py-1.5 font-medium">
+          Create token
+        </button>
+      </form>
+      <p class="text-xs text-muted mt-2">
+        Issuing the first token closes <code class="text-fg">/api/v1</code> to unauthenticated
+        callers. Revoking every token does <b>not</b> reopen it — you'd issue a new one here.
+      </p>
+    </section>
+    {% endif %}
   </section>
 </div>
 

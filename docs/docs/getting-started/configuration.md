@@ -16,7 +16,7 @@ with `SCRYME_`.
 | `SCRYME_BACKUP_INTERVAL_HOURS` | `0` | Hours between scheduled backups to `SCRYME_BACKUP_DIR` (`0` disables scheduling) |
 | `SCRYME_BACKUP_KEEP` | `14` | How many on-disk backups to retain (older ones are pruned) |
 | `SCRYME_BACKUP_PASSPHRASE` | _(unset)_ | If set, scheduled/on-disk backups are [encrypted](../features/backup.md#encrypted-backups) with this passphrase (restore needs it) |
-| `SCRYME_API_TOKEN` | _(unset)_ | If set, the [JSON API](../development/api.md) requires this token (`Authorization: Bearer …` / `X-API-Key`); empty = open |
+| `SCRYME_API_TOKEN` | _(unset)_ | If set, the [JSON API](../development/api.md) requires this shared token (`Authorization: Bearer …` / `X-API-Key`). Empty = open, unless you've issued [device tokens](../development/api.md#device-tokens-recommended) under Settings → Devices |
 
 ## AI assistant variables
 

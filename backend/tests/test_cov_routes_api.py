@@ -32,23 +32,21 @@ async def _card(session, name="Aaa", n=1, owned=0, oracle=None, prices=None):
     return c
 
 
-# --- token guard ---------------------------------------------------------------------------
+# --- credential parsing --------------------------------------------------------------------
+# The auth *decision* (env token vs device token, scopes, revocation) is covered end-to-end over
+# HTTP in test_client_tokens.py — #204 made it async and session-bound. What is worth unit-testing
+# here is the header parsing it feeds on.
 
-def test_require_api_token_noop_when_unset(monkeypatch):
-    from src.config import get_settings
-    monkeypatch.setattr(get_settings(), "api_token", "")
-    # No token configured -> returns without raising regardless of headers.
-    api.require_api_token(SimpleNamespace(headers={}))
+def test_presented_token_reads_either_header():
+    assert api.presented_token(
+        SimpleNamespace(headers={"Authorization": "Bearer secret"})) == "secret"
+    assert api.presented_token(SimpleNamespace(headers={"X-API-Key": "secret"})) == "secret"
 
 
-def test_require_api_token_accepts_bearer_and_apikey(monkeypatch):
-    from src.config import get_settings
-    monkeypatch.setattr(get_settings(), "api_token", "secret")
-    api.require_api_token(SimpleNamespace(headers={"Authorization": "Bearer secret"}))
-    api.require_api_token(SimpleNamespace(headers={"X-API-Key": "secret"}))
-    with pytest.raises(HTTPException) as exc:
-        api.require_api_token(SimpleNamespace(headers={"X-API-Key": "wrong"}))
-    assert exc.value.status_code == 401
+def test_presented_token_is_empty_when_absent_or_not_bearer():
+    assert api.presented_token(SimpleNamespace(headers={})) == ""
+    # A non-Bearer Authorization scheme is not a credential we accept, and must not be sliced.
+    assert api.presented_token(SimpleNamespace(headers={"Authorization": "Basic abc"})) == ""
 
 
 def test_guard_writable(monkeypatch):

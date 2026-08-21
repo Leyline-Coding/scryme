@@ -4,6 +4,7 @@ from src.models.binder import Binder, BinderCard
 from src.models.box import Box
 from src.models.card import Card
 from src.models.checklist import Checklist, ChecklistItem
+from src.models.client_token import ClientToken
 from src.models.collection import CollectionCard
 from src.models.deck import Deck, DeckCard, DeckVersion
 from src.models.deck_chat import DeckChatMessage
@@ -24,7 +25,7 @@ from src.models.wishlist import WishlistItem
 
 __all__ = [
     "Binder", "BinderCard", "Box", "Card", "CardEmbedding", "CardPricePoint",
-    "Checklist", "ChecklistItem", "CollectionCard", "FxRate", "FxRateHistory",
+    "Checklist", "ChecklistItem", "ClientToken", "CollectionCard", "FxRate", "FxRateHistory",
     "Deck", "DeckCard", "DeckVersion", "DeckChatMessage", "ImportSnapshot", "IngestState",
     "ImportStaging",
     "LLMSettings", "Preferences",

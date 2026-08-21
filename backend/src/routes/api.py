@@ -2,12 +2,16 @@
 
 A typed, versioned surface over the same services the HTML UI uses — so a mobile app, scripts, or a
 thinner desktop shell can drive scryme. FastAPI generates the OpenAPI schema (browse it at ``/docs``
-or ``/openapi.json``). Mutations honor ``SCRYME_READ_ONLY``; when ``SCRYME_API_TOKEN`` is set every
-request must present it (``Authorization: Bearer <token>`` or ``X-API-Key``).
+or ``/openapi.json``). Mutations honor ``SCRYME_READ_ONLY``.
+
+Authentication accepts either the shared ``SCRYME_API_TOKEN`` or a per-device token issued under
+Settings → Devices (#204, :mod:`src.client_tokens`), presented as ``Authorization: Bearer <token>``
+or ``X-API-Key``. The API is open until one of those exists.
 """
 
 from __future__ import annotations
 
+import hmac
 import uuid
 
 import httpx
@@ -26,6 +30,7 @@ from src.checklists import (
     remove_checklist_item,
     rename_checklist_item,
 )
+from src.client_tokens import auth_required, scope_for_method, verify_token
 from src.collection_edit import add_or_increment, delete_stack, update_stack
 from src.config import get_settings
 from src.currency import normalize as normalize_currency
@@ -60,13 +65,32 @@ from src.tags import add_card_tag, card_tags, remove_card_tag
 from src.wishlist import add_to_wishlist, list_wishlist, remove_from_wishlist
 
 
-def require_api_token(request: Request) -> None:
-    token = get_settings().api_token
-    if not token:
-        return
+def presented_token(request: Request) -> str:
+    """The credential on this request, from either accepted header."""
     auth = request.headers.get("Authorization", "")
-    provided = auth[7:] if auth.startswith("Bearer ") else request.headers.get("X-API-Key", "")
-    if provided != token:
+    if auth.startswith("Bearer "):
+        return auth[7:]
+    return request.headers.get("X-API-Key", "")
+
+
+async def require_api_token(
+    request: Request, session: AsyncSession = Depends(get_session)
+) -> None:
+    """Gate the versioned API on the env token or any live per-device token (#204).
+
+    The legacy ``SCRYME_API_TOKEN`` keeps working unchanged and always grants full access — it
+    predates scopes and an operator who set it meant "this whole API". Device tokens are checked
+    against the scope the request's method needs, so a ``read`` token can browse but not mutate.
+    """
+    if not await auth_required(session):
+        return
+    provided = presented_token(request)
+    env_token = get_settings().api_token
+    # Unlike the device-token path (which matches on an indexed hash), this compares the caller's
+    # string against the secret itself, so it needs to be constant-time.
+    if provided and env_token and hmac.compare_digest(provided, env_token):
+        return
+    if await verify_token(session, provided, scope_for_method(request.method)) is None:
         raise HTTPException(status_code=401, detail="Invalid or missing API token.")
 
 

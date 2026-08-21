@@ -160,9 +160,22 @@ cards **you already own** — no AI endpoint required.
 
 scryme buckets the deck's mainboard into roles (**ramp**, **card draw**, **removal**), spots the ones
 that are below a typical Commander count, and offers owned cards that fill them — restricted to the
-deck's **colour identity** and **Commander-legal**, and never a card already in the deck. Each
-suggestion is ranked by mana-curve fit then price and shows a one-line reason; **+ Add** drops a copy
-straight into the deck and refreshes the list. (Disabled on the read-only demo.)
+deck's **colour identity** and **Commander-legal**, and never a card already in the deck.
+
+Those rules only make a card *allowed*, though, not *good*. So the shortlist is ranked by **how well
+each card fits this particular deck**:
+
+- **Themes** — the keywords and rules-text patterns that recur across the deck (+1/+1 counters,
+  tokens, sacrifice, lifegain, spellslinger, mill, graveyard recursion). A card carrying one of them
+  ranks above one that doesn't.
+- **Tribes** — creature types the deck cares about, read from the deck itself rather than a fixed
+  list: types your commander names in its rules text, or that enough of your creatures already
+  share. An Elf deck gets Elves offered first.
+
+Whatever matched is shown next to the card ("matches your tokens, elf"), so you can disagree with a
+pick instead of just trusting it. Mana curve and price remain the tie-breakers, so a deck with no
+clear theme is ranked exactly as before. **+ Add** drops a copy straight into the deck and refreshes
+the list. (Disabled on the read-only demo.)
 
 For AI-powered suggestions and buy-to-upgrade plans, see the ✨ AI tools on the same page.
 

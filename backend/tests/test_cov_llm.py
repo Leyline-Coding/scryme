@@ -8,13 +8,13 @@ from collections import Counter
 import httpx
 import pytest
 from src import llm
+from src.deck_synergy import deck_themes
 from src.decks import create_deck
 from src.llm import (
     ChatClient,
     DeckContext,
     LLMConfig,
     _clean_query,
-    _deck_themes,
     _parse_decklines,
     _parse_named_reasons,
     _parse_suggestions,
@@ -143,7 +143,7 @@ def test_scan_counts_keywords_and_finds_commander():
 def test_deck_themes_text_signal():
     kw = Counter()
     text_cards = ["create a token", "make a token now", "another token effect", "token token"]
-    themes = _deck_themes(kw, text_cards)
+    themes = deck_themes(kw, text_cards)
     assert "tokens" in themes  # line 262: text-signal theme seen in >=4 cards
 
 

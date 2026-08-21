@@ -1666,6 +1666,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Authentication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#device-tokens-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Device tokens (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-single-shared-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A single shared token
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1922,6 +1950,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Authentication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#device-tokens-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Device tokens (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-single-shared-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A single shared token
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1972,12 +2028,36 @@ so you can script it, build a mobile client, or drive it from another app. It's
 <a href="https://swagger.io/specification/">OpenAPI</a>-documented: browse and try it at <strong><code>/docs</code></strong> (Swagger
 UI), or fetch the schema from <strong><code>/openapi.json</code></strong>.</p>
 <h2 id="authentication">Authentication</h2>
-<p>By default the API is <strong>open</strong> — fine for a single-user instance on your own machine or LAN. If your
-instance is reachable by others, set <strong><code>SCRYME_API_TOKEN</code></strong> and every <code>/api/*</code> request must then
-include it:</p>
+<p>By default the API is <strong>open</strong> — fine for a single-user instance on your own machine or LAN. There
+are two ways to close it, and they work together.</p>
+<p>Either way, the credential goes in one of two headers:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span>https://your-host/api/v1/stats
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># or:  -H &quot;X-API-Key: $TOKEN&quot;</span>
 </code></pre></div>
+<h3 id="device-tokens-recommended">Device tokens (recommended)</h3>
+<p><strong>Settings → Devices</strong> issues a labelled token per app — one for the scanner, one for a script, one
+for whatever else talks to your instance. Each can be revoked on its own, and the page shows when
+each was last used, so you can spot the ones nothing is using any more.</p>
+<p>Choose <strong>read only</strong> or <strong>read and write</strong> when you create it. Read-only tokens can call any <code>GET</code>
+but are refused (<code>401</code>) on anything that changes data, which is what you want for something that
+only displays your collection.</p>
+<p>Two things worth knowing:</p>
+<ul>
+<li><strong>The token is shown once.</strong> Only a hash of it is stored, keyed to a secret kept in your data
+  directory (<code>tokens.key</code>) rather than in the database — so a database dump or backup carries
+  hashes computed under a key it doesn't contain. The token can't be recovered; if you lose it,
+  revoke it and issue another. (Losing <code>tokens.key</code> invalidates every issued token, which is the
+  safe direction to fail in — they stop working rather than becoming guessable.)</li>
+<li><strong>Issuing your first token closes the API</strong>, and revoking every token does <em>not</em> re-open it.
+  Revocation is what you reach for when something has gone wrong; it would be a poor design if that
+  were also the thing that removed the lock. Issue a new token from the same page to get back in.
+  (The web UI is never token-gated, so you can't lock yourself out of scryme itself.)</li>
+</ul>
+<h3 id="a-single-shared-token">A single shared token</h3>
+<p><strong><code>SCRYME_API_TOKEN</code></strong> still works and is unchanged: set it and every <code>/api/*</code> request must present
+it. It predates scopes and always grants full access. It's the simplest option if you just want one
+secret in an environment file; device tokens are better as soon as more than one thing is calling
+your instance.</p>
 <p>Mutating endpoints additionally respect <code>SCRYME_READ_ONLY</code> (they return <code>403</code> on the demo).</p>
 <h2 id="endpoints">Endpoints</h2>
 <table>
@@ -2062,7 +2142,7 @@ include it:</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 16, 2026 23:26:44 UTC">July 16, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 21, 2026 19:04:02 UTC">August 21, 2026</span>
   </span>
 
     

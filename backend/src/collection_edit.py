@@ -4,6 +4,20 @@ A "stack" is one ``collection_card`` row, keyed by (scryfall_id, finish, conditi
 binder). Adding reuses the matching stack (incrementing) so the unique constraint is never
 violated; a quantity that drops to zero deletes the row. Bulk actions operate on a set of
 printings selected in the results grid.
+
+**Concurrent edits (#207).** One collection is deliberately shared by more than one person
+(:doc:`ADR 0001 </development/adr/0001-single-collection-accounts>`), so two people can edit the
+same stack at once. The guard distinguishes two kinds of edit, because they do not have the same
+problem:
+
+* **Relative** edits — "add one", "remove one", the ± steppers — are commutative. Two people each
+  adding a copy should end up at +2, and that is what last-write-wins already gives. Guarding them
+  would reject a correct outcome and make the buttons feel broken.
+* **Absolute** edits — set the quantity to 4, set the condition, delete the stack — replace state
+  the editor was *looking at*. If it moved in the meantime, applying them destroys the other
+  person's change silently. These carry the version they were shown and are refused if it moved.
+
+Every mutation bumps ``version``, so an absolute edit notices a relative one that happened under it.
 """
 
 from __future__ import annotations
@@ -81,6 +95,7 @@ async def add_or_increment(
         session.add(stack)
     else:
         stack.quantity += quantity
+        stack.version += 1
     if not commit:
         await session.flush()
         return stack
@@ -96,6 +111,7 @@ async def adjust_quantity(session: AsyncSession, stack_id: int, delta: int):
         return None
     sid = stack.scryfall_id
     stack.quantity += delta
+    stack.version += 1
     if stack.quantity <= 0:
         await session.delete(stack)
     await session.commit()
@@ -103,6 +119,24 @@ async def adjust_quantity(session: AsyncSession, stack_id: int, delta: int):
 
 
 _UNSET = object()
+
+
+class StaleStackError(Exception):
+    """An absolute edit was attempted against a version of a stack that has since changed.
+
+    Carries the current row so the caller can show what it is *now* rather than just failing —
+    losing the other person's edit and the editor's own work would be two problems, not one.
+    """
+
+    def __init__(self, stack: CollectionCard):
+        super().__init__("This stack changed since it was loaded.")
+        self.stack = stack
+
+
+def _guard_version(stack: CollectionCard, expected: int | None) -> None:
+    """Refuse an absolute edit whose base version moved. ``None`` opts out (internal callers)."""
+    if expected is not None and stack.version != expected:
+        raise StaleStackError(stack)
 
 
 async def update_stack(
@@ -116,15 +150,21 @@ async def update_stack(
     binder=_UNSET,
     location=_UNSET,
     tags=_UNSET,
+    expected_version: int | None = None,
 ):
     """Update fields on a stack (any left unset stay put). Returns the stack, or None if missing.
 
     ``quantity`` is clamped to >= 1 (use :func:`delete_stack` to remove a stack). ``condition`` /
     ``binder`` / ``location`` / ``tags`` take an explicit ``None`` to clear them (sentinel default).
+
+    This is an *absolute* edit, so ``expected_version`` guards it: pass the version the editor was
+    shown and a :class:`StaleStackError` is raised if the row moved since (#207). Omitting it opts
+    out, for internal callers that aren't replaying a human's stale view.
     """
     stack = await session.get(CollectionCard, stack_id)
     if stack is None:
         return None
+    _guard_version(stack, expected_version)
     if quantity is not None:
         stack.quantity = max(1, quantity)
     if finish is not None:
@@ -139,15 +179,21 @@ async def update_stack(
         stack.location = _clean(location)
     if tags is not _UNSET:
         stack.tags = tags or None
+    stack.version += 1
     await session.commit()
     return stack
 
 
-async def delete_stack(session: AsyncSession, stack_id: int):
-    """Delete a stack outright. Returns its scryfall_id (or None if it didn't exist)."""
+async def delete_stack(session: AsyncSession, stack_id: int, expected_version: int | None = None):
+    """Delete a stack outright. Returns its scryfall_id (or None if it didn't exist).
+
+    Guarded like :func:`update_stack`: deleting a stack someone else has just changed is the most
+    destructive way to lose their edit.
+    """
     stack = await session.get(CollectionCard, stack_id)
     if stack is None:
         return None
+    _guard_version(stack, expected_version)
     sid = stack.scryfall_id
     await session.delete(stack)
     await session.commit()
@@ -220,15 +266,18 @@ async def move_binder_stacks(
 async def edit_stack(
     session: AsyncSession, stack_id: int, *,
     quantity: int | None = None, finish: str | None = None, scryfall_id=None,
+    expected_version: int | None = None,
 ):
     """Edit a stack's quantity, finish, and/or printing, merging into a sibling stack if the change
     collides with the (scryfall_id, finish, condition, language, binder, location) key.
 
-    Returns the surviving stack (or None if the stack/target printing is missing).
+    Returns the surviving stack (or None if the stack/target printing is missing). Absolute, so
+    ``expected_version`` guards it (#207).
     """
     stack = await session.get(CollectionCard, stack_id)
     if stack is None:
         return None
+    _guard_version(stack, expected_version)
     target_sid = _as_uuid(scryfall_id) if scryfall_id else stack.scryfall_id
     if scryfall_id and await session.get(Card, target_sid) is None:
         return None
@@ -251,12 +300,14 @@ async def edit_stack(
         dup.quantity += new_qty
         merged_tags = sorted(set((dup.tags or []) + (stack.tags or [])))
         dup.tags = merged_tags or None
+        dup.version += 1
         await session.delete(stack)
         survivor = dup
     else:
         stack.scryfall_id = target_sid
         stack.finish = target_finish
         stack.quantity = new_qty
+        stack.version += 1
         survivor = stack
     await session.commit()
     return survivor

@@ -41,6 +41,20 @@ is editable:
 - **Add to collection** — the small form adds a copy (quantity, finish, and an optional binder).
   Adding a printing you already own in the same finish/binder just increments that stack.
 
+### Two people editing at once
+
+scryme is one collection, deliberately — which for a lot of households means two people editing it
+from different devices. When that happens, edits are handled by kind rather than blocked:
+
+- **`−` / `+` and *Add to collection* always apply.** They're relative, so two people each adding a
+  copy correctly ends up at two copies. Refusing the second would refuse a right answer.
+- **Edits that replace what you were looking at** — setting a quantity, changing a finish or
+  condition, deleting a stack — are **refused if the card changed since your page loaded**. You get
+  a note saying so, with the current state right there, so you can re-apply your change deliberately
+  instead of quietly overwriting theirs.
+
+Nothing is lost either way: the refusal shows you both what happened and what the card is now.
+
 ### Bulk edit from search
 
 In the results grid, tick the checkbox on any cards to reveal a **bulk bar**:

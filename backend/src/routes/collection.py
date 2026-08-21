@@ -24,6 +24,7 @@ from src.box_service import (
     rename_box,
 )
 from src.collection_edit import (
+    StaleStackError,
     add_or_increment,
     adjust_quantity,
     bulk_add_tag,
@@ -56,7 +57,7 @@ def _guard_writable() -> None:
 
 
 async def _collection_partial(
-    request: Request, session: AsyncSession, scryfall_id: uuid.UUID
+    request: Request, session: AsyncSession, scryfall_id: uuid.UUID, conflict: bool = False
 ) -> HTMLResponse:
     owned = list(
         (
@@ -80,6 +81,7 @@ async def _collection_partial(
             "tags": await card_tags(session, scryfall_id),
             "read_only": get_settings().read_only,
             "printing_opts": await printing_options(session, scryfall_id),
+            "conflict": conflict,
             **await location_choices(session),
         },
     )
@@ -148,17 +150,47 @@ async def adjust(
     return await _collection_partial(request, session, sid)
 
 
+def _expected(raw: str) -> int | None:
+    """The version a form was rendered with; absent or unparseable means "don't guard".
+
+    An old page that predates this feature simply behaves as it always did, rather than becoming
+    unusable — the guard is a safety net, not a gate.
+    """
+    raw = (raw or "").strip()
+    return int(raw) if raw.isdigit() else None
+
+
+async def _conflict(
+    request: Request, session: AsyncSession, scryfall_id: uuid.UUID
+) -> HTMLResponse:
+    """Re-render the card's stacks with a "this changed" notice, at HTTP 409.
+
+    The current values come back with it: the editor needs to see what it is *now* to decide
+    whether to re-apply, so failing without them would cost two edits instead of one.
+    """
+    resp = await _collection_partial(request, session, scryfall_id, conflict=True)
+    resp.status_code = 409
+    return resp
+
+
 @router.post("/collection/stack/{stack_id}/delete", response_class=HTMLResponse)
 async def remove_stack(
     request: Request,
     stack_id: int,
+    version: str = Form(""),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
+    """Delete a stack, refusing if it changed since the page was rendered (#207)."""
     _guard_writable()
-    sid = await delete_stack(session, stack_id)
-    if sid is None:
+    stack = await session.get(CollectionCard, stack_id)
+    if stack is None:
         raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
-    return await _collection_partial(request, session, sid)
+    card_sid = stack.scryfall_id
+    try:
+        await delete_stack(session, stack_id, expected_version=_expected(version))
+    except StaleStackError:
+        return await _conflict(request, session, card_sid)
+    return await _collection_partial(request, session, card_sid)
 
 
 @router.post("/collection/stack/{stack_id}/edit", response_class=HTMLResponse)
@@ -169,9 +201,14 @@ async def edit_stack_route(
     quantity: str = Form(""),
     finish: str = Form(""),
     printing: str = Form(""),
+    version: str = Form(""),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
-    """Edit a stack's quantity / finish / printing (#collection-edit)."""
+    """Edit a stack's quantity / finish / printing (#collection-edit).
+
+    Carries the version the form was rendered with, so an edit based on a stale view is refused
+    rather than silently overwriting whatever changed in between (#207).
+    """
     _guard_writable()
     qty: int | None = None
     if quantity.strip():
@@ -179,8 +216,13 @@ async def edit_stack_route(
             qty = int(quantity)
         except ValueError:
             qty = None
-    survivor = await edit_stack(session, stack_id, quantity=qty,
-                                finish=finish.strip() or None, scryfall_id=printing.strip() or None)
+    try:
+        survivor = await edit_stack(
+            session, stack_id, quantity=qty, finish=finish.strip() or None,
+            scryfall_id=printing.strip() or None, expected_version=_expected(version),
+        )
+    except StaleStackError:
+        return await _conflict(request, session, uuid.UUID(card_id))
     # If the printing changed, the stack now lives on a *different* card page — send the user there
     # so they see the copy they still own (rather than an empty "you don't own this printing yet").
     if survivor is not None and str(survivor.scryfall_id) != card_id:

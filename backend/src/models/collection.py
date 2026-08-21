@@ -18,6 +18,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -57,6 +58,12 @@ class CollectionCard(Base):
     added_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+    # Optimistic-concurrency guard (#207). One collection is deliberately shared by more than one
+    # person (ADR 0001), so an absolute edit — "set the quantity to 4", "this is Lightly Played",
+    # "delete this stack" — must not silently overwrite someone else's. Every mutation bumps this;
+    # absolute edits send the value they were shown and are refused (409) if it has moved since.
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
 
     card: Mapped[Card] = relationship(lazy="joined")
 

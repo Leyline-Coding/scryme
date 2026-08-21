@@ -31,7 +31,12 @@ from src.checklists import (
     rename_checklist_item,
 )
 from src.client_tokens import auth_required, scope_for_method, verify_token
-from src.collection_edit import add_or_increment, delete_stack, update_stack
+from src.collection_edit import (
+    StaleStackError,
+    add_or_increment,
+    delete_stack,
+    update_stack,
+)
 from src.config import get_settings
 from src.currency import normalize as normalize_currency
 from src.db import get_session
@@ -97,6 +102,19 @@ async def require_api_token(
 def _guard_writable() -> None:
     if get_settings().read_only:
         raise HTTPException(status_code=403, detail="This instance is read-only.")
+
+
+def _stale(exc: StaleStackError) -> HTTPException:
+    """409 for a concurrent-edit conflict, carrying the row's current version (#207).
+
+    The current version is in the body so a client can retry against it deliberately, rather than
+    having to re-fetch and guess whether anything else moved in between.
+    """
+    return HTTPException(
+        status_code=409,
+        detail={"error": "stale", "message": "This stack changed since it was loaded.",
+                "current_version": exc.stack.version},
+    )
 
 
 router = APIRouter(prefix="/api/v1", tags=["api"], dependencies=[Depends(require_api_token)])
@@ -214,6 +232,8 @@ class CollectionRowOut(BaseModel):
     tags: list[str] | None = None
     price: float | None = None
     image: str | None = None
+    # Send this back on a PATCH/DELETE to be refused (409) if the row changed meanwhile (#207).
+    version: int = 1
 
 
 class CollectionListOut(BaseModel):
@@ -231,6 +251,9 @@ class StackUpdateIn(BaseModel):
     language: str | None = None
     binder: str | None = None
     tags: list[str] | None = None
+    # Optional optimistic-concurrency guard (#207): the version this edit was based on. Omitted
+    # means "apply regardless", which keeps existing clients working unchanged.
+    version: int | None = None
 
 
 class WishlistItemOut(BaseModel):
@@ -562,7 +585,7 @@ def _collection_row(s: CollectionCard, currency: str) -> CollectionRowOut:
         id=s.id, scryfall_id=str(s.scryfall_id), name=s.card.name, set_code=s.card.set_code,
         collector_number=s.card.collector_number, quantity=s.quantity, finish=s.finish,
         condition=s.condition, language=s.language, binder_name=s.binder_name, tags=s.tags,
-        price=float(raw) if raw else None, image=image_url(s.card.raw),
+        price=float(raw) if raw else None, image=image_url(s.card.raw), version=s.version,
     )
 
 
@@ -629,7 +652,11 @@ async def api_collection_update(
 ) -> CollectionRowOut:
     _guard_writable()
     fields = body.model_dump(exclude_unset=True)
-    stack = await update_stack(session, row_id, **fields)
+    expected = fields.pop("version", None)
+    try:
+        stack = await update_stack(session, row_id, expected_version=expected, **fields)
+    except StaleStackError as exc:
+        raise _stale(exc) from exc
     if stack is None:
         raise HTTPException(status_code=404, detail="Stack not found.")
     return _collection_row(stack, normalize_currency(currency) or "usd")
@@ -637,10 +664,15 @@ async def api_collection_update(
 
 @router.delete("/collection/{row_id}", response_model=OkOut)
 async def api_collection_delete(
-    row_id: int, session: AsyncSession = Depends(get_session)
+    row_id: int, version: int | None = None, session: AsyncSession = Depends(get_session)
 ) -> OkOut:
+    """Delete a stack. Pass ``?version=`` to be refused (409) if it changed meanwhile (#207)."""
     _guard_writable()
-    if await delete_stack(session, row_id) is None:
+    try:
+        deleted = await delete_stack(session, row_id, expected_version=version)
+    except StaleStackError as exc:
+        raise _stale(exc) from exc
+    if deleted is None:
         raise HTTPException(status_code=404, detail="Stack not found.")
     return OkOut()
 

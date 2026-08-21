@@ -29,8 +29,11 @@ only displays your collection.
 
 Two things worth knowing:
 
-- **The token is shown once.** Only a hash is stored, so it can't be recovered — if you lose it,
-  revoke it and issue another.
+- **The token is shown once.** Only a hash of it is stored, keyed to a secret kept in your data
+  directory (`tokens.key`) rather than in the database — so a database dump or backup carries
+  hashes computed under a key it doesn't contain. The token can't be recovered; if you lose it,
+  revoke it and issue another. (Losing `tokens.key` invalidates every issued token, which is the
+  safe direction to fail in — they stop working rather than becoming guessable.)
 - **Issuing your first token closes the API**, and revoking every token does *not* re-open it.
   Revocation is what you reach for when something has gone wrong; it would be a poor design if that
   were also the thing that removed the lock. Issue a new token from the same page to get back in.

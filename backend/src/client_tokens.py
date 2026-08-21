@@ -2,6 +2,10 @@
 
 Two questions #204 left open, and the answers this module implements:
 
+**Hashing.** Only a keyed hash of each token is stored, under an instance secret held in the data
+directory rather than the database (:func:`_pepper`) — so a dump, backup or replica carries hashes
+computed under a key it does not contain.
+
 **Scopes.** ``read`` and ``write`` from the start, rather than a single ``full`` scope. Retrofitting
 scopes later means either invalidating every issued token or silently defaulting them to full
 access, and a silent privilege grant is a bad thing to owe your future self. Enforcement is by HTTP
@@ -20,7 +24,10 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+import hmac
+import os
 import secrets
+from pathlib import Path
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,14 +53,39 @@ def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.UTC)
 
 
-def hash_token(token: str) -> str:
-    """SHA-256 of the token.
+def _pepper() -> bytes:
+    """The instance key that token hashes are computed under, created on first use.
 
-    A plain hash is the right primitive here, not a password KDF: these secrets are 256 bits of
-    ``secrets``-grade randomness, so there is no dictionary to slow an attacker down against, and a
-    deliberately slow hash would only tax every legitimate API request.
+    Kept in the data directory rather than the database, mirroring how ``src.llm`` stores the key
+    that encrypts the LLM API key at rest. That separation is the point: a stolen dump, backup or
+    replica contains hashes computed under a key it does not include.
+
+    Losing the file invalidates every issued token, which is the correct failure direction — the
+    tokens stop working rather than becoming guessable — and they are re-issued in one click.
     """
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+    path = Path(get_settings().data_dir) / "tokens.key"
+    if path.exists():
+        return path.read_bytes()
+    key = secrets.token_bytes(32)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(key)
+    os.chmod(path, 0o600)
+    return key
+
+
+def hash_token(token: str) -> str:
+    """Keyed SHA-256 (HMAC) of a token, for storage and lookup.
+
+    A *fast* hash is the right primitive here rather than a password KDF: these secrets are 256
+    bits of ``secrets``-grade randomness, so there is no dictionary for a slow hash to protect —
+    it would only tax every legitimate API request. Automated review flags any SHA-256 of something
+    credential-shaped, and rightly so for passwords; the entropy is what makes it safe here.
+
+    What a KDF *would* have bought is protection against an attacker holding the stored hashes, and
+    :func:`_pepper` buys that more cheaply: the hash is keyed on a secret that lives outside the
+    database entirely.
+    """
+    return hmac.new(_pepper(), token.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def normalize_scope(value: str | None) -> str:

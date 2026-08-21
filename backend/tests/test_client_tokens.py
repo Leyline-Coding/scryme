@@ -38,6 +38,28 @@ async def test_issuing_returns_a_secret_that_is_never_stored(session):
     assert row.label == "Pixel scanner" and row.scope == "write" and row.active
 
 
+def test_stored_hashes_are_keyed_to_this_instance(tmp_path, monkeypatch):
+    """A dump of client_token is not enough to check a guess — the key lives outside the DB.
+
+    Pinning this because it is the whole reason a fast hash is acceptable here: the protection a
+    password KDF would provide comes from the pepper instead.
+    """
+    from src import client_tokens
+    from src.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "data_dir", tmp_path / "a")
+    here = client_tokens.hash_token("scryme_sample")
+    assert here == client_tokens.hash_token("scryme_sample")   # stable within an instance
+
+    monkeypatch.setattr(get_settings(), "data_dir", tmp_path / "b")
+    assert client_tokens.hash_token("scryme_sample") != here   # different instance, different hash
+
+    key = tmp_path / "a" / "tokens.key"
+    assert key.exists() and len(key.read_bytes()) == 32
+    assert key.stat().st_mode & 0o077 == 0        # not readable by anyone else
+    assert b"scryme_sample" not in key.read_bytes()
+
+
 @pytest.mark.asyncio
 async def test_every_token_is_distinct(session):
     _, a = await issue_token(session, "One")

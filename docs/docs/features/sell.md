@@ -13,8 +13,8 @@ The **Sell** tab lists every card you've flagged to sell, priced with a running 
   total.
 - **Export** — download the list as **CSV** (with a totals row) or **text** from the tab.
 
-It mirrors the [trade binder](trade.md), but where trade shows your *surplus*, the sell list is
-whatever you've explicitly flagged.
+It mirrors the [trade binder](trade.md#surplus-binder), but where the binder shows your
+*surplus*, the sell list is whatever you've explicitly flagged.
 
 ## Valuation report
 

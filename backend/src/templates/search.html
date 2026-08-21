@@ -217,6 +217,17 @@
       {% endif %}
       <button type="button" onclick="bulkSubmit('add')"
         class="rounded bg-accent text-accent-fg px-2.5 py-1">+1 to collection</button>
+      {% if trade_pools %}
+      {# Staging needs a side as well as a pool (#331), so the pool is a picker and the two
+         buttons say which way the cards are moving. #}
+      <select name="pool_id" title="Trade pool" class="rounded bg-surface-2 px-2 py-1">
+        {% for tp in trade_pools %}<option value="{{ tp.id }}">{{ tp.name }}</option>{% endfor %}
+      </select>
+      <button type="button" onclick="bulkSubmit('trade_out')"
+        class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Give</button>
+      <button type="button" onclick="bulkSubmit('trade_in')"
+        class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Get</button>
+      {% endif %}
       <button type="button" onclick="bulkClear()" class="ml-auto text-muted hover:text-fg">Clear</button>
     </div>
     <div id="results">

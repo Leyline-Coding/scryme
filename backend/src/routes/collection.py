@@ -42,6 +42,7 @@ from src.grading import clear_grade, safe_photo_path, save_grade_photo, set_grad
 from src.models import Card, CollectionCard, Deck
 from src.tags import card_tags
 from src.templating import templates
+from src.trade_pool import open_pools, stage_selection, stage_stack
 
 router = APIRouter(tags=["collection"])
 
@@ -85,12 +86,14 @@ async def _collection_partial(
 
 
 async def location_choices(session: AsyncSession) -> dict:
-    """Boxes / binders / decks offered by the unified location picker (#160)."""
+    """Boxes / binders / decks offered by the unified location picker (#160), plus the open trade
+    pools a stack can be staged into (#331)."""
     decks = (await session.execute(select(Deck).order_by(Deck.name))).scalars().all()
     return {
         "boxes": await all_boxes(session),
         "picker_binders": await all_binders(session),
         "decks": [(d.id, d.name) for d in decks],
+        "trade_pools": await open_pools(session),
     }
 
 
@@ -251,6 +254,28 @@ async def locate_stack(
     return await _collection_partial(request, session, sid)
 
 
+@router.post("/collection/stack/{stack_id}/trade", response_class=HTMLResponse)
+async def stage_stack_for_trade(
+    request: Request,
+    stack_id: int,
+    pool_id: str = Form(""),
+    quantity: int = Form(1),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Stage this exact copy into a trade pool (#331). The collection is not changed — staging is
+    a proposal, and only the commit in #332 moves anything.
+
+    An empty ``pool_id`` is the picker's own placeholder and is a no-op, not an error.
+    """
+    _guard_writable()
+    stack = await session.get(CollectionCard, stack_id)
+    if stack is None:
+        raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
+    if pool_id.strip().isdigit():
+        await stage_stack(session, int(pool_id), stack_id, quantity)
+    return await _collection_partial(request, session, stack.scryfall_id)
+
+
 @router.post("/collection/stack/{stack_id}/grade", response_class=HTMLResponse)
 async def grade_stack(
     request: Request,
@@ -305,6 +330,7 @@ async def bulk(
     scryfall_ids: list[str] = Form(default=[]),
     tag: str = Form(""),
     binder_id: str = Form(""),
+    pool_id: str = Form(""),
     q: str = Form(""),
     scope: str = Form("collection"),
     sort: str = Form("name"),
@@ -319,6 +345,9 @@ async def bulk(
             await bulk_add_to_binder(session, int(binder_id), scryfall_ids)
         elif bulk_action == "add":
             await bulk_add_to_collection(session, scryfall_ids, 1)
+        elif bulk_action in ("trade_out", "trade_in") and pool_id.strip().isdigit():
+            side = "out" if bulk_action == "trade_out" else "in"
+            await stage_selection(session, int(pool_id), side, scryfall_ids)
     params = urlencode({"q": q, "scope": scope, "sort": sort, "dir": dir})
     return RedirectResponse(url=f"/search?{params}", status_code=303)
 

@@ -220,7 +220,8 @@
       {% if trade_pools %}
       {# Staging needs a side as well as a pool (#331), so the pool is a picker and the two
          buttons say which way the cards are moving. #}
-      <select name="pool_id" title="Trade pool" class="rounded bg-surface-2 px-2 py-1">
+      <label class="sr-only" for="bulk-trade-pool">Trade pool</label>
+      <select name="pool_id" id="bulk-trade-pool" class="rounded bg-surface-2 px-2 py-1">
         {% for tp in trade_pools %}<option value="{{ tp.id }}">{{ tp.name }}</option>{% endfor %}
       </select>
       <button type="button" onclick="bulkSubmit('trade_out')"

@@ -9,7 +9,10 @@
    which is a much smaller surface to keep an eye on than a flag threaded through the owner shell. #}
 <!DOCTYPE html>
 <html lang="en" class="h-full">
-{% include "_head.html" %}
+<head>
+  <title>{% block title %}scryme{% endblock %}</title>
+  {% include "_head_meta.html" %}
+</head>
 <body class="min-h-full flex flex-col bg-bg text-fg antialiased">
   <main class="flex-1">
     {% block content %}{% endblock %}

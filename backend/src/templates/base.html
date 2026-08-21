@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full">
-{% include "_head.html" %}
+<head>
+  <title>{% block title %}scryme{% endblock %}</title>
+  {% include "_head_meta.html" %}
+</head>
 <body class="min-h-full flex flex-col bg-bg text-fg antialiased">
   {% if read_only %}
   <div class="bg-amber-500/90 text-slate-900 text-center text-sm py-1 font-medium">

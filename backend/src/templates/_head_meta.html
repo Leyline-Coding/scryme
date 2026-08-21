@@ -1,10 +1,11 @@
-{# Shared <head>: theme hydration, fonts, styles, and the htmx/alpine bundles. Included by
-   base.html (owner pages) and share_base.html (public share views), so the two can't drift on
-   theming or CSP-relevant script tags. #}
-<head>
+{# Everything in <head> except the <title>: theme hydration, fonts, styles, and the
+   htmx/alpine bundles. Shared by base.html (owner pages) and share_base.html (public share
+   views) so the two can't drift on theming or on which script tags are loaded.
+
+   The <title> deliberately stays in each shell: it's per-page via a block, and SonarHTML
+   can't follow a Jinja include, so a page whose title lives in one reads as having none. #}
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{% block title %}scryme{% endblock %}</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
   <!-- Apply the theme + accent before paint (no flash). Precedence (#203): on a WRITABLE instance
        the server-side preferences singleton wins and is mirrored into localStorage; on the READ-ONLY
@@ -106,4 +107,3 @@
   <link rel="stylesheet" href="/static/vendor/mana/mana.css" />
   <link rel="stylesheet" href="/static/vendor/keyrune/keyrune.css" />
   <link rel="stylesheet" href="/static/app.css" />
-</head>

@@ -1187,7 +1187,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuring the endpoint">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-suggestions-are-grounded" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How suggestions are grounded
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How suggestions are grounded">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2030,7 +2041,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Configuring the endpoint">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-suggestions-are-grounded" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How suggestions are grounded
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How suggestions are grounded">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2206,7 +2228,7 @@ decklists.</p>
 <tr>
 <td><strong>Suggest from collection</strong></td>
 <td>a deck page → <em>Suggest</em></td>
-<td>Recommends cards <strong>you already own</strong> that fit the deck.</td>
+<td>Recommends cards <strong>you already own</strong> that fit the deck — see <a href="#how-suggestions-are-grounded">how it's grounded</a>.</td>
 </tr>
 <tr>
 <td><strong>Build from a prompt</strong></td>
@@ -2240,6 +2262,26 @@ decklists.</p>
 <ul>
 <li><strong>Base URL</strong> — the OpenAI-compatible API root, e.g. <code>http://localhost:11434/v1</code> for Ollama.</li>
 <li><strong>API key</strong> — required for hosted providers; optional (often blank) for local servers.</li>
+</ul>
+<h2 id="how-suggestions-are-grounded">How suggestions are grounded</h2>
+<p>Suggestions are only as good as what the model is told about your deck, so scryme sends it three
+things it used to leave out:</p>
+<ul>
+<li><strong>The commander's whole rules text.</strong> Only the first line used to be sent — and a commander's
+  actual engine is routinely on line two or three, so the deck's plan was invisible.</li>
+<li><strong>What each candidate does</strong>, not just its name: its role, the keywords it shares with your deck,
+  and a short snippet of its rules text. The model can then reason about a card instead of guessing
+  from the name.</li>
+<li><strong>A shortlist chosen by deck fit.</strong> Only a bounded number of candidates fit in a prompt. That
+  shortlist is now the cards that best match your deck's themes and creature types, scored by the
+  same offline logic behind <a href="../decks/#upgrade-from-your-collection"><em>Suggest owned cards</em></a>.</li>
+</ul>
+<p>The prompt also asks for picks that interact with the commander's specific ability first, themes
+second, and thin roles third — and for each reason to name the <em>specific</em> interaction rather than
+calling a card "solid value".</p>
+<p>Card names are still validated against <strong>your whole collection</strong>, not just the shortlist, so a card
+the model knows from elsewhere still resolves if you own it.</p>
+<ul>
 <li><strong>Chat model</strong> — the model used for analysis/chat/suggestions.</li>
 <li><strong>Embedding model</strong> — used for <em>Similar cards</em> and <em>Card rules Q&amp;A</em> retrieval (optional).</li>
 </ul>
@@ -2392,7 +2434,7 @@ keep everything local for full privacy.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 15, 2026 00:01:32 UTC">July 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 21, 2026 21:26:32 UTC">August 21, 2026</span>
   </span>
 
     

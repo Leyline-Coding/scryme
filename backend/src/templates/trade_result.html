@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Settled {{ pool.name }} · scryme{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-6">
+  <header class="flex flex-wrap items-center gap-3 mb-6">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold truncate">{{ pool.name }}</h1>
+    <a href="/collection?tab=trade" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Trade →</a>
+  </header>
+
+  {# Say plainly what moved. A trade is a promise to another person, so "mostly worked" has to be
+     distinguishable from "worked" without the reader having to count rows. #}
+  {# "Finished" and "some cards moved" must not look the same: the trade is only settled when
+     nothing is left outstanding, whether that's because a line fell short or because it wasn't
+     ticked. #}
+  <div class="rounded-xl p-4 mb-6 ring-1
+    {% if result.completed %}bg-emerald-500/10 ring-emerald-500/40
+    {% elif result.lines %}bg-amber-500/10 ring-amber-500/40
+    {% else %}bg-surface ring-edge{% endif %}">
+    <div class="text-lg font-semibold
+      {% if result.completed %}text-emerald-500{% elif result.lines %}text-amber-500{% endif %}">
+      {% if not result.lines %}Nothing to settle
+      {% elif result.completed %}Trade settled
+      {% elif result.problems %}Partly settled — {{ result.problems|length }} problem(s)
+      {% else %}Cards moved — the rest of this trade is still staged{% endif %}
+    </div>
+    {% if result.lines %}
+    <p class="text-sm text-muted mt-0.5">
+      {{ '{:,}'.format(result.moved_out) }} card(s) left your collection ·
+      {{ '{:,}'.format(result.moved_in) }} joined it.
+      {% if not result.completed %}The rest of this trade is still staged.{% endif %}
+    </p>
+    {% endif %}
+  </div>
+
+  {% if result.lines %}
+  <ul class="divide-y divide-edge rounded-xl bg-surface ring-1 ring-edge overflow-hidden mb-6">
+    {% for r in result.lines %}
+    <li class="px-4 py-2 text-sm flex items-center gap-3">
+      <span class="w-5 shrink-0 text-center">
+        {% if r.status == 'applied' %}<span class="text-emerald-500">✓</span>
+        {% elif r.status == 'partial' %}<span class="text-amber-500">◐</span>
+        {% else %}<span class="text-rose-500">✕</span>{% endif %}
+      </span>
+      <span class="shrink-0 text-muted">{% if r.direction == 'out' %}−{% else %}+{% endif %}</span>
+      <span class="flex-1 min-w-0 truncate">{{ r.name }}</span>
+      <span class="shrink-0 tabular-nums text-muted">
+        {{ r.applied }} of {{ r.requested }}
+        {%- if r.short %} <span class="text-amber-500">({{ r.short }} left staged)</span>{% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <div class="flex flex-wrap items-center gap-3 text-sm">
+    <a href="/trade/pool/{{ pool.id }}"
+       class="rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-1.5">Back to the trade</a>
+    {% if result.lines and not result.completed and not read_only %}
+    <a href="/trade/pool/{{ pool.id }}/commit"
+       class="rounded-lg bg-accent text-accent-fg px-3 py-1.5 font-medium">Settle the rest</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

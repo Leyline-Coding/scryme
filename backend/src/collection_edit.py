@@ -43,10 +43,13 @@ async def add_or_increment(
     binder: str | None = None,
     location: str | None = None,
     purchase_price: float | None = None,
+    commit: bool = True,
 ) -> CollectionCard | None:
     """Add a printing to the collection, incrementing the matching stack if it exists.
 
-    Returns the stack, or None if the printing is unknown.
+    Returns the stack, or None if the printing is unknown. ``commit=False`` leaves the row pending
+    so a caller that has to apply several changes as one unit (a trade commit, #332) can own the
+    transaction — the stack-key logic is subtle enough that a second copy of it would drift.
     """
     sid = _as_uuid(scryfall_id)
     if await session.get(Card, sid) is None:
@@ -78,6 +81,9 @@ async def add_or_increment(
         session.add(stack)
     else:
         stack.quantity += quantity
+    if not commit:
+        await session.flush()
+        return stack
     await session.commit()
     await session.refresh(stack)
     return stack

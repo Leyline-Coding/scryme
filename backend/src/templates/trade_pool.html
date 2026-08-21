@@ -49,6 +49,18 @@
     </div>
   </div>
 
+  {% if view.settled %}
+  <p class="mb-6 rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/40 px-3 py-2 text-sm text-emerald-500">
+    Every card in this trade has moved. Your collection is up to date.
+  </p>
+  {% elif not view.is_empty and not read_only %}
+  <div class="mb-6 flex flex-wrap items-center gap-3">
+    <a href="/trade/pool/{{ pool.id }}/commit"
+       class="rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium">Settle this trade →</a>
+    <span class="text-xs text-muted">Review what moves before anything does.</span>
+  </div>
+  {% endif %}
+
   {% if view.shortfalls %}
   <p class="mb-6 rounded-lg bg-amber-500/10 ring-1 ring-amber-500/40 px-3 py-2 text-sm text-amber-500">
     {{ view.shortfalls|length }} staged card(s) are no longer in your collection in the finish and
@@ -104,6 +116,10 @@
             {% if r.condition %}<span>{{ r.condition }}</span>{% endif %}
             <span class="uppercase">{{ r.language }}</span>
             {% if r.unit %}<span>· {{ cur.symbol }}{{ '{:,.2f}'.format(r.unit) }} ea</span>{% endif %}
+            {% if r.applied %}
+            <span class="text-emerald-500" title="Already moved by a commit">
+              · {{ r.applied }} moved{% if r.outstanding %}, {{ r.outstanding }} to go{% endif %}</span>
+            {% endif %}
             {% if r.short %}
             <span class="text-amber-500" title="Staged more than you currently own in this finish/condition">
               · short {{ r.short }} (own {{ r.owned }})</span>

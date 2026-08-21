@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.box_service import all_boxes
 from src.config import get_settings
 from src.currency import get_currency, info
 from src.db import get_session
@@ -22,6 +23,7 @@ from src.pricing import get_price_source
 from src.routes._safe import local_redirect
 from src.templating import templates
 from src.trade import trade_binder
+from src.trade_commit import commit_trade, outstanding_items
 from src.trade_pool import (
     clear_pool,
     create_pool,
@@ -194,3 +196,55 @@ async def unstage(
     _guard_writable()
     await remove_item(session, item_id)
     return _pool_url(pool_id)
+
+
+# --- settling a trade (#332) ---------------------------------------------------------------------
+
+@router.get("/trade/pool/{pool_id}/commit", response_class=HTMLResponse)
+async def review_commit(
+    request: Request, pool_id: int, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    """Review what's about to move before anything does — the "fast and forgiving" step in #332.
+
+    Every outstanding line is offered ticked; untick the ones that fell through and the rest are
+    settled, leaving those still staged.
+    """
+    pool = await get_pool(session, pool_id)
+    if pool is None:
+        raise HTTPException(status_code=404, detail=_POOL_NOT_FOUND)
+    view = await pool_view(session, pool)
+    pending = {i.id for i in await outstanding_items(session, pool_id)}
+    return templates.TemplateResponse(
+        request,
+        "trade_commit.html",
+        {
+            "view": view,
+            "pending": pending,
+            "cur": info(pool.currency),
+            "boxes": await all_boxes(session),
+            "read_only": get_settings().read_only,
+        },
+    )
+
+
+@router.post("/trade/pool/{pool_id}/commit", response_class=HTMLResponse)
+async def do_commit(
+    request: Request,
+    pool_id: int,
+    item_ids: list[int] = Form(default=[]),
+    binder: str = Form(""),
+    location: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Move the ticked cards, then show exactly what happened — including what didn't."""
+    _guard_writable()
+    result = await commit_trade(session, pool_id, item_ids or None,
+                                binder=binder or None, location=location or None)
+    if result is None:
+        raise HTTPException(status_code=404, detail=_POOL_NOT_FOUND)
+    pool = await get_pool(session, pool_id)
+    return templates.TemplateResponse(
+        request,
+        "trade_result.html",
+        {"result": result, "pool": pool, "read_only": get_settings().read_only},
+    )

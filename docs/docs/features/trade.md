@@ -32,11 +32,32 @@ who's looking at them or when.
 Use the ✎ on any row to fix the quantity, finish, condition or language; setting the quantity to
 **0** unstages that card.
 
+### Settling up
+
+**Settle this trade** is the only step that changes your collection. It shows a review first —
+everything still outstanding, ticked — and you confirm what actually happened.
+
+- **Untick anything that fell through.** Those cards stay staged; the rest are settled. A trade
+  where you agreed on six cards and only four changed hands is a normal outcome, not an error.
+- **Incoming cards get the same intake as a manual addition** — finish, condition and language come
+  from the trade itself, and you can file them all into a binder or storage box on the way in.
+- **Outgoing cards are matched by copy, not by row.** Settling removes the printing in the finish,
+  condition and language that was staged, so trading away your plain copy never quietly consumes
+  your foil.
+
+Afterwards you get a line-by-line report: what moved, what moved partly, and what couldn't move at
+all. Anything that didn't happen is still staged, and **Settle the rest** picks up where you left
+off once the missing cards turn up.
+
+Cards that have already moved can't be unstaged — the trade keeps an honest record of what really
+happened rather than letting the history be edited away.
+
 ### When your collection moves underneath a trade
 
 If you stage three copies of a card and then sell two, the row is flagged **short** and a warning
-appears at the top. Nothing is silently dropped or quietly adjusted — a trade is a promise to
-another person, so scryme shows you the discrepancy and lets you decide.
+appears at the top. Settling anyway moves the one you still have and leaves the other two staged.
+Nothing is silently dropped or quietly adjusted — a trade is a promise to another person, so scryme
+shows you the discrepancy and lets you decide.
 
 This is also why a staged card survives you editing or deleting the stack it came from: the trade
 records the *card*, not a row in your database.

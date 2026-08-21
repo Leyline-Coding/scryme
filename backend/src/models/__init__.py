@@ -19,6 +19,7 @@ from src.models.rules_chunk import RulesChunk
 from src.models.saved_search import SavedSearch
 from src.models.set_release import SetRelease
 from src.models.staging import ImportStaging
+from src.models.trade_pool import TradePool, TradePoolItem
 from src.models.wishlist import WishlistItem
 
 __all__ = [
@@ -27,5 +28,6 @@ __all__ = [
     "Deck", "DeckCard", "DeckVersion", "DeckChatMessage", "ImportSnapshot", "IngestState",
     "ImportStaging",
     "LLMSettings", "Preferences",
-    "PriceSnapshot", "PriceTarget", "RulesChunk", "SavedSearch", "SetRelease", "WishlistItem",
+    "PriceSnapshot", "PriceTarget", "RulesChunk", "SavedSearch", "SetRelease",
+    "TradePool", "TradePoolItem", "WishlistItem",
 ]

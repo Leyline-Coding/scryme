@@ -39,6 +39,7 @@ from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
 from src.tags import add_card_tag, card_tags, remove_card_tag
 from src.templating import templates
+from src.trade_pool import open_pools
 from src.wishlist import is_wishlisted
 
 router = APIRouter(tags=["card"])
@@ -256,6 +257,7 @@ async def card_detail(
                 (await session.execute(select(Deck).order_by(Deck.name))).scalars().all()
             ],
             "printing_opts": await printing_options(session, card.scryfall_id),
+            "trade_pools": await open_pools(session),
         },
     )
 

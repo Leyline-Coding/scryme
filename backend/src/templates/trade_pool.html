@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}{{ view.pool.name }} · scryme{% endblock %}
+{% block content %}
+{% set pool = view.pool %}
+<div class="max-w-5xl mx-auto px-4 py-6">
+  <header class="flex flex-wrap items-center gap-3 mb-2">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold truncate">{{ pool.name }}</h1>
+    {% if pool.partner %}<span class="text-sm text-muted truncate">with {{ pool.partner }}</span>{% endif %}
+    {% if pool.status == 'closed' %}
+    <span class="rounded-full bg-surface-2 text-muted text-xs px-2 py-0.5">closed</span>
+    {% endif %}
+    <a href="/collection?tab=trade" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Trade →</a>
+  </header>
+
+  {# The valuation basis is frozen on the pool so both sides of a trade read the same totals
+     (ADR 0002 D2) — say so, rather than letting it look like the viewer's own setting. #}
+  <p class="text-xs text-muted mb-6">
+    Valued in <b class="text-fg uppercase">{{ pool.currency }}</b> at
+    <b class="text-fg">{{ pool.price_source }}</b> prices — fixed when this trade was opened, so
+    both sides see the same numbers.
+  </p>
+
+  {# --- the balance ---------------------------------------------------------------------- #}
+  <div class="grid sm:grid-cols-3 gap-3 mb-6">
+    <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <div class="text-xs text-muted">You give</div>
+      <div class="text-2xl font-bold tabular-nums">{{ cur.symbol }}{{ '{:,.2f}'.format(view.giving.value) }}</div>
+      <div class="text-xs text-muted">{{ '{:,}'.format(view.giving.cards) }} cards</div>
+    </div>
+    <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <div class="text-xs text-muted">You get</div>
+      <div class="text-2xl font-bold tabular-nums">{{ cur.symbol }}{{ '{:,.2f}'.format(view.getting.value) }}</div>
+      <div class="text-xs text-muted">{{ '{:,}'.format(view.getting.cards) }} cards</div>
+    </div>
+    <div class="rounded-xl p-4 ring-1
+      {% if view.delta > 0 %}bg-emerald-500/10 ring-emerald-500/40
+      {% elif view.delta < 0 %}bg-rose-500/10 ring-rose-500/40
+      {% else %}bg-surface ring-edge{% endif %}">
+      <div class="text-xs text-muted">Difference</div>
+      <div class="text-2xl font-bold tabular-nums
+        {% if view.delta > 0 %}text-emerald-500{% elif view.delta < 0 %}text-rose-500{% endif %}">
+        {# Sign outside the symbol: "-$5.00", not "$-5.00". #}
+        {% if view.delta > 0 %}+{% elif view.delta < 0 %}−{% endif %}{{ cur.symbol }}{{ '{:,.2f}'.format(view.delta|abs) }}
+      </div>
+      <div class="text-xs text-muted">
+        {% if view.delta > 0 %}in your favour{% elif view.delta < 0 %}in theirs{% else %}even{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if view.shortfalls %}
+  <p class="mb-6 rounded-lg bg-amber-500/10 ring-1 ring-amber-500/40 px-3 py-2 text-sm text-amber-500">
+    {{ view.shortfalls|length }} staged card(s) are no longer in your collection in the finish and
+    condition they were staged in. Fix or unstage them before you commit this trade.
+  </p>
+  {% endif %}
+
+  {# --- the two sides -------------------------------------------------------------------- #}
+  <div class="grid lg:grid-cols-2 gap-4">
+    {% for side, title, hint in [
+         (view.giving, 'Giving', 'Cards leaving your collection'),
+         (view.getting, 'Getting', 'Cards joining your collection')] %}
+    <section class="rounded-xl bg-surface ring-1 ring-edge overflow-hidden">
+      <div class="flex items-center gap-2 px-4 py-2.5 bg-surface-2">
+        <h2 class="text-sm font-semibold">{{ title }}</h2>
+        <span class="text-xs text-muted">{{ hint }}</span>
+        {% if side.rows and not read_only and pool.status != 'closed' %}
+        <form method="post" action="/trade/pool/{{ pool.id }}/clear" class="ml-auto"
+              onsubmit="return confirm('Unstage every card on this side?')">
+          <input type="hidden" name="direction" value="{{ 'out' if title == 'Giving' else 'in' }}" />
+          <button type="submit" class="text-xs text-muted hover:text-rose-500">Clear</button>
+        </form>
+        {% endif %}
+      </div>
+
+      {% if side.rows %}
+      <ul class="divide-y divide-edge">
+        {% for r in side.rows %}
+        <li class="px-4 py-2 text-sm" x-data="{ editing: false }">
+          <div class="flex items-center gap-2">
+            <span class="tabular-nums font-medium shrink-0 w-8 text-right">{{ r.quantity }}×</span>
+            <a href="/card/{{ r.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">{{ r.name }}</a>
+            <span class="shrink-0 text-xs text-muted uppercase whitespace-nowrap">
+              {{ set_symbol(r.set_code, r.rarity) }} {{ r.set_code }}·{{ r.collector_number }}
+            </span>
+            <span class="shrink-0 tabular-nums w-20 text-right">
+              {% if r.value %}{{ cur.symbol }}{{ '{:,.2f}'.format(r.value) }}{% endif %}
+            </span>
+            {% if not read_only and pool.status != 'closed' %}
+            <button type="button" @click="editing = !editing" title="Adjust this card"
+                    class="shrink-0 text-xs text-muted hover:text-accent">✎</button>
+            <form method="post" action="/trade/pool/{{ pool.id }}/items/{{ r.item_id }}/delete"
+                  class="shrink-0">
+              <button type="submit" title="Unstage" class="text-xs text-muted hover:text-rose-500">✕</button>
+            </form>
+            {% endif %}
+          </div>
+
+          <div class="pl-10 mt-0.5 text-xs text-muted flex flex-wrap items-center gap-1.5">
+            {% if r.finish == 'foil' %}<span class="rounded-full foil-chip px-1.5 font-semibold">✦ foil</span>
+            {% elif r.finish == 'etched' %}<span class="rounded-full etched-chip px-1.5 font-semibold">❖ etched</span>
+            {% endif %}
+            {% if r.condition %}<span>{{ r.condition }}</span>{% endif %}
+            <span class="uppercase">{{ r.language }}</span>
+            {% if r.unit %}<span>· {{ cur.symbol }}{{ '{:,.2f}'.format(r.unit) }} ea</span>{% endif %}
+            {% if r.short %}
+            <span class="text-amber-500" title="Staged more than you currently own in this finish/condition">
+              · short {{ r.short }} (own {{ r.owned }})</span>
+            {% endif %}
+          </div>
+
+          {% if not read_only and pool.status != 'closed' %}
+          <form method="post" action="/trade/pool/{{ pool.id }}/items/{{ r.item_id }}"
+                x-show="editing" x-cloak class="mt-1.5 pl-10 flex flex-wrap items-end gap-1.5 text-xs">
+            <label class="flex flex-col">Qty
+              <input name="quantity" type="number" min="0" value="{{ r.quantity }}"
+                     class="w-16 rounded bg-surface-2 border border-edge px-1.5 py-1" /></label>
+            <label class="flex flex-col">Finish
+              <select name="finish" class="rounded bg-surface-2 border border-edge px-1.5 py-1">
+                {% for f in ["normal", "foil", "etched"] %}
+                <option value="{{ f }}" {% if r.finish == f %}selected{% endif %}>{{ f }}</option>
+                {% endfor %}
+              </select></label>
+            <label class="flex flex-col">Condition
+              <input name="condition" value="{{ r.condition or '' }}" placeholder="NM" size="6"
+                     class="w-20 rounded bg-surface-2 border border-edge px-1.5 py-1" /></label>
+            <label class="flex flex-col">Lang
+              <input name="language" value="{{ r.language }}" size="3"
+                     class="w-14 rounded bg-surface-2 border border-edge px-1.5 py-1" /></label>
+            <button type="submit" class="rounded bg-accent text-accent-fg px-2.5 py-1 font-medium">Save</button>
+            <span class="text-muted self-center">Quantity 0 unstages.</span>
+          </form>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="px-4 py-8 text-sm text-muted text-center">
+        Nothing staged.
+        {% if not read_only and pool.status != 'closed' %}
+        <a href="/search?scope={{ 'collection' if title == 'Giving' else 'all' }}"
+           class="text-accent hover:underline">Search{% if title == 'Giving' %} your collection{% endif %} →</a>
+        {% endif %}
+      </p>
+      {% endif %}
+    </section>
+    {% endfor %}
+  </div>
+
+  {% if not read_only %}
+  <p class="mt-4 text-xs text-muted">
+    Select cards in <a href="/search" class="text-accent hover:underline">search</a> and use the
+    bulk bar to stage them here, or use <b>→ Trade</b> on a card page to stage the exact copy you
+    own. Staging changes nothing in your collection.
+  </p>
+
+  <section class="mt-6 rounded-xl bg-surface ring-1 ring-edge p-4">
+    <h2 class="text-sm font-semibold mb-2">Trade details</h2>
+    <form method="post" action="/trade/pool/{{ pool.id }}/update"
+          class="flex flex-wrap items-end gap-2 text-sm">
+      <label class="flex flex-col">Name
+        <input name="name" value="{{ pool.name }}"
+               class="w-48 rounded bg-bg border border-edge px-2 py-1" /></label>
+      <label class="flex flex-col">Trading with
+        <input name="partner" value="{{ pool.partner or '' }}" placeholder="who"
+               class="w-40 rounded bg-bg border border-edge px-2 py-1" /></label>
+      <label class="flex flex-col flex-1 min-w-[12rem]">Note
+        <input name="note" value="{{ pool.note or '' }}" placeholder="optional"
+               class="w-full rounded bg-bg border border-edge px-2 py-1" /></label>
+      <input type="hidden" name="status" value="{{ pool.status }}" />
+      <button type="submit" class="rounded bg-accent text-accent-fg px-3 py-1.5 font-medium">Save</button>
+    </form>
+    <div class="mt-3 pt-3 border-t border-edge flex flex-wrap items-center gap-2 text-xs">
+      <form method="post" action="/trade/pool/{{ pool.id }}/update">
+        <input type="hidden" name="status" value="{{ 'open' if pool.status == 'closed' else 'closed' }}" />
+        <button type="submit" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">
+          {% if pool.status == 'closed' %}Reopen{% else %}Close{% endif %} this trade
+        </button>
+      </form>
+      <form method="post" action="/trade/pool/{{ pool.id }}/delete" class="ml-auto"
+            onsubmit="return confirm('Discard this trade? Your collection is not changed.')">
+        <button type="submit" class="text-muted hover:text-rose-500">Discard trade</button>
+      </form>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

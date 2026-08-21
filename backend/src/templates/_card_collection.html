@@ -77,6 +77,26 @@
         </select>
       </form>
       {% endif %}
+      {% if trade_pools and not read_only %}
+      {# Stage this exact copy for trade (#331) — the printing, finish and condition are what
+         decide its value, so the stack itself is what gets staged. Nothing moves until commit. #}
+      <form hx-post="/collection/stack/{{ s.id }}/trade"
+            hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0 flex items-center">
+        {# The label wraps the control rather than pointing at it by id: there's one of these per
+           stack, so the id would have to be interpolated, and SonarHTML's InputWithoutLabelCheck
+           only matches literal id/for strings (see the jinjalabel note in sonar-project.properties).
+           Wrapping is a real association either way. #}
+        <label class="contents">
+          <span class="sr-only">Stage this copy for trade</span>
+          <select name="pool_id"
+                  onchange="this.form.requestSubmit()"
+                  class="rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs max-w-[9rem]">
+            <option value="">🤝 trade…</option>
+            {% for tp in trade_pools %}<option value="{{ tp.id }}">→ {{ tp.name }}</option>{% endfor %}
+          </select>
+        </label>
+      </form>
+      {% endif %}
       {% if not read_only %}
       <button type="button" title="Delete this stack"
               class="ml-auto shrink-0 text-muted hover:text-rose-500"

@@ -1,9 +1,49 @@
-# Trade binder
+# Trading
 
-The **Trade binder** (`/trade`, or the *trade* link on the home page) gathers the cards you have
-spare or have flagged for trade — handy for sorting out what to bring to a trade night.
+The **Trade** tab of *My Collection* covers both halves of a trade night: the **surplus binder**,
+which is everything you *could* trade, and **trades**, which are the specific cards you're actually
+swapping with one person.
 
-## What shows up
+## Trades
+
+A **trade** is a staged list with two sides — what you're giving and what you're getting — that
+survives until you settle it or discard it. Start one from the Trade tab with a name and, if you
+like, who you're trading with.
+
+### Staging cards
+
+- **From a card page** — the `🤝 trade…` picker next to a stack stages *that exact copy*. This is
+  the one to use when it matters: your foil, Lightly Played, Japanese copy is not worth the same as
+  a plain English one, and staging the stack carries all of that across.
+- **From search** — tick cards in the results grid and use **Give** or **Get** in the bulk bar. A
+  card you're giving is staged from the largest stack you own of it; a card you're getting is
+  staged as a plain English copy, which you can correct afterwards.
+
+Staging **changes nothing in your collection**. A trade is a proposal until you settle it.
+
+### Reading a trade
+
+Each side totals up, and the **difference** tells you which way the trade leans. Both sides are
+valued on the [currency](theming.md#display-currency) and
+[price source](../getting-started/configuration.md) that were in effect when the trade was opened,
+and the page says so — a trade is between two people, and the totals shouldn't move depending on
+who's looking at them or when.
+
+Use the ✎ on any row to fix the quantity, finish, condition or language; setting the quantity to
+**0** unstages that card.
+
+### When your collection moves underneath a trade
+
+If you stage three copies of a card and then sell two, the row is flagged **short** and a warning
+appears at the top. Nothing is silently dropped or quietly adjusted — a trade is a promise to
+another person, so scryme shows you the discrepancy and lets you decide.
+
+This is also why a staged card survives you editing or deleting the stack it came from: the trade
+records the *card*, not a row in your database.
+
+## Surplus binder
+
+The surplus binder gathers what you have spare, so you know what to bring in the first place.
 
 - **Surplus** — any printing you own more than **Keep** copies of. The *Keep* selector (0–4) sets
   how many you hold back; the binder lists the **spares** beyond that. Set it to `4` to see only
@@ -15,7 +55,7 @@ Each row shows how many you own, how many are tradeable, the per-card price, and
 your chosen [currency](theming.md#display-currency). The header totals the whole binder, sorted
 most-valuable first.
 
-## Export
+### Export
 
 **.txt** gives a plain `Qty Name (SET) Number` list (paste into a trade thread); **.csv** is a
 spreadsheet with quantities and prices. Both respect the current *Keep* threshold.

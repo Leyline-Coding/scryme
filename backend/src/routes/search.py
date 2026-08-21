@@ -37,6 +37,7 @@ from src.search.engine import (
     run_search,
 )
 from src.templating import templates
+from src.trade_pool import open_pools
 
 router = APIRouter(tags=["search"])
 _cache = ImageCache()
@@ -258,6 +259,7 @@ async def search(
     ctx["read_only"] = get_settings().read_only
     ctx["ai_ready"] = (await get_config(session)).ready
     ctx["binders"] = await all_binders(session)
+    ctx["trade_pools"] = await open_pools(session)
     # Optional biggest-movers panel (opt-in via Settings).
     if dp.movers:
         ctx["movers"] = await memoize("movers", lambda: biggest_movers(session, limit=5))

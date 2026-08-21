@@ -29,6 +29,7 @@ from src.stats import collection_growth, collection_stats
 from src.tags import tag_summaries
 from src.templating import templates
 from src.trade import trade_binder
+from src.trade_pool import pool_summaries
 from src.wishlist import list_wishlist
 
 router = APIRouter(tags=["collection"])
@@ -111,6 +112,7 @@ async def collection(
         ctx["checklists"] = [(c, n) for c, n in rows.all()]
     elif tab == "trade":
         ctx["binder"] = await trade_binder(session, currency, keep=keep, source=source)
+        ctx["pools"] = await pool_summaries(session)
     elif tab == "sell":
         ctx["sell"] = await sell_list(session, currency, source)
 

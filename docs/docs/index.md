@@ -19,7 +19,8 @@ Lens, then search it with Scryfall syntax and regular expressions.
   profit/loss), **[decks](features/decks.md)** with coverage, legality, stats, and export,
   **[set completion](features/sets.md)** + a **[release calendar](features/sets.md#set-release-calendar)**,
   **[custom checklists](features/checklists.md)**, a **[wishlist](features/wishlist.md)**, a
-  **[trade binder](features/trade.md)**, a **[sell list + valuation report](features/sell.md)**, and
+  **[trade binder and staged trades](features/trade.md)**,
+  a **[sell list + valuation report](features/sell.md)**, and
   **[graded-card](features/grading.md)** tracking.
 - 🗂️ **Organize your way** — **[custom binders](features/binders.md)**, physical
   **[storage locations](features/locations.md)** (boxes / binders / decks), and overlapping

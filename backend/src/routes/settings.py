@@ -7,13 +7,19 @@ panel). Instance tab shows the read-only operator config (env-bound, process-lif
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.client_tokens import issue_token, list_tokens, revoke_token
 from src.config import get_settings
+from src.db import get_session
+from src.routes._safe import local_redirect
 from src.templating import templates
 
 router = APIRouter(tags=["settings"])
+
+_TABS = ("collection", "instance", "devices")
 
 
 def _onoff(value: bool) -> str:
@@ -50,8 +56,9 @@ def _instance_groups(s) -> list[dict]:
     ]
 
 
-@router.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request) -> HTMLResponse:
+async def _render_settings(
+    request: Request, session: AsyncSession, *, issued: str = "", tab: str = "collection"
+) -> HTMLResponse:
     s = get_settings()
     return templates.TemplateResponse(
         request,
@@ -61,5 +68,48 @@ async def settings_page(request: Request) -> HTMLResponse:
             "instance_groups": _instance_groups(s),
             # Operator surfaces linked from the Instance tab (lan gated by the desktop LAN feature).
             "lan_on": s.lan_guard,
+            "tokens": await list_tokens(session),
+            "issued_token": issued,
+            "env_token_set": bool(s.api_token),
+            "initial_tab": tab if tab in _TABS else "collection",
         },
     )
+
+
+@router.get("/settings", response_class=HTMLResponse)
+async def settings_page(
+    request: Request, tab: str = "collection", session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    return await _render_settings(request, session, tab=tab)
+
+
+def _guard_writable() -> None:
+    if get_settings().read_only:
+        raise HTTPException(status_code=403, detail="This instance is read-only.")
+
+
+@router.post("/settings/devices", response_class=HTMLResponse)
+async def new_device_token(
+    request: Request,
+    label: str = Form(""),
+    scope: str = Form("write"),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Issue a device token and hand it back exactly once.
+
+    This renders the page rather than redirecting with the secret in the query string: a URL would
+    put a live credential into browser history, the Referer header and any access log that records
+    query strings. The one place the token exists in readable form is this response body.
+    """
+    _guard_writable()
+    _, secret = await issue_token(session, label, scope)
+    return await _render_settings(request, session, issued=secret, tab="devices")
+
+
+@router.post("/settings/devices/{token_id}/revoke")
+async def revoke_device_token(
+    token_id: int, session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    _guard_writable()
+    await revoke_token(session, token_id)
+    return local_redirect("/settings?tab=devices")

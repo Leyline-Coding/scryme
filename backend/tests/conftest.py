@@ -73,6 +73,7 @@ async def _clean_tables():
         await conn.execute(text("TRUNCATE set_release RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE fx_rate_history RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE trade_pool RESTART IDENTITY CASCADE"))
+        await conn.execute(text("TRUNCATE client_token RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE cards CASCADE"))
 
 

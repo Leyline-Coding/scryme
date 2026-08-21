@@ -23,7 +23,7 @@ Once configured, these appear across the app:
 | **Deck analysis** | a deck page → *Analyze* | Grades a deck against Commander ratios (lands / ramp / draw / removal / win-cons / synergy) and flags gaps. |
 | **Upgrade planner** | a deck page → *Upgrade* | Suggests cards to buy to improve a deck, within a budget — validated, in-identity, and priced. |
 | **Coaching chat** | a deck page → *💬 Coach* | A conversation about the specific deck, grounded in its cards, colors, and format. |
-| **Suggest from collection** | a deck page → *Suggest* | Recommends cards **you already own** that fit the deck. |
+| **Suggest from collection** | a deck page → *Suggest* | Recommends cards **you already own** that fit the deck — see [how it's grounded](#how-suggestions-are-grounded). |
 | **Build from a prompt** | Decks tab → *Build from collection* → *build from a prompt* | Turn a plain-English request ("aggressive red goblins") into a starting decklist from owned cards. |
 | **Commander finder** | `/ai/commanders` | Ranks the legendary creatures you own by how buildable a deck around them is from your collection. |
 | **Natural-language search** | search bar → *✨ AI* toggle | Flip the search bar from Scryfall syntax to plain English — "blue instants that counter spells" becomes `c:u t:instant o:counter o:spell`, shown editable so you can refine it. |
@@ -36,6 +36,27 @@ Open **Settings (⚙) → AI settings** (or go to `/ai`) and fill in:
 
 - **Base URL** — the OpenAI-compatible API root, e.g. `http://localhost:11434/v1` for Ollama.
 - **API key** — required for hosted providers; optional (often blank) for local servers.
+## How suggestions are grounded
+
+Suggestions are only as good as what the model is told about your deck, so scryme sends it three
+things it used to leave out:
+
+- **The commander's whole rules text.** Only the first line used to be sent — and a commander's
+  actual engine is routinely on line two or three, so the deck's plan was invisible.
+- **What each candidate does**, not just its name: its role, the keywords it shares with your deck,
+  and a short snippet of its rules text. The model can then reason about a card instead of guessing
+  from the name.
+- **A shortlist chosen by deck fit.** Only a bounded number of candidates fit in a prompt. That
+  shortlist is now the cards that best match your deck's themes and creature types, scored by the
+  same offline logic behind [*Suggest owned cards*](decks.md#upgrade-from-your-collection).
+
+The prompt also asks for picks that interact with the commander's specific ability first, themes
+second, and thin roles third — and for each reason to name the *specific* interaction rather than
+calling a card "solid value".
+
+Card names are still validated against **your whole collection**, not just the shortlist, so a card
+the model knows from elsewhere still resolves if you own it.
+
 - **Chat model** — the model used for analysis/chat/suggestions.
 - **Embedding model** — used for *Similar cards* and *Card rules Q&A* retrieval (optional).
 

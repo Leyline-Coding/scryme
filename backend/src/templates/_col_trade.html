@@ -12,7 +12,9 @@
       <a href="/trade/pool/{{ p.pool.id }}" class="flex-1 min-w-0 truncate font-medium hover:text-accent">
         {{ p.pool.name }}{% if p.pool.partner %}<span class="text-muted font-normal"> · {{ p.pool.partner }}</span>{% endif %}
       </a>
-      {% if p.pool.status == 'closed' %}
+      {% if p.pool.committed_at %}
+      <span class="rounded-full bg-emerald-500/15 text-emerald-500 text-xs px-2 py-0.5 shrink-0">settled</span>
+      {% elif p.pool.status == 'closed' %}
       <span class="rounded-full bg-surface-2 text-muted text-xs px-2 py-0.5 shrink-0">closed</span>
       {% endif %}
       <span class="text-xs text-muted shrink-0 tabular-nums whitespace-nowrap">

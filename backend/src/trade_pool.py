@@ -206,11 +206,19 @@ async def stage_stack(
 
 async def remove_item(session: AsyncSession, item_id: int) -> bool:
     """Unstage a card. False if there was no such item — missing is not an error, the pool just
-    already looks the way the caller asked for."""
+    already looks the way the caller asked for.
+
+    Copies that have already been moved into or out of the collection (#332) can't be unstaged:
+    the line is trimmed back to what was applied instead of vanishing, so the pool keeps an honest
+    record of what actually happened.
+    """
     item = await session.get(TradePoolItem, item_id)
     if item is None:
         return False
-    await session.delete(item)
+    if item.applied_quantity > 0:
+        item.quantity = item.applied_quantity
+    else:
+        await session.delete(item)
     await session.commit()
     return True
 
@@ -233,10 +241,8 @@ async def update_item(
     item = await session.get(TradePoolItem, item_id)
     if item is None:
         return False
-    if quantity is not None and quantity <= 0:
-        await session.delete(item)
-        await session.commit()
-        return True
+    if quantity is not None and quantity <= item.applied_quantity:
+        return await remove_item(session, item_id)
 
     if quantity is not None:
         item.quantity = min(quantity, MAX_QUANTITY)
@@ -294,6 +300,7 @@ class PoolRow:
     condition: str | None
     language: str
     quantity: int
+    applied: int    # copies already reconciled into the collection by a commit (#332)
     owned: int      # copies of this exact copy-kind currently in the collection (0 for incoming)
     unit: float
 
@@ -302,9 +309,18 @@ class PoolRow:
         return round(self.quantity * self.unit, 2)
 
     @property
+    def outstanding(self) -> int:
+        """Copies still to move. Zero means this line of the trade is settled."""
+        return max(0, self.quantity - self.applied)
+
+    @property
     def short(self) -> int:
-        """Copies staged out that aren't (or are no longer) in the collection."""
-        return max(0, self.quantity - self.owned) if self.direction == OUT else 0
+        """Copies staged out that aren't (or are no longer) in the collection.
+
+        Only the *outstanding* copies can fall short — ones already given away are gone from the
+        collection precisely because the trade moved them, which is not a discrepancy.
+        """
+        return max(0, self.outstanding - self.owned) if self.direction == OUT else 0
 
 
 @dataclass
@@ -314,6 +330,10 @@ class PoolSide:
     @property
     def cards(self) -> int:
         return sum(r.quantity for r in self.rows)
+
+    @property
+    def outstanding(self) -> int:
+        return sum(r.outstanding for r in self.rows)
 
     @property
     def value(self) -> float:
@@ -335,6 +355,11 @@ class PoolView:
     def shortfalls(self) -> list[PoolRow]:
         """Outgoing rows the collection can no longer cover — staged, then sold/edited away."""
         return [r for r in self.giving.rows if r.short]
+
+    @property
+    def settled(self) -> bool:
+        """Every staged card has moved. An empty pool isn't settled, it's just empty."""
+        return not self.is_empty and not (self.giving.outstanding or self.getting.outstanding)
 
     @property
     def is_empty(self) -> bool:
@@ -395,6 +420,7 @@ async def pool_view(session: AsyncSession, pool: TradePool) -> PoolView:
             condition=item.condition,
             language=item.language,
             quantity=item.quantity,
+            applied=item.applied_quantity,
             owned=owned.get(
                 (item.scryfall_id, item.finish, item.condition, item.language), 0
             ) if item.direction == OUT else 0,

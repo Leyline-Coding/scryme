@@ -63,6 +63,7 @@ class TradePool(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    committed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
 
     items: Mapped[list[TradePoolItem]] = relationship(
         back_populates="pool", cascade="all, delete-orphan", lazy="selectin"
@@ -81,7 +82,11 @@ class TradePoolItem(Base):
     scryfall_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("cards.scryfall_id", ondelete="CASCADE"), index=True
     )
-    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    quantity: Mapped[int] = mapped_column(Integer, default=1)   # agreed
+    # How much of ``quantity`` has actually been reconciled into the collection (#332). What's
+    # left over is exactly what hasn't happened yet, which is what makes a partly-fallen-through
+    # trade representable rather than an all-or-nothing failure.
+    applied_quantity: Mapped[int] = mapped_column(Integer, default=0)
 
     # The value-bearing attributes of the physical copy, mirroring ``collection_card``.
     finish: Mapped[str] = mapped_column(String(16), default="normal")

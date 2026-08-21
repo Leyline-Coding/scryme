@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Settle {{ view.pool.name }} · scryme{% endblock %}
+{% block content %}
+{% set pool = view.pool %}
+<div class="max-w-3xl mx-auto px-4 py-6">
+  <header class="flex flex-wrap items-center gap-3 mb-2">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold truncate">Settle "{{ pool.name }}"</h1>
+    <a href="/trade/pool/{{ pool.id }}" class="ml-auto text-sm text-muted hover:text-fg shrink-0">← Back</a>
+  </header>
+  <p class="text-sm text-muted mb-6">
+    This is the only step that changes your collection. Untick anything that fell through — it
+    stays staged, and you can settle it later.
+  </p>
+
+  {% if not pending %}
+  <p class="rounded-xl bg-surface ring-1 ring-edge px-4 py-8 text-center text-muted">
+    {% if view.is_empty %}Nothing is staged in this trade yet.
+    {% else %}Every card in this trade has already moved.{% endif %}
+    <a href="/trade/pool/{{ pool.id }}" class="text-accent hover:underline">Back to the trade →</a>
+  </p>
+  {% else %}
+  <form method="post" action="/trade/pool/{{ pool.id }}/commit">
+    {% for side, title, verb in [
+         (view.giving, 'Leaving your collection', 'Remove'),
+         (view.getting, 'Joining your collection', 'Add')] %}
+    {% set rows = side.rows | selectattr('outstanding') | list %}
+    {% if rows %}
+    <section class="rounded-xl bg-surface ring-1 ring-edge overflow-hidden mb-4">
+      <h2 class="px-4 py-2.5 bg-surface-2 text-sm font-semibold">{{ title }}</h2>
+      <ul class="divide-y divide-edge">
+        {% for r in rows %}
+        <li class="px-4 py-2 text-sm flex items-center gap-3">
+          <input type="checkbox" name="item_ids" value="{{ r.item_id }}" checked
+                 id="item-{{ r.item_id }}" class="shrink-0 accent-current" />
+          <label for="item-{{ r.item_id }}" class="flex-1 min-w-0 flex items-center gap-2 cursor-pointer">
+            <span class="tabular-nums font-medium shrink-0">{{ r.outstanding }}×</span>
+            <span class="truncate">{{ r.name }}</span>
+            <span class="shrink-0 text-xs text-muted uppercase whitespace-nowrap">
+              {{ r.set_code }}·{{ r.collector_number }}
+              {%- if r.finish != 'normal' %} · {{ r.finish }}{% endif %}
+              {%- if r.condition %} · {{ r.condition }}{% endif %}
+            </span>
+          </label>
+          {% if r.short %}
+          <span class="shrink-0 text-xs text-amber-500"
+                title="You only have {{ r.owned }} of this copy in your collection">
+            only {{ r.owned }} on hand
+          </span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+    {% endfor %}
+
+    {% if view.getting.outstanding %}
+    {# Incoming cards get the same intake a manual addition gets (#332). #}
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-4">
+      <h2 class="text-sm font-semibold mb-2">File the incoming cards</h2>
+      <div class="flex flex-wrap items-end gap-2 text-sm">
+        <label class="flex flex-col">Binder
+          <input name="binder" placeholder="optional"
+                 class="w-40 rounded bg-bg border border-edge px-2 py-1" /></label>
+        <label class="flex flex-col">Storage box
+          <input name="location" placeholder="optional" list="box-options"
+                 class="w-40 rounded bg-bg border border-edge px-2 py-1" />
+          <datalist id="box-options">
+            {% for bx in boxes %}<option value="{{ bx.name }}"></option>{% endfor %}
+          </datalist>
+        </label>
+        <span class="text-xs text-muted self-center">
+          Finish, condition and language come from the trade itself.
+        </span>
+      </div>
+    </section>
+    {% endif %}
+
+    {% if view.shortfalls %}
+    <p class="mb-4 rounded-lg bg-amber-500/10 ring-1 ring-amber-500/40 px-3 py-2 text-sm text-amber-500">
+      Some outgoing cards aren't in your collection in the finish and condition they were staged
+      in. Settling anyway will move what you do have and leave the rest staged.
+    </p>
+    {% endif %}
+
+    {% if read_only %}
+    <p class="text-sm text-muted">This instance is read-only, so nothing can be settled here.</p>
+    {% else %}
+    <div class="flex flex-wrap items-center gap-3">
+      <button type="submit" class="rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium">
+        Settle this trade
+      </button>
+      <a href="/trade/pool/{{ pool.id }}" class="text-sm text-muted hover:text-fg">Cancel</a>
+    </div>
+    {% endif %}
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

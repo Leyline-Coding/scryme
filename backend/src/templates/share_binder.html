@@ -1,0 +1,40 @@
+{% extends "share_base.html" %}
+{% block title %}{{ binder.name }} · shared · scryme{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-6">
+  {% set share_title = binder.name %}
+  {% set share_subtitle = "A shared binder. Nothing here can be edited." %}
+  {% include "_share_shell.html" %}
+
+  {% if cards %}
+  <div class="overflow-x-auto rounded-xl ring-1 ring-edge">
+    <table class="w-full text-sm">
+      <thead class="text-xs text-muted text-left bg-surface-2">
+        <tr>
+          <th class="py-2 px-3">Card</th>
+          <th class="px-3">Set</th>
+          {% if show_prices %}<th class="px-3 text-right">{{ cur.symbol }}</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in cards %}
+        <tr class="border-t border-edge">
+          <td class="py-1.5 px-3">{{ c.name }}</td>
+          <td class="px-3 whitespace-nowrap">{{ set_symbol(c.set_code, c.rarity) }}
+            <span class="text-muted uppercase text-xs">{{ c.set_code }}</span></td>
+          {% if show_prices %}
+          <td class="px-3 text-right tabular-nums text-muted">
+            {% set usd = (c.prices or {}).get('usd') %}
+            {% if usd %}{{ cur.symbol }}{{ '{:,.2f}'.format(usd|float) }}{% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted text-sm py-12 text-center">This binder is empty.</p>
+  {% endif %}
+</div>
+{% endblock %}

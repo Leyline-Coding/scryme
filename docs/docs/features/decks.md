@@ -179,6 +179,25 @@ the list. (Disabled on the read-only demo.)
 
 For AI-powered suggestions and buy-to-upgrade plans, see the ✨ AI tools on the same page.
 
+## Share a read-only link
+
+**Share a read-only link** on a deck page (and on any [binder](binders.md)) creates a public URL —
+`/share/<token>` — that shows just that one list. Send it to a friend without giving them anything
+else: the shared page has no edit controls and no navigation into the rest of your collection.
+
+- **Prices are off by default.** Tick *Include prices* when you create the link if you want the
+  viewer to see card prices and the deck total. Sharing a list shouldn't also disclose what it's
+  worth unless that's what you meant.
+- **Revoke any time.** Links are listed on the page you shared from, with when each was last opened
+  so you can spot the ones nobody is using. Revoking takes effect immediately.
+- Deleting the deck or binder withdraws its links automatically.
+- The link works even on an instance that's otherwise private, and viewing keeps working on a
+  read-only demo — only *creating* and *revoking* are writes.
+
+The token is long and random, and only a hash of it is stored, so links can't be guessed and a
+database backup doesn't contain working ones. Treat the URL itself as the secret: anyone who has it
+can view that list.
+
 ## Versions & diff
 
 Tuning a deck over time? Save named **versions** and compare them to answer "what changed since last

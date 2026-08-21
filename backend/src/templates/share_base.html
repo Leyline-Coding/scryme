@@ -1,0 +1,25 @@
+{# Page shell for PUBLIC share views (#80).
+
+   Structurally separate from base.html rather than base.html with the controls hidden. The owner
+   shell includes the settings gear (which PATCHes /prefs), the upload drop zone, and alerts — a
+   visitor holding a share URL must reach none of those, and "must not render X" is a weaker
+   guarantee than "cannot render X". The only thing shared is the <head>, so theming can't drift.
+
+   Nothing in here links anywhere. Adding a nav element to this file is the one way to break that,
+   which is a much smaller surface to keep an eye on than a flag threaded through the owner shell. #}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+{% include "_head.html" %}
+<body class="min-h-full flex flex-col bg-bg text-fg antialiased">
+  <main class="flex-1">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="border-t border-edge mt-10 py-6 text-center text-xs text-muted">
+    Shared from a private <span class="text-accent">scryme</span> collection.
+    <span class="block mt-1">
+      Card data and images are from Scryfall. scryme is an unofficial fan project, not endorsed by
+      Wizards of the Coast.
+    </span>
+  </footer>
+</body>
+</html>

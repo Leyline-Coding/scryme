@@ -49,6 +49,7 @@ from src.models import Card, Deck, DeckCard, DeckVersion
 from src.pricing import get_price_source
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
+from src.share import DECK, links_for, revoke_links_for
 from src.templating import templates
 from src.wishlist import add_deck_missing
 
@@ -265,7 +266,9 @@ async def view_deck(
     deck_id: int,
     format: str = "",
     session: AsyncSession = Depends(get_session),
+    shared: str = "",
 ) -> HTMLResponse:
+    """``shared`` is a token just minted for this deck, shown once so it can be copied (#80)."""
     deck = await session.get(Deck, deck_id)
     if deck is None:
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
@@ -288,6 +291,10 @@ async def view_deck(
             "export_formats": EXPORT_FORMATS,
             "cur": info(currency),
             "read_only": get_settings().read_only,
+            "share_kind": DECK,
+            "share_target": deck.id,
+            "share_links": await links_for(session, DECK, deck.id),
+            "share_new": shared,
             "ai_ready": (await get_config(session)).ready,
         },
     )
@@ -489,6 +496,9 @@ async def delete_deck(deck_id: int, session: AsyncSession = Depends(get_session)
     _guard_writable()
     deck = await session.get(Deck, deck_id)
     if deck is not None:
+        # Withdraw share links first — one outliving its deck would 404, which reads as a broken
+        # app rather than as "that isn't shared any more" (#80).
+        await revoke_links_for(session, DECK, deck_id)
         await session.delete(deck)
         await session.commit()
     return RedirectResponse(url="/decks", status_code=303)

@@ -32,6 +32,7 @@ from src.models import Binder, Card, CollectionCard
 from src.routes._safe import local_redirect
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
+from src.share import BINDER, links_for, revoke_links_for
 from src.templating import templates
 
 router = APIRouter(tags=["binders"])
@@ -69,8 +70,10 @@ async def binders_home() -> RedirectResponse:
 
 @router.get("/binders/view/{binder_id}", response_class=HTMLResponse)
 async def binder_view(
-    request: Request, binder_id: int, session: AsyncSession = Depends(get_session)
+    request: Request, binder_id: int, session: AsyncSession = Depends(get_session),
+    shared: str = "",
 ) -> HTMLResponse:
+    """``shared`` is a token just minted for this binder, shown once so it can be copied (#80)."""
     binder = await session.get(Binder, binder_id)
     if binder is None:
         raise HTTPException(status_code=404, detail="Binder not found.")
@@ -78,7 +81,10 @@ async def binder_view(
     return templates.TemplateResponse(
         request, "binder_view.html",
         {"binder": binder, "views": [(c, _image(c)) for c in cards],
-         "read_only": get_settings().read_only},
+         "read_only": get_settings().read_only,
+         "share_kind": BINDER, "share_target": binder.id,
+         "share_links": await links_for(session, BINDER, binder.id),
+         "share_new": shared},
     )
 
 
@@ -105,6 +111,9 @@ async def delete_binder_route(
     binder_id: int, session: AsyncSession = Depends(get_session)
 ) -> RedirectResponse:
     _guard_writable()
+    # Withdraw any share links first: a link outliving its binder would 404, which reads as a
+    # broken app rather than as "that isn't shared any more" (#80).
+    await revoke_links_for(session, BINDER, binder_id)
     await delete_binder(session, binder_id)
     return RedirectResponse(url=_BINDERS_URL, status_code=303)
 

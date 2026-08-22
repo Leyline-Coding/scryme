@@ -1,0 +1,46 @@
+{% extends "share_base.html" %}
+{% block title %}{{ deck.name }} · shared · scryme{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-6">
+  {% set share_title = deck.name %}
+  {% set share_subtitle = "A shared decklist. Nothing here can be edited." %}
+  {% include "_share_shell.html" %}
+
+  <div class="rounded-xl bg-surface ring-1 ring-edge overflow-hidden">
+    <div class="flex flex-wrap items-center gap-3 px-4 py-2.5 bg-surface-2 text-sm">
+      <span class="font-semibold">Deck</span>
+      <span class="text-muted">{{ '{:,}'.format(cov.total_needed) }} cards</span>
+      {% if show_prices and stats %}
+      <span class="ml-auto text-muted">Total
+        <b class="text-fg">{{ cur.symbol }}{{ '{:,.2f}'.format(stats.total_value) }}</b></span>
+      {% endif %}
+    </div>
+    <ul class="divide-y divide-edge">
+      {% for r in cov.main %}
+      <li class="px-4 py-1.5 text-sm flex items-center gap-3">
+        <span class="w-8 shrink-0 text-right tabular-nums text-muted">{{ r.quantity }}×</span>
+        <span class="flex-1 min-w-0 truncate">{{ r.name }}</span>
+        {% if r.set_code %}
+        <span class="shrink-0 text-xs text-muted uppercase whitespace-nowrap">{{ r.set_code }}</span>
+        {% endif %}
+        {% if r.finish != 'normal' %}
+        <span class="shrink-0 text-xs text-muted">{{ r.finish }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  {% if cov.side %}
+  <h2 class="mt-6 mb-1 text-sm font-semibold">Sideboard</h2>
+  <ul class="divide-y divide-edge rounded-xl bg-surface ring-1 ring-edge overflow-hidden">
+    {% for r in cov.side %}
+    <li class="px-4 py-1.5 text-sm flex items-center gap-3">
+      <span class="w-8 shrink-0 text-right tabular-nums text-muted">{{ r.quantity }}×</span>
+      <span class="flex-1 min-w-0 truncate">{{ r.name }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endblock %}

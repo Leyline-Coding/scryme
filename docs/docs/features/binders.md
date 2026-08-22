@@ -27,3 +27,9 @@ binder.
 !!! note "Imported binder names"
     If your import file carried a *Binder Name* / folder column (e.g. ManaBox), that value is kept
     on each stack and is searchable, separate from these custom binders.
+
+## Share a binder
+
+Binders can be shared with a **read-only link**, the same way decks can — handy for showing a trade
+binder to someone without giving them access to anything else. See
+[Share a read-only link](decks.md#share-a-read-only-link) for how links, prices and revocation work.

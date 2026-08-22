@@ -1,0 +1,58 @@
+{# Owner-side share-link management (#80). Included on the deck and binder pages; expects
+   `share_kind`, `share_target`, `share_links`, and optionally `share_new` (a token just minted). #}
+<section class="rounded-xl bg-surface ring-1 ring-edge p-4">
+  <h2 class="text-sm font-semibold mb-1">Share a read-only link</h2>
+  <p class="text-xs text-muted mb-3">
+    Anyone with the link can view this {{ share_kind }} and nothing else — no edit controls, and no
+    way into the rest of your collection.
+  </p>
+
+  {% if share_new %}
+  <div class="rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/40 p-3 mb-3">
+    <p class="text-xs text-emerald-500 font-semibold mb-1">Link created</p>
+    <code class="block break-all rounded bg-bg px-2.5 py-1.5 text-xs select-all">{{ request.base_url|string|trim('/') }}/share/{{ share_new }}</code>
+  </div>
+  {% endif %}
+
+  {% if share_links %}
+  <ul class="divide-y divide-edge rounded-lg bg-surface-2 mb-3">
+    {% for l in share_links %}
+    <li class="px-3 py-2 text-xs flex flex-wrap items-center gap-x-3 gap-y-1
+               {% if not l.active %}opacity-60{% endif %}">
+      <span class="text-muted">created {{ l.created_at.strftime('%Y-%m-%d') }}</span>
+      <span class="rounded-full px-2 py-0.5
+        {% if l.show_prices %}bg-accent/15 text-accent{% else %}bg-surface text-muted{% endif %}">
+        {% if l.show_prices %}prices shown{% else %}list only{% endif %}</span>
+      {% if l.active %}
+      <span class="text-muted">
+        {% if l.last_viewed_at %}last viewed {{ l.last_viewed_at.strftime('%Y-%m-%d') }}
+        {% else %}not opened yet{% endif %}</span>
+      {% if not read_only %}
+      <form method="post" action="/share/link/{{ l.id }}/revoke" class="ml-auto"
+            onsubmit="return confirm('Revoke this link? Anyone holding it loses access immediately.')">
+        <input type="hidden" name="kind" value="{{ share_kind }}" />
+        <input type="hidden" name="target_id" value="{{ share_target }}" />
+        <button type="submit" class="text-muted hover:text-rose-500">Revoke</button>
+      </form>
+      {% endif %}
+      {% else %}
+      <span class="ml-auto text-rose-500">revoked {{ l.revoked_at.strftime('%Y-%m-%d') }}</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if not read_only %}
+  <form method="post" action="/share/{{ share_kind }}/{{ share_target }}"
+        class="flex flex-wrap items-center gap-3 text-xs">
+    <label class="flex items-center gap-1.5">
+      <input type="checkbox" name="show_prices" value="1" class="accent-current" />
+      Include prices{% if share_kind == 'deck' %} and totals{% endif %}
+    </label>
+    <button type="submit" class="rounded bg-accent text-accent-fg px-2.5 py-1 font-medium">
+      Create link
+    </button>
+  </form>
+  {% endif %}
+</section>

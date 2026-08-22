@@ -1,0 +1,12 @@
+{# Chrome for a public share view (#80). Deliberately has no links into the rest of the collection:
+   the mark is not a link home, and there is no nav. A visitor holding this URL can see this one
+   deck or binder and nothing else. #}
+<header class="flex flex-wrap items-baseline gap-3 mb-1">
+  <span class="flex items-center gap-2 shrink-0">
+    <span class="logo-mark w-6 h-6 text-accent" aria-hidden="true"></span>
+    <span class="text-xl font-bold tracking-tight"><span class="text-accent">scry</span>me</span>
+  </span>
+  <h1 class="text-lg font-semibold truncate">{{ share_title }}</h1>
+  <span class="ml-auto shrink-0 rounded-full bg-surface-2 text-muted text-xs px-2 py-0.5">shared · read-only</span>
+</header>
+<p class="text-xs text-muted mb-6">{{ share_subtitle }}</p>

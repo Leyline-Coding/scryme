@@ -1256,6 +1256,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#share-a-read-only-link" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Share a read-only link
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#versions-diff" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2143,6 +2154,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#share-a-read-only-link" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Share a read-only link
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#versions-diff" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2346,6 +2368,23 @@ pick instead of just trusting it. Mana curve and price remain the tie-breakers, 
 clear theme is ranked exactly as before. <strong>+ Add</strong> drops a copy straight into the deck and refreshes
 the list. (Disabled on the read-only demo.)</p>
 <p>For AI-powered suggestions and buy-to-upgrade plans, see the ✨ AI tools on the same page.</p>
+<h2 id="share-a-read-only-link">Share a read-only link</h2>
+<p><strong>Share a read-only link</strong> on a deck page (and on any <a href="../binders/">binder</a>) creates a public URL —
+<code>/share/&lt;token&gt;</code> — that shows just that one list. Send it to a friend without giving them anything
+else: the shared page has no edit controls and no navigation into the rest of your collection.</p>
+<ul>
+<li><strong>Prices are off by default.</strong> Tick <em>Include prices</em> when you create the link if you want the
+  viewer to see card prices and the deck total. Sharing a list shouldn't also disclose what it's
+  worth unless that's what you meant.</li>
+<li><strong>Revoke any time.</strong> Links are listed on the page you shared from, with when each was last opened
+  so you can spot the ones nobody is using. Revoking takes effect immediately.</li>
+<li>Deleting the deck or binder withdraws its links automatically.</li>
+<li>The link works even on an instance that's otherwise private, and viewing keeps working on a
+  read-only demo — only <em>creating</em> and <em>revoking</em> are writes.</li>
+</ul>
+<p>The token is long and random, and only a hash of it is stored, so links can't be guessed and a
+database backup doesn't contain working ones. Treat the URL itself as the secret: anyone who has it
+can view that list.</p>
 <h2 id="versions-diff">Versions &amp; diff</h2>
 <p>Tuning a deck over time? Save named <strong>versions</strong> and compare them to answer "what changed since last
 week?".</p>
@@ -2405,7 +2444,7 @@ Then just use your browser's Print (⌘/Ctrl-P).</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 21, 2026 20:26:40 UTC">August 21, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 22, 2026 00:26:31 UTC">August 22, 2026</span>
   </span>
 
     

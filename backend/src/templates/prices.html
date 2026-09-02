@@ -5,14 +5,15 @@
   {% if cards %}
   <ul class="space-y-1.5 text-sm">
     {% for c in cards %}
-    <li class="flex items-center gap-2">
-      <a href="/card/{{ c.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">
+    <li class="flex flex-wrap items-center gap-x-2">
+      <a href="/card/{{ c.scryfall_id }}"
+         class="basis-full sm:basis-0 sm:flex-1 min-w-0 truncate hover:text-accent">
         {{ c.name }} <span class="text-muted uppercase text-xs">{{ c.set_code }}</span>
         {% if c.quantity > 1 %}<span class="text-muted text-xs">×{{ c.quantity }}</span>{% endif %}
         {% if c.finish in ('foil', 'etched') %}<span class="text-amber-500 text-xs">✦</span>{% endif %}
       </a>
-      <span class="text-right text-muted tabular-nums">${{ '{:,.2f}'.format(c.cost) }} → ${{ '{:,.2f}'.format(c.market) }}</span>
-      <span class="w-24 text-right tabular-nums font-medium {% if c.total_delta > 0 %}text-emerald-500{% else %}text-rose-500{% endif %}">
+      <span class="shrink-0 text-muted tabular-nums">${{ '{:,.2f}'.format(c.cost) }} → ${{ '{:,.2f}'.format(c.market) }}</span>
+      <span class="ml-auto shrink-0 sm:w-28 text-right tabular-nums font-medium {% if c.total_delta > 0 %}text-emerald-500{% else %}text-rose-500{% endif %}">
         {{ '+' if c.total_delta > 0 else '' }}{{ '{:,.2f}'.format(c.total_delta) }} ({{ c.pct }}%)
       </span>
     </li>
@@ -27,12 +28,13 @@
   {% if movers %}
   <ul class="space-y-1.5 text-sm">
     {% for m in movers %}
-    <li class="flex items-center gap-2">
-      <a href="/card/{{ m.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">
+    <li class="flex flex-wrap items-center gap-x-2">
+      <a href="/card/{{ m.scryfall_id }}"
+         class="basis-full sm:basis-0 sm:flex-1 min-w-0 truncate hover:text-accent">
         {{ m.name }} <span class="text-muted uppercase text-xs">{{ m.set_code }}</span>
       </a>
-      <span class="text-right text-muted tabular-nums">${{ '{:,.2f}'.format(m.old) }} → ${{ '{:,.2f}'.format(m.new) }}</span>
-      <span class="w-20 text-right tabular-nums font-medium {% if m.delta > 0 %}text-emerald-500{% else %}text-rose-500{% endif %}">
+      <span class="shrink-0 text-muted tabular-nums">${{ '{:,.2f}'.format(m.old) }} → ${{ '{:,.2f}'.format(m.new) }}</span>
+      <span class="ml-auto shrink-0 sm:w-28 text-right tabular-nums font-medium {% if m.delta > 0 %}text-emerald-500{% else %}text-rose-500{% endif %}">
         {{ '+' if m.delta > 0 else '' }}{{ '{:,.2f}'.format(m.delta) }} ({{ m.pct }}%)
       </span>
     </li>
@@ -45,7 +47,7 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto px-4 py-6">
-  <header class="flex flex-wrap items-center gap-3 mb-6">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold">Price history</h1>
     <a href="/collection?tab=stats" class="ml-auto text-sm text-muted hover:text-fg">Stats →</a>
@@ -80,7 +82,7 @@
         without a purchase or current price {{ 'is' if pl.unpriced_stacks == 1 else 'are' }} excluded.
       {% endif %}
     </p>
-    <div class="grid md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
         <h3 class="text-sm font-semibold text-emerald-500 mb-2 uppercase tracking-wide">▲ Biggest winners</h3>
         {{ pl_list(pl.winners) }}
@@ -127,7 +129,7 @@
   <p class="text-sm text-muted mb-3">
     Movers since {{ movers.previous_at.strftime('%Y-%m-%d') }}
   </p>
-  <div class="grid md:grid-cols-2 gap-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
       <h2 class="text-sm font-semibold text-emerald-500 mb-2 uppercase tracking-wide">▲ Gainers</h2>
       {{ mover_list(movers.gainers) }}
@@ -161,7 +163,7 @@
           {% endif %}
           {% if not read_only %}
           <form action="/watch/{{ t.id }}/delete" method="post">
-            <button class="text-muted hover:text-rose-400">✕</button>
+            <button class="text-muted hover:text-rose-400 tap">✕</button>
           </form>
           {% endif %}
         </div>

@@ -158,6 +158,26 @@
   mask: url("/static/scryme-logo.svg") center / contain no-repeat;
 }
 
+/* Touch targets (#68). The icon-only controls (✕ / ✎ / 🏅 / the ± quantity steppers) are kept
+   small on purpose so a dense desktop row stays readable, but that leaves a hit area a fingertip
+   can't reliably land on. Grow them to a ~36px box on coarse pointers only, so the mouse-driven
+   layout is untouched. */
+@media (pointer: coarse) {
+  .tap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+  }
+}
+
+/* Page headers (#68). The settings gear is position:fixed in the top-right corner, so it floats
+   over whatever the header puts there — at every viewport width, not just on phones. Reserve the
+   gear's footprint (2.5rem wide + its 0.75rem inset) so right-aligned header links stop short of
+   it instead of rendering underneath. */
+.page-header { padding-right: 3.25rem; }
+
 /* Hide x-cloak elements until Alpine initializes (avoids a flash of the busy state). */
 [x-cloak] { display: none !important; }
 
@@ -169,12 +189,13 @@
 
 /* Fluid card grid: columns reflow continuously with the viewport instead of stepping at fixed
    breakpoints, so resizing the window always re-lays-out the cards. The per-column minimum width is
-   driven by --card-min (see above). The min(…, 47vw) cap keeps at least ~2 columns on a phone no
-   matter how large a size is chosen. */
+   driven by --card-min (see above). The cap keeps at least 2 columns on a phone no matter how large
+   a size is chosen — it is measured against the grid's own content box (50% minus half the gap)
+   rather than the viewport, so the page's horizontal padding can't push it back down to 1 (#68). */
 .card-grid {
   display: grid;
   gap: 0.75rem;
-  grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min), 47vw), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min), calc(50% - 0.375rem)), 1fr));
 }
 /* Smaller variant for thumbnail rows (printings, similar cards, binder pages). */
 .card-grid-sm {

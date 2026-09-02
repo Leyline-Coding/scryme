@@ -3,7 +3,7 @@
 {% block content %}
 {% set pool = view.pool %}
 <div class="max-w-3xl mx-auto px-4 py-6">
-  <header class="flex flex-wrap items-center gap-3 mb-2">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-2">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold truncate">Settle "{{ pool.name }}"</h1>
     <a href="/trade/pool/{{ pool.id }}" class="ml-auto text-sm text-muted hover:text-fg shrink-0">← Back</a>

@@ -2,7 +2,7 @@
 {% block title %}{{ built.commander }} — suggested deck · scryme{% endblock %}
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 py-6">
-  <header class="flex flex-wrap items-center gap-3 mb-2">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-2">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold">Suggested deck</h1>
     <a href="/decks/build" class="ml-auto text-sm text-muted hover:text-fg">← Build another</a>
@@ -32,7 +32,7 @@
     A heuristic starting point, not an optimised list — review the roles, then save and tune.
   </p>
 
-  <div class="grid sm:grid-cols-2 gap-4 mb-6">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
     {% for g in built.groups %}
     <div class="rounded-lg border border-edge bg-surface p-3">
       <p class="text-sm font-semibold mb-2">

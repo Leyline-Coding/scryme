@@ -3,7 +3,7 @@
 {% block content %}
 {% set pool = view.pool %}
 <div class="max-w-5xl mx-auto px-4 py-6">
-  <header class="flex flex-wrap items-center gap-3 mb-2">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-2">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold truncate">{{ pool.name }}</h1>
     {% if pool.partner %}<span class="text-sm text-muted truncate">with {{ pool.partner }}</span>{% endif %}
@@ -22,7 +22,7 @@
   </p>
 
   {# --- the balance ---------------------------------------------------------------------- #}
-  <div class="grid sm:grid-cols-3 gap-3 mb-6">
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
     <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
       <div class="text-xs text-muted">You give</div>
       <div class="text-2xl font-bold tabular-nums">{{ cur.symbol }}{{ '{:,.2f}'.format(view.giving.value) }}</div>
@@ -69,7 +69,7 @@
   {% endif %}
 
   {# --- the two sides -------------------------------------------------------------------- #}
-  <div class="grid lg:grid-cols-2 gap-4">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
     {% for side, title, hint in [
          (view.giving, 'Giving', 'Cards leaving your collection'),
          (view.getting, 'Getting', 'Cards joining your collection')] %}
@@ -101,10 +101,10 @@
             </span>
             {% if not read_only and pool.status != 'closed' %}
             <button type="button" @click="editing = !editing" title="Adjust this card"
-                    class="shrink-0 text-xs text-muted hover:text-accent">✎</button>
+                    class="shrink-0 text-xs text-muted hover:text-accent tap">✎</button>
             <form method="post" action="/trade/pool/{{ pool.id }}/items/{{ r.item_id }}/delete"
                   class="shrink-0">
-              <button type="submit" title="Unstage" class="text-xs text-muted hover:text-rose-500">✕</button>
+              <button type="submit" title="Unstage" class="text-xs text-muted hover:text-rose-500 tap">✕</button>
             </form>
             {% endif %}
           </div>

@@ -2,7 +2,7 @@
 {% block title %}Valuation report · scryme{% endblock %}
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 py-6">
-  <header class="flex flex-wrap items-center gap-3 mb-4 print:hidden">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-4 print:hidden">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold">Valuation report</h1>
     <div class="ml-auto flex items-center gap-3 text-sm shrink-0">
@@ -32,10 +32,10 @@
         <div class="text-2xl font-bold">{{ '{:,}'.format(report.distinct_cards) }}</div></div>
     </div>
 
-    <div class="grid sm:grid-cols-2 gap-6 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
       <section>
         <h3 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">Value by rarity</h3>
-        <table class="w-full text-sm">
+        <div class="overflow-x-auto"><table class="w-full text-sm">
           <thead>
             <tr class="text-xs text-muted uppercase tracking-wide">
               <th scope="col" class="py-1 text-left font-medium">Rarity</th>
@@ -52,11 +52,11 @@
             </tr>
             {% endfor %}
           </tbody>
-        </table>
+        </table></div>
       </section>
       <section>
         <h3 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">Top sets by value</h3>
-        <table class="w-full text-sm">
+        <div class="overflow-x-auto"><table class="w-full text-sm">
           <thead>
             <tr class="text-xs text-muted uppercase tracking-wide">
               <th scope="col" class="py-1 text-left font-medium">Set</th>
@@ -73,14 +73,14 @@
             </tr>
             {% endfor %}
           </tbody>
-        </table>
+        </table></div>
       </section>
     </div>
 
     <section>
       <h3 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">
         Top {{ report.top_cards|length }} cards by value</h3>
-      <table class="w-full text-sm">
+      <div class="overflow-x-auto"><table class="w-full text-sm">
         <thead class="text-xs text-muted text-left">
           <tr><th class="py-1">Card</th><th>Set</th><th class="text-right">Qty</th>
             <th class="text-right">{{ cur.symbol }} ea</th><th class="text-right">{{ cur.symbol }} total</th></tr>
@@ -96,7 +96,7 @@
           </tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     </section>
 
     <p class="mt-6 text-xs text-muted">

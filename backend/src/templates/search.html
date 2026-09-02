@@ -2,7 +2,7 @@
 {% block title %}Search · scryme{% endblock %}
 {% block content %}
 <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
-  <header class="flex flex-wrap items-center gap-3 mb-6">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <a href="/advanced" class="text-sm text-muted hover:text-fg shrink-0">Advanced</a>
     <a href="/search" class="text-sm text-muted hover:text-fg shrink-0">All Cards</a>
@@ -21,7 +21,7 @@
           <a href="/search?q={{ s.query | urlencode }}&scope={{ s.scope }}&sort={{ s.sort }}&dir={{ s.direction }}"
              class="flex-1 min-w-0 px-3 py-1.5 hover:bg-surface-2 truncate" title="{{ s.query }}">{{ s.name }}</a>
           <form action="/saved/{{ s.id }}/delete" method="post" class="shrink-0">
-            <button type="submit" title="Delete" class="px-2 py-1.5 text-muted hover:text-rose-500">✕</button>
+            <button type="submit" title="Delete" class="px-2 py-1.5 text-muted hover:text-rose-500 tap">✕</button>
           </form>
         </div>
         {% else %}
@@ -126,7 +126,7 @@
       {% if universal_error %}bg-rose-500/15 text-rose-500{% else %}bg-surface-2{% endif %}">
       <code>{{ universal }}</code>
       <button type="button" onclick="clearUniversalFilter()" title="Clear universal filter"
-              class="text-muted hover:text-fg">✕</button>
+              class="text-muted hover:text-fg tap">✕</button>
     </span>
     {% if universal_error %}<span class="text-rose-500 text-xs">invalid — ignored for this search</span>
     {% else %}<span class="text-xs text-muted">edit in Settings ⚙</span>{% endif %}

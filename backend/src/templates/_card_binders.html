@@ -6,7 +6,7 @@
     {{ b.name }}
     {% if not read_only %}
     <button hx-post="/card/{{ card_id }}/binder-remove" hx-target="#card-binders" hx-swap="outerHTML"
-            hx-vals='{"binder_id": "{{ b.id }}"}' class="text-muted hover:text-rose-500">✕</button>
+            hx-vals='{"binder_id": "{{ b.id }}"}' class="text-muted hover:text-rose-500 tap">✕</button>
     {% endif %}
   </span>
   {% endfor %}

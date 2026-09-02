@@ -2,7 +2,7 @@
 {% block title %}{{ label }} · Binders · scryme{% endblock %}
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-6" x-data="binderRemove()">
-  <header class="flex flex-wrap items-center gap-3 mb-6">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold truncate">{{ label }}</h1>
     <a href="/collection?tab=binders" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Binders →</a>
@@ -32,7 +32,7 @@
       {% if not read_only %}
       <button type="button" title="Remove from this binder"
               @click="ask('{{ v.card.scryfall_id }}', {{ v.card.name | tojson }})"
-              class="absolute top-1.5 right-1.5 rounded bg-black/60 text-white text-xs px-1.5 leading-5 opacity-0 group-hover:opacity-100">✕</button>
+              class="absolute top-1.5 right-1.5 rounded bg-black/60 text-white text-xs px-1.5 leading-5 opacity-0 group-hover:opacity-100 tap">✕</button>
       {% endif %}
     </div>
     {% endfor %}

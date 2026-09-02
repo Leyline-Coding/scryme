@@ -25,14 +25,14 @@
   <ul class="divide-y divide-edge">
     {% for r in cards %}
     <li class="py-1.5 text-sm break-inside-avoid" x-data="{ editing: false }">
-      <div class="flex items-center gap-2 {% if not r.matched %}text-amber-500{% endif %}">
+      <div class="flex flex-wrap items-center gap-x-2 {% if not r.matched %}text-amber-500{% endif %}">
         {% if not read_only and r.matched %}
         <span class="shrink-0 flex items-center gap-0.5">
           <button type="button" title="One fewer" hx-post="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/qty"
-                  hx-vals='{"delta": -1}' class="w-4 text-muted hover:text-accent leading-none">−</button>
+                  hx-vals='{"delta": -1}' class="w-4 text-muted hover:text-accent leading-none tap">−</button>
           <span class="w-7 text-center text-muted tabular-nums">{{ r.quantity }}×</span>
           <button type="button" title="One more" hx-post="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/qty"
-                  hx-vals='{"delta": 1}' class="w-4 text-muted hover:text-accent leading-none">+</button>
+                  hx-vals='{"delta": 1}' class="w-4 text-muted hover:text-accent leading-none tap">+</button>
         </span>
         {% else %}
         <span class="w-8 shrink-0 text-right text-muted tabular-nums">{{ r.quantity }}×</span>
@@ -73,7 +73,7 @@
         {% endif %}
         {% if not read_only and r.matched %}
         <button type="button" title="Change printing / mark as proxy"
-                class="shrink-0 text-xs text-muted hover:text-accent"
+                class="shrink-0 text-xs text-muted hover:text-accent tap"
                 @click="editing = !editing"
                 hx-get="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/edit?format={{ cov.fmt or '' }}"
                 hx-target="#ed-{{ r.card_id }}" hx-swap="innerHTML">✎</button>
@@ -113,7 +113,7 @@
 
 {% block content %}
 <div class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
-  <header class="flex flex-wrap items-center gap-3 mb-6">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold truncate">{{ cov.deck.name }}</h1>
     <a href="/collection?tab=decks" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Decks →</a>
@@ -292,7 +292,7 @@
            class="shrink-0 rounded bg-surface hover:bg-surface-3 px-2 py-0.5 text-xs">Diff vs current</a>
         {% if not read_only %}
         <form method="post" action="/decks/{{ cov.deck.id }}/versions/{{ v.id }}/delete" class="shrink-0">
-          <button type="submit" title="Delete version" class="text-xs text-muted hover:text-rose-500">✕</button>
+          <button type="submit" title="Delete version" class="text-xs text-muted hover:text-rose-500 tap">✕</button>
         </form>
         {% endif %}
       </li>
@@ -319,7 +319,7 @@
 
   {# Per-deck stats #}
   {% if stats.has_data %}
-  <div class="grid md:grid-cols-3 gap-6 mb-6">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
       <h2 class="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Mana curve</h2>
       {% if stats.mana_curve %}{{ bars(stats.mana_curve) }}
@@ -340,7 +340,7 @@
   <div class="mt-6">{% include "_goldfish.html" %}</div>
   {% endif %}
 
-  <div x-data="deckView()" class="grid md:grid-cols-2 gap-6">
+  <div x-data="deckView()" class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <div class="md:col-span-2 flex items-center justify-end gap-1 -mb-3">
       <span class="text-xs text-muted mr-1">View:</span>
       <button type="button" @click="setView('list')"

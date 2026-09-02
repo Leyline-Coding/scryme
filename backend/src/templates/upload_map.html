@@ -2,7 +2,7 @@
 {% block title %}Map columns · scryme{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-4 py-6">
-  <header class="flex flex-wrap items-center gap-3 mb-6">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold">Map your columns</h1>
     <a href="/upload" class="ml-auto text-sm text-muted hover:text-fg">← Upload</a>
@@ -24,11 +24,11 @@
     <textarea name="csv" class="hidden">{{ csv }}</textarea>
     {% for f in fields %}
     <div class="flex items-center gap-3">
-      <label for="map-{{ f.key }}" class="w-40 shrink-0 text-sm {% if f.required %}font-medium{% else %}text-muted{% endif %}">
+      <label for="map-{{ f.key }}" class="w-28 sm:w-40 shrink-0 text-sm {% if f.required %}font-medium{% else %}text-muted{% endif %}">
         {{ f.label }}{% if f.required %} *{% endif %}
       </label>
       <select name="map_{{ f.key }}" id="map-{{ f.key }}"
-        class="flex-1 rounded-lg bg-bg border border-edge px-3 py-2 text-sm">
+        class="flex-1 min-w-0 rounded-lg bg-bg border border-edge px-3 py-2 text-sm">
         <option value="">— skip —</option>
         {% for h in headers %}
         <option value="{{ h }}" {% if guess.get(f.key) == h %}selected{% endif %}>{{ h }}</option>

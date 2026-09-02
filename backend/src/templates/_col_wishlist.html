@@ -30,7 +30,7 @@
     {% if not read_only %}
     <form method="post" action="/wishlist/remove" class="shrink-0">
       <input type="hidden" name="scryfall_id" value="{{ item.scryfall_id }}" />
-      <button type="submit" title="Remove" class="text-muted hover:text-rose-500 px-1">×</button>
+      <button type="submit" title="Remove" class="text-muted hover:text-rose-500 px-1 tap">×</button>
     </form>
     {% endif %}
   </li>

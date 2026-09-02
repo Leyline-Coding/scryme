@@ -12,7 +12,7 @@
     {% if not read_only %}
     <form method="post" action="/checklists/{{ c.id }}/delete" class="shrink-0"
           onsubmit="return confirm('Delete this checklist?')">
-      <button type="submit" class="text-muted hover:text-rose-500" title="Delete">✕</button>
+      <button type="submit" class="text-muted hover:text-rose-500 tap" title="Delete">✕</button>
     </form>
     {% endif %}
   </li>

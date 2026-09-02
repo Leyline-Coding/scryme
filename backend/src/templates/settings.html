@@ -3,7 +3,7 @@
 {% block content %}
 
 <div class="max-w-3xl mx-auto px-4 py-6" x-data="{ tab: '{{ initial_tab|default('collection') }}' }">
-  <header class="flex flex-wrap items-center gap-3 mb-6">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold">Settings</h1>
     <a href="/" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Home →</a>
@@ -40,7 +40,7 @@
       and applied at startup, so these values are read-only here.
     </p>
 
-    <div class="grid sm:grid-cols-2 gap-2 mb-6 text-sm">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-6 text-sm">
       <a href="/ai" class="rounded-lg bg-surface ring-1 ring-edge hover:ring-accent px-3 py-2.5">
         ✨ AI settings<span class="block text-xs text-muted">Configure the LLM endpoint</span></a>
       <a href="/backup" class="rounded-lg bg-surface ring-1 ring-edge hover:ring-accent px-3 py-2.5">

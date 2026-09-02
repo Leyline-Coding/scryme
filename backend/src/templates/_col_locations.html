@@ -26,11 +26,11 @@
       <form method="post" action="/collection/boxes/{{ b.id }}/rename" class="flex gap-1 shrink-0">
         <input type="text" name="name" value="{{ b.name }}"
                class="w-24 rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs" />
-        <button class="text-xs text-muted hover:text-fg" title="Rename">✎</button>
+        <button class="text-xs text-muted hover:text-fg tap" title="Rename">✎</button>
       </form>
       <form method="post" action="/collection/boxes/{{ b.id }}/delete" class="shrink-0"
             onsubmit="return confirm('Delete box {{ b.name }}? Its cards become unfiled.')">
-        <button class="text-xs text-muted hover:text-rose-500" title="Delete">✕</button>
+        <button class="text-xs text-muted hover:text-rose-500 tap" title="Delete">✕</button>
       </form>
       {% endif %}
     </li>
@@ -56,7 +56,7 @@
 </section>
 
 {# Binders and decks are the other two location kinds; they live in their own tabs. #}
-<div class="grid sm:grid-cols-2 gap-6">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
   <section>
     <h2 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">
       Binders <a href="/collection?tab=binders" class="ml-1 text-xs normal-case font-normal hover:text-fg">manage →</a>

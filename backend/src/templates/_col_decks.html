@@ -20,7 +20,7 @@
     {% if not read_only %}
     <form action="/decks/{{ deck.id }}/delete" method="post"
           onsubmit="return confirm('Delete this deck?')">
-      <button class="text-muted hover:text-rose-500 text-sm" title="Delete">✕</button>
+      <button class="text-muted hover:text-rose-500 text-sm tap" title="Delete">✕</button>
     </form>
     {% endif %}
   </li>

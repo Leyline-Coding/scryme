@@ -2,7 +2,7 @@
 {% block title %}New deck · scryme{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-4 py-6">
-  <header class="flex flex-wrap items-center gap-3 mb-6">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold">New deck</h1>
     <a href="/collection?tab=decks" class="ml-auto text-sm text-muted hover:text-fg">Decks →</a>
@@ -36,7 +36,7 @@
       <div class="flex gap-2">
         <input type="url" name="url" required value="{{ url or '' }}"
           placeholder="https://www.moxfield.com/decks/…"
-          class="flex-1 rounded-lg bg-surface-2 border border-edge px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
+          class="flex-1 min-w-0 rounded-lg bg-surface-2 border border-edge px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
         <button type="submit" :disabled="busy"
           class="rounded-lg bg-accent text-accent-fg px-4 py-2 font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-wait">
           <span x-show="!busy">Fetch</span><span x-show="busy" x-cloak>Fetching…</span>

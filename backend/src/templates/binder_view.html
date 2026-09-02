@@ -2,7 +2,7 @@
 {% block title %}{{ binder.name }} · Binders · scryme{% endblock %}
 {% block content %}
 <div class="max-w-4xl mx-auto px-4 py-6">
-  <header class="flex flex-wrap items-center gap-3 mb-4">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-4">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold truncate">{{ binder.name }}</h1>
     <a href="/binders" class="ml-auto text-sm text-muted hover:text-fg shrink-0">← Binders</a>
@@ -33,7 +33,7 @@
       {% if not read_only %}
       <form method="post" action="/binders/{{ binder.id }}/remove-card" class="absolute top-1 right-1">
         <input type="hidden" name="scryfall_id" value="{{ c.scryfall_id }}" />
-        <button title="Remove from binder" class="rounded bg-black/60 text-white text-xs px-1.5 leading-5 opacity-0 group-hover:opacity-100">✕</button>
+        <button title="Remove from binder" class="rounded bg-black/60 text-white text-xs px-1.5 leading-5 opacity-0 group-hover:opacity-100 tap">✕</button>
       </form>
       {% endif %}
     </div>

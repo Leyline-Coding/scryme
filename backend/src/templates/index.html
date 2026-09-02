@@ -158,7 +158,7 @@
     <p class="text-xs text-muted mb-2">Since {{ digest.baseline_at.strftime('%b %-d') }}
       · now ${{ '{:,.2f}'.format(digest.end_value) }}</p>
     {% if digest.gainers or digest.losers %}
-    <div class="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
       {% for m in digest.gainers[:5] %}
       <a href="/card/{{ m.scryfall_id }}" class="flex items-center justify-between gap-2 hover:text-accent">
         <span class="truncate">{{ m.name }} <span class="text-[10px] text-muted uppercase">{{ m.set_code }}</span></span>

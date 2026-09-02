@@ -2,7 +2,7 @@
 {% block title %}Advanced search · scryme{% endblock %}
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 py-6" x-data="advancedSearch()">
-  <header class="flex flex-wrap items-center gap-3 mb-6">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold">Advanced search</h1>
     <a href="/search" class="ml-auto text-sm text-muted hover:text-fg">Plain search →</a>
@@ -66,7 +66,7 @@
     {# Numeric ranges #}
     <fieldset class="rounded-xl bg-surface ring-1 ring-edge p-4 space-y-3">
       <legend class="px-1 text-sm font-semibold text-muted">Stats</legend>
-      <div class="grid sm:grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <template x-for="r in ranges" :key="r.key">
           <div class="flex items-center gap-2">
             <span class="text-sm w-28" x-text="r.label"></span>
@@ -94,7 +94,7 @@
           </label>
         </template>
       </div>
-      <div class="grid sm:grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label class="block"><span class="text-sm">Set code</span>
           <input type="text" x-model="set" placeholder="e.g. mh2"
             class="mt-1 w-full rounded-lg bg-bg border border-edge px-3 py-2 text-sm" /></label>

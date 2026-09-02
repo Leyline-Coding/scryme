@@ -67,8 +67,8 @@
       </p>
       <ul class="divide-y divide-edge">
         {% for c in preview.conflicts %}
-        <li class="px-4 py-2 flex items-center justify-between gap-3 text-sm">
-          <span>{{ c.name }}
+        <li class="px-4 py-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
+          <span class="min-w-0">{{ c.name }}
             <span class="text-muted">({{ c.finish }}) {{ c.existing_qty }} → +{{ c.import_qty }}</span>
           </span>
           <select name="decision_{{ c.index }}"

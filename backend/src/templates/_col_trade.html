@@ -23,7 +23,7 @@
       {% if not read_only %}
       <form method="post" action="/trade/pool/{{ p.pool.id }}/delete" class="shrink-0"
             onsubmit="return confirm('Discard this trade? Your collection is not changed.')">
-        <button type="submit" class="text-muted hover:text-rose-500" title="Discard">✕</button>
+        <button type="submit" class="text-muted hover:text-rose-500 tap" title="Discard">✕</button>
       </form>
       {% endif %}
     </li>

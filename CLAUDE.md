@@ -154,19 +154,18 @@ fake and never hit the network.
 
 ## Status
 
-All milestones through **#13 (Collection Pricing, Selling & Grading)** are complete, as are
-**#8 (Collection & physical organization)** and **#9 (Platform: API & AI)**. Current release line
-is **0.26.x**; migrations through `0030_pref_card_size`.
+**Six of the eight milestones are closed**: #7 (Decks & EDH tooling), #8 (Collection & physical
+organization), #9 (Platform: API & AI), #10 (UX, mobile & polish), #13 (Collection Pricing, Selling
+& Grading) and #14 (Trade Function). Current release line is **0.26.x**; migrations through
+`0035_share_link`.
 
 In flight:
-- **Milestone #12 — Settings & multi-device foundation.** The server-backed preferences singleton
-  and unified `/settings` page have shipped; remaining work is per-device API tokens (#204), the
-  single-collection-vs-accounts ADR spike (#205), and concurrent-edit safety (#207).
-- **Milestone #11 — Cross-app integration.** Not started. A companion scanner app ("scanme")
-  consuming a batch scan-ingest API (#164), QR device pairing (#165), SSE live updates (#166),
-  perceptual-hash card recognition (#167), scan sessions (#168), and decklist OCR (#169). Depends
-  on #204.
-- **Milestone #7 — Decks & EDH tooling.** Two quality items left: making heuristic (#294) and
-  AI-grounded (#295) upgrade suggestions synergy-aware rather than merely legal.
-- **Milestone #10 — UX, mobile & polish.** Read-only share links (#80) and the mobile-responsive
-  pass (#68).
+- **Milestone #11 — Cross-app integration.** The last unstarted epic, and now unblocked: a companion
+  scanner app ("scanme") consuming a batch scan-ingest API (#164), QR device pairing (#165), SSE
+  live updates (#166), perceptual-hash card recognition (#167), scan sessions (#168) and decklist
+  OCR (#169), plus QR-matched trading (#286). #209 tracks the producer/consumer contract map
+  against the scanme repo. Per-device tokens (#204) shipped, so nothing here is blocked any more.
+- **Milestone #12 — Settings & multi-device foundation.** The preferences singleton, unified
+  `/settings` page and per-device API tokens have shipped, as has the optimistic-concurrency half
+  of #207 (a `version` guard on `collection_card`, HTTP 409 on mismatch). #207 stays open for its
+  live-sync half, which should share the SSE stream with #166.

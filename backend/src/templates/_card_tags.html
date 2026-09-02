@@ -4,7 +4,7 @@
   <span class="inline-flex items-center gap-1 rounded bg-surface-2 text-xs px-2 py-0.5">
     {{ t }}
     {% if not read_only %}
-    <button type="button" title="Remove tag" class="text-muted hover:text-rose-500 leading-none"
+    <button type="button" title="Remove tag" class="text-muted hover:text-rose-500 leading-none tap"
             hx-post="/card/{{ card_id }}/tags/delete"
             hx-vals='{"tag": {{ t | tojson }}}'
             hx-target="#card-tags" hx-swap="outerHTML">×</button>

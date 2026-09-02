@@ -133,6 +133,17 @@
     {% endif %}
 
     {% if not read_only %}
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-4">
+      <h2 class="text-sm font-semibold mb-2">Pair a scanner</h2>
+      <p class="text-xs text-muted mb-3">
+        Show a QR code carrying this instance's address and a token, so a scanner app can connect
+        without anyone typing a 43-character secret into a phone.
+      </p>
+      <a href="/pair" class="inline-block rounded-lg bg-accent text-accent-fg px-3 py-1.5 text-sm font-medium">
+        Show pairing code →
+      </a>
+    </section>
+
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
       <h2 class="text-sm font-semibold mb-2">New device token</h2>
       <form method="post" action="/settings/devices" class="flex flex-wrap items-end gap-2 text-sm">

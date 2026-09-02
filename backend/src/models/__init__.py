@@ -18,6 +18,7 @@ from src.models.price import CardPricePoint, PriceSnapshot
 from src.models.price_target import PriceTarget
 from src.models.rules_chunk import RulesChunk
 from src.models.saved_search import SavedSearch
+from src.models.scan_batch import ScanBatch
 from src.models.set_release import SetRelease
 from src.models.share_link import ShareLink
 from src.models.staging import ImportStaging
@@ -30,6 +31,7 @@ __all__ = [
     "Deck", "DeckCard", "DeckVersion", "DeckChatMessage", "ImportSnapshot", "IngestState",
     "ImportStaging",
     "LLMSettings", "Preferences",
-    "PriceSnapshot", "PriceTarget", "RulesChunk", "SavedSearch", "SetRelease", "ShareLink",
+    "PriceSnapshot", "PriceTarget", "RulesChunk", "SavedSearch", "ScanBatch", "SetRelease",
+    "ShareLink",
     "TradePool", "TradePoolItem", "WishlistItem",
 ]

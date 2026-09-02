@@ -74,6 +74,78 @@ Omitting `version` applies the write regardless, so existing clients are unaffec
 | `POST` | `/api/v1/collection` | Add/increment an owned stack (`scryfall_id`, `quantity`, `finish`, …). |
 | `POST` / `DELETE` | `/api/v1/cards/{id}/tags` | Add / remove a tag. |
 | `POST` | `/api/v1/wishlist` · `DELETE` `/api/v1/wishlist/{id}` | Add / remove a wishlist entry. |
+| `POST` | `/api/v1/scan` | [Batch scan ingest](#batch-scan-ingest) — increment-merge a batch of scanned cards. |
+
+## Batch scan ingest
+
+`POST /api/v1/scan` adds a batch of scanned cards straight to your collection, skipping the
+scan → export CSV → upload loop. It's what the companion scanner app talks to, but it's an ordinary
+endpoint — anything that can identify a printing can use it.
+
+Identify each row by `scryfall_id`, or by `set` + `collector_number`, or (least precisely) by
+`name`. Rows are resolved by the same matcher a CSV import uses, and anything that doesn't resolve
+comes back in the response instead of failing the batch.
+
+```bash
+curl -X POST http://localhost:8080/api/v1/scan \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'content-type: application/json' \
+  -H 'Idempotency-Key: box-a-2026-09-02-001' \
+  -d '{
+        "location": "Box A",
+        "rows": [
+          {"scryfall_id": "e3285e6b-3e79-4d7c-bf96-d920f973b0d5", "quantity": 2},
+          {"set": "mh2", "collector_number": "122", "finish": "foil"},
+          {"name": "Llanowar Elves"}
+        ]
+      }'
+```
+
+The response reports each row in the order you sent it — what it resolved to, and how — plus the
+totals:
+
+```json
+{
+  "ok": true, "replayed": false, "idempotency_key": "box-a-2026-09-02-001",
+  "total_rows": 3, "matched": 3, "unmatched": 0,
+  "inserted": 3, "updated": 0, "total_quantity": 4, "location": "Box A",
+  "rows": [
+    {"index": 0, "matched": true, "method": "scryfall_id", "quantity": 2, "name": "…"},
+    {"index": 1, "matched": true, "method": "set_number", "quantity": 1, "name": "Lightning Bolt"},
+    {"index": 2, "matched": true, "method": "name", "quantity": 1, "name": "Llanowar Elves"}
+  ]
+}
+```
+
+Cards are always **added** to what you already own — there's no replace mode, because a scan is
+unambiguously an addition. A `location` applies to the whole batch and keeps those copies as their
+own stack, so filing a box doesn't silently move cards that were never in it.
+
+### Send an `Idempotency-Key`
+
+A scanner runs on a phone, on a home network, with an offline queue — so the same batch will
+eventually be sent twice. Give each batch a key and the second arrival returns the first one's
+response with `"replayed": true`, without adding the cards again. A retry is then safe to do
+blindly, which is the only way to make "did that land?" answerable after a timeout.
+
+Keep the key stable across retries of *the same* batch and different between batches. Without a
+key, every request is applied as sent.
+
+### Pairing a device
+
+Rather than typing an address and a 43-character token into a phone, open **`/pair`** (or
+**Settings → Devices → Show pairing code**). It mints a fresh per-device token and shows a QR
+carrying exactly this:
+
+```json
+{"base_url": "http://192.168.1.5:8080", "token": "scryme_…"}
+```
+
+The token is an ordinary device token, revocable on its own from Settings → Devices. If you're
+looking at the page over `localhost` — which you usually are, pairing from the machine running
+scryme — the code uses your machine's network address instead, since a phone can't reach
+`localhost`. On the desktop app the other device also needs
+[LAN sharing](../getting-started/desktop.md) turned on; the pairing page says so when it's off.
 
 ## Example
 

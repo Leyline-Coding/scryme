@@ -2326,7 +2326,7 @@ the in-app Settings page overrides them):</p>
 <h3 id="one-time-backfills-optional">One-time backfills (optional)</h3>
 <p>Two features rely on locally-computed embeddings, so run these once after setting an embedding
 model:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Semantic &quot;Similar cards&quot; for the cards you own</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Semantic "Similar cards" for the cards you own</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>backend<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>backfill-embeddings
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Grounded rules Q&amp;A over the Comprehensive Rules (bundled)</span>

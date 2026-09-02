@@ -1947,10 +1947,10 @@
 <h2 id="using-regex">Using regex</h2>
 <p>Wrap a pattern in slashes. A bare <code>/…/</code> matches the <strong>card name</strong>; prefix it with a text filter to
 match that field:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>/^Goblin/                 names starting with &quot;Goblin&quot;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>/^Goblin/                 names starting with "Goblin"
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>o:/draws? a card/         oracle text matching the regex
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>t:/(instant|sorcery)/     type line matching either word
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>a:/^John/                 artist starting with &quot;John&quot;
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>a:/^John/                 artist starting with "John"
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>wm:/.+/                   any card that has a watermark
 </code></pre></div>
 <p>Regex is available on the text fields: <strong>name</strong>, <strong><code>o:</code>/oracle</strong>, <strong><code>t:</code>/type</strong>,

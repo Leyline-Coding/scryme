@@ -2053,8 +2053,8 @@ UI), or fetch the schema from <strong><code>/openapi.json</code></strong>.</p>
 <p>By default the API is <strong>open</strong> — fine for a single-user instance on your own machine or LAN. There
 are two ways to close it, and they work together.</p>
 <p>Either way, the credential goes in one of two headers:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span>https://your-host/api/v1/stats
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># or:  -H &quot;X-API-Key: $TOKEN&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">"</span><span class="w"> </span>https://your-host/api/v1/stats
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># or:  -H "X-API-Key: $TOKEN"</span>
 </code></pre></div>
 <h3 id="device-tokens-recommended">Device tokens (recommended)</h3>
 <p><strong>Settings → Devices</strong> issues a labelled token per app — one for the scanner, one for a script, one
@@ -2085,8 +2085,8 @@ your instance.</p>
 <p>Collection rows carry a <code>version</code>. Send it back on <code>PATCH /api/v1/collection/{id}</code> (in the body) or
 <code>DELETE /api/v1/collection/{id}?version=</code> and the write is refused with <strong><code>409</code></strong> if the row changed
 since you read it, instead of overwriting whatever changed:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span><span class="nt">&quot;detail&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;stale&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;This stack changed since it was loaded.&quot;</span><span class="p">,</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">            </span><span class="nt">&quot;current_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">7</span><span class="p">}}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span><span class="nt">"detail"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"error"</span><span class="p">:</span><span class="w"> </span><span class="s2">"stale"</span><span class="p">,</span><span class="w"> </span><span class="nt">"message"</span><span class="p">:</span><span class="w"> </span><span class="s2">"This stack changed since it was loaded."</span><span class="p">,</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">            </span><span class="nt">"current_version"</span><span class="p">:</span><span class="w"> </span><span class="mi">7</span><span class="p">}}</span>
 </code></pre></div>
 <p>The current version comes back with the error so you can retry deliberately rather than blindly.
 Omitting <code>version</code> applies the write regardless, so existing clients are unaffected.</p>
@@ -2144,12 +2144,12 @@ Omitting <code>version</code> applies the write regardless, so existing clients 
 </table>
 <h2 id="example">Example</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Search your collection for red instants under 3 mana</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>curl<span class="w"> </span><span class="s2">&quot;http://localhost:8080/api/v1/search?q=c:r+t:instant+mv&lt;=2&quot;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>curl<span class="w"> </span><span class="s2">"http://localhost:8080/api/v1/search?q=c:r+t:instant+mv&lt;=2"</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Add four foil copies of a printing</span>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/api/v1/collection<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">&#39;content-type: application/json&#39;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;scryfall_id&quot;:&quot;...&quot;,&quot;quantity&quot;:4,&quot;finish&quot;:&quot;foil&quot;}&#39;</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"scryfall_id":"...","quantity":4,"finish":"foil"}'</span>
 </code></pre></div>
 
 

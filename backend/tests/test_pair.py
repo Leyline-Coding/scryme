@@ -146,14 +146,25 @@ def test_a_loopback_url_is_left_alone_and_flagged_when_the_host_ip_is_unknowable
     assert base == "http://localhost:8080" and "172.20" not in base
 
 
-def test_a_loopback_url_without_an_explicit_port_uses_the_scheme_default(monkeypatch):
+def test_only_the_host_is_substituted_never_the_scheme(monkeypatch):
+    """Hardcoding http would turn an https origin into "http://<ip>:443" — a self-contradiction."""
     from src.routes import pair as pair_routes
 
     monkeypatch.setattr(pair_routes, "local_ip", lambda: "10.0.0.2")
     base, _ = pair_routes.pairing_base_url(
         _req("localhost", None, "https", "https://localhost/"), can_resolve_host_ip=True
     )
-    assert base == "http://10.0.0.2:443"
+    assert base == "https://10.0.0.2:443"
+
+
+def test_a_plain_http_origin_keeps_its_scheme_and_default_port(monkeypatch):
+    from src.routes import pair as pair_routes
+
+    monkeypatch.setattr(pair_routes, "local_ip", lambda: "10.0.0.2")
+    base, _ = pair_routes.pairing_base_url(
+        _req("localhost", None, "http", "http://localhost/"), can_resolve_host_ip=True
+    )
+    assert base == "http://10.0.0.2:80"
 
 
 @pytest.mark.asyncio

@@ -67,8 +67,11 @@ def pairing_base_url(request: Request, *, can_resolve_host_ip: bool = False) -> 
         return base, REACHABLE
     if not can_resolve_host_ip:
         return base, UNREACHABLE
-    port = request.url.port or (443 if request.url.scheme == "https" else 80)
-    return f"http://{local_ip()}:{port}", REWRITTEN
+    # Only the host is substituted. Hardcoding the scheme would rewrite an https origin to
+    # "http://<ip>:443" — a URL that contradicts itself and connects to nothing.
+    scheme = request.url.scheme
+    port = request.url.port or (443 if scheme == "https" else 80)
+    return f"{scheme}://{local_ip()}:{port}", REWRITTEN
 
 
 def pairing_payload(base_url: str, token: str) -> str:

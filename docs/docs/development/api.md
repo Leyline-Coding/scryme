@@ -87,7 +87,7 @@ Identify each row by `scryfall_id`, or by `set` + `collector_number`, or (least 
 comes back in the response instead of failing the batch.
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/scan \
+curl -X POST https://your-scryme-instance/api/v1/scan \
   -H "Authorization: Bearer $TOKEN" \
   -H 'content-type: application/json' \
   -H 'Idempotency-Key: box-a-2026-09-02-001' \
@@ -151,10 +151,10 @@ scryme — the code uses your machine's network address instead, since a phone c
 
 ```bash
 # Search your collection for red instants under 3 mana
-curl "http://localhost:8080/api/v1/search?q=c:r+t:instant+mv<=2"
+curl "https://your-scryme-instance/api/v1/search?q=c:r+t:instant+mv<=2"
 
 # Add four foil copies of a printing
-curl -X POST http://localhost:8080/api/v1/collection \
+curl -X POST https://your-scryme-instance/api/v1/collection \
   -H 'content-type: application/json' \
   -d '{"scryfall_id":"...","quantity":4,"finish":"foil"}'
 ```

@@ -10,7 +10,13 @@
   {% if share_new %}
   <div class="rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/40 p-3 mb-3">
     <p class="text-xs text-emerald-500 font-semibold mb-1">Link created</p>
-    <code class="block break-all rounded bg-bg px-2.5 py-1.5 text-xs select-all">{{ request.base_url|string|trim('/') }}/share/{{ share_new }}</code>
+    <div class="flex gap-2 items-start">
+      <code class="block break-all rounded bg-bg px-2.5 py-1.5 text-xs select-all flex-1">{{ request.base_url|string|trim('/') }}/share/{{ share_new }}</code>
+      <button type="button" class="shrink-0 rounded bg-emerald-500 text-white px-2 py-1 text-xs font-medium hover:opacity-80"
+              onclick="navigator.clipboard.writeText('{{ request.base_url|string|trim('/') }}/share/{{ share_new }}').then(() => { const btn = this; const orig = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = orig; }, 2000); })">
+        Copy
+      </button>
+    </div>
   </div>
   {% endif %}
 

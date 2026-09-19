@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import gzip
+import json
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,6 +26,7 @@ from src.db import SessionLocal
 from src.models import Card, IngestState
 from src.scryfall.client import ScryfallClient
 from src.scryfall.mapping import card_to_columns
+
 
 log = structlog.get_logger()
 
@@ -69,12 +71,16 @@ def _is_paper(raw: dict) -> bool:
 
 
 def _read_batches(path: Path, batch_size: int = BATCH_SIZE) -> Iterator[list[dict]]:
-    """Yield lists of raw card dicts from a (gzip or plain) JSON array file (paper cards only)."""
+    """Yield lists of raw card dicts from a gzip/plain JSONL file."""
     opener = gzip.open if _is_gzip(path) else open
-    with opener(path, "rb") as fh:
+    with opener(path, "rt", encoding="utf-8") as fh:
         batch: list[dict] = []
-        # use_float keeps numbers as float (not Decimal), so raw is JSON-serializable for JSONB.
-        for obj in ijson.items(fh, "item", use_float=True):
+
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            obj = json.loads(line)
             if not _is_paper(obj):
                 continue
             batch.append(obj)
@@ -187,8 +193,24 @@ async def ingest_default_cards(
         await _set_status("running")
         _set_progress(phase="downloading", ingested=0, total=ESTIMATED_TOTAL, error=None)
         dest = settings.data_dir / "default_cards.json.gz"
-        log.info("scryfall.ingest.download", url=entry["download_uri"], dest=str(dest))
-        await sc.download_to_file(entry["download_uri"], dest)
+        
+        download_uri = (
+            entry.get("download_uri")
+            or entry.get("jsonl_download_uri")
+        )
+        
+        if not download_uri:
+            raise RuntimeError(
+                f"No download URI found in bulk entry: {entry}"
+            )
+
+        log.info(
+            "scryfall.ingest.download",
+            url=download_uri,
+            dest=str(dest),
+        )
+
+        await sc.download_to_file(download_uri, dest)
 
     try:
         _set_progress(phase="ingesting", total=ESTIMATED_TOTAL)

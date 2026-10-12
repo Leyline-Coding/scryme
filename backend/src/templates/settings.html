@@ -89,7 +89,13 @@
         Copy it now — this is the only time it is shown. Only a hash is stored, so it can't be
         recovered later; if you lose it, revoke it and issue another.
       </p>
-      <code class="block break-all rounded bg-bg px-3 py-2 text-sm select-all">{{ issued_token }}</code>
+      <div class="flex gap-2 items-start">
+        <code class="block break-all rounded bg-bg px-3 py-2 text-sm select-all flex-1">{{ issued_token }}</code>
+        <button type="button" class="shrink-0 rounded bg-emerald-500 text-white px-2 py-1.5 text-xs font-medium hover:opacity-80"
+                onclick="navigator.clipboard.writeText('{{ issued_token }}').then(() => { const btn = this; const orig = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = orig; }, 2000); })">
+          Copy
+        </button>
+      </div>
       <p class="text-xs text-muted mt-2">
         Send it as <code class="text-fg">Authorization: Bearer &lt;token&gt;</code> or
         <code class="text-fg">X-API-Key: &lt;token&gt;</code>.
@@ -133,11 +139,22 @@
     {% endif %}
 
     {% if not read_only %}
+    <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-4">
+      <h2 class="text-sm font-semibold mb-2">Pair a device</h2>
+      <p class="text-xs text-muted mb-3">
+        Show a QR code carrying this instance's address and a token, so a scanner app can connect
+        without anyone typing a 43-character secret into a phone.
+      </p>
+      <a href="/pair" class="inline-block rounded-lg bg-accent text-accent-fg px-3 py-1.5 text-sm font-medium">
+        Show pairing code →
+      </a>
+    </section>
+
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
       <h2 class="text-sm font-semibold mb-2">New device token</h2>
       <form method="post" action="/settings/devices" class="flex flex-wrap items-end gap-2 text-sm">
         <label class="flex flex-col">Label
-          <input name="label" placeholder="Pixel scanner" required
+          <input name="label" placeholder="e.g., Pixel scanner" required
                  class="w-48 rounded-lg bg-bg border border-edge px-2.5 py-1.5" /></label>
         <label class="flex flex-col">Access
           <select name="scope" class="rounded-lg bg-bg border border-edge px-2.5 py-1.5">

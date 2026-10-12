@@ -30,6 +30,7 @@ from src.routes import (
     home,
     lan,
     mycollection,
+    pair,
     preferences,
     prices,
     saved,
@@ -189,6 +190,7 @@ def create_app() -> FastAPI:
     app.include_router(preferences.router)
     app.include_router(settings_routes.router)
     app.include_router(lan.router)
+    app.include_router(pair.router)
     app.include_router(watch.router)
     app.include_router(ai.router)
 

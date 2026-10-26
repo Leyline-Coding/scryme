@@ -623,3 +623,15 @@ async def deck_add_owned(
         await session.refresh(deck)
         added = card.name
     return await _render_owned_upgrades(request, deck, session, added=added)
+
+@router.post("/decks/{deck_id}/name")
+async def update_deck_name(
+    request: Request, deck_id: int, name: str = Form(""), session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    deck.name = name
+    await session.commit()
+    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)

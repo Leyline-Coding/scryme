@@ -115,7 +115,37 @@
 <div class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
   <header class="page-header flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
-    <h1 class="text-lg font-semibold truncate">{{ cov.deck.name }}</h1>
+    <h1 class="text-lg font-semibold truncate" x-data="deckView()">
+      <span x-show="!editing" x-text="deckName"></span>
+      <div x-show="editing" x-cloak x-transition>
+        <input type="text" x-model="deckName" @keydown.enter="saveName()" @keydown.escape="editing = false"
+               class="rounded bg-surface-2 border border-edge px-2 py-1 text-sm w-full max-w-[300px]" />
+      </div>
+      <button type="button" @click="editing = !editing"
+              class="ml-2 text-muted hover:text-accent"
+              x-show="!readOnly">✎</button>
+    </h1>
+    <script>
+      document.addEventListener('alpine:init', () => {
+        Alpine.data('deckView', () => ({
+          view: localStorage.getItem("scryme_deck_view") || "list",
+          deckName: "{{ cov.deck.name }}",
+          readOnly: {{ "true" if read_only else "false" }},
+          editing: false,
+          setView(v) { this.view = v; localStorage.setItem("scryme_deck_view", v); },
+          saveName() {
+            const name = this.deckName;
+            fetch('/decks/{{ cov.deck.id }}/name', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: `name=${encodeURIComponent(name)}`
+            }).then(() => {
+              this.editing = false;
+            });
+          }
+        }));
+      });
+    </script>
     <a href="/collection?tab=decks" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Decks →</a>
   </header>
 

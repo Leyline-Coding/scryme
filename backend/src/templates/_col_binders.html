@@ -5,22 +5,29 @@
 </p>
 
 {% if not read_only %}
-<form method="post" action="/binders/new" class="flex gap-2 mb-5 max-w-md">
-  <input type="text" name="name" required placeholder="New binder name"
-         class="flex-1 min-w-0 rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
-  <button class="rounded-lg bg-accent text-accent-fg px-3 py-2 text-sm font-medium">Add binder</button>
-</form>
+<div class="flex justify-end gap-2 mb-3">
+  <form method="post" action="/binders/new" class="flex gap-2 max-w-md">
+    <input type="text" name="name" required placeholder="New binder name"
+          class="flex-1 min-w-0 rounded-full bg-surface-2 border border-edge px-3 py-2 text-sm" />
+    <button class="rounded-full bg-accent text-accent-fg px-3 py-2 text-sm font-medium">Add binder</button>
+  </form>
+</div>
 {% endif %}
 
 {% if binders %}
-<ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+<ul class="space-y-2">
   {% for b in binders %}
-  <li>
-    <a href="/binders/view/{{ b.id }}"
-       class="block rounded-xl bg-surface ring-1 ring-edge px-4 py-3 hover:ring-accent transition">
+  <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3">
+    <a href="/binders/view/{{ b.id }}" class="flex-1 min-w-0">
       <div class="font-medium truncate">{{ b.name }}</div>
       <div class="text-xs text-muted">{{ '{:,}'.format(b.count) }} card{{ '' if b.count == 1 else 's' }}</div>
     </a>
+    {% if not read_only %}
+    <form action="/binders/{{ b.id }}/delete" method="post"
+          onsubmit="return confirm('Delete this binder?')">
+      <button class="text-muted hover:text-rose-500 text-sm tap" title="Delete">✕</button>
+    </form>
+    {% endif %}
   </li>
   {% endfor %}
 </ul>

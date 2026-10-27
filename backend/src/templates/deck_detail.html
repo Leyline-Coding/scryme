@@ -385,6 +385,9 @@
       <button type="button" @click="setView('grid')"
               :class="view === 'grid' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
               class="rounded px-2 py-0.5 text-xs">Grid</button>
+      <button type="button" @click="setView('grid-combined')"
+              :class="view === 'grid-combined' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
+              class="rounded px-2 py-0.5 text-xs">Grid (Combined)</button>
     </div>
     {# Full width unless there's a sideboard to sit beside it — otherwise a Commander deck's
        grid is squeezed into one column and the cards are unreadable. #}
@@ -396,6 +399,7 @@
          become one endless narrow column. Beside a sideboard it stays single-column. #}
       <div x-show="view === 'list'"{% if not cov.side %} class="lg:columns-2 xl:columns-3 [column-gap:2rem]"{% endif %}>{{ rows(cov.main) }}</div>
       <div x-show="view === 'grid'" x-cloak>{{ grid(cov.main) }}</div>
+      <div x-show="view === 'grid-combined'" x-cloak>{{ grid(cov_combined.main) }}</div>
     </section>
     {% if cov.side %}
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
@@ -404,6 +408,7 @@
       </h2>
       <div x-show="view === 'list'">{{ rows(cov.side) }}</div>
       <div x-show="view === 'grid'" x-cloak>{{ grid(cov.side) }}</div>
+      <div x-show="view === 'grid-combined'" x-cloak>{{ grid(cov_combined.side) }}</div>
     </section>
     {% endif %}
   </div>

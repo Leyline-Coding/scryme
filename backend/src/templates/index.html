@@ -155,7 +155,7 @@
         <span class="text-muted">({{ '{:+.1f}'.format(digest.pct) }}%)</span>
       </p>
     </div>
-    <p class="text-xs text-muted mb-2">Since {{ digest.baseline_at.strftime('%b %-d') }}
+    <p class="text-xs text-muted mb-2">Since {{ digest.baseline_at.strftime('%b %d').replace(' 0', ' ') }}
       · now ${{ '{:,.2f}'.format(digest.end_value) }}</p>
     {% if digest.gainers or digest.losers %}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">

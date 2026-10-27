@@ -11,10 +11,13 @@ from __future__ import annotations
 import datetime
 import re
 import uuid
+import copy
 from dataclasses import dataclass, field
 
 from sqlalchemy import func, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from collections import OrderedDict
 
 from src.currency import unit_price
 from src.models import Card, CollectionCard, Deck, DeckCard
@@ -613,6 +616,45 @@ async def deck_coverage(
     # Missing math, counted once per oracle (and per unmatched line).
     _tally_missing(cov, deck, needed_by_oracle, owned, price_by_sid, oracle_sid, currency)
     return cov
+
+
+
+def deck_coverage_combined(coverage: DeckCoverage) -> DeckCoverage:
+    """Combine rows by English card name, separately for main and side.
+
+    The original DeckCoverage and its rows are not modified.
+    """
+    combined_coverage = DeckCoverage(
+        deck=coverage.deck,
+        fmt=coverage.fmt,
+    )
+
+    def combine_rows(rows: list[CardRow]) -> list[CardRow]:
+        combined = OrderedDict()
+
+        for entry in rows:
+            # Card names are used as the grouping key.
+            key = entry.name.strip().casefold()
+
+            if key not in combined:
+                combined[key] = entry
+            else:
+                # Copy the representative row so the original is untouched.
+                current = copy.deepcopy(combined[key])
+                current.quantity += entry.quantity
+                combined[key] = current
+
+        return list(combined.values())
+
+    combined_coverage.main = combine_rows(coverage.main)
+    combined_coverage.side = combine_rows(coverage.side)
+
+    # Preserve coverage-level totals and status.
+    combined_coverage.total_needed = coverage.total_needed
+    combined_coverage.illegal_count = coverage.illegal_count
+
+    return combined_coverage
+
 
 
 @dataclass

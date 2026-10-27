@@ -374,6 +374,7 @@ class CardRow:
     set_code: str | None = None     # representative printing shown for this line
     set_name: str | None = None
     collector_number: str | None = None
+    release_date: str | None = None  # Scryfall printing release date (YYYY-MM-DD)
     proxy: bool = False             # printed proxy
     special: bool = False           # art card / alter / other genuine non-standard copy
     language: str = "en"            # language the copy is played in (Scryfall code)
@@ -521,24 +522,44 @@ def proxy_cards(cov: DeckCoverage, source: str = "proxy",
 
 
 async def _load_deck_printings(session: AsyncSession, sids: list, source: str):
-    """Per-sid price map, printing tuple, and oracle→sid map for the deck's resolved cards."""
+    """Per-sid price map, printing metadata, and oracle→sid map."""
     price_by_sid: dict[str, dict] = {}
-    print_by_sid: dict[str, tuple] = {}   # sid -> (set_code, set_name, collector_number)
+    print_by_sid: dict[str, tuple] = {}
     oracle_sid: dict = {}
+
     if not sids:
         return price_by_sid, print_by_sid, oracle_sid
+
     rows = (
         await session.execute(
             select(
-                Card.scryfall_id, Card.oracle_id, Card.prices, Card.market_prices,
-                Card.set_code, Card.set_name, Card.collector_number,
+                Card.scryfall_id,
+                Card.oracle_id,
+                Card.prices,
+                Card.market_prices,
+                Card.set_code,
+                Card.set_name,
+                Card.collector_number,
+                Card.raw,
             ).where(Card.scryfall_id.in_(sids))
         )
     ).all()
-    for sid, oracle, prices, market_prices, set_code, set_name, collector in rows:
-        price_by_sid[str(sid)] = resolve_prices(prices, market_prices, source) or {}
-        print_by_sid[str(sid)] = (set_code, set_name, collector)
+
+    for sid, oracle, prices, market_prices, set_code, set_name, collector, raw in rows:
+        price_by_sid[str(sid)] = resolve_prices(
+            prices, market_prices, source
+        ) or {}
+
+        release_date = raw.get("released_at") if isinstance(raw, dict) else None
+
+        print_by_sid[str(sid)] = (
+            set_code,
+            set_name,
+            collector,
+            release_date,
+        )
         oracle_sid[oracle] = str(sid)
+
     return price_by_sid, print_by_sid, oracle_sid
 
 
@@ -598,16 +619,24 @@ async def deck_coverage(
     illegal_oracles: set = set()
     for c in deck.cards:
         legality = _card_legality(c, fmt, legal_by_oracle, illegal_oracles)
-        set_code, set_name, collector = print_by_sid.get(str(c.scryfall_id), (None, None, None))
+        set_code, set_name, collector, release_date = print_by_sid.get(str(c.scryfall_id), (None, None, None, None))
         row = CardRow(
-            name=c.name, quantity=c.quantity, board=c.board,
+            name=c.name,
+            quantity=c.quantity,
+            board=c.board,
             owned=owned.get(c.oracle_id, 0) if c.oracle_id else 0,
             matched=c.oracle_id is not None,
             scryfall_id=str(c.scryfall_id) if c.scryfall_id else None,
             legality=legality,
             card_id=c.id,
-            set_code=set_code, set_name=set_name, collector_number=collector,
-            proxy=c.proxy, special=c.special, language=c.language, finish=c.finish,
+            set_code=set_code,
+            set_name=set_name,
+            collector_number=collector,
+            release_date=release_date,
+            proxy=c.proxy,
+            special=c.special,
+            language=c.language,
+            finish=c.finish,
         )
         (cov.main if c.board == "main" else cov.side).append(row)
         cov.total_needed += c.quantity
@@ -633,16 +662,24 @@ def deck_coverage_combined(coverage: DeckCoverage) -> DeckCoverage:
         combined = OrderedDict()
 
         for entry in rows:
-            # Card names are used as the grouping key.
             key = entry.name.strip().casefold()
 
             if key not in combined:
-                combined[key] = entry
+                combined[key] = copy.deepcopy(entry)
+                continue
+
+            current = combined[key]
+            total_quantity = current.quantity + entry.quantity
+
+            # Keep the printing with the latest release date.
+            # ISO dates (YYYY-MM-DD) can be compared lexicographically.
+            if (entry.release_date or "") > (current.release_date or ""):
+                representative = copy.deepcopy(entry)
             else:
-                # Copy the representative row so the original is untouched.
-                current = copy.deepcopy(combined[key])
-                current.quantity += entry.quantity
-                combined[key] = current
+                representative = current
+
+            representative.quantity = total_quantity
+            combined[key] = representative
 
         return list(combined.values())
 

@@ -45,7 +45,7 @@ from src.decks import (
     resync_printings,
 )
 from src.llm import get_config
-from src.models import Card, Deck, DeckCard, DeckVersion
+from src.models import Card, CollectionCard, Deck, DeckCard, DeckVersion
 from src.pricing import get_price_source
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
@@ -491,6 +491,39 @@ async def resync_deck_printings(
     return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
 
 
+@router.post("/decks/{deck_id}/replace-list")
+async def replace_deck_list(
+    deck_id: int, decklist_text: str = Form(""), session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    """Replace the entire deck content with a new list from a textarea.
+    """
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+
+    # Clear existing cards
+    for card in deck.cards:
+        await session.delete(card)
+    await session.flush()
+
+    from src.decks import _merge_lines, parse_decklist, _resolve_names, _resolve_exact, _printing_for
+
+    parsed = _merge_lines(parse_decklist(decklist_text))
+    owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
+    resolved = await _resolve_names(session, [p.name for p in parsed], owned_sids)
+    exact = await _resolve_exact(session, {(p.set_code, p.collector_number) for p in parsed})
+
+    for p in parsed:
+        oracle, sid = _printing_for(p, exact, resolved)
+        deck.cards.append(
+            DeckCard(name=p.name, quantity=p.quantity, board=p.board,
+                     oracle_id=oracle, scryfall_id=sid, finish=p.finish)
+        )
+
+    await session.commit()
+    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+
 @router.post("/decks/{deck_id}/delete")
 async def delete_deck(deck_id: int, session: AsyncSession = Depends(get_session)):
     _guard_writable()
@@ -502,6 +535,7 @@ async def delete_deck(deck_id: int, session: AsyncSession = Depends(get_session)
         await session.delete(deck)
         await session.commit()
     return RedirectResponse(url="/decks", status_code=303)
+
 
 
 @router.post("/decks/{deck_id}/wishlist")

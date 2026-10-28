@@ -22,7 +22,7 @@ from collections import OrderedDict
 from src.currency import unit_price
 from src.models import Card, CollectionCard, Deck, DeckCard
 from src.pricing import resolve_prices
-from src.stats import Bar, _bars, _color_bucket
+from src.stats import Bar, _bars, _color_bucket, _primary_type
 
 # These patterns are written so each has exactly one way to match, which is what keeps them
 # linear: no `$` anchor (in Python `$` also matches *before* a trailing newline, so a `\s*$` tail
@@ -736,11 +736,14 @@ _CURVE_ORDER = [str(i) for i in range(_MAX_MV_BUCKET)] + [f"{_MAX_MV_BUCKET}+"]
 class DeckStats:
     mana_curve: list[Bar] = field(default_factory=list)   # nonland spells by mana value (mainboard)
     by_color: list[Bar] = field(default_factory=list)     # mainboard cards by color identity
+    by_type: list[Bar] = field(default_factory=list)        # mainboard cards by type
+    type_counts: dict[str, int] = field(default_factory=dict) # mainboard cards by type (raw)
     total_value: float = 0.0                              # qty * USD across the whole deck
 
     @property
     def has_data(self) -> bool:
         return bool(self.mana_curve or self.by_color or self.total_value)
+
 
 
 async def deck_stats(
@@ -763,19 +766,30 @@ async def deck_stats(
 
     curve: dict[str, int] = {}
     colors: dict[str, int] = {}
+    types: dict[str, int] = {}
     total = 0.0
     for c in deck.cards:
         cmc, ci, type_line, prices = info.get(c.scryfall_id, (None, None, None, None))
         total += c.quantity * unit_price(prices, c.finish, currency)
-        # Curve + color pie cover mainboard nonland spells, so basics don't dominate.
-        if not c.scryfall_id or c.board != "main" or (type_line and "Land" in type_line):
-            continue
-        colors[_color_bucket(ci)] = colors.get(_color_bucket(ci), 0) + c.quantity
-        bucket = f"{_MAX_MV_BUCKET}+" if (cmc or 0) >= _MAX_MV_BUCKET else str(int(cmc or 0))
-        curve[bucket] = curve.get(bucket, 0) + c.quantity
+        
+        # Types are counted for all mainboard cards
+        if c.board == "main" and c.scryfall_id:
+            types[_primary_type(type_line)] = types.get(_primary_type(type_line), 0) + c.quantity
+        
+        # Curve and colors only cover mainboard nonland spells
+        if c.board == "main" and c.scryfall_id and not (type_line and "Land" in type_line):
+            colors[_color_bucket(ci)] = colors.get(_color_bucket(ci), 0) + c.quantity
+            bucket = f"{_MAX_MV_BUCKET}+" if (cmc or 0) >= _MAX_MV_BUCKET else str(int(cmc or 0))
+            curve[bucket] = curve.get(bucket, 0) + c.quantity
 
+
+
+        
+        
     return DeckStats(
         mana_curve=_bars(curve, order=_CURVE_ORDER),
         by_color=_bars(colors),
+        by_type=_bars(types),
+        type_counts=types,
         total_value=round(total, 2),
     )

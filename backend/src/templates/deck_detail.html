@@ -156,11 +156,11 @@
         <div class="text-2xl font-bold">{{ cov.pct_complete }}% owned</div>
         <div class="text-sm text-muted">{{ cov.owned_count }} of {{ cov.total_needed }} cards</div>
       </div>
-      <div class="text-right text-sm">
+      <div class=" class="text-center">
         {% if cov.missing_count %}
         <div class="text-amber-500 font-medium">{{ cov.missing_count }} missing
-          <span class="text-muted">({{ cov.unique_missing }} distinct)</span></div>
-        {% if cov.missing_cost %}<div class="text-muted">≈ {{ cur.symbol }}{{ '{:,.2f}'.format(cov.missing_cost) }} to complete</div>{% endif %}
+          <span class="text-muted">({{ cov.unique_missing }} distinct)</span>
+        </div>
         {% if not read_only and cov.unique_missing > cov.unmatched %}
         <form method="post" action="/decks/{{ cov.deck.id }}/wishlist" class="mt-1">
           <button type="submit" class="text-xs rounded bg-surface-2 hover:bg-surface-3 px-2 py-1">
@@ -170,6 +170,13 @@
         {% endif %}
         {% else %}
         <div class="text-emerald-500 font-medium">Complete — you own everything</div>
+        {% endif %}
+      </div>
+      <div class="text-right text-sm">
+        <div class="text-xs text-muted">Deck value ({{ cur.label }})</div>
+        <div class="text-2xl font-bold">{{ cur.symbol }}{{ '{:,.2f}'.format(stats.total_value) }}</div>
+        {% if cov.missing_count %}
+        {% if cov.missing_cost %}<div class="text-muted">≈ {{ cur.symbol }}{{ '{:,.2f}'.format(cov.missing_cost) }} to complete</div>{% endif %}
         {% endif %}
       </div>
     </div>
@@ -182,173 +189,179 @@
   </div>
 
   {# Legality check #}
-  <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6 md:col-span-2">
-    <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
-      Manage Deck
-    </h2>
-    <div class="flex items-center gap-2 flex-wrap text-sm">
-      <span class="text-muted">Legality:</span>
-      <form method="get" action="/decks/{{ cov.deck.id }}" class="contents">
-        <select name="format" onchange="this.form.submit()"
-          class="rounded-lg bg-surface-2 border border-edge px-2 py-1 text-sm">
-          <option value="">— pick a format —</option>
-          {% for f in formats %}
-          <option value="{{ f }}" {% if cov.fmt == f %}selected{% endif %} class="capitalize">{{ f }}</option>
+  <section x-data="{ open: false }" class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6 md:col-span-2">
+    <div class="flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
+        Manage Deck
+      </h2>
+      <button @click="open = !open" class="text-xs text-muted flex items-center gap-1">
+        <span x-text="open ? 'Collapse' : 'Expand'"></span>
+      </button>
+    </div>
+    <div x-show="open" x-cloak x-transition class="mt-2">
+      <div class="flex items-center gap-2 flex-wrap text-sm">
+        <span class="text-muted">Legality:</span>
+        <form method="get" action="/decks/{{ cov.deck.id }}" class="contents">
+          <select name="format" onchange="this.form.submit()"
+            class="rounded-lg bg-surface-2 border border-edge px-2 py-1 text-sm">
+            <option value="">— pick a format —</option>
+            {% for f in formats %}
+            <option value="{{ f }}" {% if cov.fmt == f %}selected{% endif %} class="capitalize">{{ f }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        {% if cov.fmt %}
+          {% if cov.is_legal %}
+          <span class="text-emerald-500 font-medium">✓ Legal in {{ cov.fmt }}</span>
+          {% elif cov.illegal_count %}
+          <span class="text-rose-500 font-medium">{{ cov.illegal_count }} card(s) not legal in {{ cov.fmt }}</span>
+          {% elif cov.unmatched %}
+          <span class="text-amber-500">Can't confirm — {{ cov.unmatched }} unrecognized card(s)</span>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      {% if not read_only %}
+      <div class="mt-3 pt-3 border-t border-edge text-sm">
+        {% if deck.source_url %}
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-muted">Source:</span>
+          <a href="{{ deck.source_url }}" target="_blank" rel="noopener"
+            class="text-xs text-muted hover:text-accent truncate max-w-[18rem]">{{ deck.source_url }}</a>
+          <form method="post" action="/decks/{{ cov.deck.id }}/resync" class="ml-auto">
+            <button type="submit" title="Re-fetch the source and correct each line's printing + finish"
+                    class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">↻ Re-sync printings</button>
+          </form>
+        </div>
+        {% else %}
+          <form method="post" action="/decks/{{ cov.deck.id }}/replace-list" class="mb-4">
+            <label class="text-muted block mb-1">Replace list:</label>
+            <textarea name="decklist_text" rows="5" class="w-full rounded bg-surface-2 border border-edge px-2 py-1 text-xs" placeholder="Enter card list (e.g. 4 Lightning Bolt)"></textarea>
+            <button type="submit" class="mt-2 rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Replace list</button>
+          </form>
+          <form method="post" action="/decks/{{ cov.deck.id }}/resync" class="flex items-center gap-2 flex-wrap">
+
+          <label class="text-muted shrink-0" for="resync-url">Re-sync printings from</label>
+          <input id="resync-url" type="url" name="url" required placeholder="https://moxfield.com/decks/… or archidekt.com/decks/…"
+                class="flex-1 min-w-[12rem] rounded bg-surface-2 border border-edge px-2 py-1 text-xs" />
+          <button type="submit" title="Fetch this source and correct each line's printing + finish"
+                  class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">↻ Re-sync</button>
+        </form>
+        <p class="mt-1 text-[11px] text-muted">Link a deck imported before printings were tracked to
+          its source to correct each line's printing and foil/etched finish.</p>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {# Export #}
+      <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm">
+        <span class="text-muted">Export:</span>
+        {% for fmt, meta in export_formats.items() %}
+        <a href="/decks/{{ cov.deck.id }}/export?fmt={{ fmt }}"
+          class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">{{ meta[2] }}</a>
+        {% endfor %}
+      </div>
+
+      {# Print proxies (#161): print-and-cut proxy sheets at true card size, in a new tab #}
+      <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm">
+        <span class="text-muted">Print proxies:</span>
+        <a href="/decks/{{ cov.deck.id }}/proxies?source=proxy" target="_blank" rel="noopener"
+          class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Flagged proxies</a>
+        <a href="/decks/{{ cov.deck.id }}/proxies?source=missing" target="_blank" rel="noopener"
+          class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Missing cards</a>
+        <a href="/decks/{{ cov.deck.id }}/proxies?source=all" target="_blank" rel="noopener"
+          class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Whole deck</a>
+      </div>
+
+      {# AI assist #}
+      {% if ai_ready %}
+      <div class="mt-3 pt-3 border-t border-edge text-sm">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-muted">✨ AI:</span>
+          <button hx-post="/decks/{{ cov.deck.id }}/analyze" hx-target="#ai-out" hx-swap="innerHTML"
+                  hx-indicator="#ai-spin"
+                  class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Analyze deck</button>
+          <button hx-post="/decks/{{ cov.deck.id }}/suggest" hx-target="#ai-out" hx-swap="innerHTML"
+                  hx-indicator="#ai-spin"
+                  class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Suggest from collection</button>
+          <form hx-post="/decks/{{ cov.deck.id }}/upgrade" hx-target="#ai-out" hx-swap="innerHTML"
+                hx-indicator="#ai-spin" class="flex items-center gap-1">
+            <span class="text-muted text-xs">Upgrade $</span>
+            <input type="number" name="budget" value="50" min="1" step="5"
+                  class="w-16 rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs" />
+            <button type="submit"
+                    class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Plan</button>
+          </form>
+          <a href="/decks/{{ cov.deck.id }}/chat"
+            class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">💬 Coach</a>
+          <span id="ai-spin" class="htmx-indicator text-xs text-muted">thinking…</span>
+        </div>
+        <div id="ai-out" class="mt-2"></div>
+        <p class="mt-1 text-[11px] text-muted">Sends this deck + your owned cards to your configured AI endpoint.</p>
+      </div>
+      {% endif %}
+
+
+      {# Upgrade from your collection — heuristic owned-card swaps (#181), no AI required #}
+      <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm">
+        <span class="text-muted">🃏 Upgrade from your collection:</span>
+        <button hx-post="/decks/{{ cov.deck.id }}/suggest-owned" hx-target="#owned-out"
+                hx-swap="innerHTML" hx-indicator="#owned-spin"
+                class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Suggest owned cards</button>
+        <span id="owned-spin" class="htmx-indicator text-xs text-muted">finding…</span>
+      </div>
+      <div id="owned-out" class="mt-2"></div>
+      <p class="mt-1 text-[11px] text-muted">
+        Owned, in-colour, Commander-legal cards that fill this deck's thin roles — deterministic, no AI.
+      </p>
+
+      {# Versions & diff (#100) #}
+      <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm mb-2">
+        <span class="text-muted">🕑 Versions</span>
+        {% if not read_only %}
+        <form method="post" action="/decks/{{ cov.deck.id }}/versions" class="flex items-center gap-1 ml-auto">
+          <label class="sr-only" for="ver-label">Version label</label>
+          <input id="ver-label" type="text" name="label" maxlength="128" placeholder="label (optional)"
+                class="w-40 rounded bg-surface-2 border border-edge px-2 py-1 text-xs" />
+          <button type="submit" class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Save version</button>
+        </form>
+        {% endif %}
+      </div>
+      {% if versions %}
+      <ul class="divide-y divide-edge rounded-lg bg-surface-2 mb-3">
+        {% for v in versions %}
+        <li class="flex items-center gap-2 px-3 py-1.5 text-sm">
+          <span class="font-medium truncate">{{ v.label }}</span>
+          <span class="text-xs text-muted">{{ v.created_at.strftime('%Y-%m-%d %H:%M') }} · {{ v.cards|length }} cards</span>
+          <span class="flex-1"></span>
+          <a href="/decks/{{ cov.deck.id }}/diff?a={{ v.id }}&b=current"
+            class="shrink-0 rounded bg-surface hover:bg-surface-3 px-2 py-0.5 text-xs">Diff vs current</a>
+          {% if not read_only %}
+          <form method="post" action="/decks/{{ cov.deck.id }}/versions/{{ v.id }}/delete" class="shrink-0">
+            <button type="submit" title="Delete version" class="text-xs text-muted hover:text-rose-500 tap">✕</button>
+          </form>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      <form method="get" action="/decks/{{ cov.deck.id }}/diff" class="flex items-center gap-1.5 flex-wrap text-xs">
+        <span class="text-muted">Compare</span>
+        {% for side in ['a', 'b'] %}
+        <label class="sr-only" for="cmp-{{ side }}">Compare {{ side|upper }}</label>
+        <select id="cmp-{{ side }}" name="{{ side }}" class="rounded bg-surface-2 border border-edge px-1.5 py-0.5">
+          <option value="current">current</option>
+          {% for v in versions %}
+          <option value="{{ v.id }}" {% if side == 'a' and loop.first %}selected{% endif %}>{{ v.label }}</option>
           {% endfor %}
         </select>
-      </form>
-      {% if cov.fmt %}
-        {% if cov.is_legal %}
-        <span class="text-emerald-500 font-medium">✓ Legal in {{ cov.fmt }}</span>
-        {% elif cov.illegal_count %}
-        <span class="text-rose-500 font-medium">{{ cov.illegal_count }} card(s) not legal in {{ cov.fmt }}</span>
-        {% elif cov.unmatched %}
-        <span class="text-amber-500">Can't confirm — {{ cov.unmatched }} unrecognized card(s)</span>
-        {% endif %}
-      {% endif %}
-    </div>
-
-    {% if not read_only %}
-    <div class="mt-3 pt-3 border-t border-edge text-sm">
-      {% if deck.source_url %}
-      <div class="flex items-center gap-2 flex-wrap">
-        <span class="text-muted">Source:</span>
-        <a href="{{ deck.source_url }}" target="_blank" rel="noopener"
-          class="text-xs text-muted hover:text-accent truncate max-w-[18rem]">{{ deck.source_url }}</a>
-        <form method="post" action="/decks/{{ cov.deck.id }}/resync" class="ml-auto">
-          <button type="submit" title="Re-fetch the source and correct each line's printing + finish"
-                  class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">↻ Re-sync printings</button>
-        </form>
-      </div>
-      {% else %}
-        <form method="post" action="/decks/{{ cov.deck.id }}/replace-list" class="mb-4">
-          <label class="text-muted block mb-1">Replace list:</label>
-          <textarea name="decklist_text" rows="5" class="w-full rounded bg-surface-2 border border-edge px-2 py-1 text-xs" placeholder="Enter card list (e.g. 4 Lightning Bolt)"></textarea>
-          <button type="submit" class="mt-2 rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Replace list</button>
-        </form>
-        <form method="post" action="/decks/{{ cov.deck.id }}/resync" class="flex items-center gap-2 flex-wrap">
-
-        <label class="text-muted shrink-0" for="resync-url">Re-sync printings from</label>
-        <input id="resync-url" type="url" name="url" required placeholder="https://moxfield.com/decks/… or archidekt.com/decks/…"
-              class="flex-1 min-w-[12rem] rounded bg-surface-2 border border-edge px-2 py-1 text-xs" />
-        <button type="submit" title="Fetch this source and correct each line's printing + finish"
-                class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">↻ Re-sync</button>
-      </form>
-      <p class="mt-1 text-[11px] text-muted">Link a deck imported before printings were tracked to
-        its source to correct each line's printing and foil/etched finish.</p>
-      {% endif %}
-    </div>
-    {% endif %}
-
-    {# Export #}
-    <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm">
-      <span class="text-muted">Export:</span>
-      {% for fmt, meta in export_formats.items() %}
-      <a href="/decks/{{ cov.deck.id }}/export?fmt={{ fmt }}"
-        class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">{{ meta[2] }}</a>
-      {% endfor %}
-    </div>
-
-    {# Print proxies (#161): print-and-cut proxy sheets at true card size, in a new tab #}
-    <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm">
-      <span class="text-muted">Print proxies:</span>
-      <a href="/decks/{{ cov.deck.id }}/proxies?source=proxy" target="_blank" rel="noopener"
-        class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Flagged proxies</a>
-      <a href="/decks/{{ cov.deck.id }}/proxies?source=missing" target="_blank" rel="noopener"
-        class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Missing cards</a>
-      <a href="/decks/{{ cov.deck.id }}/proxies?source=all" target="_blank" rel="noopener"
-        class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Whole deck</a>
-    </div>
-
-    {# AI assist #}
-    {% if ai_ready %}
-    <div class="mt-3 pt-3 border-t border-edge text-sm">
-      <div class="flex items-center gap-2 flex-wrap">
-        <span class="text-muted">✨ AI:</span>
-        <button hx-post="/decks/{{ cov.deck.id }}/analyze" hx-target="#ai-out" hx-swap="innerHTML"
-                hx-indicator="#ai-spin"
-                class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Analyze deck</button>
-        <button hx-post="/decks/{{ cov.deck.id }}/suggest" hx-target="#ai-out" hx-swap="innerHTML"
-                hx-indicator="#ai-spin"
-                class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Suggest from collection</button>
-        <form hx-post="/decks/{{ cov.deck.id }}/upgrade" hx-target="#ai-out" hx-swap="innerHTML"
-              hx-indicator="#ai-spin" class="flex items-center gap-1">
-          <span class="text-muted text-xs">Upgrade $</span>
-          <input type="number" name="budget" value="50" min="1" step="5"
-                class="w-16 rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs" />
-          <button type="submit"
-                  class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Plan</button>
-        </form>
-        <a href="/decks/{{ cov.deck.id }}/chat"
-          class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">💬 Coach</a>
-        <span id="ai-spin" class="htmx-indicator text-xs text-muted">thinking…</span>
-      </div>
-      <div id="ai-out" class="mt-2"></div>
-      <p class="mt-1 text-[11px] text-muted">Sends this deck + your owned cards to your configured AI endpoint.</p>
-    </div>
-    {% endif %}
-
-
-    {# Upgrade from your collection — heuristic owned-card swaps (#181), no AI required #}
-    <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm">
-      <span class="text-muted">🃏 Upgrade from your collection:</span>
-      <button hx-post="/decks/{{ cov.deck.id }}/suggest-owned" hx-target="#owned-out"
-              hx-swap="innerHTML" hx-indicator="#owned-spin"
-              class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Suggest owned cards</button>
-      <span id="owned-spin" class="htmx-indicator text-xs text-muted">finding…</span>
-    </div>
-    <div id="owned-out" class="mt-2"></div>
-    <p class="mt-1 text-[11px] text-muted">
-      Owned, in-colour, Commander-legal cards that fill this deck's thin roles — deterministic, no AI.
-    </p>
-
-    {# Versions & diff (#100) #}
-    <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm mb-2">
-      <span class="text-muted">🕑 Versions</span>
-      {% if not read_only %}
-      <form method="post" action="/decks/{{ cov.deck.id }}/versions" class="flex items-center gap-1 ml-auto">
-        <label class="sr-only" for="ver-label">Version label</label>
-        <input id="ver-label" type="text" name="label" maxlength="128" placeholder="label (optional)"
-               class="w-40 rounded bg-surface-2 border border-edge px-2 py-1 text-xs" />
-        <button type="submit" class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Save version</button>
-      </form>
-      {% endif %}
-    </div>
-    {% if versions %}
-    <ul class="divide-y divide-edge rounded-lg bg-surface-2 mb-3">
-      {% for v in versions %}
-      <li class="flex items-center gap-2 px-3 py-1.5 text-sm">
-        <span class="font-medium truncate">{{ v.label }}</span>
-        <span class="text-xs text-muted">{{ v.created_at.strftime('%Y-%m-%d %H:%M') }} · {{ v.cards|length }} cards</span>
-        <span class="flex-1"></span>
-        <a href="/decks/{{ cov.deck.id }}/diff?a={{ v.id }}&b=current"
-           class="shrink-0 rounded bg-surface hover:bg-surface-3 px-2 py-0.5 text-xs">Diff vs current</a>
-        {% if not read_only %}
-        <form method="post" action="/decks/{{ cov.deck.id }}/versions/{{ v.id }}/delete" class="shrink-0">
-          <button type="submit" title="Delete version" class="text-xs text-muted hover:text-rose-500 tap">✕</button>
-        </form>
-        {% endif %}
-      </li>
-      {% endfor %}
-    </ul>
-    <form method="get" action="/decks/{{ cov.deck.id }}/diff" class="flex items-center gap-1.5 flex-wrap text-xs">
-      <span class="text-muted">Compare</span>
-      {% for side in ['a', 'b'] %}
-      <label class="sr-only" for="cmp-{{ side }}">Compare {{ side|upper }}</label>
-      <select id="cmp-{{ side }}" name="{{ side }}" class="rounded bg-surface-2 border border-edge px-1.5 py-0.5">
-        <option value="current">current</option>
-        {% for v in versions %}
-        <option value="{{ v.id }}" {% if side == 'a' and loop.first %}selected{% endif %}>{{ v.label }}</option>
+        {% if side == 'a' %}<span class="text-muted">→</span>{% endif %}
         {% endfor %}
-      </select>
-      {% if side == 'a' %}<span class="text-muted">→</span>{% endif %}
-      {% endfor %}
-      <button type="submit" class="rounded-lg bg-surface hover:bg-surface-3 px-2.5 py-0.5">Diff</button>
-    </form>
-    {% else %}
-    <p class="text-xs text-muted">No saved versions yet. Save one to track changes over time.</p>
-    {% endif %}
-
+        <button type="submit" class="rounded-lg bg-surface hover:bg-surface-3 px-2.5 py-0.5">Diff</button>
+      </form>
+      {% else %}
+      <p class="text-xs text-muted">No saved versions yet. Save one to track changes over time.</p>
+      {% endif %}
+    </div>
   </section>
 
 
@@ -371,8 +384,7 @@
       {{ bars(stats.by_color, color=True) }}
     </section>
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4 flex flex-col justify-center">
-      <div class="text-xs text-muted">Deck value ({{ cur.label }})</div>
-      <div class="text-2xl font-bold">{{ cur.symbol }}{{ '{:,.2f}'.format(stats.total_value) }}</div>
+      
     </section>
   </div>
   {% endif %}

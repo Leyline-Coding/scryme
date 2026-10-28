@@ -179,9 +179,14 @@
     {% if cov.unmatched %}
     <p class="mt-2 text-xs text-amber-500">{{ cov.unmatched }} line(s) didn't match a known card.</p>
     {% endif %}
+  </div>
 
-    {# Legality check #}
-    <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm">
+  {# Legality check #}
+  <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6 md:col-span-2">
+    <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
+      Manage Deck
+    </h2>
+    <div class="flex items-center gap-2 flex-wrap text-sm">
       <span class="text-muted">Legality:</span>
       <form method="get" action="/decks/{{ cov.deck.id }}" class="contents">
         <select name="format" onchange="this.form.submit()"
@@ -209,7 +214,7 @@
       <div class="flex items-center gap-2 flex-wrap">
         <span class="text-muted">Source:</span>
         <a href="{{ deck.source_url }}" target="_blank" rel="noopener"
-           class="text-xs text-muted hover:text-accent truncate max-w-[18rem]">{{ deck.source_url }}</a>
+          class="text-xs text-muted hover:text-accent truncate max-w-[18rem]">{{ deck.source_url }}</a>
         <form method="post" action="/decks/{{ cov.deck.id }}/resync" class="ml-auto">
           <button type="submit" title="Re-fetch the source and correct each line's printing + finish"
                   class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">↻ Re-sync printings</button>
@@ -225,7 +230,7 @@
 
         <label class="text-muted shrink-0" for="resync-url">Re-sync printings from</label>
         <input id="resync-url" type="url" name="url" required placeholder="https://moxfield.com/decks/… or archidekt.com/decks/…"
-               class="flex-1 min-w-[12rem] rounded bg-surface-2 border border-edge px-2 py-1 text-xs" />
+              class="flex-1 min-w-[12rem] rounded bg-surface-2 border border-edge px-2 py-1 text-xs" />
         <button type="submit" title="Fetch this source and correct each line's printing + finish"
                 class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">↻ Re-sync</button>
       </form>
@@ -240,7 +245,7 @@
       <span class="text-muted">Export:</span>
       {% for fmt, meta in export_formats.items() %}
       <a href="/decks/{{ cov.deck.id }}/export?fmt={{ fmt }}"
-         class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">{{ meta[2] }}</a>
+        class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">{{ meta[2] }}</a>
       {% endfor %}
     </div>
 
@@ -248,11 +253,11 @@
     <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm">
       <span class="text-muted">Print proxies:</span>
       <a href="/decks/{{ cov.deck.id }}/proxies?source=proxy" target="_blank" rel="noopener"
-         class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Flagged proxies</a>
+        class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Flagged proxies</a>
       <a href="/decks/{{ cov.deck.id }}/proxies?source=missing" target="_blank" rel="noopener"
-         class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Missing cards</a>
+        class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Missing cards</a>
       <a href="/decks/{{ cov.deck.id }}/proxies?source=all" target="_blank" rel="noopener"
-         class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Whole deck</a>
+        class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Whole deck</a>
     </div>
 
     {# AI assist #}
@@ -270,28 +275,22 @@
               hx-indicator="#ai-spin" class="flex items-center gap-1">
           <span class="text-muted text-xs">Upgrade $</span>
           <input type="number" name="budget" value="50" min="1" step="5"
-                 class="w-16 rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs" />
+                class="w-16 rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs" />
           <button type="submit"
                   class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Plan</button>
         </form>
         <a href="/decks/{{ cov.deck.id }}/chat"
-           class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">💬 Coach</a>
+          class="rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">💬 Coach</a>
         <span id="ai-spin" class="htmx-indicator text-xs text-muted">thinking…</span>
       </div>
       <div id="ai-out" class="mt-2"></div>
       <p class="mt-1 text-[11px] text-muted">Sends this deck + your owned cards to your configured AI endpoint.</p>
     </div>
     {% endif %}
-  </div>
 
-  {# Commander bracket estimate + manual override (#159) — Commander decks only #}
-  {% if bracket.is_commander or cov.fmt in ('commander', 'oathbreaker', 'brawl') %}
-  {% include "_deck_bracket.html" %}
-  {% endif %}
 
-  {# Upgrade from your collection — heuristic owned-card swaps (#181), no AI required #}
-  <div class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
-    <div class="flex items-center gap-2 flex-wrap text-sm">
+    {# Upgrade from your collection — heuristic owned-card swaps (#181), no AI required #}
+    <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm">
       <span class="text-muted">🃏 Upgrade from your collection:</span>
       <button hx-post="/decks/{{ cov.deck.id }}/suggest-owned" hx-target="#owned-out"
               hx-swap="innerHTML" hx-indicator="#owned-spin"
@@ -302,11 +301,9 @@
     <p class="mt-1 text-[11px] text-muted">
       Owned, in-colour, Commander-legal cards that fill this deck's thin roles — deterministic, no AI.
     </p>
-  </div>
 
-  {# Versions & diff (#100) #}
-  <div class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
-    <div class="flex items-center gap-2 flex-wrap text-sm mb-2">
+    {# Versions & diff (#100) #}
+    <div class="mt-3 pt-3 border-t border-edge flex items-center gap-2 flex-wrap text-sm mb-2">
       <span class="text-muted">🕑 Versions</span>
       {% if not read_only %}
       <form method="post" action="/decks/{{ cov.deck.id }}/versions" class="flex items-center gap-1 ml-auto">
@@ -351,7 +348,15 @@
     {% else %}
     <p class="text-xs text-muted">No saved versions yet. Save one to track changes over time.</p>
     {% endif %}
-  </div>
+
+  </section>
+
+
+  {# Commander bracket estimate + manual override (#159) — Commander decks only #}
+  {% if bracket.is_commander or cov.fmt in ('commander', 'oathbreaker', 'brawl') %}
+  {% include "_deck_bracket.html" %}
+  {% endif %}
+
 
   {# Per-deck stats #}
   {% if stats.has_data %}

@@ -377,7 +377,7 @@
   {% endif %}
 
   <div x-data="deckView()" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div class="md:col-span-2 flex items-center justify-end gap-1 -mb-3">
+    <div class="md:col-span-2 flex items-center justify-end gap-1 -mb-6 mt-4 pr-3">
       <span class="text-xs text-muted mr-1">View:</span>
       <button type="button" @click="setView('list')"
               :class="view === 'list' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"

@@ -16,12 +16,12 @@ from src.binder_service import binder_summaries
 from src.box_service import box_summaries, other_locations
 from src.checklists import Checklist
 from src.config import get_settings
-from src.currency import get_currency, info
+from src.currency import get_currency, info, unit_price
 from src.db import get_session
-from src.models import Deck, PriceSnapshot
+from src.models import Deck, DeckCard, PriceSnapshot, Card
 from src.perfcache import memoize
 from src.prices import CHART_RANGES, DEFAULT_RANGE, build_value_chart, range_days, value_series
-from src.pricing import get_price_source
+from src.pricing import resolve_prices, get_price_source
 from src.routes.wishlist import _image as wishlist_image
 from src.sell import sell_list
 from src.sets import set_progress
@@ -78,7 +78,7 @@ async def collection(
             await session.scalar(select(PriceSnapshot.id).limit(1))
         )
         ctx["growth"] = await memoize(("growth", currency, source),
-                                      lambda: collection_growth(session, currency, source=source))
+                                       lambda: collection_growth(session, currency, source=source))
         if view == "sets":
             ctx["sets"] = await memoize("setprog", lambda: set_progress(session))
     elif tab == "decks":
@@ -86,7 +86,24 @@ async def collection(
             select(Deck, func.count()).outerjoin(Deck.cards)
             .group_by(Deck.id).order_by(Deck.created_at.desc())
         )
-        ctx["decks"] = [(d, n) for d, n in rows.all()]
+        
+        ctx["decks"] = []
+        for d, n in rows.all():
+            # Calculate total value for the deck
+            card_rows = (
+                await session.execute(
+                    select(DeckCard.quantity, DeckCard.finish, Card.prices, Card.market_prices)
+                    .join(Card, Card.scryfall_id == DeckCard.scryfall_id)
+                    .where(DeckCard.deck_id == d.id)
+                )
+            ).all()
+            
+            total_val = 0.0
+            for qty, finish, prices, market_prices in card_rows:
+                total_val += (qty or 0) * unit_price(
+                    resolve_prices(prices, market_prices, source), finish, currency)
+            
+            ctx["decks"].append((d, n, round(total_val, 2)))
     elif tab == "locations":
         decks = await session.execute(
             select(Deck, func.count()).outerjoin(Deck.cards)

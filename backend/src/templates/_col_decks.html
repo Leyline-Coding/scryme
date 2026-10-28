@@ -15,11 +15,15 @@
 
 {% if decks %}
 <ul class="space-y-2">
-  {% for deck, count in decks %}
+  {% for deck, count, value in decks %}
   <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3">
     <a href="/decks/{{ deck.id }}" class="flex-1 min-w-0">
       <div class="font-medium truncate hover:text-accent">{{ deck.name }}</div>
-      <div class="text-xs text-muted">{{ count }} line{{ '' if count == 1 else 's' }}</div>
+      <div class="text-xs text-muted">
+        <span>{{ count }} line{{ '' if count == 1 else 's' }}</span>
+        •
+        <span>{{ "{:,.2f}".format(value) }} {{ cur.symbol }}</span>
+      </div>
     </a>
     {% if not read_only %}
     <form action="/decks/{{ deck.id }}/delete" method="post"

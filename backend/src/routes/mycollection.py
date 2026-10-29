@@ -53,16 +53,23 @@ async def collection(
     request: Request,
     tab: str = "stats",
     view: str = "overview",
+    sort_by: str = "name",
+    sort_dir: str = "asc",
     keep: int = 1,
     chart_range: str = Query(DEFAULT_RANGE, alias="range"),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
-    tab = tab if tab in _TAB_KEYS else "stats"
+    tab = tab.lower() if tab else "stats"
     currency = get_currency(request)
     source = get_price_source(request)
+    
+    sort_by = sort_by.lower() if sort_by else "name"
+    sort_dir = sort_dir.lower() if sort_dir else "asc"
+
     ctx: dict = {
         "tabs": TABS, "tab": tab, "view": view, "keep": keep,
         "cur": info(currency), "read_only": get_settings().read_only,
+        "sort_by": sort_by, "sort_dir": sort_dir,
     }
 
     if tab == "stats":
@@ -84,10 +91,11 @@ async def collection(
     elif tab == "decks":
         rows = await session.execute(
             select(Deck, func.count()).outerjoin(Deck.cards)
-            .group_by(Deck.id).order_by(Deck.created_at.desc())
+            .group_by(Deck.id)
         )
         
         ctx["decks"] = []
+
         for d, n in rows.all():
             # Calculate total value for the deck
             card_rows = (
@@ -104,6 +112,15 @@ async def collection(
                     resolve_prices(prices, market_prices, source), finish, currency)
             
             ctx["decks"].append((d, n, round(total_val, 2)))
+
+        if sort_by == "price":
+            ctx["decks"].sort(key=lambda x: x[2], reverse=(sort_dir == "desc"))
+        elif sort_by == "name":
+            ctx["decks"].sort(key=lambda x: x[0].name, reverse=(sort_dir == "desc"))
+
+
+
+
     elif tab == "locations":
         decks = await session.execute(
             select(Deck, func.count()).outerjoin(Deck.cards)
@@ -115,6 +132,13 @@ async def collection(
         ctx["loc_decks"] = [(d, n) for d, n in decks.all()]
     elif tab == "binders":
         ctx["binders"] = await binder_summaries(session)
+
+        if sort_by == "price" and ctx["binders"]:
+            # Binders don't have price, default to name
+            ctx["binders"].sort(key=lambda x: x.name, reverse=(sort_dir == "desc"))
+        elif ctx["binders"]:
+            ctx["binders"].sort(key=lambda x: x.name, reverse=(sort_dir == "desc"))
+
     elif tab == "tags":
         ctx["tags"] = await tag_summaries(session)
     elif tab == "wishlist":

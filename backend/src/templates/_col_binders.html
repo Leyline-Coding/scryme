@@ -4,15 +4,28 @@
   any owned card's page or in bulk from search results.
 </p>
 
-{% if not read_only %}
-<div class="flex justify-end gap-2 mb-3">
-  <form method="post" action="/binders/new" class="flex gap-2 max-w-md">
-    <input type="text" name="name" required placeholder="New binder name"
-          class="flex-1 min-w-0 rounded-full bg-surface-2 border border-edge px-3 py-2 text-sm" />
-    <button class="rounded-full bg-accent text-accent-fg px-3 py-2 text-sm font-medium">Add binder</button>
-  </form>
+<div class="grid grid-cols-2 md:grid-cols-2">
+  <div class="flex justify-start items-center gap-3 mb-4">
+    <a href="/collection?tab=binders&sort_by={{ 'name' if sort_by == 'price' else 'name' }}&sort_dir={{ sort_dir }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'name' else '' }}">
+      Name
+    </a>
+    <a href="/collection?tab=binders&sort_by={{ sort_by }}&sort_dir={{ 'desc' if sort_dir == 'asc' else 'asc' }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}">
+      {{ 'Descending' if sort_dir == 'desc' else 'Ascending' }}
+    </a>
+  </div>
+  {% if not read_only %}
+  <div class="flex justify-end gap-2 mb-3">
+    <form method="post" action="/binders/new" class="flex gap-2">
+      <input type="text" name="name" required placeholder="New binder name"
+            class="flex-1 min-w-0 rounded-full bg-surface-2 border border-edge px-3 py-2 text-sm" />
+      <button class="rounded-full bg-accent text-accent-fg px-3 py-2 text-sm font-medium">Add binder</button>
+    </form>
+  </div>
+  {% endif %}
 </div>
-{% endif %}
+
 
 {% if binders %}
 <ul class="space-y-2">

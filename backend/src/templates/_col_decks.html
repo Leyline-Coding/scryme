@@ -2,16 +2,33 @@
   Manage your decks.
 </p>
 
-{% if not read_only %}
-<div class="flex justify-end gap-2 mb-3">
-  <a href="/decks/build" class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent">
-    ✨ Build from collection
-  </a>
-  <a href="/decks/new" class="rounded-full bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:opacity-90">
-    + New deck
-  </a>
+<div class="grid grid-cols-2 md:grid-cols-2">
+  <div class="flex justify-start items-center gap-3 mb-4">
+    <a href="/collection?tab=decks&sort_by={{ sort_by }}&sort_dir={{ 'desc' if sort_dir == 'asc' else 'asc' }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}">
+      {{ 'Descending' if sort_dir == 'desc' else 'Ascending' }}
+    </a>
+    <a href="/collection?tab=decks&sort_by={{ 'price' if sort_by == 'name' else 'name' }}&sort_dir={{ sort_dir }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'price' else '' }}">
+      Price
+    </a>
+    <a href="/collection?tab=decks&sort_by={{ 'name' if sort_by == 'price' else 'price' }}&sort_dir={{ sort_dir }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'name' else '' }}">
+      Name
+    </a>
+  </div>
+  {% if not read_only %}
+  <div class="flex justify-end gap-2 mb-3">
+    <a href="/decks/build" class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent">
+      ✨ Build from collection
+    </a>
+    <a href="/decks/new" class="rounded-full bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:opacity-90">
+      + New deck
+    </a>
+  </div>
+  {% endif %}
 </div>
-{% endif %}
+
 
 {% if decks %}
 <ul class="space-y-2">

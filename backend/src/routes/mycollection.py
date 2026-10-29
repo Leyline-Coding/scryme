@@ -19,6 +19,7 @@ from src.config import get_settings
 from src.currency import get_currency, info, unit_price
 from src.db import get_session
 from src.models import Deck, DeckCard, PriceSnapshot, Card
+from src.collection_edit import color_identity_group
 from src.perfcache import memoize
 from src.prices import CHART_RANGES, DEFAULT_RANGE, build_value_chart, range_days, value_series
 from src.pricing import resolve_prices, get_price_source
@@ -100,18 +101,24 @@ async def collection(
             # Calculate total value for the deck
             card_rows = (
                 await session.execute(
-                    select(DeckCard.quantity, DeckCard.finish, Card.prices, Card.market_prices)
+                    select(DeckCard.quantity, DeckCard.finish, Card.prices, Card.market_prices, Card.color_identity)
                     .join(Card, Card.scryfall_id == DeckCard.scryfall_id)
                     .where(DeckCard.deck_id == d.id)
                 )
             ).all()
             
             total_val = 0.0
-            for qty, finish, prices, market_prices in card_rows:
+            deck_color_identity = set()
+            for qty, finish, prices, market_prices, color_identity in card_rows:
                 total_val += (qty or 0) * unit_price(
                     resolve_prices(prices, market_prices, source), finish, currency)
+                if color_identity:
+                    deck_color_identity.update(color_identity)
             
-            ctx["decks"].append((d, n, round(total_val, 2)))
+            symbols = [f"ms-{c.lower()}" for c in sorted(list(deck_color_identity))]
+            group_name = color_identity_group(list(deck_color_identity))
+            
+            ctx["decks"].append((d, n, round(total_val, 2), symbols, group_name))
 
         if sort_by == "price":
             ctx["decks"].sort(key=lambda x: x[2], reverse=(sort_dir == "desc"))

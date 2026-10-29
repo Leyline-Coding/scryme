@@ -36,27 +36,67 @@
   {% if views %}
   <div class="flex gap-6">
   {% if facets %}
-  <aside class="hidden lg:block w-44 shrink-0 space-y-4">
-    {% for g in facets %}
-    <div>
-      <h3 class="text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">{{ g.title }}</h3>
-      <ul class="space-y-0.5">
-        {% for f in g.values %}
-        <li>
-          <button type="button" class="facet-btn w-full flex items-center gap-1.5 text-left text-sm
-                   rounded px-1.5 py-0.5 hover:bg-surface-2
-                   {% if f.active %}text-accent font-medium{% endif %}"
-            data-q="{{ f.new_query }}">
-            <span class="w-3 shrink-0 text-xs">{% if f.active %}✓{% endif %}</span>
-            <span class="flex-1 min-w-0 truncate" title="{{ f.label }}">{{ f.label }}</span>
-            <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}</span>
-          </button>
-        </li>
+     <aside class="hidden lg:block w-44 shrink-0 space-y-4">
+        {% for g in facets %}
+        <div>
+          <h3 class="text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">{{ g.title }}</h3>
+          <ul class="space-y-0.5">
+            {% set is_special = g.title in ['Colors', 'Rarity', 'Type'] %}
+            {% if is_special %}
+              {% for f in g.values %}
+              <li>
+                <button type="button" class="facet-btn w-full flex items-center gap-1.5 text-left text-sm
+                         rounded px-1.5 py-0.5 hover:bg-surface-2
+                         {% if f.active %}text-accent font-medium{% endif %}"
+                    data-q="{{ f.new_query }}">
+                  <span class="w-3 shrink-0 text-xs">{% if f.active %}✓{% endif %}</span>
+                  <span class="flex-1 min-w-0 truncate" title="{{ f.label }}">{{ f.label }}</span>
+                  <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}</span>
+                </button>
+              </li>
+              {% endfor %}
+            {% else %}
+              {% set main_items = g.values[:6] %}
+              {% set extra_items = g.values[6:] %}
+              {% for f in main_items %}
+              <li>
+                <button type="button" class="facet-btn w-full flex items-center gap-1.5 text-left text-sm
+                         rounded px-1.5 py-0.5 hover:bg-surface-2
+                         {% if f.active %}text-accent font-medium{% endif %}"
+                    data-q="{{ f.new_query }}">
+                  <span class="w-3 shrink-0 text-xs">{% if f.active %}✓{% endif %}</span>
+                  <span class="flex-1 min-w-0 truncate" title="{{ f.label }}">{{ f.label }}</span>
+                  <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}</span>
+                </button>
+              </li>
+              {% endfor %}
+             {% if extra_items %}
+              <li>
+                <button type="button" class="w-full text-left text-xs text-accent hover:underline px-1.5 py-0.5"
+                        onclick="this.nextElementSibling.classList.toggle('hidden'); this.classList.add('hidden');">
+                  + {{ extra_items|length }} more
+                </button>
+                <ul class="hidden px-0 py-0 ml-0">
+                  {% for f in extra_items %}
+                  <li class="py-0.5">
+                    <button type="button" class="facet-btn w-full flex items-center gap-1.5 text-left text-sm
+                             rounded px-1.5 py-0.5 hover:bg-surface-2
+                             {% if f.active %}text-accent font-medium{% endif %}"
+                            data-q="{{ f.new_query }}">
+                      <span class="w-3 shrink-0 text-xs">{% if f.active %}✓{% endif %}</span>
+                      <span class="flex-1 min-w-0 truncate" title="{{ f.label }}">{{ f.label }}</span>
+                      <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}</span>
+                    </button>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </li>
+             {% endif %}
+            {% endif %}
+          </ul>
+        </div>
         {% endfor %}
-      </ul>
-    </div>
-    {% endfor %}
-  </aside>
+      </aside>
   {% endif %}
   <div class="flex-1 min-w-0">
   {% if view == 'list' %}

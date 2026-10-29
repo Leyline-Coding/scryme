@@ -129,10 +129,12 @@
       document.addEventListener('alpine:init', () => {
         Alpine.data('deckView', () => ({
           view: localStorage.getItem("scryme_deck_view") || "list",
+          layout: localStorage.getItem("scryme_deck_layout") || "rows",
           deckName: "{{ cov.deck.name }}",
           readOnly: {{ "true" if read_only else "false" }},
           editing: false,
           setView(v) { this.view = v; localStorage.setItem("scryme_deck_view", v); },
+          setLayout(l) { this.layout = l; localStorage.setItem("scryme_deck_layout", l); },
           saveName() {
             const name = this.deckName;
             fetch('/decks/{{ cov.deck.id }}/name', {
@@ -395,7 +397,7 @@
   <div class="mt-6">{% include "_goldfish.html" %}</div>
   {% endif %}
 
-  <div x-data="deckView()" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div x-data="deckView()" :class="(layout === 'grid') ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'flex flex-col gap-6'">
     <div class="md:col-span-2 flex items-center justify-end gap-1 -mb-6 mt-4 pr-3">
       <span class="text-xs text-muted mr-1">View:</span>
       <button type="button" @click="setView('list')"
@@ -407,7 +409,17 @@
       <button type="button" @click="setView('grid-combined')"
               :class="view === 'grid-combined' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
               class="rounded px-2 py-0.5 text-xs">Grid (Combined)</button>
+      {% if cov.side %}
+      <span class="mx-1 text-muted">|</span>
+      <button type="button" @click="setLayout('rows')"
+              :class="layout === 'rows' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
+              class="rounded px-2 py-0.5 text-xs">Sideboard Below</button>
+      <button type="button" @click="setLayout('grid')"
+              :class="layout === 'grid' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
+              class="rounded px-2 py-0.5 text-xs">Sideboard Aside</button>
+      {% endif %}
     </div>
+
     {# Full width unless there's a sideboard to sit beside it — otherwise a Commander deck's
        grid is squeezed into one column and the cards are unreadable. #}
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4{% if not cov.side %} md:col-span-2{% endif %}">
@@ -416,7 +428,7 @@
       </h2>
       {# Full-width mainboard: flow the (often long) list into columns on wide screens so it doesn't
          become one endless narrow column. Beside a sideboard it stays single-column. #}
-      <div x-show="view === 'list'"{% if not cov.side %} class="lg:columns-2 xl:columns-3 [column-gap:2rem]"{% endif %}>{{ rows(cov.main) }}</div>
+      <div x-show="view === 'list'" :class="layout === 'rows' || {{ 'true' if not cov.side else 'false' }} ? 'lg:columns-2 xl:columns-3 [column-gap:2rem]' : ''">{{ rows(cov.main) }}</div>
       <div x-show="view === 'grid'" x-cloak>{{ grid(cov.main) }}</div>
       <div x-show="view === 'grid-combined'" x-cloak>{{ grid(cov_combined.main) }}</div>
     </section>
@@ -435,8 +447,11 @@
   <script>
     function deckView() {
       return {
-        view: localStorage.getItem("scryme_deck_view") || "list",
-        setView(v) { this.view = v; localStorage.setItem("scryme_deck_view", v); },
+         view: localStorage.getItem("scryme_deck_view") || "list",
+         layout: localStorage.getItem("scryme_deck_layout") || "rows",
+         setView(v) { this.view = v; localStorage.setItem("scryme_deck_view", v); },
+         setLayout(l) { this.layout = l; localStorage.setItem("scryme_deck_layout", l); },
+
       };
     }
   </script>

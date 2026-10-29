@@ -190,11 +190,11 @@
 
   {# Legality check #}
   <section x-data="{ open: false }" class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6 md:col-span-2">
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between cursor-pointer" @click="open = !open">
       <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
         Manage Deck
       </h2>
-      <button @click="open = !open" class="text-xs text-muted flex items-center gap-1">
+      <button class="text-xs text-muted flex items-center gap-1">
         <span x-text="open ? 'Collapse' : 'Expand'"></span>
       </button>
     </div>

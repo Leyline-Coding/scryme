@@ -130,7 +130,7 @@
         Alpine.data('deckView', () => ({
           view: localStorage.getItem("scryme_deck_view") || "list",
           layout: localStorage.getItem("scryme_deck_layout") || "rows",
-          deckName: "{{ cov.deck.name }}",
+          deckName: "{{ cov.deck.name|safe }}",
           readOnly: {{ "true" if read_only else "false" }},
           editing: false,
           setView(v) { this.view = v; localStorage.setItem("scryme_deck_view", v); },

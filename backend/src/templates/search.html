@@ -251,7 +251,14 @@
     var bar = document.getElementById('bulkbar');
     var c = document.getElementById('bulkcount');
     if (c) c.textContent = n;
-    if (bar) bar.classList.toggle('hidden', n === 0);
+    if (bar) {
+      bar.classList.toggle('hidden', n === 0);
+      // Apply class to grid when bulkbar is visible
+      const cardGrid = document.querySelector('.card-grid');
+      if (cardGrid) {
+        cardGrid.classList.toggle('bulk-active', n > 0);
+      }
+    }
   }
   function bulkClear() {
     bulkChecked().forEach(function (b) { b.checked = false; });
@@ -271,6 +278,28 @@
   // After an HTMX results swap the checkboxes are fresh (unchecked) — re-sync the bar.
   document.body.addEventListener('htmx:afterSwap', function (e) {
     if (e.target && e.target.id === 'results') bulkCount();
+  });
+  
+  // Handle card clicks for bulk selection
+  document.addEventListener('click', function(e) {
+    const bulkBar = document.getElementById('bulkbar');
+    if (!bulkBar || bulkBar.classList.contains('hidden')) return;
+    
+    // Find if click was on a card
+    let cardElement = e.target.closest('.card-grid > div');
+    if (cardElement) {
+      // Find the checkbox within this card
+      const checkbox = cardElement.querySelector('input[name="scryfall_ids"]');
+      if (checkbox) {
+        // Toggle the checkbox
+        checkbox.checked = !checkbox.checked;
+        bulkCount();
+        
+        // Prevent default link behavior 
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
   });
 </script>
 {% endblock %}

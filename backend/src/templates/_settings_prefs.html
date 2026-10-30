@@ -48,6 +48,61 @@
     </div>
 
     <div>
+      <p class="text-xs font-semibold text-muted mt-8 mb-2 uppercase tracking-wide">Primary Card Language</p>
+      <div class="grid grid-cols-3 gap-2">
+        <button @click="setLang('en')" 
+          class="rounded-lg border px-2.5 py-1.5 text-sm transition hover:border-accent"
+          :class="lang === 'en' ? 'border-accent ring-1 ring-accent' : 'border-edge'"
+          x-text="'English'"></button>
+        <button @click="setLang('es')" 
+          class="rounded-lg border px-2.5 py-1.5 text-sm transition hover:border-accent"
+          :class="lang === 'es' ? 'border-accent ring-1 ring-accent' : 'border-edge'"
+          x-text="'Spanish'"></button>
+        <button @click="setLang('fr')" 
+          class="rounded-lg border px-2.5 py-1.5 text-sm transition hover:border-accent"
+          :class="lang === 'fr' ? 'border-accent ring-1 ring-accent' : 'border-edge'"
+          x-text="'French'"></button>
+        <button @click="setLang('de')" 
+          class="rounded-lg border px-2.5 py-1.5 text-sm transition hover:border-accent"
+          :class="lang === 'de' ? 'border-accent ring-1 ring-accent' : 'border-edge'"
+          x-text="'German'"></button>
+        <button @click="setLang('it')" 
+          class="rounded-lg border px-2.5 py-1.5 text-sm transition hover:border-accent"
+          :class="lang === 'it' ? 'border-accent ring-1 ring-accent' : 'border-edge'"
+          x-text="'Italian'"></button>
+        <button @click="setLang('pt')" 
+          class="rounded-lg border px-2.5 py-1.5 text-sm transition hover:border-accent"
+          :class="lang === 'pt' ? 'border-accent ring-1 ring-accent' : 'border-edge'"
+          x-text="'Portuguese'"></button>
+        <button @click="setLang('ja')" 
+          class="rounded-lg border px-2.5 py-1.5 text-sm transition hover:border-accent"
+          :class="lang === 'ja' ? 'border-accent ring-1 ring-accent' : 'border-edge'"
+          x-text="'Japanese'"></button>
+        <button @click="setLang('ko')" 
+          class="rounded-lg border px-2.5 py-1.5 text-sm transition hover:border-accent"
+          :class="lang === 'ko' ? 'border-accent ring-1 ring-accent' : 'border-edge'"
+          x-text="'Korean'"></button>
+        <button @click="setLang('ru')" 
+          class="rounded-lg border px-2.5 py-1.5 text-sm transition hover:border-accent"
+          :class="lang === 'ru' ? 'border-accent ring-1 ring-accent' : 'border-edge'"
+          x-text="'Russian'"></button>
+        <button @click="setLang('zhs')" 
+          class="rounded-lg border px-2.5 py-1.5 text-sm transition hover:border-accent"
+          :class="lang === 'zhs' ? 'border-accent ring-1 ring-accent' : 'border-edge'"
+          x-text="'Chinese (S)'"></button>
+        <button @click="setLang('zht')" 
+          class="rounded-lg border px-2.5 py-1.5 text-sm transition hover:border-accent"
+          :class="lang === 'zht' ? 'border-accent ring-1 ring-accent' : 'border-edge'"
+          x-text="'Chinese (T)'"></button>
+        <button @click="setLang('ph')" 
+          class="rounded-lg border px-2.5 py-1.5 text-sm transition hover:border-accent"
+          :class="lang === 'ph' ? 'border-accent ring-1 ring-accent' : 'border-edge'"
+          x-text="'Phyrexian'"></button>
+      </div>
+      <p class="mt-1 text-xs text-muted">Identify which language the bulk of your cards are in. Language identifier will be ignored for printings in this language, and Scryfall art will preffer this language's printing when available (WIP).</p>
+    </div>
+
+    <div>
       <p class="text-xs font-semibold text-muted mt-8 mb-2 uppercase tracking-wide">Currency</p>
       <div class="grid grid-cols-2 gap-2">
         <template x-for="c in currencies" :key="c.id">

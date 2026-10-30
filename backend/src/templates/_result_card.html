@@ -30,9 +30,12 @@
     </div>
     {% endif %}
     {% if v.quantity %}
-    <span class="absolute top-1.5 right-1.5 rounded-full bg-accent text-accent-fg text-xs
+    <span class="absolute top-1.5 right-1.5 rounded-full bg-surface text-fg-fg text-xs
                  font-semibold px-2 py-0.5 shadow">×{{ v.quantity }}</span>
     {% endif %}
+    {# Language badge - shows card language for now #}
+    <span class="absolute top-8 right-1.5 rounded-full bg-surface text-fg text-xs
+                 font-semibold px-2 py-0.5 shadow" title="Card language">{{ v.card_languages }}</span>
     <div class="px-2 py-1 text-xs truncate text-fg">
       {{ v.card.name }}
       {{ set_symbol(v.card.set_code, v.card.rarity) }}

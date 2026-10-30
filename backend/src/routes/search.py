@@ -98,6 +98,7 @@ class CardView:
     tags: list[str]
     flip_back: str | None = None  # back-face image for double-faced cards (grid hover-flip)
     shimmer: str | None = None    # 'foil'/'etched' for a foil-only or etched treatment (#9)
+    card_languages: str = "en"     # the specific language of this printing in collection
 
 
 def _treatment(card) -> str | None:
@@ -135,9 +136,15 @@ def _apply_universal(q: str, universal: str) -> str:
 
 def _to_views(result) -> list[CardView]:
     views = []
+    
     for card in result.cards:
         sid = str(card.scryfall_id)
         image = _cache.url_path(sid) if _cache.is_cached(sid) else cdn_image_url(card.raw)
+        
+        # Get the languages for this specific card in the collection
+        # result.owned_languages is a dict of sid -> "en,fr"
+        card_langs = result.owned_languages.get(sid, "en")
+        
         views.append(
             CardView(
                 card=card,
@@ -147,6 +154,8 @@ def _to_views(result) -> list[CardView]:
                 tags=result.tags.get(sid, []),
                 flip_back=_back_face_image(card),
                 shimmer=_treatment(card),
+                # Store the raw comma-separated languages
+                card_languages=card_langs,
             )
         )
     return views
@@ -197,7 +206,6 @@ async def _run_into_ctx(
     result = await run_search(
         session, query, scope=scope_enum, page=page, sort=sort, descending=descending,
         page_size=page_size,
-        facet_row_cap=facet_row_cap,
     )
     ctx["result"] = result
     ctx["views"] = _to_views(result)

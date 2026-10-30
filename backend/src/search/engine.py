@@ -18,7 +18,6 @@ from src.search.compiler import compile_node
 from src.search.parser import parse
 
 DEFAULT_PAGE_SIZE = 60
-DEFAULT_FACET_ROW_CAP = 4000
 # Sort keys exposed in the UI. `name` is the default and preserves the original ordering.
 SORT_KEYS = ("name", "mv", "price", "set", "rarity", "released")
 DEFAULT_SORT = "name"
@@ -65,6 +64,7 @@ class SearchResult:
     page: int
     page_size: int
     quantities: dict[str, int] = field(default_factory=dict)
+    owned_languages: dict[str, int] = field(default_factory=dict)
     tags: dict[str, list[str]] = field(default_factory=dict)
 
     @property
@@ -101,6 +101,29 @@ async def _owned_quantities(session: AsyncSession, ids: list) -> dict[str, int]:
         .group_by(CollectionCard.scryfall_id)
     )
     return {str(sid): int(qty) for sid, qty in rows.all()}
+
+
+
+
+async def _owned_languages(session: AsyncSession, ids: list) -> dict[str, str]:
+    """Get the aggregate languages for cards in collection.
+    
+    For a given card with multiple language entries (e.g., one English, one French),
+    returns comma-separated values like "en,fr".
+    """
+    if not ids:
+        return {}
+    
+    # Get all distinct languages for each scryfall_id
+    rows = await session.execute(
+        select(CollectionCard.scryfall_id, func.string_agg(CollectionCard.language.distinct(), ",").label("languages"))
+        .where(CollectionCard.scryfall_id.in_(ids))
+        .group_by(CollectionCard.scryfall_id)
+    )
+
+    # Map to dict with comma-separated languages
+    return {str(sid): lang_str for sid, lang_str in rows.all()}
+
 
 
 async def _owned_tags(session: AsyncSession, ids: list) -> dict[str, list[str]]:
@@ -148,22 +171,22 @@ async def run_search(
     scope: SearchScope = SearchScope.COLLECTION,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
-    facet_row_cap: int = DEFAULT_FACET_ROW_CAP,
     sort: str = DEFAULT_SORT,
     descending: bool = False,
 ) -> SearchResult:
     """Execute a search and return the requested page plus owned quantities."""
     page = max(1, page)
     base = build_search(query, scope, sort=sort, descending=descending)
-    print(facet_row_cap)
+
     total = await session.scalar(select(func.count()).select_from(base.subquery())) or 0
     rows = await session.execute(base.limit(page_size).offset((page - 1) * page_size))
     cards = list(rows.scalars().all())
 
     ids = [c.scryfall_id for c in cards]
     quantities = await _owned_quantities(session, ids)
+    owned_languages = await _owned_languages(session, ids)
     tags = await _owned_tags(session, ids)
     return SearchResult(
         cards=cards, total=total, page=page, page_size=page_size,
-        quantities=quantities, tags=tags,
+        quantities=quantities, owned_languages=owned_languages, tags=tags,
     )

@@ -145,7 +145,7 @@
   {% else %}
   {% import "_result_card.html" as rc %}
   <div class="card-grid">
-    {% for v in views %}{{ rc.grid_card(v, read_only) }}{% endfor %}
+    {% for v in views %}{{ rc.grid_card(v, read_only, prefs.lang) }}{% endfor %}
     {% if infinite %}{{ rc.scroll_sentinel(q, scope, sort, dir, result.page, result.total_pages) }}{% endif %}
   </div>
   {% endif %}

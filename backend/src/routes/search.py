@@ -61,6 +61,7 @@ class _DisplayPrefs:
     infinite: bool
     search_filter: str
     movers: bool
+    lang: str
     facet_row_cap: int
 
 
@@ -76,6 +77,7 @@ def _display_prefs(request) -> _DisplayPrefs:
             infinite=p.infinite,
             search_filter=p.search_filter,
             movers=p.movers,
+            lang=p.lang,
             facet_row_cap=p.facet_row_cap,
         )
     c = request.cookies
@@ -85,6 +87,7 @@ def _display_prefs(request) -> _DisplayPrefs:
         infinite=c.get("scryme_infinite") == "1",
         search_filter=c.get("scryme_search_filter") or "",
         movers=c.get("scryme_movers") == "1",
+        lang='en',
         facet_row_cap=4000
     )
 
@@ -240,6 +243,7 @@ async def search(
     # (e.g. -is:ub, legal:commander), ANDed into every query.
     universal = dp.search_filter.strip()
     effective_q = _apply_universal(q, universal)
+
     ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir,
                   "read_only": get_settings().read_only, "view": view, "nl": nl,
                   "universal": universal, "cur": info(get_currency(request)),

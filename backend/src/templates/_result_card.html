@@ -1,6 +1,6 @@
 {# One search-result grid card. Shared by search_results.html and the infinite-scroll
    _search_more.html fragment so the markup isn't duplicated. #}
-{% macro grid_card(v, read_only) %}
+{% macro grid_card(v, read_only, preferedLang) %}
 <div class="relative">
   {% if not read_only %}
   <label for="bulk-{{ v.card.scryfall_id }}" class="sr-only">Select for bulk edit</label>
@@ -34,7 +34,8 @@
       <span class="mb-1 rounded-full bg-surface text-fg-fg text-xs
                   font-semibold px-2 py-0.5 shadow">×{{ v.quantity }}</span>
       {% endif %}
-      {% if v.card_languages and v.card_languages !='en' %}
+
+      {% if v.card_languages and v.card_languages != preferedLang %}
       {% for lan in v.card_languages.split(',') %}
       <span class="mb-1 rounded-full bg-surface text-fg text-xs
                   font-semibold px-2 py-0.5 shadow" title="Card language">{{ lan }}</span>

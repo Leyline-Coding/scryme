@@ -31,7 +31,6 @@ class PreferencesOut(BaseModel):
     movers: bool
     view: str
     page_size: int
-    facet_row_cap: NotImplemented
     infinite: bool
     hist_currency: str | None
     mode: str

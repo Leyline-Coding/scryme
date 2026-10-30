@@ -410,6 +410,6 @@ i.ms.ms-cost {
 
 
 /* Set symbols for commons don't display nicely on dark backgrounds. Let's fix that. */ 
-.ss-common {
+[data-theme*="-dark"] .ss-common {
   color: #FFF;
 }

@@ -322,6 +322,28 @@
    button fully opaque), so the tint stays a true 30% when shown. */
 .grid-flip-overlay { background-color: color-mix(in srgb, var(--c-bg) 30%, transparent); }
 
+/* Card overlay fade effects - temporarily hide overlays on hover/focus for better readability */
+.card-grid > div {
+  transition: all 0.2s ease;
+}
+
+.card-grid > div:hover .tags,
+.card-grid > div:focus-within .tags,
+.card-grid > div:hover .tags,
+.card-grid > div:focus-within .tags {
+  opacity: 0.3;
+  transition: opacity 0.2s ease;
+}
+
+.card-grid > div input {
+  opacity: 0.3;
+  transition: opacity 0.2s ease;
+}
+
+.card-grid > div:hover input {
+  opacity: 1;
+}
+
 /* HTMX request indicator (shown only while a request tagged with hx-indicator is in flight). */
 .htmx-indicator { display: none; }
 .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline; }

@@ -29,13 +29,18 @@
       {{ v.card.name }}
     </div>
     {% endif %}
-    {% if v.quantity %}
-    <span class="absolute top-1.5 right-1.5 rounded-full bg-surface text-fg-fg text-xs
-                 font-semibold px-2 py-0.5 shadow">×{{ v.quantity }}</span>
-    {% endif %}
-    {# Language badge - shows card language for now #}
-    <span class="absolute top-8 right-1.5 rounded-full bg-surface text-fg text-xs
-                 font-semibold px-2 py-0.5 shadow" title="Card language">{{ v.card_languages }}</span>
+    <div class="tags flex flex-col items-end absolute top-1.5 right-1.5">
+      {% if v.quantity and v.quantity > 1 %}
+      <span class="mb-1 rounded-full bg-surface text-fg-fg text-xs
+                  font-semibold px-2 py-0.5 shadow">×{{ v.quantity }}</span>
+      {% endif %}
+      {% if v.card_languages and v.card_languages !='en' %}
+      {% for lan in v.card_languages.split(',') %}
+      <span class="mb-1 rounded-full bg-surface text-fg text-xs
+                  font-semibold px-2 py-0.5 shadow" title="Card language">{{ lan }}</span>
+      {% endfor %}
+      {% endif %}
+    </div>
     <div class="px-2 py-1 text-xs truncate text-fg">
       {{ v.card.name }}
       {{ set_symbol(v.card.set_code, v.card.rarity) }}

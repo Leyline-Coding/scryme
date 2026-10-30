@@ -75,7 +75,7 @@ async def collection(
 
     if tab == "stats":
         async def _chart():
-            return build_value_chart(await value_series(session, range_days(chart_range)))
+            return build_value_chart(await value_series(session, range_days(chart_range), currency))
 
         ctx["stats"] = await memoize(("stats", currency, source),
                                      lambda: collection_stats(session, currency, source))

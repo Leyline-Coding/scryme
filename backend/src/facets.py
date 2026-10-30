@@ -19,7 +19,7 @@ from src.search import SearchScope
 from src.search.engine import build_search
 from src.stats import _RARITY_ORDER, _primary_type
 
-FACET_ROW_CAP = 4000  # facet counts are computed over at most this many result rows
+FACET_ROW_CAP_HARD_MAX = 20000  # facet counts are computed over at most this many result rows
 _COLOR_FACETS = [("w", "White"), ("u", "Blue"), ("b", "Black"), ("r", "Red"), ("g", "Green")]
 # Formats offered in the "Legal in" facet, in display order.
 _FACET_FORMATS = ["commander", "modern", "pioneer", "standard", "legacy", "vintage", "pauper"]
@@ -162,7 +162,7 @@ def _set_year_legal_finish_groups(
 
 
 async def compute_facets(
-    session: AsyncSession, query: str, scope: SearchScope
+    session: AsyncSession, query: str, scope: SearchScope, facet_row_cap: int
 ) -> list[FacetGroup]:
     """Facet groups for the result set of (query, scope). Raises SearchError on a bad query."""
     base = build_search(query, scope)
@@ -174,12 +174,12 @@ async def compute_facets(
                     Card.released_at, Card.legalities,
                     raiseload=True,
                 )
-            ).limit(FACET_ROW_CAP)
+            ).limit(min(facet_row_cap, FACET_ROW_CAP_HARD_MAX))
         )
     ).scalars().all()
 
     tally = _tally_facets(rows)
-
+  
     # Finish facets count printings you own in that finish (matching the is:foil / is:etched
     # filter), not merely printings that *can* be foil/etched — so the count agrees with what
     # clicking the facet returns.
@@ -188,7 +188,7 @@ async def compute_facets(
             func.lower(CollectionCard.finish) == finish
         )
         return select(func.count()).select_from(
-            base.where(Card.scryfall_id.in_(owned)).limit(FACET_ROW_CAP).subquery()
+            base.where(Card.scryfall_id.in_(owned)).limit(min(facet_row_cap, FACET_ROW_CAP_HARD_MAX)).subquery()
         )
 
     foil_count = await session.scalar(_finish_count("foil")) or 0

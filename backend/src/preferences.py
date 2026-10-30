@@ -26,7 +26,7 @@ from src.pricing import normalize_source
 _DEFAULTS: dict[str, Any] = {
     "search_filter": "", "movers": False, "view": "grid", "page_size": 60, "infinite": False,
     "hist_currency": None, "mode": "dark", "palette": "trop-orange", "accent": "",
-    "foil_speed": 6, "spin": True, "spin_speed": 6, "card_size": 5,
+    "foil_speed": 6, "spin": True, "spin_speed": 6, "card_size": 5, "facet_row_cap": 4000,
 }
 
 
@@ -49,6 +49,7 @@ class Prefs:
     spin: bool = True
     spin_speed: int = 6
     card_size: int = 5
+    facet_row_cap: int = 4000
     extra: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -100,6 +101,8 @@ def _normalize_field(name: str, value: Any) -> Any:
         return _clamp(value, 1, 10, 6)
     if name == "card_size":
         return _clamp(value, 1, 10, 5)
+    if name == "facet_row_cap":
+        return _clamp(value, 1000, 20000, 4000)
     if name in ("movers", "infinite", "spin"):
         return bool(value)
     if name == "extra":

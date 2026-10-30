@@ -183,6 +183,7 @@
       searchFilter: decodeURIComponent(
         (document.cookie.match(/(?:^|; )scryme_search_filter=([^;]+)/) || [])[1] || ""
       ),
+      facetRowCap: Number.parseInt(localStorage.getItem("scryme-facet-row-cap") || "6", 10),
       foilSpeed: Number.parseInt(localStorage.getItem("scryme-foil-speed") || "6", 10),
       spinOn: localStorage.getItem("scryme-spin") !== "0",   // default on
       spinSpeed: Number.parseInt(localStorage.getItem("scryme-spin-speed") || "6", 10),
@@ -276,6 +277,10 @@
                           ";path=/;max-age=31536000;samesite=lax";
         await this.savePref({ movers: this.moversOn });
         if (location.pathname === "/search") location.reload();
+      },
+      applyFacetRowCap() {
+        localStorage.setItem("scryme-facet-row-cap", this.facetRowCap);
+        this.savePref({ facet_row_cap: Number(this.facetRowCap) });
       },
       applyFoilSpeed() {
         // Higher slider = faster = shorter duration.

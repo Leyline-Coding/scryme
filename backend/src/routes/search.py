@@ -61,6 +61,7 @@ class _DisplayPrefs:
     infinite: bool
     search_filter: str
     movers: bool
+    facet_row_cap: int
 
 
 def _display_prefs(request) -> _DisplayPrefs:
@@ -69,7 +70,14 @@ def _display_prefs(request) -> _DisplayPrefs:
     raw cookies when the prefs middleware didn't run (e.g. a bare unit-test request)."""
     p = getattr(getattr(request, "state", None), "prefs", None)
     if p is not None:
-        return _DisplayPrefs(p.view, p.page_size, p.infinite, p.search_filter, p.movers)
+        return _DisplayPrefs(
+            view=p.view,
+            page_size=p.page_size,
+            infinite=p.infinite,
+            search_filter=p.search_filter,
+            movers=p.movers,
+            facet_row_cap=p.facet_row_cap,
+        )
     c = request.cookies
     return _DisplayPrefs(
         view="list" if c.get("scryme_view") == "list" else "grid",
@@ -77,6 +85,7 @@ def _display_prefs(request) -> _DisplayPrefs:
         infinite=c.get("scryme_infinite") == "1",
         search_filter=c.get("scryme_search_filter") or "",
         movers=c.get("scryme_movers") == "1",
+        facet_row_cap=4000
     )
 
 
@@ -182,22 +191,24 @@ async def search_nl(
 
 async def _run_into_ctx(
     ctx: dict, session, query: str, scope_enum, page: int, sort: str, descending: bool,
-    *, with_facets: bool, page_size: int = DEFAULT_PAGE_SIZE,
+    *, with_facets: bool, page_size: int = DEFAULT_PAGE_SIZE, facet_row_cap: int,
 ) -> None:
     """Run the search and populate ctx with result/views, plus facets or name suggestions."""
     result = await run_search(
         session, query, scope=scope_enum, page=page, sort=sort, descending=descending,
         page_size=page_size,
+        facet_row_cap=facet_row_cap,
     )
     ctx["result"] = result
     ctx["views"] = _to_views(result)
     if result.total and with_facets:
         ctx["facets"] = await memoize(
             ("facets", query, scope_enum.value),
-            lambda: compute_facets(session, query, scope_enum),
+            lambda: compute_facets(session, query, scope_enum, facet_row_cap),
         )
     elif not result.total:
         ctx["suggestions"] = await name_suggestions(session, ctx["q"], scope_enum)
+
 
 
 @router.get("/search", response_class=HTMLResponse)
@@ -222,13 +233,15 @@ async def search(
     universal = dp.search_filter.strip()
     effective_q = _apply_universal(q, universal)
     ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir,
-                 "read_only": get_settings().read_only, "view": view, "nl": nl,
-                 "universal": universal, "cur": info(get_currency(request)),
-                 "page_sizes": PAGE_SIZES, "page_size": page_size, "infinite": infinite}
+                  "read_only": get_settings().read_only, "view": view, "nl": nl,
+                  "universal": universal, "cur": info(get_currency(request)),
+                  "page_sizes": PAGE_SIZES, "page_size": page_size, "infinite": infinite,
+                  "prefs": dp}
+
     try:
         await _run_into_ctx(
             ctx, session, effective_q, scope_enum, page, sort, descending,
-            with_facets=True, page_size=page_size,
+            with_facets=True, page_size=page_size, facet_row_cap=ctx["prefs"].facet_row_cap,
         )
     except SearchError as exc:
         # If the universal filter is what broke the query, fall back to the bare query so a bad
@@ -237,7 +250,7 @@ async def search(
             try:
                 await _run_into_ctx(
                     ctx, session, q, scope_enum, page, sort, descending,
-                    with_facets=False, page_size=page_size,
+                    with_facets=False, page_size=page_size, facet_row_cap=ctx["prefs"].facet_row_cap,
                 )
                 ctx["universal_error"] = True
             except SearchError:

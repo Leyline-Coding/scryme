@@ -48,10 +48,10 @@
                 <button type="button" class="facet-btn w-full flex items-center gap-1.5 text-left text-sm
                          rounded px-1.5 py-0.5 hover:bg-surface-2
                          {% if f.active %}text-accent font-medium{% endif %}"
-                    data-q="{{ f.new_query }}">
+                      data-q="{{ f.new_query }}">
                   <span class="w-3 shrink-0 text-xs">{% if f.active %}✓{% endif %}</span>
                   <span class="flex-1 min-w-0 truncate" title="{{ f.label }}">{{ f.label }}</span>
-                  <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}</span>
+                  <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}{% if f.count >= prefs.facet_row_cap %}+{% endif %}</span>
                 </button>
               </li>
               {% endfor %}
@@ -63,14 +63,14 @@
                 <button type="button" class="facet-btn w-full flex items-center gap-1.5 text-left text-sm
                          rounded px-1.5 py-0.5 hover:bg-surface-2
                          {% if f.active %}text-accent font-medium{% endif %}"
-                    data-q="{{ f.new_query }}">
+                      data-q="{{ f.new_query }}">
                   <span class="w-3 shrink-0 text-xs">{% if f.active %}✓{% endif %}</span>
                   <span class="flex-1 min-w-0 truncate" title="{{ f.label }}">{{ f.label }}</span>
-                  <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}</span>
+                  <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}{% if f.count >= prefs.facet_row_cap %}+{% endif %}</span>
                 </button>
               </li>
               {% endfor %}
-             {% if extra_items %}
+              {% if extra_items %}
               <li>
                 <button type="button" class="w-full text-left text-xs text-accent hover:underline px-1.5 py-0.5"
                         onclick="this.nextElementSibling.classList.toggle('hidden'); this.classList.add('hidden');">
@@ -82,16 +82,16 @@
                     <button type="button" class="facet-btn w-full flex items-center gap-1.5 text-left text-sm
                              rounded px-1.5 py-0.5 hover:bg-surface-2
                              {% if f.active %}text-accent font-medium{% endif %}"
-                            data-q="{{ f.new_query }}">
+                             data-q="{{ f.new_query }}">
                       <span class="w-3 shrink-0 text-xs">{% if f.active %}✓{% endif %}</span>
                       <span class="flex-1 min-w-0 truncate" title="{{ f.label }}">{{ f.label }}</span>
-                      <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}</span>
+                      <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}{% if f.count >= prefs.facet_row_cap %}+{% endif %}</span>
                     </button>
                   </li>
                   {% endfor %}
                 </ul>
               </li>
-             {% endif %}
+              {% endif %}
             {% endif %}
           </ul>
         </div>

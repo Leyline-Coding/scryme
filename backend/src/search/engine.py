@@ -18,7 +18,7 @@ from src.search.compiler import compile_node
 from src.search.parser import parse
 
 DEFAULT_PAGE_SIZE = 60
-
+DEFAULT_FACET_ROW_CAP = 4000
 # Sort keys exposed in the UI. `name` is the default and preserves the original ordering.
 SORT_KEYS = ("name", "mv", "price", "set", "rarity", "released")
 DEFAULT_SORT = "name"
@@ -148,13 +148,14 @@ async def run_search(
     scope: SearchScope = SearchScope.COLLECTION,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
+    facet_row_cap: int = DEFAULT_FACET_ROW_CAP,
     sort: str = DEFAULT_SORT,
     descending: bool = False,
 ) -> SearchResult:
     """Execute a search and return the requested page plus owned quantities."""
     page = max(1, page)
     base = build_search(query, scope, sort=sort, descending=descending)
-
+    print(facet_row_cap)
     total = await session.scalar(select(func.count()).select_from(base.subquery())) or 0
     rows = await session.execute(base.limit(page_size).offset((page - 1) * page_size))
     cards = list(rows.scalars().all())

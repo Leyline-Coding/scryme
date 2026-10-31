@@ -6,6 +6,7 @@ a ``_col_<tab>`` partial inside the shared shell. The old per-feature routes red
 """
 
 from __future__ import annotations
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
@@ -70,7 +71,7 @@ async def collection(
     ctx: dict = {
         "tabs": TABS, "tab": tab, "view": view, "keep": keep,
         "cur": info(currency), "read_only": get_settings().read_only,
-        "sort_by": sort_by, "sort_dir": sort_dir,
+        "sort_by": sort_by, "sort_dir": sort_dir, 'now': datetime.now(timezone.utc)
     }
 
     if tab == "stats":
@@ -118,14 +119,12 @@ async def collection(
             symbols = [f"ms-{c.lower()}" for c in sorted(list(deck_color_identity))]
             group_name = color_identity_group(list(deck_color_identity))
             
-            ctx["decks"].append((d, n, round(total_val, 2), symbols, group_name))
+            ctx["decks"].append((d, n, round(total_val, 2), symbols, group_name, d.updated_at))
 
         if sort_by == "price":
             ctx["decks"].sort(key=lambda x: x[2], reverse=(sort_dir == "desc"))
         elif sort_by == "name":
             ctx["decks"].sort(key=lambda x: x[0].name, reverse=(sort_dir == "desc"))
-
-
 
 
     elif tab == "locations":

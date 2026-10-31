@@ -1,3 +1,6 @@
+{% import "_currency.html" as currency %}
+{% from "_time_utils.html" import humanize_dt %}
+
 {# Custom binders index (#206): flat, user-named binders of owned cards. #}
 <p class="text-sm text-muted mb-4">
   Custom binders group cards however you like — "Ramp", "Removal", "Cats", "Orzhov". Add cards from
@@ -33,7 +36,11 @@
   <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3">
     <a href="/binders/view/{{ b.id }}" class="flex-1 min-w-0 hover:text-accent">
       <div class="font-medium truncate">🗂️ {{ b.name }}</div>
-      <div class="text-xs text-muted">{{ '{:,}'.format(b.count) }} card{{ '' if b.count == 1 else 's' }}</div>
+      <div class="text-xs text-muted">
+        <span>{{ '{:,}'.format(b.count) }} card{{ '' if b.count == 1 else 's' }}</span>
+        •
+        <span title="Updated {{ b.updated_at.strftime('%Y-%m-%d %H:%M') }}">Updated {{ humanize_dt(b.updated_at, now) }}</span>
+      </div>
     </a>
     {% if not read_only %}
     <form action="/binders/{{ b.id }}/delete" method="post"

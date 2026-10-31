@@ -1,4 +1,5 @@
 {% import "_currency.html" as currency %}
+{% from "_time_utils.html" import humanize_dt %}
 
 <p class="text-sm text-muted mb-4">
   Manage your decks.
@@ -34,7 +35,7 @@
 
 {% if decks %}
 <ul class="space-y-2">
-  {% for deck, count, value, symbols, group_name in decks %}
+  {% for deck, count, value, symbols, group_name, updated_at in decks %}
   <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3">
     <a href="/decks/{{ deck.id }}" class="flex-1 min-w-0">
       <div class="font-medium truncate hover:text-accent">{{ deck.name }}</div>
@@ -45,6 +46,8 @@
         </span>
         •
         <span>{{ count }} line{{ '' if count == 1 else 's' }}</span>
+        •
+        <span title="Updated {{ updated_at.strftime('%Y-%m-%d %H:%M') }}">Updated {{ humanize_dt(updated_at, now) }}</span>
         •
         <span>{{ currency.format_and_decorate(value, cur.symbol) }}</span>
       </div>

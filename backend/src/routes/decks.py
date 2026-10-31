@@ -524,6 +524,10 @@ async def replace_deck_list(
                      oracle_id=oracle, scryfall_id=sid, finish=p.finish)
         )
 
+    # Manually update the updated_at timestamp
+    import datetime
+    deck.updated_at = datetime.datetime.now(datetime.timezone.utc)
+    
     await session.commit()
     return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
 

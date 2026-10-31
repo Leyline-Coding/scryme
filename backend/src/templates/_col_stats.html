@@ -1,3 +1,4 @@
+{% import "_currency.html" as currency %}
 {% macro bars(group) %}
   {% set m = (group | map(attribute='count') | max) or 1 %}
   <div class="space-y-1.5">
@@ -103,7 +104,7 @@
   </div>
   <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
     <div class="text-xs text-muted">Est. value ({{ cur.label }})</div>
-    <div class="text-2xl font-bold">{{ cur.symbol }}{{ '{:,.2f}'.format(stats.total_value) }}</div>
+    <div class="text-2xl font-bold">{{ currency.format_and_decorate(stats.total_value, cur.symbol) }}</div>
   </div>
 </div>
 

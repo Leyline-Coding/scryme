@@ -1,4 +1,5 @@
 {# Compact "biggest movers" panel, shown on the search page when enabled in Settings. #}
+{% import "_currency.html" as currency %}
 {% macro movers_col(items, up) %}
 <ul class="space-y-1 text-sm">
   {% for m in items %}
@@ -7,7 +8,7 @@
       {{ m.name }} <span class="text-muted uppercase text-xs">{{ m.set_code }}</span>
     </a>
     <span class="shrink-0 tabular-nums font-medium {% if up %}text-emerald-500{% else %}text-rose-500{% endif %}">
-      {{ '+' if m.delta > 0 else '' }}{{ '{:,.2f}'.format(m.delta) }} ({{ m.pct }}%)
+      {{ '+' if m.delta > 0 else '-' }} {{ currency.format_and_decorate(((m.delta| abs)*cur.usd_to_cur_rate), cur.symbol) }} ({{ m.pct }}%)
     </span>
   </li>
   {% else %}

@@ -1,3 +1,5 @@
+{% import "_currency.html" as currency %}
+
 <p class="text-sm text-muted mb-4">
   Manage your decks.
 </p>
@@ -44,7 +46,7 @@
         •
         <span>{{ count }} line{{ '' if count == 1 else 's' }}</span>
         •
-        <span>{{ "{:,.2f}".format(value) }} {{ cur.symbol }}</span>
+        <span>{{ currency.format_and_decorate(value, cur.symbol) }}</span>
       </div>
     </a>
     {% if not read_only %}

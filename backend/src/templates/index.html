@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% import "_currency.html" as currency %}
+
 {% block content %}
 <section class="flex flex-col items-center justify-center px-4 py-24">
   <a href="/" class="mb-8 flex items-center gap-3">
@@ -150,27 +152,33 @@
     <div class="flex items-baseline justify-between gap-3 mb-2">
       <p class="text-sm font-semibold text-accent">📈 Collection movers</p>
       <p class="text-sm">
-        {% if digest.delta >= 0 %}<span class="text-emerald-500 font-semibold">▲ +${{ '{:,.2f}'.format(digest.delta) }}</span>
-        {% else %}<span class="text-rose-500 font-semibold">▼ -${{ '{:,.2f}'.format(-digest.delta) }}</span>{% endif %}
+        {% if digest.delta >= 0 %}<span class="text-emerald-500 font-semibold">▲ + {{ currency.format_and_decorate(digest.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>
+        {% else %}<span class="text-rose-500 font-semibold">▼ - {{ currency.format_and_decorate(-digest.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>{% endif %}
         <span class="text-muted">({{ '{:+.1f}'.format(digest.pct) }}%)</span>
       </p>
     </div>
     <p class="text-xs text-muted mb-2">Since {{ digest.baseline_at.strftime('%b %d').replace(' 0', ' ') }}
-      · now ${{ '{:,.2f}'.format(digest.end_value) }}</p>
+      · now {{ currency.format_and_decorate(digest.end_value*cur.usd_to_cur_rate, cur.symbol) }}</p>
     {% if digest.gainers or digest.losers %}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
-      {% for m in digest.gainers[:5] %}
-      <a href="/card/{{ m.scryfall_id }}" class="flex items-center justify-between gap-2 hover:text-accent">
-        <span class="truncate">{{ m.name }} <span class="text-[10px] text-muted uppercase">{{ m.set_code }}</span></span>
-        <span class="text-emerald-500 shrink-0 tabular-nums">+${{ '{:,.2f}'.format(m.delta) }}</span>
-      </a>
-      {% endfor %}
-      {% for m in digest.losers[:5] %}
-      <a href="/card/{{ m.scryfall_id }}" class="flex items-center justify-between gap-2 hover:text-accent">
-        <span class="truncate">{{ m.name }} <span class="text-[10px] text-muted uppercase">{{ m.set_code }}</span></span>
-        <span class="text-rose-500 shrink-0 tabular-nums">${{ '{:,.2f}'.format(m.delta) }}</span>
-      </a>
-      {% endfor %}
+      <div>
+        <h3 class="text-xs font-semibold text-emerald-500 mb-1">▲ Gainers</h3>
+        {% for m in digest.gainers[:5] %}
+        <a href="/card/{{ m.scryfall_id }}" class="flex items-center justify-between gap-2 hover:text-accent">
+          <span class="truncate">{{ m.name }} <span class="text-[10px] text-muted uppercase">{{ m.set_code }}</span></span>
+          <span class="text-emerald-500 shrink-0 tabular-nums">+ {{ currency.format_and_decorate(m.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>
+        </a>
+        {% endfor %}
+      </div>
+      <div>
+        <h3 class="text-xs font-semibold text-rose-500 mb-1">▼ Losers</h3>
+        {% for m in digest.losers[:5] %}
+        <a href="/card/{{ m.scryfall_id }}" class="flex items-center justify-between gap-2 hover:text-accent">
+          <span class="truncate">{{ m.name }} <span class="text-[10px] text-muted uppercase">{{ m.set_code }}</span></span>
+          <span class="text-rose-500 shrink-0 tabular-nums">- {{ currency.format_and_decorate(-m.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>
+        </a>
+        {% endfor %}
+      </div>
     </div>
     {% endif %}
     <p class="mt-2 text-xs text-muted"><a href="/prices" class="underline">Price history</a></p>

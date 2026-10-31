@@ -393,7 +393,10 @@ class Movers:
 
 
 async def _movers_between(
-    session: AsyncSession, prev_id: int, latest_id: int, limit: int,
+    session: AsyncSession,
+    prev_id: int,
+    latest_id: int,
+    limit: int = 5
 ) -> tuple[list[Mover], list[Mover]]:
     """Top gainers/losers between two snapshots, by absolute USD change."""
     def points(sid):
@@ -464,7 +467,7 @@ class Digest:
             if self.start_value else 0.0
 
 
-async def collection_digest(session: AsyncSession, days: int = 7, limit: int = 5) -> Digest:
+async def collection_digest(session: AsyncSession, days: int = 7, **kwargs) -> Digest:
     """Value change + top movers since ~`days` ago (or the previous snapshot if sparse)."""
     latest = (await session.execute(
         select(PriceSnapshot).order_by(desc(PriceSnapshot.captured_at)).limit(1)
@@ -484,7 +487,7 @@ async def collection_digest(session: AsyncSession, days: int = 7, limit: int = 5
         )).scalars().first()
     if baseline is None:
         return Digest()
-    gainers, losers = await _movers_between(session, baseline.id, latest.id, limit)
+    gainers, losers = await _movers_between(session, baseline.id, latest.id, **kwargs)
     return Digest(
         available=True, latest_at=latest.captured_at, baseline_at=baseline.captured_at,
         start_value=float(baseline.total_usd or 0), end_value=float(latest.total_usd or 0),

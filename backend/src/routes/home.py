@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
+from src.currency import get_currency, info
 from src.db import get_session
 from src.templating import templates
 
@@ -23,6 +24,8 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)) 
 
     count = await session.scalar(select(func.count()).select_from(CollectionCard))
     settings = get_settings()
+    currency = get_currency(request)
+
     # When the card database itself is empty (a fresh desktop install), the collection can't be
     # searched or matched against — gate the home page on a one-time first-run ingest instead.
     card_count = await session.scalar(select(func.count()).select_from(Card))
@@ -45,6 +48,7 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)) 
             "read_only": settings.read_only,
             "needs_cards": needs_cards,
             "alerts": alerts,
+            "cur": info(currency),
             "price_alerts": price_alerts,
             "digest": digest,
         },

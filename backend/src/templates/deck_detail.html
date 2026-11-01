@@ -241,6 +241,7 @@
             <label class="text-muted block mb-1">Replace list:</label>
             <textarea name="decklist_text" rows="5" class="w-full rounded bg-surface-2 border border-edge px-2 py-1 text-xs" placeholder="Enter card list (e.g. 4 Lightning Bolt)"></textarea>
             <button type="submit" class="mt-2 rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs">Replace list</button>
+            <input name="backup_before_import" type="checkbox" class="w-4 h-4 accent-[color:var(--c-accent)]"> <span>Backup current cardlist before importing</span>
           </form>
           <form method="post" action="/decks/{{ cov.deck.id }}/resync" class="flex items-center gap-2 flex-wrap">
 

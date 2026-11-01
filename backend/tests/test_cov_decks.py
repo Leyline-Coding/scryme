@@ -57,6 +57,24 @@ def test_parse_decklist_skips_comments_and_headers():
     assert len(rows) == 2
 
 
+def test_parse_decklist_handles_sideboard_comments():
+    # Test that // Sideboard marks sideboard section and other // comments are ignored
+    rows = parse_decklist("// Mainboard cards\n2 Forest\n// Sideboard\n1 Duress\n// Maybeboard\n3 Island")
+    assert (rows[0].name, rows[0].board) == ("Forest", "main")
+    assert (rows[1].name, rows[1].board) == ("Duress", "side")
+    assert (rows[2].name, rows[2].board) == ("Island", "side")
+    assert len(rows) == 3
+
+
+def test_parse_decklist_handles_case_insensitive_sideboard():
+    # Test case insensitive // Sideboard
+    rows = parse_decklist("// MAINBOARD\n2 Forest\n1 Duress\n// SiDeBoArD\n3 Island\n// comment")
+    assert (rows[0].name, rows[0].board) == ("Forest", "main")
+    assert (rows[1].name, rows[1].board) == ("Duress", "main")
+    assert (rows[2].name, rows[2].board) == ("Island", "side")
+    assert len(rows) == 3
+
+
 def test_parse_deck_line_sb_prefix():
     line = _parse_deck_line("SB: 3 Duress", "main")
     assert (line.quantity, line.name, line.board) == (3, "Duress", "side")

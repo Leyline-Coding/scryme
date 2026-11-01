@@ -162,7 +162,7 @@ def _set_year_legal_finish_groups(
 
 
 async def compute_facets(
-    session: AsyncSession, query: str, scope: SearchScope, facet_row_cap: int
+    session: AsyncSession, query: str, scope: SearchScope, facet_row_cap: int = 4000
 ) -> list[FacetGroup]:
     """Facet groups for the result set of (query, scope). Raises SearchError on a bad query."""
     base = build_search(query, scope)

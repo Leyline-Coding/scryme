@@ -100,10 +100,12 @@ def parse_decklist(text: str | None) -> list[ParsedLine]:
     board = "main"
     for raw in (text or "").splitlines():
         s = raw.strip()
-        if not s or s.startswith(("#", "//")):
+        if not s:
             continue
-        if s.lower().startswith("sideboard"):
+        if re.search(r"^.{0,20}sideboard", s, re.IGNORECASE):
             board = "side"
+            continue
+        if s.startswith(("#", "//")):
             continue
         line = _parse_deck_line(s, board)
         if line:

@@ -202,34 +202,46 @@
     <input type="hidden" name="q" /><input type="hidden" name="scope" />
     <input type="hidden" name="sort" /><input type="hidden" name="dir" />
     <input type="hidden" name="bulk_action" />
-    <div id="bulkbar" class="hidden sticky top-2 z-30 mb-3 flex flex-wrap items-center gap-2
-                rounded-xl bg-surface ring-1 ring-accent px-3 py-2 text-sm shadow-lg">
-      <span><b id="bulkcount">0</b> selected</span>
-      <input name="tag" placeholder="tag" class="rounded bg-surface-2 px-2 py-1 w-28" />
-      <button type="button" onclick="bulkSubmit('tag')"
-        class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Add tag</button>
-      {% if binders %}
-      <select name="binder_id" class="rounded bg-surface-2 px-2 py-1">
-        {% for b in binders %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
-      </select>
-      <button type="button" onclick="bulkSubmit('binder')"
-        class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Add to binder</button>
-      {% endif %}
-      <button type="button" onclick="bulkSubmit('add')"
-        class="rounded bg-accent text-accent-fg px-2.5 py-1">+1 to collection</button>
-      {% if trade_pools %}
-      {# Staging needs a side as well as a pool (#331), so the pool is a picker and the two
-         buttons say which way the cards are moving. #}
-      <label class="sr-only" for="bulk-trade-pool">Trade pool</label>
-      <select name="pool_id" id="bulk-trade-pool" class="rounded bg-surface-2 px-2 py-1">
-        {% for tp in trade_pools %}<option value="{{ tp.id }}">{{ tp.name }}</option>{% endfor %}
-      </select>
-      <button type="button" onclick="bulkSubmit('trade_out')"
-        class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Give</button>
-      <button type="button" onclick="bulkSubmit('trade_in')"
-        class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Get</button>
-      {% endif %}
-      <button type="button" onclick="bulkClear()" class="ml-auto text-muted hover:text-fg">Clear</button>
+    <div id="bulkbar" class="hidden sticky top-2 z-30 mb-3 flex justify-between items-center w-full rounded-xl bg-surface ring-1 ring-accent px-3 py-2 text-sm shadow-lg">
+      <!-- Left side buttons -->
+      <div class="flex gap-2 items-center">
+        <span><b id="bulkcount">0</b> selected</span>
+        <button type="button" onclick="bulkClear()" class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Clear Selection</button>
+        <button type="button" onclick="bulkSelectAll()" class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Select All</button>
+      </div>
+
+      <!-- Right side buttons -->
+      <div class="flex gap-2 items-center">
+        <input name="tag" placeholder="tag" class="rounded-full bg-surface-2 px-2 py-1 w-28" />
+        <button type="button" onclick="bulkSubmit('tag')"
+          class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Add tag</button>
+        {% if binders %}
+        <select name="binder_id" class="rounded-full bg-surface-2 px-2 py-1">
+          {% for b in binders %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+        </select>
+        <button type="button" onclick="bulkSubmit('binder')"
+          class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Add to binder</button>
+        {% endif %}
+        <button type="button" onclick="bulkSubmit('add')"
+          class="rounded-full bg-accent text-accent-fg px-2.5 py-1">+1 to collection</button>
+        {% if trade_pools %}
+        {# Staging needs a side as well as a pool (#331), so the pool is a picker and the two
+          buttons say which way the cards are moving. #}
+        <label class="sr-only" for="bulk-trade-pool">Trade pool</label>
+        <select name="pool_id" id="bulk-trade-pool" class="rounded-full bg-surface-2 px-2 py-1">
+          {% for tp in trade_pools %}<option value="{{ tp.id }}">{{ tp.name }}</option>{% endfor %}
+        </select>
+        <button type="button" onclick="bulkSubmit('trade_out')"
+          class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Give</button>
+        <button type="button" onclick="bulkSubmit('trade_in')"
+          class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Get</button>
+        {% endif %}
+      </div>
+    </div>
+    <div class="hidden sticky top-2 z-30 mb-3 flex flex-wrap items-center gap-2
+                ">
+      
+      
     </div>
     <div id="results">
       {% include "search_results.html" %}
@@ -264,6 +276,13 @@
     bulkChecked().forEach(function (b) { b.checked = false; });
     bulkCount();
   }
+  function bulkSelectAll() {
+    const checkboxes = document.querySelectorAll('#results input[name="scryfall_ids"]');
+    checkboxes.forEach(function (cb) {
+      cb.checked = true;
+    });
+    bulkCount();
+  }
   function bulkSubmit(action) {
     var f = document.getElementById('bulkform');
     if (!f || !bulkChecked().length) return;
@@ -288,6 +307,12 @@
     // Find if click was on a card
     let cardElement = e.target.closest('.card-grid > div');
     if (cardElement) {
+      // Check if the click was directly on a checkbox - if so, let it work normally
+      if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') {
+        // Let the checkbox handle its own change event (which calls bulkCount)
+        return;
+      }
+      
       // Find the checkbox within this card
       const checkbox = cardElement.querySelector('input[name="scryfall_ids"]');
       if (checkbox) {

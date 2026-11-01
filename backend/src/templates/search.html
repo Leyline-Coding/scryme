@@ -212,12 +212,11 @@
 
       <!-- Right side buttons -->
       <div class="flex gap-2 items-center">
-        {% if scope == "collection" %}
-        <input name="tag" placeholder="tag" class="rounded-full bg-surface-2 px-2 py-1 w-28" />
+        <input name="tag" placeholder="tag" class="rounded-full bg-surface-2 px-2 py-1 w-28 action-scope-collection" />
         <button type="button" onclick="bulkSubmit('tag')"
-          class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Add tag</button>
+          class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 action-scope-collection">Add tag</button>
         {% if binders or boxes or decks %}
-        <div x-data="{ open: false }" class="relative">
+        <div x-data="{ open: false }" class="relative action-scope-collection">
           <button @click="open = !open" type="button"
             class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-sm font-medium">Move to ▾</button>
           <input type="hidden" name="bulk_container_id" id="bulk_container_id" />
@@ -243,15 +242,9 @@
             {% endif %}
           </div>
         </div>
-
-
-
         {% endif %}
-        {% endif %}
-        {% if scope == "all" %}
-        <button type="button" onclick="bulkSubmit('add')"
-          class="rounded-full bg-accent text-accent-fg px-2.5 py-1">+1 to collection</button>
-        {% endif %}
+        <button type="button" id="bulk-add-btn" onclick="bulkSubmit('add')"
+          class="rounded-full bg-accent text-accent-fg px-2.5 py-1 action-scope-all">+1 to collection</button>
         {% if trade_pools %}
         {# Staging needs a side as well as a pool (#331), so the pool is a picker and the two
           buttons say which way the cards are moving. #}
@@ -323,6 +316,34 @@
     if(bulk_container_id) {f.querySelector('[name=bulk_container_id]').value = bulk_container_id};
     f.submit();
   }
+  
+  // Update button visibility based on scope
+  function updateScopeButtonVisibility() {
+    // Get the currently selected scope (either 'all' or 'collection')
+    var scopeAll = document.querySelector('input[name="scope"][value="all"]');
+    var scopeCollection = document.querySelector('input[name="scope"][value="collection"]');
+
+
+    if (scopeAll && scopeAll.checked) {
+      document.querySelectorAll('.action-scope-all').forEach(element => {element.classList.remove('hidden');});
+      document.querySelectorAll('.action-scope-collection').forEach(element => {element.classList.add('hidden');});
+    } else {
+      document.querySelectorAll('.action-scope-all').forEach(element => {element.classList.add('hidden');});
+      document.querySelectorAll('.action-scope-collection').forEach(element => {element.classList.remove('hidden');});
+    }
+  }
+  
+  // Update visibility when scope changes
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initial check
+    updateScopeButtonVisibility();
+    // Listen for radio button changes
+    var scopeEl = document.querySelectorAll('input[name="scope"]');
+    scopeEl.forEach(function(radio) {
+      radio.addEventListener('change', updateScopeButtonVisibility);
+    });
+  });
+
   // After an HTMX results swap the checkboxes are fresh (unchecked) — re-sync the bar.
   document.body.addEventListener('htmx:afterSwap', function (e) {
     if (e.target && e.target.id === 'results') bulkCount();
@@ -348,6 +369,9 @@
         // Toggle the checkbox
         checkbox.checked = !checkbox.checked;
         bulkCount();
+        
+        // Update button visibility when scope changes
+        updateBulkAddButtonVisibility();
         
         // Prevent default link behavior 
         e.preventDefault();

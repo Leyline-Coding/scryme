@@ -13,10 +13,18 @@ from urllib.parse import quote
 import httpx
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.binder_service import all_binders
+from src.box_service import (
+    all_boxes,
+    create_box,
+    delete_box,
+    rename_box,
+)
 from src.config import get_settings
+from src.models import Deck
 from src.currency import get_currency, info
 from src.db import get_session
 from src.facets import compute_facets
@@ -284,6 +292,9 @@ async def search(
     ctx["read_only"] = get_settings().read_only
     ctx["ai_ready"] = (await get_config(session)).ready
     ctx["binders"] = await all_binders(session)
+    ctx["boxes"] = await all_boxes(session)
+    ctx["decks"] = await session.execute(select(Deck).order_by(Deck.name))
+    ctx["decks"] = list(ctx["decks"].scalars().all())
     ctx["trade_pools"] = await open_pools(session)
     # Optional biggest-movers panel (opt-in via Settings).
     if dp.movers:

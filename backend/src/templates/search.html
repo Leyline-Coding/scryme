@@ -201,7 +201,7 @@
   <form id="bulkform" method="post" action="/collection/bulk">
     <input type="hidden" name="q" /><input type="hidden" name="scope" />
     <input type="hidden" name="sort" /><input type="hidden" name="dir" />
-    <input type="hidden" name="bulk_action" />
+    <input type="hidden" name="bulk_action" id="bulk_action" />
     <div id="bulkbar" class="hidden sticky top-2 z-30 mb-3 flex justify-between items-center w-full rounded-xl bg-surface ring-1 ring-accent px-3 py-2 text-sm shadow-lg">
       <!-- Left side buttons -->
       <div class="flex gap-2 items-center">
@@ -212,18 +212,46 @@
 
       <!-- Right side buttons -->
       <div class="flex gap-2 items-center">
+        {% if scope == "collection" %}
         <input name="tag" placeholder="tag" class="rounded-full bg-surface-2 px-2 py-1 w-28" />
         <button type="button" onclick="bulkSubmit('tag')"
           class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Add tag</button>
-        {% if binders %}
-        <select name="binder_id" class="rounded-full bg-surface-2 px-2 py-1">
-          {% for b in binders %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
-        </select>
-        <button type="button" onclick="bulkSubmit('binder')"
-          class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Add to binder</button>
+        {% if binders or boxes or decks %}
+        <div x-data="{ open: false }" class="relative">
+          <button @click="open = !open" type="button"
+            class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-sm font-medium">Move to ▾</button>
+          <input type="hidden" name="bulk_container_id" id="bulk_container_id" />
+          <div x-show="open" @click.outside="open = false" x-transition style="display: none"
+            class="absolute right-0 mt-2 w-64 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
+            {% if binders %}
+            <div class="px-3 py-1.5 text-xs font-medium text-muted">Binders</div>
+            {% for b in binders %}<button type="button" @click="open = false; bulkSubmit('binder', {{ b.id }})"
+              class="block w-full text-left px-3 py-1.5 hover:bg-surface-2">{{ b.name }}</button>{% endfor %}
+            {% endif %}
+            {% if boxes %}
+            <div class="px-3 py-1.5 text-xs font-medium text-muted border-t border-edge mt-1 pt-1">Boxes</div>
+            {% for b in boxes %}<button type="button" @click="open = false; bulkSubmit('box', {{ b.id }})"
+              class="block w-full text-left px-3 py-1.5 hover:bg-surface-2">{{ b.name }}</button>{% endfor %}
+            {% endif %}
+            {% if decks %}
+            <div class="px-3 py-1.5 text-xs font-medium text-muted border-t border-edge mt-1 pt-1">Decks</div>
+            {% for d in decks %}<button type="button" @click="open = false; bulkSubmit('deck', {{ d.id }})"
+              class="block w-full text-left px-3 py-1.5 hover:bg-surface-2">{{ d.name }}</button>{% endfor %}
+            {% endif %}
+            {% if not binders and not boxes and not decks %}
+            <p class="px-3 py-1.5 text-muted">No containers found</p>
+            {% endif %}
+          </div>
+        </div>
+
+
+
         {% endif %}
+        {% endif %}
+        {% if scope == "all" %}
         <button type="button" onclick="bulkSubmit('add')"
           class="rounded-full bg-accent text-accent-fg px-2.5 py-1">+1 to collection</button>
+        {% endif %}
         {% if trade_pools %}
         {# Staging needs a side as well as a pool (#331), so the pool is a picker and the two
           buttons say which way the cards are moving. #}
@@ -283,7 +311,7 @@
     });
     bulkCount();
   }
-  function bulkSubmit(action) {
+  function bulkSubmit(action, bulk_container_id=undefined) {
     var f = document.getElementById('bulkform');
     if (!f || !bulkChecked().length) return;
     var p = new URLSearchParams(globalThis.location.search);
@@ -292,6 +320,7 @@
     f.querySelector('[name=sort]').value = p.get('sort') || 'name';
     f.querySelector('[name=dir]').value = p.get('dir') || 'asc';
     f.querySelector('[name=bulk_action]').value = action;
+    if(bulk_container_id) {f.querySelector('[name=bulk_container_id]').value = bulk_container_id};
     f.submit();
   }
   // After an HTMX results swap the checkboxes are fresh (unchecked) — re-sync the bar.

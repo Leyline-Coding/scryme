@@ -72,6 +72,9 @@
             <option value="asc" {% if dir != 'desc' %}selected{% endif %}>Asc ↑</option>
             <option value="desc" {% if dir == 'desc' %}selected{% endif %}>Desc ↓</option>
           </select>
+          <button class="rounded-full bg-surface border border-edge px-3 py-1.5 md:hidden" onclick="openSidebar()">
+            Filter
+          </button>
         </div>
       </div>
     </div>

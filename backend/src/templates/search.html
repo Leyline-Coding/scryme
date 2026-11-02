@@ -79,11 +79,17 @@
       </div>
     </div>
 
-    {% if nl %}
-    <p class="order-last w-full text-xs text-muted">
-      Interpreted <span class="text-fg">“{{ nl }}”</span> as the query above — edit it to refine.
-    </p>
-    {% endif %}
+  {% if ai_error %}
+  <div class="order-last w-full mb-4 p-3 bg-amber-500/15 text-amber-500 rounded-lg text-sm">
+    <span class="font-medium">AI Error:</span> {{ ai_error }}
+  </div>
+  {% elif nl %}
+  <p class="order-last w-full text-xs text-muted">
+    AI generated the scryfall query <span class="text-fg">“{{ q }}”</span> from the prompt <span class="text-fg">“{{ nl }}”</span>.
+  </p>
+  {% endif %}
+
+  
   </header>
 
   {% include "_movers_panel.html" %}

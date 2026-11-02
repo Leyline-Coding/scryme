@@ -198,13 +198,27 @@ async def search_nl(
     text = q.strip()
     generated = ""
     cfg = await get_config(session)
+    ai_error = None
 
     if cfg.ready and text:
         try:
             generated = await nl_to_query(text, ChatClient(cfg))
-        except (httpx.HTTPError, KeyError, IndexError, ValueError):
+        except httpx.HTTPStatusError as e:
+            # Check for specific HTTP errors that indicate AI service issues
+            if e.response.status_code == 404:
+                # For a 404 error, let the user know the AI endpoint might be misconfigured
+                # But still fallback gracefully to raw search as before
+                generated = ""
+                ai_error = "AI service not found - please check your LLM configuration"
+            else:
+                # For other HTTP errors, fallback to original behavior 
+                generated = ""
+        except (KeyError, IndexError, ValueError):
             generated = ""
     url = f"/search?q={quote(generated or text)}&scope={quote(scope)}&nl={quote(text)}"
+    if ai_error:
+        # Add error to URL parameters so it can be displayed on the results page
+        url += f"&ai_error={quote(ai_error)}"
     return local_redirect(url)
 
 
@@ -239,6 +253,7 @@ async def search(
     dir: str = "asc",
     nl: str = "",
     append: int = 0,
+    ai_error: str = "",
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     scope_enum = SearchScope.ALL if scope == SearchScope.ALL.value else SearchScope.COLLECTION
@@ -255,7 +270,7 @@ async def search(
                   "read_only": get_settings().read_only, "view": view, "nl": nl,
                   "universal": universal, "cur": info(get_currency(request)),
                   "page_sizes": PAGE_SIZES, "page_size": page_size, "infinite": infinite,
-                  "prefs": dp}
+                  "prefs": dp, "ai_error": ai_error}
 
     try:
         await _run_into_ctx(

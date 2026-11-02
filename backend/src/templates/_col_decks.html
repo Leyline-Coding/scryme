@@ -5,8 +5,8 @@
   Manage your decks.
 </p>
 
-<div class="grid grid-cols-2 md:grid-cols-2">
-  <div class="flex justify-start items-center gap-3 mb-4">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div class="flex justify-start items-center gap-3 md:mb-4">
     <a href="/collection?tab=decks&sort_by={{ sort_by }}&sort_dir={{ 'desc' if sort_dir == 'asc' else 'asc' }}"
       class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}">
       {{ 'Descending' if sort_dir == 'desc' else 'Ascending' }}
@@ -21,11 +21,11 @@
     </a>
   </div>
   {% if not read_only %}
-  <div class="flex justify-end gap-2 mb-3">
-    <a href="/decks/build" class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent">
+  <div class="flex justify-start md:justify-end gap-2 mb-3">
+    <a href="/decks/build" class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent whitespace-nowrap">
       ✨ Build from collection
     </a>
-    <a href="/decks/new" class="rounded-full bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:opacity-90">
+    <a href="/decks/new" class="rounded-full bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:opacity-90 whitespace-nowrap">
       + New deck
     </a>
   </div>

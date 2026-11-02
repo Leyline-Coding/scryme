@@ -198,14 +198,13 @@ async def search_nl(
     text = q.strip()
     generated = ""
     cfg = await get_config(session)
+
     if cfg.ready and text:
         try:
             generated = await nl_to_query(text, ChatClient(cfg))
         except (httpx.HTTPError, KeyError, IndexError, ValueError):
             generated = ""
-    url = f"/search?q={quote(generated or text)}&scope={quote(scope)}"
-    if generated:
-        url += f"&nl={quote(text)}"
+    url = f"/search?q={quote(generated or text)}&scope={quote(scope)}&nl={quote(text)}"
     return local_redirect(url)
 
 

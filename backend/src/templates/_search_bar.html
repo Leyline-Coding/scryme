@@ -28,7 +28,7 @@
 <form x-show="ai" x-cloak method="post" action="/search/nl" class=" flex w-full items-center">
   <input type="hidden" name="scope" value="{{ scope }}" />
   <div class="relative flex-1">
-    <input type="search" name="q" x-ref="ainput" id="ai-search-input"
+    <input type="search" name="q" x-ref="ainput" id="ai-search-input" value="{{ nl }}"
             placeholder="✨ Ask in plain English — cheap red removal that hits creatures"
             class="w-full rounded-l-full bg-surface border border-edge border-r-0 px-5 py-2.5
                   focus:outline-none focus:ring-2 focus:ring-accent" />

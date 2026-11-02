@@ -471,6 +471,11 @@ class DeckCoverage:
     unmatched: int = 0              # lines whose name didn't resolve to a card
     fmt: str | None = None          # selected legality format, if any
     illegal_count: int = 0          # distinct cards not legal in the selected format
+    # Legalities for all formats (pre-calculated for display)
+    all_legalities: dict[str, bool] = field(default_factory=dict)
+    # Detailed breakdown of why a deck is illegal or incomplete for each format
+    # Maps format -> {"illegal_cards": [names], "unmatched": [names]}
+    legality_details: dict[str, dict[str, list[str]]] = field(default_factory=dict)
 
     @property
     def owned_count(self) -> int:
@@ -619,6 +624,47 @@ async def deck_coverage(
 
     cov = DeckCoverage(deck=deck, fmt=fmt)
     illegal_oracles: set = set()
+    
+    # Pre-calculate legality for all formats
+    all_legalities: dict[str, bool] = {}
+    legality_details: dict[str, dict[str, list[str]]] = {}
+    
+    if {c.oracle_id for c in deck.cards if c.oracle_id}:
+        # First we get the legalities for all oracle IDs for all formats
+        legal_by_oracle_all = await _legalities_by_oracle(
+            session, {c.oracle_id for c in deck.cards if c.oracle_id}
+        )
+        
+        # For each format, determine if the deck is legal
+        for f in LEGALITY_FORMATS:
+            illegal_oracles_for_format: set = set()
+            
+            # Check each card in the deck
+            for c in deck.cards:
+                _card_legality(c, f, legal_by_oracle_all, illegal_oracles_for_format)
+            
+            # The deck is legal in this format if no illegal cards and all cards matched
+            is_legal_for_format = (len(illegal_oracles_for_format) == 0 
+                                  and sum(1 for c in deck.cards if not c.oracle_id) == 0)
+            all_legalities[f] = is_legal_for_format
+            
+            # Build the details for each format
+            illegal_cards = []
+            unmatched_cards = []
+            for c in deck.cards:
+                if not c.oracle_id:
+                    unmatched_cards.append(c.name)
+                elif c.oracle_id in illegal_oracles_for_format:
+                    illegal_cards.append(c.name)
+            
+            legality_details[f] = {
+                "illegal_cards": list(set(illegal_cards)),
+                "unmatched": list(set(unmatched_cards))
+            }
+    
+    cov.all_legalities = all_legalities
+    cov.legality_details = legality_details
+
     for c in deck.cards:
         legality = _card_legality(c, fmt, legal_by_oracle, illegal_oracles)
         set_code, set_name, collector, release_date = print_by_sid.get(str(c.scryfall_id), (None, None, None, None))

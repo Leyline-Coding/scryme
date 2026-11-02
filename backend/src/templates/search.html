@@ -2,9 +2,8 @@
 {% block title %}Search · scryme{% endblock %}
 {% block content %}
 <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
-  <header class="page-header flex flex-wrap items-center gap-3 mb-6">
+  <header class="flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
-    <a href="/advanced" class="text-sm text-muted hover:text-fg shrink-0">Advanced</a>
     <a href="/search" class="text-sm text-muted hover:text-fg shrink-0">All Cards</a>
     <a href="/collection" class="text-sm text-muted hover:text-fg shrink-0">My Collection</a>
     <a href="/prices" class="text-sm text-muted hover:text-fg shrink-0">Prices</a>
@@ -47,23 +46,9 @@
     <a href="/upload"
        class="shrink-0 rounded-full bg-surface-2 hover:bg-surface-3 px-4 py-2 text-sm font-medium">+ Upload</a>
 
-    {# One search bar with a Scryfall ⇄ AI toggle — full-width on its own row. #}
-    <div class="order-last w-full" x-data="{ ai: false }">
-      {# Scryfall syntax mode (live search as you type) #}
-      <form x-show="!ai" hx-get="/search" hx-target="#results" hx-push-url="true"
-            hx-trigger="submit, keyup changed delay:350ms from:input[name=q], change"
-            class="flex flex-col gap-2">
-        <div class="relative">
-          <input type="search" name="q" value="{{ q }}" autofocus
-                 placeholder="Search — e.g. c:r t:instant mv<=2"
-                 class="w-full rounded-full bg-surface border border-edge px-5 py-2.5 {% if ai_ready %}pr-24{% endif %}
-                        focus:outline-none focus:ring-2 focus:ring-accent" />
-          {% if ai_ready %}
-          <button type="button" title="Ask in plain English"
-                  @click="ai = true; $nextTick(() => $refs.ainput && $refs.ainput.focus())"
-                  class="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-surface-2 hover:bg-surface-3 px-3 py-1.5 text-xs font-medium">✨ AI</button>
-          {% endif %}
-        </div>
+    <div class="order-last w-full">
+      <div class="flex flex-col gap-2" x-data="{ ai: false }">
+        {% include "_search_bar.html" %}
         <div class="flex flex-wrap items-center gap-2 text-sm">
           <div class="inline-flex rounded-full ring-1 ring-edge overflow-hidden shrink-0" title="Search scope">
             <label class="cursor-pointer">
@@ -87,26 +72,11 @@
             <option value="asc" {% if dir != 'desc' %}selected{% endif %}>Asc ↑</option>
             <option value="desc" {% if dir == 'desc' %}selected{% endif %}>Desc ↓</option>
           </select>
+          <button class="rounded-full bg-surface border border-edge px-3 py-1.5 md:hidden" onclick="openSidebar()">
+            Filter
+          </button>
         </div>
-      </form>
-
-      {% if ai_ready %}
-      {# AI / natural-language mode (#171): translate to Scryfall syntax, then run it. #}
-      <form x-show="ai" x-cloak method="post" action="/search/nl" class="flex flex-col gap-2">
-        <input type="hidden" name="scope" value="{{ scope }}" />
-        <div class="relative">
-          <input type="text" name="q" x-ref="ainput"
-                 placeholder="✨ Ask in plain English — cheap red removal that hits creatures"
-                 class="w-full rounded-full bg-surface-2 border border-edge px-5 py-2.5 pr-32 text-sm
-                        focus:outline-none focus:ring-2 focus:ring-accent" />
-          <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            <button type="button" @click="ai = false" title="Back to Scryfall syntax"
-                    class="rounded-full bg-surface hover:bg-surface-3 px-2.5 py-1.5 text-xs">⌨ Syntax</button>
-            <button type="submit" class="rounded-full bg-accent text-white px-3 py-1.5 text-xs font-medium">Ask</button>
-          </div>
-        </div>
-      </form>
-      {% endif %}
+      </div>
     </div>
 
     {% if nl %}
@@ -201,35 +171,68 @@
   <form id="bulkform" method="post" action="/collection/bulk">
     <input type="hidden" name="q" /><input type="hidden" name="scope" />
     <input type="hidden" name="sort" /><input type="hidden" name="dir" />
-    <input type="hidden" name="bulk_action" />
-    <div id="bulkbar" class="hidden sticky top-2 z-30 mb-3 flex flex-wrap items-center gap-2
-                rounded-xl bg-surface ring-1 ring-accent px-3 py-2 text-sm shadow-lg">
-      <span><b id="bulkcount">0</b> selected</span>
-      <input name="tag" placeholder="tag" class="rounded bg-surface-2 px-2 py-1 w-28" />
-      <button type="button" onclick="bulkSubmit('tag')"
-        class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Add tag</button>
-      {% if binders %}
-      <select name="binder_id" class="rounded bg-surface-2 px-2 py-1">
-        {% for b in binders %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
-      </select>
-      <button type="button" onclick="bulkSubmit('binder')"
-        class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Add to binder</button>
-      {% endif %}
-      <button type="button" onclick="bulkSubmit('add')"
-        class="rounded bg-accent text-accent-fg px-2.5 py-1">+1 to collection</button>
-      {% if trade_pools %}
-      {# Staging needs a side as well as a pool (#331), so the pool is a picker and the two
-         buttons say which way the cards are moving. #}
-      <label class="sr-only" for="bulk-trade-pool">Trade pool</label>
-      <select name="pool_id" id="bulk-trade-pool" class="rounded bg-surface-2 px-2 py-1">
-        {% for tp in trade_pools %}<option value="{{ tp.id }}">{{ tp.name }}</option>{% endfor %}
-      </select>
-      <button type="button" onclick="bulkSubmit('trade_out')"
-        class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Give</button>
-      <button type="button" onclick="bulkSubmit('trade_in')"
-        class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Get</button>
-      {% endif %}
-      <button type="button" onclick="bulkClear()" class="ml-auto text-muted hover:text-fg">Clear</button>
+    <input type="hidden" name="bulk_action" id="bulk_action" />
+    <div id="bulkbar" class="hidden sticky top-2 z-30 mb-3 flex justify-between items-center w-full rounded-xl bg-surface ring-1 ring-accent px-3 py-2 text-sm shadow-lg">
+      <!-- Left side buttons -->
+      <div class="flex gap-2 items-center">
+        <span><b id="bulkcount">0</b> selected</span>
+        <button type="button" onclick="bulkClear()" class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Clear Selection</button>
+        <button type="button" onclick="bulkSelectAll()" class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Select All</button>
+      </div>
+
+      <!-- Right side buttons -->
+      <div class="flex gap-2 items-center">
+        <input name="tag" placeholder="tag" class="rounded-full bg-surface-2 px-2 py-1 w-28 action-scope-collection" />
+        <button type="button" onclick="bulkSubmit('tag')"
+          class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 action-scope-collection">Add tag</button>
+        {% if binders or boxes or decks %}
+        <div x-data="{ open: false }" class="relative action-scope-collection">
+          <button @click="open = !open" type="button"
+            class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-sm font-medium">Move to ▾</button>
+          <input type="hidden" name="bulk_container_id" id="bulk_container_id" />
+          <div x-show="open" @click.outside="open = false" x-transition style="display: none"
+            class="absolute right-0 mt-2 w-64 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
+            {% if binders %}
+            <div class="px-3 py-1.5 text-xs font-medium text-muted">Binders</div>
+            {% for b in binders %}<button type="button" @click="open = false; bulkSubmit('binder', {{ b.id }})"
+              class="block w-full text-left px-3 py-1.5 hover:bg-surface-2">{{ b.name }}</button>{% endfor %}
+            {% endif %}
+            {% if boxes %}
+            <div class="px-3 py-1.5 text-xs font-medium text-muted border-t border-edge mt-1 pt-1">Boxes</div>
+            {% for b in boxes %}<button type="button" @click="open = false; bulkSubmit('box', {{ b.id }})"
+              class="block w-full text-left px-3 py-1.5 hover:bg-surface-2">{{ b.name }}</button>{% endfor %}
+            {% endif %}
+            {% if decks %}
+            <div class="px-3 py-1.5 text-xs font-medium text-muted border-t border-edge mt-1 pt-1">Decks</div>
+            {% for d in decks %}<button type="button" @click="open = false; bulkSubmit('deck', {{ d.id }})"
+              class="block w-full text-left px-3 py-1.5 hover:bg-surface-2">{{ d.name }}</button>{% endfor %}
+            {% endif %}
+            {% if not binders and not boxes and not decks %}
+            <p class="px-3 py-1.5 text-muted">No containers found</p>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+        <button type="button" id="bulk-add-btn" onclick="bulkSubmit('add')"
+          class="rounded-full bg-accent text-accent-fg px-2.5 py-1 action-scope-all">+1 to collection</button>
+        {% if trade_pools %}
+        {# Staging needs a side as well as a pool (#331), so the pool is a picker and the two
+          buttons say which way the cards are moving. #}
+        <label class="sr-only" for="bulk-trade-pool">Trade pool</label>
+        <select name="pool_id" id="bulk-trade-pool" class="rounded-full bg-surface-2 px-2 py-1">
+          {% for tp in trade_pools %}<option value="{{ tp.id }}">{{ tp.name }}</option>{% endfor %}
+        </select>
+        <button type="button" onclick="bulkSubmit('trade_out')"
+          class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Give</button>
+        <button type="button" onclick="bulkSubmit('trade_in')"
+          class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Get</button>
+        {% endif %}
+      </div>
+    </div>
+    <div class="hidden sticky top-2 z-30 mb-3 flex flex-wrap items-center gap-2
+                ">
+      
+      
     </div>
     <div id="results">
       {% include "search_results.html" %}
@@ -251,13 +254,27 @@
     var bar = document.getElementById('bulkbar');
     var c = document.getElementById('bulkcount');
     if (c) c.textContent = n;
-    if (bar) bar.classList.toggle('hidden', n === 0);
+    if (bar) {
+      bar.classList.toggle('hidden', n === 0);
+      // Apply class to grid when bulkbar is visible
+      const cardGrid = document.querySelector('.card-grid');
+      if (cardGrid) {
+        cardGrid.classList.toggle('bulk-active', n > 0);
+      }
+    }
   }
   function bulkClear() {
     bulkChecked().forEach(function (b) { b.checked = false; });
     bulkCount();
   }
-  function bulkSubmit(action) {
+  function bulkSelectAll() {
+    const checkboxes = document.querySelectorAll('#results input[name="scryfall_ids"]');
+    checkboxes.forEach(function (cb) {
+      cb.checked = true;
+    });
+    bulkCount();
+  }
+  function bulkSubmit(action, bulk_container_id=undefined) {
     var f = document.getElementById('bulkform');
     if (!f || !bulkChecked().length) return;
     var p = new URLSearchParams(globalThis.location.search);
@@ -266,11 +283,71 @@
     f.querySelector('[name=sort]').value = p.get('sort') || 'name';
     f.querySelector('[name=dir]').value = p.get('dir') || 'asc';
     f.querySelector('[name=bulk_action]').value = action;
+    if(bulk_container_id) {f.querySelector('[name=bulk_container_id]').value = bulk_container_id};
     f.submit();
   }
+  
+  // Update button visibility based on scope
+  function updateScopeButtonVisibility() {
+    // Get the currently selected scope (either 'all' or 'collection')
+    var scopeAll = document.querySelector('input[name="scope"][value="all"]');
+    var scopeCollection = document.querySelector('input[name="scope"][value="collection"]');
+
+
+    if (scopeAll && scopeAll.checked) {
+      document.querySelectorAll('.action-scope-all').forEach(element => {element.classList.remove('hidden');});
+      document.querySelectorAll('.action-scope-collection').forEach(element => {element.classList.add('hidden');});
+    } else {
+      document.querySelectorAll('.action-scope-all').forEach(element => {element.classList.add('hidden');});
+      document.querySelectorAll('.action-scope-collection').forEach(element => {element.classList.remove('hidden');});
+    }
+  }
+  
+  // Update visibility when scope changes
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initial check
+    updateScopeButtonVisibility();
+    // Listen for radio button changes
+    var scopeEl = document.querySelectorAll('input[name="scope"]');
+    scopeEl.forEach(function(radio) {
+      radio.addEventListener('change', updateScopeButtonVisibility);
+    });
+  });
+
   // After an HTMX results swap the checkboxes are fresh (unchecked) — re-sync the bar.
   document.body.addEventListener('htmx:afterSwap', function (e) {
     if (e.target && e.target.id === 'results') bulkCount();
+  });
+  
+  // Handle card clicks for bulk selection
+  document.addEventListener('click', function(e) {
+    const bulkBar = document.getElementById('bulkbar');
+    if (!bulkBar || bulkBar.classList.contains('hidden')) return;
+    
+    // Find if click was on a card
+    let cardElement = e.target.closest('.card-grid > div');
+    if (cardElement) {
+      // Check if the click was directly on a checkbox - if so, let it work normally
+      if (e.target.tagName === 'INPUT' && e.target.type === 'checkbox') {
+        // Let the checkbox handle its own change event (which calls bulkCount)
+        return;
+      }
+      
+      // Find the checkbox within this card
+      const checkbox = cardElement.querySelector('input[name="scryfall_ids"]');
+      if (checkbox) {
+        // Toggle the checkbox
+        checkbox.checked = !checkbox.checked;
+        bulkCount();
+        
+        // Update button visibility when scope changes
+        updateBulkAddButtonVisibility();
+        
+        // Prevent default link behavior 
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
   });
 </script>
 {% endblock %}

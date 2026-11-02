@@ -1,3 +1,4 @@
+{% import "_currency.html" as currency %}
 {# --- staged trades (#331): a chosen list per trading partner, unlike the derived binder below. #}
 <section class="mb-8">
   <div class="flex flex-wrap items-center gap-3 mb-3">
@@ -64,7 +65,7 @@
   {% if binder.cards %}
   <div class="flex items-center gap-3 text-sm">
     <span class="text-muted">{{ '{:,}'.format(binder.total_cards) }} cards ·
-      <b>{{ cur.symbol }}{{ '{:,.2f}'.format(binder.total_value) }}</b></span>
+      <b>{{ currency.format_and_decorate(binder.total_value, cur.symbol) }}</b></span>
     <a href="/trade/export?fmt=txt&keep={{ binder.keep }}" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.txt</a>
     <a href="/trade/export?fmt=csv&keep={{ binder.keep }}" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.csv</a>
   </div>
@@ -95,8 +96,8 @@
           <span class="text-muted uppercase text-xs">{{ c.set_code }}</span></td>
         <td class="px-2 text-right tabular-nums text-muted">{{ c.owned }}</td>
         <td class="px-2 text-right tabular-nums font-medium">{{ c.tradeable }}</td>
-        <td class="px-2 text-right tabular-nums text-muted">{% if c.unit %}{{ cur.symbol }}{{ '{:,.2f}'.format(c.unit) }}{% endif %}</td>
-        <td class="px-2 text-right tabular-nums">{% if c.value %}{{ cur.symbol }}{{ '{:,.2f}'.format(c.value) }}{% endif %}</td>
+        <td class="px-2 text-right tabular-nums text-muted">{% if c.unit %}{{ currency.format_and_decorate(c.unit, cur.symbol) }}{% endif %}</td>
+        <td class="px-2 text-right tabular-nums">{% if c.value %}{{ currency.format_and_decorate(c.value, cur.symbol) }}{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody>

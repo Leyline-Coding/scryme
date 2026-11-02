@@ -11,15 +11,18 @@ from __future__ import annotations
 import datetime
 import re
 import uuid
+import copy
 from dataclasses import dataclass, field
 
 from sqlalchemy import func, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from collections import OrderedDict
+
 from src.currency import unit_price
 from src.models import Card, CollectionCard, Deck, DeckCard
 from src.pricing import resolve_prices
-from src.stats import Bar, _bars, _color_bucket
+from src.stats import Bar, _bars, _color_bucket, _primary_type
 
 # These patterns are written so each has exactly one way to match, which is what keeps them
 # linear: no `$` anchor (in Python `$` also matches *before* a trailing newline, so a `\s*$` tail
@@ -97,10 +100,12 @@ def parse_decklist(text: str | None) -> list[ParsedLine]:
     board = "main"
     for raw in (text or "").splitlines():
         s = raw.strip()
-        if not s or s.startswith(("#", "//")):
+        if not s:
             continue
-        if s.lower().startswith("sideboard"):
+        if re.search(r"^.{0,20}sideboard", s, re.IGNORECASE):
             board = "side"
+            continue
+        if s.startswith(("#", "//")):
             continue
         line = _parse_deck_line(s, board)
         if line:
@@ -371,6 +376,7 @@ class CardRow:
     set_code: str | None = None     # representative printing shown for this line
     set_name: str | None = None
     collector_number: str | None = None
+    release_date: str | None = None  # Scryfall printing release date (YYYY-MM-DD)
     proxy: bool = False             # printed proxy
     special: bool = False           # art card / alter / other genuine non-standard copy
     language: str = "en"            # language the copy is played in (Scryfall code)
@@ -518,24 +524,44 @@ def proxy_cards(cov: DeckCoverage, source: str = "proxy",
 
 
 async def _load_deck_printings(session: AsyncSession, sids: list, source: str):
-    """Per-sid price map, printing tuple, and oracle→sid map for the deck's resolved cards."""
+    """Per-sid price map, printing metadata, and oracle→sid map."""
     price_by_sid: dict[str, dict] = {}
-    print_by_sid: dict[str, tuple] = {}   # sid -> (set_code, set_name, collector_number)
+    print_by_sid: dict[str, tuple] = {}
     oracle_sid: dict = {}
+
     if not sids:
         return price_by_sid, print_by_sid, oracle_sid
+
     rows = (
         await session.execute(
             select(
-                Card.scryfall_id, Card.oracle_id, Card.prices, Card.market_prices,
-                Card.set_code, Card.set_name, Card.collector_number,
+                Card.scryfall_id,
+                Card.oracle_id,
+                Card.prices,
+                Card.market_prices,
+                Card.set_code,
+                Card.set_name,
+                Card.collector_number,
+                Card.raw,
             ).where(Card.scryfall_id.in_(sids))
         )
     ).all()
-    for sid, oracle, prices, market_prices, set_code, set_name, collector in rows:
-        price_by_sid[str(sid)] = resolve_prices(prices, market_prices, source) or {}
-        print_by_sid[str(sid)] = (set_code, set_name, collector)
+
+    for sid, oracle, prices, market_prices, set_code, set_name, collector, raw in rows:
+        price_by_sid[str(sid)] = resolve_prices(
+            prices, market_prices, source
+        ) or {}
+
+        release_date = raw.get("released_at") if isinstance(raw, dict) else None
+
+        print_by_sid[str(sid)] = (
+            set_code,
+            set_name,
+            collector,
+            release_date,
+        )
         oracle_sid[oracle] = str(sid)
+
     return price_by_sid, print_by_sid, oracle_sid
 
 
@@ -595,16 +621,24 @@ async def deck_coverage(
     illegal_oracles: set = set()
     for c in deck.cards:
         legality = _card_legality(c, fmt, legal_by_oracle, illegal_oracles)
-        set_code, set_name, collector = print_by_sid.get(str(c.scryfall_id), (None, None, None))
+        set_code, set_name, collector, release_date = print_by_sid.get(str(c.scryfall_id), (None, None, None, None))
         row = CardRow(
-            name=c.name, quantity=c.quantity, board=c.board,
+            name=c.name,
+            quantity=c.quantity,
+            board=c.board,
             owned=owned.get(c.oracle_id, 0) if c.oracle_id else 0,
             matched=c.oracle_id is not None,
             scryfall_id=str(c.scryfall_id) if c.scryfall_id else None,
             legality=legality,
             card_id=c.id,
-            set_code=set_code, set_name=set_name, collector_number=collector,
-            proxy=c.proxy, special=c.special, language=c.language, finish=c.finish,
+            set_code=set_code,
+            set_name=set_name,
+            collector_number=collector,
+            release_date=release_date,
+            proxy=c.proxy,
+            special=c.special,
+            language=c.language,
+            finish=c.finish,
         )
         (cov.main if c.board == "main" else cov.side).append(row)
         cov.total_needed += c.quantity
@@ -613,6 +647,53 @@ async def deck_coverage(
     # Missing math, counted once per oracle (and per unmatched line).
     _tally_missing(cov, deck, needed_by_oracle, owned, price_by_sid, oracle_sid, currency)
     return cov
+
+
+
+def deck_coverage_combined(coverage: DeckCoverage) -> DeckCoverage:
+    """Combine rows by English card name, separately for main and side.
+
+    The original DeckCoverage and its rows are not modified.
+    """
+    combined_coverage = DeckCoverage(
+        deck=coverage.deck,
+        fmt=coverage.fmt,
+    )
+
+    def combine_rows(rows: list[CardRow]) -> list[CardRow]:
+        combined = OrderedDict()
+
+        for entry in rows:
+            key = entry.name.strip().casefold()
+
+            if key not in combined:
+                combined[key] = copy.deepcopy(entry)
+                continue
+
+            current = combined[key]
+            total_quantity = current.quantity + entry.quantity
+
+            # Keep the printing with the latest release date.
+            # ISO dates (YYYY-MM-DD) can be compared lexicographically.
+            if (entry.release_date or "") > (current.release_date or ""):
+                representative = copy.deepcopy(entry)
+            else:
+                representative = current
+
+            representative.quantity = total_quantity
+            combined[key] = representative
+
+        return list(combined.values())
+
+    combined_coverage.main = combine_rows(coverage.main)
+    combined_coverage.side = combine_rows(coverage.side)
+
+    # Preserve coverage-level totals and status.
+    combined_coverage.total_needed = coverage.total_needed
+    combined_coverage.illegal_count = coverage.illegal_count
+
+    return combined_coverage
+
 
 
 @dataclass
@@ -657,11 +738,14 @@ _CURVE_ORDER = [str(i) for i in range(_MAX_MV_BUCKET)] + [f"{_MAX_MV_BUCKET}+"]
 class DeckStats:
     mana_curve: list[Bar] = field(default_factory=list)   # nonland spells by mana value (mainboard)
     by_color: list[Bar] = field(default_factory=list)     # mainboard cards by color identity
+    by_type: list[Bar] = field(default_factory=list)        # mainboard cards by type
+    type_counts: dict[str, int] = field(default_factory=dict) # mainboard cards by type (raw)
     total_value: float = 0.0                              # qty * USD across the whole deck
 
     @property
     def has_data(self) -> bool:
         return bool(self.mana_curve or self.by_color or self.total_value)
+
 
 
 async def deck_stats(
@@ -684,19 +768,30 @@ async def deck_stats(
 
     curve: dict[str, int] = {}
     colors: dict[str, int] = {}
+    types: dict[str, int] = {}
     total = 0.0
     for c in deck.cards:
         cmc, ci, type_line, prices = info.get(c.scryfall_id, (None, None, None, None))
         total += c.quantity * unit_price(prices, c.finish, currency)
-        # Curve + color pie cover mainboard nonland spells, so basics don't dominate.
-        if not c.scryfall_id or c.board != "main" or (type_line and "Land" in type_line):
-            continue
-        colors[_color_bucket(ci)] = colors.get(_color_bucket(ci), 0) + c.quantity
-        bucket = f"{_MAX_MV_BUCKET}+" if (cmc or 0) >= _MAX_MV_BUCKET else str(int(cmc or 0))
-        curve[bucket] = curve.get(bucket, 0) + c.quantity
+        
+        # Types are counted for all mainboard cards
+        if c.board == "main" and c.scryfall_id:
+            types[_primary_type(type_line)] = types.get(_primary_type(type_line), 0) + c.quantity
+        
+        # Curve and colors only cover mainboard nonland spells
+        if c.board == "main" and c.scryfall_id and not (type_line and "Land" in type_line):
+            colors[_color_bucket(ci)] = colors.get(_color_bucket(ci), 0) + c.quantity
+            bucket = f"{_MAX_MV_BUCKET}+" if (cmc or 0) >= _MAX_MV_BUCKET else str(int(cmc or 0))
+            curve[bucket] = curve.get(bucket, 0) + c.quantity
 
+
+
+        
+        
     return DeckStats(
         mana_curve=_bars(curve, order=_CURVE_ORDER),
         by_color=_bars(colors),
+        by_type=_bars(types),
+        type_counts=types,
         total_value=round(total, 2),
     )

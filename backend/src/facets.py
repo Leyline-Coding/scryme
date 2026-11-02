@@ -19,13 +19,13 @@ from src.search import SearchScope
 from src.search.engine import build_search
 from src.stats import _RARITY_ORDER, _primary_type
 
-FACET_ROW_CAP = 4000  # facet counts are computed over at most this many result rows
+FACET_ROW_CAP_HARD_MAX = 20000  # facet counts are computed over at most this many result rows
 _COLOR_FACETS = [("w", "White"), ("u", "Blue"), ("b", "Black"), ("r", "Red"), ("g", "Green")]
 # Formats offered in the "Legal in" facet, in display order.
 _FACET_FORMATS = ["commander", "modern", "pioneer", "standard", "legacy", "vintage", "pauper"]
 _LEGAL = {"legal", "restricted"}
-_TOP_YEARS = 8  # most-recent years shown in the Year facet
-
+_TOP_YEARS = 100  # most-recent years shown in the Year facet
+_TOP_SETS = 100  # Max number of sets to compute
 
 @dataclass
 class FacetValue:
@@ -136,11 +136,11 @@ def _color_rarity_type_groups(query: str, t: _FacetTally) -> list[FacetGroup]:
 
 
 def _set_year_legal_finish_groups(
-    query: str, t: _FacetTally, top_sets: int, foil_count: int, etched_count: int
+    query: str, t: _FacetTally, foil_count: int, etched_count: int
 ) -> list[FacetGroup]:
     groups: list[FacetGroup] = []
     if t.sets:
-        top = sorted(t.sets.items(), key=lambda kv: kv[1][1], reverse=True)[:top_sets]
+        top = sorted(t.sets.items(), key=lambda kv: kv[1][1], reverse=True)[:_TOP_SETS]
         groups.append(_group(query, "set", "Set",
                              [(label, f"s:{code}", n) for code, (label, n) in top]))
     if t.years:
@@ -162,7 +162,7 @@ def _set_year_legal_finish_groups(
 
 
 async def compute_facets(
-    session: AsyncSession, query: str, scope: SearchScope, top_sets: int = 8
+    session: AsyncSession, query: str, scope: SearchScope, facet_row_cap: int = 4000
 ) -> list[FacetGroup]:
     """Facet groups for the result set of (query, scope). Raises SearchError on a bad query."""
     base = build_search(query, scope)
@@ -174,12 +174,12 @@ async def compute_facets(
                     Card.released_at, Card.legalities,
                     raiseload=True,
                 )
-            ).limit(FACET_ROW_CAP)
+            ).limit(min(facet_row_cap, FACET_ROW_CAP_HARD_MAX))
         )
     ).scalars().all()
 
     tally = _tally_facets(rows)
-
+  
     # Finish facets count printings you own in that finish (matching the is:foil / is:etched
     # filter), not merely printings that *can* be foil/etched — so the count agrees with what
     # clicking the facet returns.
@@ -188,12 +188,12 @@ async def compute_facets(
             func.lower(CollectionCard.finish) == finish
         )
         return select(func.count()).select_from(
-            base.where(Card.scryfall_id.in_(owned)).limit(FACET_ROW_CAP).subquery()
+            base.where(Card.scryfall_id.in_(owned)).limit(min(facet_row_cap, FACET_ROW_CAP_HARD_MAX)).subquery()
         )
 
     foil_count = await session.scalar(_finish_count("foil")) or 0
     etched_count = await session.scalar(_finish_count("etched")) or 0
 
     groups = _color_rarity_type_groups(query, tally)
-    groups += _set_year_legal_finish_groups(query, tally, top_sets, foil_count, etched_count)
+    groups += _set_year_legal_finish_groups(query, tally, foil_count, etched_count)
     return groups

@@ -183,11 +183,13 @@
       searchFilter: decodeURIComponent(
         (document.cookie.match(/(?:^|; )scryme_search_filter=([^;]+)/) || [])[1] || ""
       ),
+      facetRowCap: Number.parseInt(localStorage.getItem("scryme-facet-row-cap") || "6", 10),
       foilSpeed: Number.parseInt(localStorage.getItem("scryme-foil-speed") || "6", 10),
       spinOn: localStorage.getItem("scryme-spin") !== "0",   // default on
       spinSpeed: Number.parseInt(localStorage.getItem("scryme-spin-speed") || "6", 10),
       cardSize: Number.parseInt(localStorage.getItem("scryme-card-size") || "5", 10),
       moversOn: (document.cookie.match(/(?:^|; )scryme_movers=([^;]+)/) || [])[1] === "1",
+      lang: (document.cookie.match(/(?:^|; )scryme_lang=([^;]+)/) || [])[1] || "en",
       // id, name, dark/light swatch bg, and per-mode default accent (for the accent picker reset).
       palettes: [
         { id: "trop-orange", name: "Tropic", dark: "#0b0014", light: "#f3fbf5", accentD: "#ff7733", accentL: "#e85f1f" },
@@ -277,6 +279,10 @@
         await this.savePref({ movers: this.moversOn });
         if (location.pathname === "/search") location.reload();
       },
+      applyFacetRowCap() {
+        localStorage.setItem("scryme-facet-row-cap", this.facetRowCap);
+        this.savePref({ facet_row_cap: Number(this.facetRowCap) });
+      },
       applyFoilSpeed() {
         // Higher slider = faster = shorter duration.
         document.documentElement.style.setProperty("--foil-speed", (11 - this.foilSpeed) + "s");
@@ -299,6 +305,12 @@
         document.documentElement.style.setProperty("--card-min", (5 + Number(this.cardSize)) + "rem");
         localStorage.setItem("scryme-card-size", this.cardSize);
         this.savePref({ card_size: Number(this.cardSize) });
+      },
+      async setLang(id) {
+        this.lang = id;
+        document.cookie = "scryme_lang=" + id + ";path=/;max-age=31536000;samesite=lax";
+        await this.savePref({ lang: id });
+        globalThis.location.reload();
       },
     };
   }

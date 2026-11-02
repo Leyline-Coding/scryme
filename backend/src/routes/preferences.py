@@ -40,6 +40,8 @@ class PreferencesOut(BaseModel):
     spin: bool
     spin_speed: int
     card_size: int
+    facet_row_cap: int
+    lang: str
     extra: dict
 
 
@@ -51,6 +53,7 @@ class PreferencesUpdateIn(BaseModel):
     movers: bool | None = None
     view: str | None = None
     page_size: int | None = None
+    facet_row_cap: int | None = None
     infinite: bool | None = None
     hist_currency: str | None = None
     mode: str | None = None
@@ -60,6 +63,7 @@ class PreferencesUpdateIn(BaseModel):
     spin: bool | None = None
     spin_speed: int | None = None
     card_size: int | None = None
+    lang: str | None = None
     extra: dict | None = None
 
 

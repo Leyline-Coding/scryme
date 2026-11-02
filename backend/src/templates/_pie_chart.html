@@ -1,0 +1,66 @@
+{% macro pie_chart(data, id, width=150, colors=None) %}
+  <div class="relative mx-auto block" style="width: {{width}}px; height: {{width}}px;">
+    <canvas id="{{ id }}" width="{{width}}" height="{{width}}" class="max-w-[{{width}}px] mx-auto"></canvas>
+  </div>
+  <script>
+
+
+    {% if colors %}
+      let colors = {{ colors | tojson | safe }};
+    {% else %}
+      const theme = document.documentElement.getAttribute('data-theme') || '';
+      const isLightMode = theme.includes('-light');
+      let colors = isLightMode 
+        ? ['#9a6b2f', '#433624', '#685030', '#835e2e', '#af7730', '#c58432', '#d08f3b', '#d69645']
+        : ['#6366f1', '#312e81', '#4338ca', '#4f46e5', '#818cf8', '#a5b4fc', '#c7d2fe', '#e0e7ff'];
+    {% endif %}
+
+
+    const el = document.getElementById('{{ id }}');
+
+    const rawData = {{ data | tojson | safe }} || {};
+    const labels = Object.keys(rawData);
+    const values = Object.values(rawData).map(v => Number(v));
+
+    const totalSum = values.reduce((a, b) => a + b, 0);
+
+    new Chart(el, {
+      type: 'pie',
+      plugins: [ChartDataLabels],
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            display: false
+          },
+          datalabels: {
+            color: '#ffffff', // Label text color
+            font: {
+              weight: 'bold',
+              size: 11
+            },
+            // Formatter outputs the Category Name directly onto the slice
+            formatter: (value, ctx) => {
+              return ctx.chart.data.labels[ctx.dataIndex];
+            },
+            // Core Logic: Only display if the slice is >= 15% of the total chart size
+            display: (ctx) => {
+              const value = ctx.dataset.data[ctx.dataIndex];
+              const percentage = (value / totalSum) * 100;
+              return percentage >= 15; // Hides tiny slices to prevent text overlapping
+            }
+          }
+        }
+      }
+    });
+  </script>
+{% endmacro %}

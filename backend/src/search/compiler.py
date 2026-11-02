@@ -11,7 +11,7 @@ import datetime
 import operator
 from collections.abc import Callable
 
-from sqlalchemy import Float, and_, cast, func, not_, or_, select
+from sqlalchemy import Float, and_, cast, func, not_, or_, select, exists
 from sqlalchemy.sql.elements import ColumnElement
 
 from src.models import Card, CollectionCard
@@ -204,7 +204,15 @@ def _cn(term: Term) -> ColumnElement:
 
 
 def _lang(term: Term) -> ColumnElement:
-    return Card.lang == term.value.lower()
+    return or_(
+        Card.lang == term.value.lower(),
+        exists().where(
+            and_(
+                CollectionCard.scryfall_id == Card.scryfall_id,
+                CollectionCard.language == term.value.lower()
+            )
+        )
+    )
 
 
 def _layout(term: Term) -> ColumnElement:

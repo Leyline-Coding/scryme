@@ -6,6 +6,7 @@ a ``_col_<tab>`` partial inside the shared shell. The old per-feature routes red
 """
 
 from __future__ import annotations
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
@@ -16,12 +17,13 @@ from src.binder_service import binder_summaries
 from src.box_service import box_summaries, other_locations
 from src.checklists import Checklist
 from src.config import get_settings
-from src.currency import get_currency, info
+from src.currency import get_currency, info, unit_price
 from src.db import get_session
-from src.models import Deck, PriceSnapshot
+from src.models import Deck, DeckCard, PriceSnapshot, Card
+from src.collection_edit import color_identity_group
 from src.perfcache import memoize
 from src.prices import CHART_RANGES, DEFAULT_RANGE, build_value_chart, range_days, value_series
-from src.pricing import get_price_source
+from src.pricing import resolve_prices, get_price_source
 from src.routes.wishlist import _image as wishlist_image
 from src.sell import sell_list
 from src.sets import set_progress
@@ -53,21 +55,28 @@ async def collection(
     request: Request,
     tab: str = "stats",
     view: str = "overview",
+    sort_by: str = "name",
+    sort_dir: str = "asc",
     keep: int = 1,
     chart_range: str = Query(DEFAULT_RANGE, alias="range"),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
-    tab = tab if tab in _TAB_KEYS else "stats"
+    tab = tab.lower() if tab else "stats"
     currency = get_currency(request)
     source = get_price_source(request)
+    
+    sort_by = sort_by.lower() if sort_by else "name"
+    sort_dir = sort_dir.lower() if sort_dir else "asc"
+
     ctx: dict = {
         "tabs": TABS, "tab": tab, "view": view, "keep": keep,
         "cur": info(currency), "read_only": get_settings().read_only,
+        "sort_by": sort_by, "sort_dir": sort_dir, 'now': datetime.now(timezone.utc)
     }
 
     if tab == "stats":
         async def _chart():
-            return build_value_chart(await value_series(session, range_days(chart_range)))
+            return build_value_chart(await value_series(session, range_days(chart_range), currency))
 
         ctx["stats"] = await memoize(("stats", currency, source),
                                      lambda: collection_stats(session, currency, source))
@@ -78,15 +87,46 @@ async def collection(
             await session.scalar(select(PriceSnapshot.id).limit(1))
         )
         ctx["growth"] = await memoize(("growth", currency, source),
-                                      lambda: collection_growth(session, currency, source=source))
+                                       lambda: collection_growth(session, currency, source=source))
         if view == "sets":
             ctx["sets"] = await memoize("setprog", lambda: set_progress(session))
     elif tab == "decks":
         rows = await session.execute(
             select(Deck, func.count()).outerjoin(Deck.cards)
-            .group_by(Deck.id).order_by(Deck.created_at.desc())
+            .group_by(Deck.id)
         )
-        ctx["decks"] = [(d, n) for d, n in rows.all()]
+        
+        ctx["decks"] = []
+
+        for d, n in rows.all():
+            # Calculate total value for the deck
+            card_rows = (
+                await session.execute(
+                    select(DeckCard.quantity, DeckCard.finish, Card.prices, Card.market_prices, Card.color_identity)
+                    .join(Card, Card.scryfall_id == DeckCard.scryfall_id)
+                    .where(DeckCard.deck_id == d.id)
+                )
+            ).all()
+            
+            total_val = 0.0
+            deck_color_identity = set()
+            for qty, finish, prices, market_prices, color_identity in card_rows:
+                total_val += (qty or 0) * unit_price(
+                    resolve_prices(prices, market_prices, source), finish, currency)
+                if color_identity:
+                    deck_color_identity.update(color_identity)
+            
+            symbols = [f"ms-{c.lower()}" for c in sorted(list(deck_color_identity))]
+            group_name = color_identity_group(list(deck_color_identity))
+            
+            ctx["decks"].append((d, n, round(total_val, 2), symbols, group_name, d.updated_at))
+
+        if sort_by == "price":
+            ctx["decks"].sort(key=lambda x: x[2], reverse=(sort_dir == "desc"))
+        elif sort_by == "name":
+            ctx["decks"].sort(key=lambda x: x[0].name, reverse=(sort_dir == "desc"))
+
+
     elif tab == "locations":
         decks = await session.execute(
             select(Deck, func.count()).outerjoin(Deck.cards)
@@ -98,6 +138,13 @@ async def collection(
         ctx["loc_decks"] = [(d, n) for d, n in decks.all()]
     elif tab == "binders":
         ctx["binders"] = await binder_summaries(session)
+
+        if sort_by == "price" and ctx["binders"]:
+            # Binders don't have price, default to name
+            ctx["binders"].sort(key=lambda x: x.name, reverse=(sort_dir == "desc"))
+        elif ctx["binders"]:
+            ctx["binders"].sort(key=lambda x: x.name, reverse=(sort_dir == "desc"))
+
     elif tab == "tags":
         ctx["tags"] = await tag_summaries(session)
     elif tab == "wishlist":

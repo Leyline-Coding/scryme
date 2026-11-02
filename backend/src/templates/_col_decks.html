@@ -1,21 +1,56 @@
-{% if not read_only %}
-<div class="flex justify-end gap-2 mb-3">
-  <a href="/decks/build" class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent">
-    ✨ Build from collection
-  </a>
-  <a href="/decks/new" class="rounded-full bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:opacity-90">
-    + New deck
-  </a>
+{% import "_currency.html" as currency %}
+{% from "_time_utils.html" import humanize_dt %}
+
+<p class="text-sm text-muted mb-4">
+  Manage your decks.
+</p>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div class="flex justify-start items-center gap-3 md:mb-4">
+    <a href="/collection?tab=decks&sort_by={{ sort_by }}&sort_dir={{ 'desc' if sort_dir == 'asc' else 'asc' }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}">
+      {{ 'Descending' if sort_dir == 'desc' else 'Ascending' }}
+    </a>
+    <a href="/collection?tab=decks&sort_by={{ 'price' if sort_by == 'name' else 'name' }}&sort_dir={{ sort_dir }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'price' else '' }}">
+      Price
+    </a>
+    <a href="/collection?tab=decks&sort_by={{ 'name' if sort_by == 'price' else 'price' }}&sort_dir={{ sort_dir }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'name' else '' }}">
+      Name
+    </a>
+  </div>
+  {% if not read_only %}
+  <div class="flex justify-start md:justify-end gap-2 mb-3">
+    <a href="/decks/build" class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent whitespace-nowrap">
+      ✨ Build from collection
+    </a>
+    <a href="/decks/new" class="rounded-full bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:opacity-90 whitespace-nowrap">
+      + New deck
+    </a>
+  </div>
+  {% endif %}
 </div>
-{% endif %}
+
 
 {% if decks %}
 <ul class="space-y-2">
-  {% for deck, count in decks %}
+  {% for deck, count, value, symbols, group_name, updated_at in decks %}
   <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3">
     <a href="/decks/{{ deck.id }}" class="flex-1 min-w-0">
       <div class="font-medium truncate hover:text-accent">{{ deck.name }}</div>
-      <div class="text-xs text-muted">{{ count }} line{{ '' if count == 1 else 's' }}</div>
+      <div class="text-xs text-muted">
+        <span class="font-semibold">
+          {% for s in symbols %}<i class="ms ms-cost {{ s }} mr-0.5"></i>{% endfor %}
+          {{ group_name }}
+        </span>
+        •
+        <span>{{ count }} line{{ '' if count == 1 else 's' }}</span>
+        •
+        <span title="Updated {{ updated_at.strftime('%Y-%m-%d %H:%M') }}">Updated {{ humanize_dt(updated_at, now) }}</span>
+        •
+        <span>{{ currency.format_and_decorate(value, cur.symbol) }}</span>
+      </div>
     </a>
     {% if not read_only %}
     <form action="/decks/{{ deck.id }}/delete" method="post"

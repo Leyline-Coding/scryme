@@ -6,6 +6,7 @@ Mutations are blocked in read-only (demo) mode, mirroring uploads.
 from __future__ import annotations
 
 import uuid
+import datetime
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
@@ -38,6 +39,7 @@ from src.decks import (
     apply_deck_card_edit,
     create_deck,
     deck_coverage,
+    deck_coverage_combined,
     deck_printings,
     deck_stats,
     proxy_cards,
@@ -45,7 +47,7 @@ from src.decks import (
     resync_printings,
 )
 from src.llm import get_config
-from src.models import Card, Deck, DeckCard, DeckVersion
+from src.models import Card, CollectionCard, Deck, DeckCard, DeckVersion
 from src.pricing import get_price_source
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
@@ -276,11 +278,13 @@ async def view_deck(
     source = get_price_source(request)
     coverage = await deck_coverage(session, deck, fmt=format or None, currency=currency,
                                    source=source)
+    coverage_combined = deck_coverage_combined(coverage)
     return templates.TemplateResponse(
         request,
         "deck_detail.html",
         {
             "cov": coverage,
+            "cov_combined": coverage_combined,
             "deck": deck,
             "formats": LEGALITY_FORMATS,
             "versions": await list_versions(session, deck_id),
@@ -491,6 +495,53 @@ async def resync_deck_printings(
     return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
 
 
+@router.post("/decks/{deck_id}/replace-list")
+async def replace_deck_list(
+    deck_id: int, decklist_text: str = Form(""), backup_before_import: bool = Form(False), session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    """Replace the entire deck content with a new list from a textarea. """
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if decklist_text == '':
+        raise HTTPException(status_code=400, detail='Empty replace list.')
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    
+    from src.decks import _merge_lines, parse_decklist, _resolve_names, _resolve_exact, _printing_for
+
+    parsed = _merge_lines(parse_decklist(decklist_text))
+    owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
+    resolved = await _resolve_names(session, [p.name for p in parsed], owned_sids)
+    exact = await _resolve_exact(session, {(p.set_code, p.collector_number) for p in parsed})
+
+    if len(parsed) == 0:
+        raise HTTPException(status_code=400, detail='Empty replace list.')
+
+    # Backup cards (if enabled)
+    if(backup_before_import):
+        await save_version(session, deck, "Pre-import backup "+datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"))
+
+    # Clear existing cards
+    for card in deck.cards:
+        await session.delete(card)
+    await session.flush()
+
+    ## Add new cards
+    for p in parsed:
+        oracle, sid = _printing_for(p, exact, resolved)
+        deck.cards.append(
+            DeckCard(name=p.name, quantity=p.quantity, board=p.board,
+                     oracle_id=oracle, scryfall_id=sid, finish=p.finish)
+        )
+
+    # Manually update the updated_at timestamp
+    
+    deck.updated_at = datetime.datetime.now(datetime.timezone.utc)
+    
+    await session.commit()
+    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+
+
 @router.post("/decks/{deck_id}/delete")
 async def delete_deck(deck_id: int, session: AsyncSession = Depends(get_session)):
     _guard_writable()
@@ -502,6 +553,7 @@ async def delete_deck(deck_id: int, session: AsyncSession = Depends(get_session)
         await session.delete(deck)
         await session.commit()
     return RedirectResponse(url="/decks", status_code=303)
+
 
 
 @router.post("/decks/{deck_id}/wishlist")
@@ -623,3 +675,15 @@ async def deck_add_owned(
         await session.refresh(deck)
         added = card.name
     return await _render_owned_upgrades(request, deck, session, added=added)
+
+@router.post("/decks/{deck_id}/name")
+async def update_deck_name(
+    request: Request, deck_id: int, name: str = Form(""), session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    deck.name = name
+    await session.commit()
+    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)

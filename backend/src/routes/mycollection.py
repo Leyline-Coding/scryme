@@ -42,6 +42,7 @@ TABS = [
     ("binders", "Binders"),
     ("decks", "Decks"),
     ("tags", "Tags"),
+    ("sleeves", "Sleeves"),
     ("wishlist", "Wishlist"),
     ("checklists", "Checklists"),
     ("trade", "Trade"),
@@ -147,6 +148,18 @@ async def collection(
 
     elif tab == "tags":
         ctx["tags"] = await tag_summaries(session)
+    elif tab == "sleeves":
+        from src.models.sleeve import Sleeve
+        rows = await session.execute(
+            select(Sleeve)
+            .order_by(Sleeve.added_at.desc())
+        )
+        ctx["sleeves"] = rows.scalars().all()
+        # Also load decks for the new sleeve form
+        decks = await session.execute(
+            select(Deck).order_by(Deck.name)
+        )
+        ctx["decks"] = decks.scalars().all()
     elif tab == "wishlist":
         wl = await list_wishlist(session, currency, source)
         ctx["view_obj"] = wl

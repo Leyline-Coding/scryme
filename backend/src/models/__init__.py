@@ -21,6 +21,7 @@ from src.models.saved_search import SavedSearch
 from src.models.set_release import SetRelease
 from src.models.share_link import ShareLink
 from src.models.staging import ImportStaging
+from src.models.sleeve import Sleeve
 from src.models.trade_pool import TradePool, TradePoolItem
 from src.models.wishlist import WishlistItem
 
@@ -28,7 +29,7 @@ __all__ = [
     "Binder", "BinderCard", "Box", "Card", "CardEmbedding", "CardPricePoint",
     "Checklist", "ChecklistItem", "ClientToken", "CollectionCard", "FxRate", "FxRateHistory",
     "Deck", "DeckCard", "DeckVersion", "DeckChatMessage", "ImportSnapshot", "IngestState",
-    "ImportStaging",
+    "ImportStaging", "Sleeve",
     "LLMSettings", "Preferences",
     "PriceSnapshot", "PriceTarget", "RulesChunk", "SavedSearch", "SetRelease", "ShareLink",
     "TradePool", "TradePoolItem", "WishlistItem",

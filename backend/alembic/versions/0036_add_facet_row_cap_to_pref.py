@@ -1,8 +1,8 @@
-"""Add lang to preferences
+"""Add facet_row_cap to preferences
 
-Revision ID: c805899ae428
-Revises: 5597178e9eeb
-Create Date: 2026-10-30 13:21:13.524638
+Revision ID: 0036_add_facet_row_cap_to_pref
+Revises: 0035_share_link
+Create Date: 2026-10-29 23:39:14.947608
 
 """
 from typing import Union
@@ -14,14 +14,15 @@ from sqlalchemy.dialects import postgresql
 # revision identifiers, used by Alembic. scryme uses a linear migration chain, so the optional
 # branch_labels / depends_on globals (for Alembic branching) are omitted — Alembic defaults them to
 # None, and leaving them out avoids GitHub Code Quality's "unused global" false positive.
-revision: str = 'c805899ae428'
-down_revision: Union[str, None] = '5597178e9eeb'
+revision: str = '0036_add_facet_row_cap_to_pref'
+down_revision: Union[str, None] = '0035_share_link'
 
 
 def upgrade() -> None:
-    op.add_column('preferences', sa.Column('lang', sa.String(length=8), server_default='en', nullable=False))
-
+    op.add_column('preferences', sa.Column('facet_row_cap', sa.Integer(), server_default=sa.text('4000'), nullable=False))
+ 
 
 
 def downgrade() -> None:
-    op.drop_column('preferences', 'lang')
+    op.drop_column('preferences', 'facet_row_cap')
+

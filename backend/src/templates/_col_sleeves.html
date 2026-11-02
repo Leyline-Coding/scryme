@@ -1,0 +1,81 @@
+{# Sleeves index: list all sleeves with their associated decks. #}
+<p class="text-sm text-muted mb-4">
+  Manage your card sleeves. Each sleeve can optionally be associated with a deck.
+</p>
+
+
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div class="flex justify-start items-center gap-3 md:mb-4">
+    <a href="/collection?tab=sleeves&sort_by={{ sort_by }}&sort_dir={{ 'desc' if sort_dir == 'asc' else 'asc' }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}">
+      {{ 'Descending' if sort_dir == 'desc' else 'Ascending' }}
+    </a>
+    <a href="/collection?tab=sleeves&sort_by=name&sort_dir={{ sort_dir }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'name' else '' }}">
+      Name
+    </a>
+  </div>
+  {% if not read_only %}
+  <form method="post" action="/sleeves/new" class="flex gap-2 items-center" enctype="multipart/form-data">
+    <input type="text" name="name" required placeholder="New sleeve name"
+            class="flex-1 min-w-0 rounded-full bg-surface-2 border border-edge px-3 py-2 w-40 text-sm" />
+    <input type="file" name="image" id="image" accept="image/*"
+               class="rounded-full border border-edge bg-surface px-3 py-2 w-60 text-fg focus:ring-2 focus:ring-accent focus:border-transparent" />
+    <div class="flex gap-2 items-center">
+      <input type="color" name="color" id="color" value="#000000" 
+             class="w-16 h-10 rounded border border-edge bg-surface px-2 py-1 text-fg focus:ring-2 focus:ring-accent focus:border-transparent" />
+      <span class="inline-flex items-center text-sm">Color</span>
+    </div>
+    <button class="rounded-full bg-accent text-accent-fg px-3 py-2 text-sm font-medium text-no-wrap">Add Sleeve</button>
+  </form>
+  {% endif %}
+</div>
+
+
+
+{% if sleeves %}
+  <div class="card-grid">
+    {% for sleeve in sleeves %}
+    <div class="relative">
+      <div class="group relative block rounded-xl overflow-hidden bg-surface ring-1 ring-edge
+            hover:ring-accent transition ">
+        {% if sleeve.image %}
+        <img src="/sleeves/{{ sleeve.image }}" alt="{% if sleeve.name %}{{ sleeve.name }}{% else %} Sleeve #{{ sleeve.id }}{% endif %}" loading="lazy" class="grid-card-img w-full aspect-[5/7] object-cover box-border border-8 border-black" />
+        {% elif sleeve.color %}
+        <div class="w-full aspect-[5/7] flex items-center justify-center"
+             style="background-color: {{ sleeve.color }}; border: 8px solid black;">
+          <span class="text-white text-xs font-bold">{{ sleeve.name or 'Sleeve #' + sleeve.id|string }}</span>
+        </div>
+        {% else %}
+        <div class="bg-muted border-2 border-dashed rounded w-16 h-20 flex items-center justify-center">
+          <svg class="w-8 h-8 text-muted-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828-2.828l4.586 4.586a2 2 0 010 2.828l-4.586 4.586a2 2 0 01-2.828 0L4 16z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01"></path>
+          </svg>
+        </div>
+        {% endif %}
+      
+        <div class="px-2 py-1 text-xs truncate text-fg flex justify-between items-center gap-1">
+          <span class="text-start">
+            {% if sleeve.name %}{{ sleeve.name }}{% else %} Sleeve #{{ sleeve.id }}{% endif %}
+          </span>
+          {% if sleeve.deck_id %}
+          <span class="">
+            Deck {{sleeve.deck_id}}
+          </span>
+          {% endif %}
+          <a href="/sleeves/{{ sleeve.id }}/delete" class="text-end text-red-500 hover:text-red-700 ">
+            Delete
+          </a>
+        </div>
+        
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-muted py-16 text-center">
+    No sleeves yet. Add a sleeve using the button above.
+  </div>
+{% endif %}

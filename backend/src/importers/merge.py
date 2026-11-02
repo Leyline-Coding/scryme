@@ -41,6 +41,7 @@ class Stack:
     quantity: int
     purchase_price: float | None
     name: str  # for display only
+    location: str | None = None
 
     @property
     def key(self) -> StackKey:
@@ -72,6 +73,7 @@ def aggregate(matched: list[MatchedRow]) -> dict[StackKey, Stack]:
             quantity=r.quantity,
             purchase_price=r.purchase_price,
             name=r.name,
+            location=r.location,
         )
         if stack.key in stacks:
             stacks[stack.key].quantity += r.quantity
@@ -113,7 +115,7 @@ class MergeSummary:
     total_quantity: int
 
 
-def _insert(session: AsyncSession, stack: Stack, source_format: str | None) -> None:
+def _insert(session: AsyncSession, stack: Stack, source_format: str | None, location: str | None = None) -> None:
     session.add(
         CollectionCard(
             scryfall_id=stack.scryfall_id,
@@ -123,15 +125,16 @@ def _insert(session: AsyncSession, stack: Stack, source_format: str | None) -> N
             language=stack.language,
             purchase_price=stack.purchase_price,
             binder_name=stack.binder_name,
+            location=location,
             source_format=source_format,
         )
     )
 
 
-def _merge_stack(session, key, stack, existing, strategy, decision_for, source_format):
+def _merge_stack(session, key, stack, existing, strategy, decision_for, source_format, location=None):
     """Insert or update one aggregated stack; return (inserted_delta, updated_delta)."""
     if key not in existing:
-        _insert(session, stack, source_format)
+        _insert(session, stack, source_format, location)
         return 1, 0
     choice = "increment"
     if strategy is MergeStrategy.PER_CARD:
@@ -151,6 +154,7 @@ async def apply_merge(
     *,
     decisions: dict[int, str] | None = None,
     source_format: str | None = None,
+    location: str | None = None,
 ) -> MergeSummary:
     decisions = decisions or {}
     stacks = aggregate(matched)
@@ -158,7 +162,7 @@ async def apply_merge(
     if strategy is MergeStrategy.REPLACE:
         await session.execute(delete(CollectionCard))
         for stack in stacks.values():
-            _insert(session, stack, source_format)
+            _insert(session, stack, source_format, location)
         await session.commit()
         return MergeSummary(strategy, inserted=len(stacks), updated=0,
                             total_quantity=sum(s.quantity for s in stacks.values()))
@@ -169,9 +173,22 @@ async def apply_merge(
     decision_for = {conflict_keys[i]: choice for i, choice in decisions.items()
                     if i < len(conflict_keys)}
 
-    inserted = updated = 0
+    inserted = 0
+    updated = 0
     for key, stack in stacks.items():
-        di, du = _merge_stack(session, key, stack, existing, strategy, decision_for, source_format)
+        # Check if there's a default location from import preview or form, and for new stacks apply it.
+        # For existing stacks, preserve their existing location (unless overridden).
+        if key not in existing:
+            # This is a brand-new stack - we should use the given location
+            if location is not None:
+                stack.location = location
+        else:
+            # Existing stack - keep existing location unless stack has location info
+            # (which would come from the import file)
+            if stack.location is None:
+                stack.location = existing[key].location
+                
+        di, du = _merge_stack(session, key, stack, existing, strategy, decision_for, source_format, stack.location)
         inserted += di
         updated += du
 

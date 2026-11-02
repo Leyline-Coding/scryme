@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Confirm import · scryme{% endblock %}
 {% block content %}
-<div class="max-w-2xl mx-auto px-4 py-12" x-data="{ strategy: 'increment', busy: false }">
+<div class="max-w-2xl mx-auto px-4 py-12" x-data="{ strategy: 'increment', busy: false, location: null }">
   <a href="/" class="text-2xl font-bold tracking-tight">
     <span class="text-accent">scry</span>me
   </a>
@@ -43,6 +43,24 @@
 
   <form action="/upload/confirm" method="post" class="mt-6 space-y-5" @submit="busy = true">
     <input type="hidden" name="token" value="{{ preview.token }}" />
+    
+    <div class="space-y-2">
+      <label class="text-sm font-medium text-fg mb-1">Card location</label>
+      <select name="location_choice" x-model="location"
+        class="w-full rounded bg-surface border border-edge px-3 py-2 text-sm">
+        <option value="">No location (unfiled)</option>
+        <optgroup label="Boxes">
+        {% for box in boxes %}
+        <option value="box:{{ box.name }}">{{ box.name }}</option>
+        {% endfor %}
+        </optgroup>
+        <optgroup label="Binders">
+        {% for binder in binders %}
+        <option value="binder:{{ binder.id }}">{{ binder.name }}</option>
+        {% endfor %}
+        </optgroup>
+      </select>
+    </div>
 
     <fieldset class="space-y-2">
       <legend class="text-sm font-medium text-fg mb-1">How should this merge?</legend>
@@ -85,7 +103,7 @@
     <div class="flex gap-3">
       <button type="submit" :disabled="busy"
         class="rounded-lg bg-accent text-accent-fg px-5 py-2.5 font-medium hover:opacity-90
-               disabled:opacity-60 disabled:cursor-wait">
+                disabled:opacity-60 disabled:cursor-wait">
         <span x-show="!busy">Confirm import</span>
         <span x-show="busy" x-cloak>Importing…</span>
       </button>

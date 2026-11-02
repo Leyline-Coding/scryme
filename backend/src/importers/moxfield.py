@@ -48,6 +48,7 @@ class MoxfieldImporter:
                     condition=(raw.get("Condition") or "").strip() or None,
                     language=normalize_language(raw.get("Language")),
                     purchase_price=to_float(raw.get("Purchase Price")),
+                    location=None,
                 )
             )
         return rows

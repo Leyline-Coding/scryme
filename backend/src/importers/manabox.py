@@ -71,6 +71,7 @@ class ManaBoxImporter:
                     language=_clean(raw, "Language", "en"),
                     purchase_price=_to_float(raw.get("Purchase price")),
                     binder_name=_clean(raw, "Binder Name"),
+                    location=None,
                 )
             )
         return rows

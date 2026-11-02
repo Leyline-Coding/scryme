@@ -24,6 +24,7 @@
 
 {% macro rows(cards) %}
   <ul class="divide-y divide-edge">
+    <li></li>
     {% for r in cards %}
     <li class="py-1.5 text-sm break-inside-avoid" x-data="{ editing: false }">
       <div class="flex flex-wrap items-center gap-x-2 {% if not r.matched %}text-amber-500{% endif %}">
@@ -439,12 +440,15 @@
           <a id="mainboard">Mainboard ({{ cov.main | map(attribute='quantity') | sum }})</a>
         </h2>
         <div x-data="{ deck_legality_inspector_open: false }" class="relative action-scope-collection">
-          <button @click="deck_legality_inspector_open = !deck_legality_inspector_open" type="button" class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-sm font-medium">Deck Legality Details ▾</button>
+          <button @click="deck_legality_inspector_open = !deck_legality_inspector_open" type="button" class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-sm font-medium">Inspect Deck Legality Details ▾</button>
           <input type="hidden" name="bulk_container_id" id="bulk_container_id">
           <div x-show="deck_legality_inspector_open" @click.outside="deck_legality_inspector_open = false" x-transition="" style="display: none" class="absolute right-0 mt-2 w-64 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
             <div class="px-3 py-1.5 text-xs font-medium text-muted">Formats</div>
             {% for f in formats %}
-            <button type="button" onclick="window.location.href='/decks/{{ cov.deck.id }}?format={{ f }}';" class="{% if cov.fmt == f %}bg-accent text-accent-fg{% endif %} block w-full text-left px-3 py-1.5 hover:bg-surface-2 capitalize">{{ f }}</button>
+            <a href="/decks/{{ cov.deck.id }}?format={{ f }}#mainboard" class="flex items-center justify-between rounded px-3 py-1.5 m-1.5 text-xs {% if cov.all_legalities[f] %}bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20{% else %}bg-surface-2 hover:bg-surface-3{% endif %} transition {% if cov.fmt == f %}bg-accent text-accent-fg{% endif %}">
+              <span class="capitalize">{{ f }}</span>
+              <span class="capitalize">{% if cov.all_legalities[f] %}legal{% else %}not legal{% endif %}</span>
+            </a>
             {% endfor %}
             {% if cov.fmt %}
             <div class="block w-full text-left px-3 py-1.5 text-accent hover:bg-surface-2 border-t border-edge mt-1 pt-1" onclick="window.location.href='/decks/{{ cov.deck.id }}';">Clear</div>
@@ -460,13 +464,18 @@
           <div class="mt-2 mb-3 p-2 rounded bg-emerald-500/10 text-emerald-500 text-sm">
             This deck is legal in {{ cov.fmt }}
           </div>
-        {% elif details.get('illegal_cards') or details.get('unmatched') %}
-          <div class="mt-2 mb-3 p-2 rounded bg-rose-500/10 text-rose-500 text-sm">
+        {% elif details.get('illegal_cards') or details.get('unmatched') or details.get('format_violations') %}
+          <div class="mt-1 mb-3 p-2 rounded bg-rose-500/10 text-rose-500 text-xs">
             {% if details.get('illegal_cards') %}
-              <span>{{ details.illegal_cards | length }} card(s) not legal in {{ cov.fmt }}</span>
+              <span class="block">{{ details.illegal_cards | length }} card(s) not legal in {{ cov.fmt }}</span>
             {% endif %}
             {% if details.get('unmatched') %}
-              <span class="ml-2">{{ details.unmatched | length }} unrecognized card(s)</span>
+              <span class="block">{{ details.unmatched | length }} unrecognized card(s)</span>
+            {% endif %}
+            {% if details.get('format_violations') %}
+            {% for violation in details.format_violations %}
+              <span class="block">{{ violation }}</span>
+            {% endfor %}
             {% endif %}
           </div>
         {% endif %}

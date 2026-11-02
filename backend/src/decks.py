@@ -643,12 +643,37 @@ async def deck_coverage(
             for c in deck.cards:
                 _card_legality(c, f, legal_by_oracle_all, illegal_oracles_for_format)
             
-            # The deck is legal in this format if no illegal cards and all cards matched
+            # Format-specific validation rules
             is_legal_for_format = (len(illegal_oracles_for_format) == 0 
                                   and sum(1 for c in deck.cards if not c.oracle_id) == 0)
+            
+            # Validate deck size requirements by format - only mainboard cards count toward minimum requirements
+            total_mainboard_cards = sum(c.quantity for c in deck.cards if c.board == "main")
+            
+            # Track format-specific violations separately
+            format_violations = []
+            
+            # Check deck size is greater or equal to the format's minimum decksize (only mainboard)
+            if total_mainboard_cards < (100 if f == "commander" else 60):
+                is_legal_for_format = False
+                format_violations.append(f"{f.title()} format requires at least {(100 if f == "commander" else 60)} mainboard cards ({total_mainboard_cards} found)")
+            
+            # Other formats: maximum 4 copies of each card name 
+            regular_card_counts = {}
+            for c in deck.cards:
+                if c.board == "main":  # Only check mainboard
+                    regular_card_counts[c.name] = regular_card_counts.get(c.name, 0) + c.quantity
+            
+            # Check for any non-basic land card with more than specified number of copies copies
+            for name, count in regular_card_counts.items():
+                # Basic lands are allowed to have multiple copies
+                if name not in BASIC_LAND_NAMES and count > (1 if f == "commander" else 4):
+                    is_legal_for_format = False
+                    format_violations.append(f"{f.title()} format allows at most {('1 copy' if f == "commander" else '4 copies')} of each non-basic land card ({name} has {count})")
+            
             all_legalities[f] = is_legal_for_format
             
-            # Build the details for each format
+            # Build the details for each format - separate card-specific violations from format violations
             illegal_cards = []
             unmatched_cards = []
             for c in deck.cards:
@@ -659,7 +684,8 @@ async def deck_coverage(
             
             legality_details[f] = {
                 "illegal_cards": list(set(illegal_cards)),
-                "unmatched": list(set(unmatched_cards))
+                "unmatched": list(set(unmatched_cards)),
+                "format_violations": format_violations  # Separate field for format-specific issues
             }
     
     cov.all_legalities = all_legalities

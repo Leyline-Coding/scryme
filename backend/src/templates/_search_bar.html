@@ -1,0 +1,30 @@
+{# One search bar with a Scryfall ⇄ AI toggle — full-width on its own row. #}
+{# Scryfall syntax mode (live search as you type) #}
+<form {% if request.url.path.startswith('/search') %}hx-get="/search"  hx-target="#results" hx-push-url="true" hx-trigger="submit, keyup changed delay:350ms from:input[name=q], change"{% else %}action="/search" method="get"{% endif %} class="relative flex w-full items-center" x-show="!ai" >
+  <input type="search" name="q" value="{{ q }}" autofocus
+          placeholder="Search — e.g. c:r t:instant mv<=2"
+          class="w-full rounded-l-full bg-surface border border-edge border-r-0 px-5 py-2.5
+                focus:outline-none focus:ring-2 focus:ring-accent" />
+  <a href="/advanced"
+    type="button" 
+    class="{% if not ai_ready %}rounded-r-full{% endif %} border border-accent px-5 py-2.5 font-medium text-white hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 whitespace-nowrap">
+    Advanced
+  </a>
+  {% if ai_ready %}
+  <button type="button" title="Ask in plain English"
+          @click="ai = true; $nextTick(() => $refs.ainput && $refs.ainput.focus())"
+          class="rounded-r-full bg-accent border border-accent px-5 py-2.5 font-medium text-white hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 whitespace-nowrap">✨ Ask AI</button>
+  {% endif %}
+</form>
+{% if ai_ready %}
+{# AI / natural-language mode (#171): translate to Scryfall syntax, then run it. #}
+<form x-show="ai" x-cloak method="post" action="/search/nl" class=" flex w-full items-center">
+  <input type="hidden" name="scope" value="{{ scope }}" />
+  <input type="text" name="q" x-ref="ainput"
+          placeholder="✨ Ask in plain English — cheap red removal that hits creatures"
+          class="w-full rounded-l-full bg-surface border border-edge border-r-0 px-5 py-2.5
+                focus:outline-none focus:ring-2 focus:ring-accent" />
+  <button type="button" @click="ai = false" title="Back to Scryfall syntax"
+          class="rounded-r-full bg-accent border border-accent px-5 py-2.5 font-medium text-white hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 whitespace-nowrap">Back to syntax search</button>
+</form>
+{% endif %}

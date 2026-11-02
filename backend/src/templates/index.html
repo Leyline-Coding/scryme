@@ -90,21 +90,11 @@
   </script>
   {% elif has_collection %}
   {# Collection present: Scryfall-style search bar (wired up in Phase 2). #}
-  <form action="/search" method="get" class="w-full max-w-2xl">
-    <input
-      type="search"
-      name="q"
-      autofocus
-      placeholder="Search your collection — e.g. c:r t:instant mv<=2"
-      class="w-full rounded-full bg-surface border border-edge px-6 py-4 text-lg
-             focus:outline-none focus:ring-2 focus:ring-accent"
-    />
-  </form>
+  <div class="max-w-4xl w-full" x-data="{ ai: false }">{% include "_search_bar.html" %}</div>
   <p class="mt-4 text-sm text-muted">
     Supports <a class="underline" href="https://scryfall.com/docs/syntax" target="_blank"
-      rel="noopener">Scryfall syntax</a>, or use
-    <a class="underline" href="/advanced">advanced search</a>
-    · <a class="underline" href="/search">all cards</a>
+      rel="noopener">Scryfall syntax</a>, or go to
+    <a class="underline" href="/search">all cards</a>
     · <a class="underline" href="/collection">my collection</a>
     · <a class="underline" href="/prices">prices</a>.
   </p>

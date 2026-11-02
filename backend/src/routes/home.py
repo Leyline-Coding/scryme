@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import get_settings
 from src.currency import get_currency, info
 from src.db import get_session
+from src.llm import get_config
 from src.templating import templates
 
 router = APIRouter(tags=["home"])
@@ -45,6 +46,7 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)) 
         "index.html",
         {
             "has_collection": bool(count),
+            "ai_ready": (await get_config(session)).ready,
             "read_only": settings.read_only,
             "needs_cards": needs_cards,
             "alerts": alerts,

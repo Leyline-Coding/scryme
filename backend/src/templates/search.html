@@ -2,9 +2,8 @@
 {% block title %}Search · scryme{% endblock %}
 {% block content %}
 <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
-  <header class="page-header flex flex-wrap items-center gap-3 mb-6">
+  <header class="flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
-    <a href="/advanced" class="text-sm text-muted hover:text-fg shrink-0">Advanced</a>
     <a href="/search" class="text-sm text-muted hover:text-fg shrink-0">All Cards</a>
     <a href="/collection" class="text-sm text-muted hover:text-fg shrink-0">My Collection</a>
     <a href="/prices" class="text-sm text-muted hover:text-fg shrink-0">Prices</a>
@@ -47,23 +46,9 @@
     <a href="/upload"
        class="shrink-0 rounded-full bg-surface-2 hover:bg-surface-3 px-4 py-2 text-sm font-medium">+ Upload</a>
 
-    {# One search bar with a Scryfall ⇄ AI toggle — full-width on its own row. #}
-    <div class="order-last w-full" x-data="{ ai: false }">
-      {# Scryfall syntax mode (live search as you type) #}
-      <form x-show="!ai" hx-get="/search" hx-target="#results" hx-push-url="true"
-            hx-trigger="submit, keyup changed delay:350ms from:input[name=q], change"
-            class="flex flex-col gap-2">
-        <div class="relative">
-          <input type="search" name="q" value="{{ q }}" autofocus
-                 placeholder="Search — e.g. c:r t:instant mv<=2"
-                 class="w-full rounded-full bg-surface border border-edge px-5 py-2.5 {% if ai_ready %}pr-24{% endif %}
-                        focus:outline-none focus:ring-2 focus:ring-accent" />
-          {% if ai_ready %}
-          <button type="button" title="Ask in plain English"
-                  @click="ai = true; $nextTick(() => $refs.ainput && $refs.ainput.focus())"
-                  class="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full bg-surface-2 hover:bg-surface-3 px-3 py-1.5 text-xs font-medium">✨ AI</button>
-          {% endif %}
-        </div>
+    <div class="order-last w-full">
+      <div class="flex flex-col gap-2" x-data="{ ai: false }">
+        {% include "_search_bar.html" %}
         <div class="flex flex-wrap items-center gap-2 text-sm">
           <div class="inline-flex rounded-full ring-1 ring-edge overflow-hidden shrink-0" title="Search scope">
             <label class="cursor-pointer">
@@ -88,25 +73,7 @@
             <option value="desc" {% if dir == 'desc' %}selected{% endif %}>Desc ↓</option>
           </select>
         </div>
-      </form>
-
-      {% if ai_ready %}
-      {# AI / natural-language mode (#171): translate to Scryfall syntax, then run it. #}
-      <form x-show="ai" x-cloak method="post" action="/search/nl" class="flex flex-col gap-2">
-        <input type="hidden" name="scope" value="{{ scope }}" />
-        <div class="relative">
-          <input type="text" name="q" x-ref="ainput"
-                 placeholder="✨ Ask in plain English — cheap red removal that hits creatures"
-                 class="w-full rounded-full bg-surface-2 border border-edge px-5 py-2.5 pr-32 text-sm
-                        focus:outline-none focus:ring-2 focus:ring-accent" />
-          <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            <button type="button" @click="ai = false" title="Back to Scryfall syntax"
-                    class="rounded-full bg-surface hover:bg-surface-3 px-2.5 py-1.5 text-xs">⌨ Syntax</button>
-            <button type="submit" class="rounded-full bg-accent text-white px-3 py-1.5 text-xs font-medium">Ask</button>
-          </div>
-        </div>
-      </form>
-      {% endif %}
+      </div>
     </div>
 
     {% if nl %}

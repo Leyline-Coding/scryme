@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -77,6 +77,23 @@ async def create_sleeve(
     
     # Redirect back to collection sleeves tab
     return RedirectResponse(url="/collection?tab=sleeves", status_code=303)
+
+
+@router.post("/sleeves/{sleeve_id}/unassociate", response_class=HTMLResponse)
+async def remove_deck_sleeve(
+    sleeve_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Remove sleeve association from a deck."""
+    _guard_writable()
+    sleeve = await session.get(Sleeve, sleeve_id)
+    sleeve.deck_id = None
+            
+    await session.commit()
+    
+    # Redirect back to the sleeves tab
+    return Response(status_code=200, headers={})
+
 
 
 @router.post("/sleeves/{sleeve_id}/delete", response_class=HTMLResponse)

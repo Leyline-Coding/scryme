@@ -47,7 +47,7 @@ from src.decks import (
     resync_printings,
 )
 from src.llm import get_config
-from src.models import Card, CollectionCard, Deck, DeckCard, DeckVersion
+from src.models import Card, CollectionCard, Deck, DeckCard, DeckVersion, Sleeve
 from src.pricing import get_price_source
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
@@ -262,6 +262,20 @@ async def build_preview(
     return templates.TemplateResponse(request, "deck_build_result.html", {"built": built})
 
 
+async def _get_all_sleeves(session: AsyncSession) -> list:
+    """Get all sleeves in the system."""
+    from src.models import Sleeve
+    stmt = select(Sleeve)
+    result = await session.execute(stmt)
+    return result.scalars().all()
+
+async def _get_deck_sleeves(session: AsyncSession, deck_id: int) -> list:
+    """Get sleeves associated with a specific deck."""
+    from src.models import Sleeve
+    stmt = select(Sleeve).where(Sleeve.deck_id == deck_id)
+    result = await session.execute(stmt)
+    return result.scalars().all()
+
 @router.get("/decks/{deck_id}", response_class=HTMLResponse)
 async def view_deck(
     request: Request,
@@ -277,8 +291,10 @@ async def view_deck(
     currency = get_currency(request)
     source = get_price_source(request)
     coverage = await deck_coverage(session, deck, fmt=format or None, currency=currency,
-                                   source=source)
+                                    source=source)
     coverage_combined = deck_coverage_combined(coverage)
+    sleeves = await _get_all_sleeves(session)
+    deck_sleeves = await _get_deck_sleeves(session, deck_id)
     return templates.TemplateResponse(
         request,
         "deck_detail.html",
@@ -300,6 +316,8 @@ async def view_deck(
             "share_links": await links_for(session, DECK, deck.id),
             "share_new": shared,
             "ai_ready": (await get_config(session)).ready,
+            "sleeves": sleeves,
+            "deck_sleeves": deck_sleeves,
         },
     )
 
@@ -542,6 +560,8 @@ async def replace_deck_list(
     return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
 
 
+
+
 @router.post("/decks/{deck_id}/delete")
 async def delete_deck(deck_id: int, session: AsyncSession = Depends(get_session)):
     _guard_writable()
@@ -553,6 +573,41 @@ async def delete_deck(deck_id: int, session: AsyncSession = Depends(get_session)
         await session.delete(deck)
         await session.commit()
     return RedirectResponse(url="/decks", status_code=303)
+
+
+@router.post("/decks/{deck_id}/sleeve", response_class=HTMLResponse)
+async def set_deck_sleeve(
+    deck_id: int,
+    sleeve_id: int = Form(None),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Associate a sleeve with a deck."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    
+    # Clear existing sleeves for this deck
+    stmt = select(Sleeve).where(Sleeve.deck_id == deck_id)
+    result = await session.execute(stmt)
+    existing_sleeves = result.scalars().all()
+    for sleeve in existing_sleeves:
+        sleeve.deck_id = None
+    
+    # If sleeve_id is provided, associate it with the deck
+    if sleeve_id:
+        # Ensure the sleeve exists and belongs to this deck (or has no deck association)
+        sleeve = await session.get(Sleeve, sleeve_id)
+        if sleeve is None:
+            raise HTTPException(status_code=404, detail="Sleeve not found.")
+        
+        # Set the sleeve for this deck
+        sleeve.deck_id = deck_id
+            
+    await session.commit()
+    
+    # Redirect back to the deck detail page
+    return Response(status_code=200, headers={})
 
 
 

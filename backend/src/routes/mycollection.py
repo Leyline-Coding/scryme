@@ -92,6 +92,8 @@ async def collection(
         if view == "sets":
             ctx["sets"] = await memoize("setprog", lambda: set_progress(session))
     elif tab == "decks":
+        from src.models.sleeve import Sleeve
+        # Load decks with their sleeve information
         rows = await session.execute(
             select(Deck, func.count()).outerjoin(Deck.cards)
             .group_by(Deck.id)
@@ -120,12 +122,22 @@ async def collection(
             symbols = [f"ms-{c.lower()}" for c in sorted(list(deck_color_identity))]
             group_name = color_identity_group(list(deck_color_identity))
             
-            ctx["decks"].append((d, n, round(total_val, 2), symbols, group_name, d.updated_at))
+            # Get the sleeve associated with this deck (if any) - by filtering sleeves where deck_id matches
+            sleeve = None
+            if d.id:  # Only try to fetch if deck has an ID
+                sleeve_result = await session.execute(
+                    select(Sleeve).where(Sleeve.deck_id == d.id)
+                )
+                sleeve = sleeve_result.scalars().first()
+            
+            ctx["decks"].append((d, n, round(total_val, 2), symbols, group_name, d.updated_at, sleeve))
 
         if sort_by == "price":
             ctx["decks"].sort(key=lambda x: x[2], reverse=(sort_dir == "desc"))
         elif sort_by == "name":
             ctx["decks"].sort(key=lambda x: x[0].name, reverse=(sort_dir == "desc"))
+        elif sort_by == "updated_at":
+            ctx["decks"].sort(key=lambda x: x[0].updated_at, reverse=(sort_dir == "desc"))
 
 
     elif tab == "locations":
@@ -150,11 +162,29 @@ async def collection(
         ctx["tags"] = await tag_summaries(session)
     elif tab == "sleeves":
         from src.models.sleeve import Sleeve
+        # Load sleeves with their associated deck names
         rows = await session.execute(
-            select(Sleeve)
-            .order_by(Sleeve.added_at.desc())
+            select(Sleeve, Deck.name.label("deck_name"))
+            .outerjoin(Deck, Sleeve.deck_id == Deck.id)
         )
-        ctx["sleeves"] = rows.scalars().all()
+        
+        # Convert to list of tuples and then create sleeve objects with deck_name attribute
+        sleeves_with_names = []
+        for sleeve, deck_name in rows.all():
+            # Add the deck_name as an attribute to the sleeve object
+            sleeve.deck_name = deck_name
+            sleeves_with_names.append(sleeve)
+        
+        # Apply sorting
+        if sort_by == "name":
+            sleeves_with_names.sort(key=lambda x: x.name or "", reverse=(sort_dir == "desc"))
+        elif sort_by == "date_added":
+            sleeves_with_names.sort(key=lambda x: x.added_at, reverse=(sort_dir == "desc"))
+        else:
+            # Default to sorting by name
+            sleeves_with_names.sort(key=lambda x: x.name or "", reverse=(sort_dir == "desc"))
+        
+        ctx["sleeves"] = sleeves_with_names
         # Also load decks for the new sleeve form
         decks = await session.execute(
             select(Deck).order_by(Deck.name)

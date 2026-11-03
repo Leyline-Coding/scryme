@@ -262,20 +262,6 @@ async def build_preview(
     return templates.TemplateResponse(request, "deck_build_result.html", {"built": built})
 
 
-async def _get_all_sleeves(session: AsyncSession) -> list:
-    """Get all sleeves in the system."""
-    from src.models import Sleeve
-    stmt = select(Sleeve)
-    result = await session.execute(stmt)
-    return result.scalars().all()
-
-async def _get_deck_sleeves(session: AsyncSession, deck_id: int) -> list:
-    """Get sleeves associated with a specific deck."""
-    from src.models import Sleeve
-    stmt = select(Sleeve).where(Sleeve.deck_id == deck_id)
-    result = await session.execute(stmt)
-    return result.scalars().all()
-
 @router.get("/decks/{deck_id}", response_class=HTMLResponse)
 async def view_deck(
     request: Request,
@@ -293,8 +279,6 @@ async def view_deck(
     coverage = await deck_coverage(session, deck, fmt=format or None, currency=currency,
                                     source=source)
     coverage_combined = deck_coverage_combined(coverage)
-    sleeves = await _get_all_sleeves(session)
-    deck_sleeves = await _get_deck_sleeves(session, deck_id)
     return templates.TemplateResponse(
         request,
         "deck_detail.html",
@@ -316,8 +300,6 @@ async def view_deck(
             "share_links": await links_for(session, DECK, deck.id),
             "share_new": shared,
             "ai_ready": (await get_config(session)).ready,
-            "sleeves": sleeves,
-            "deck_sleeves": deck_sleeves,
         },
     )
 

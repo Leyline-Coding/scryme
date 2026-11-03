@@ -6,7 +6,6 @@ import pytest
 from src.decks import (
     _is_playable,
     _legalities_by_oracle,
-    _load_deck_printings,
     _merge_lines,
     _parse_deck_line,
     _resolve_names,
@@ -163,11 +162,6 @@ async def test_legalities_by_oracle_empty(session):
     assert await _legalities_by_oracle(session, set()) == {}
     assert await _legalities_by_oracle(session, {None}) == {}
 
-
-@pytest.mark.asyncio
-async def test_load_deck_printings_empty(session):
-    price, prints, oracle_sid = await _load_deck_printings(session, [], "tcgplayer")
-    assert price == {} and prints == {} and oracle_sid == {}
 
 
 @pytest.mark.asyncio

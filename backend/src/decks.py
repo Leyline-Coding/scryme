@@ -365,18 +365,14 @@ def normalize_language(code: str | None) -> str:
 
 @dataclass
 class CardRow:
-    name: str
+    name: str                       # Although scryfall cards have names, they are not guaranteed. A user could submit any name... so we track DeckCard.name independantly
+    scryfall_card: Card             # Inherit the attributes of a scryfall card
     quantity: int
     board: str
     owned: int
     matched: bool
-    scryfall_id: str | None
     legality: str | None = None     # status in the selected format, or None when no format chosen
     card_id: int = 0                # deck_card row id (for editing the printing)
-    set_code: str | None = None     # representative printing shown for this line
-    set_name: str | None = None
-    collector_number: str | None = None
-    release_date: str | None = None  # Scryfall printing release date (YYYY-MM-DD)
     proxy: bool = False             # printed proxy
     special: bool = False           # art card / alter / other genuine non-standard copy
     language: str = "en"            # language the copy is played in (Scryfall code)
@@ -528,48 +524,6 @@ def proxy_cards(cov: DeckCoverage, source: str = "proxy",
     return out
 
 
-async def _load_deck_printings(session: AsyncSession, sids: list, source: str):
-    """Per-sid price map, printing metadata, and oracle→sid map."""
-    price_by_sid: dict[str, dict] = {}
-    print_by_sid: dict[str, tuple] = {}
-    oracle_sid: dict = {}
-
-    if not sids:
-        return price_by_sid, print_by_sid, oracle_sid
-
-    rows = (
-        await session.execute(
-            select(
-                Card.scryfall_id,
-                Card.oracle_id,
-                Card.prices,
-                Card.market_prices,
-                Card.set_code,
-                Card.set_name,
-                Card.collector_number,
-                Card.raw,
-            ).where(Card.scryfall_id.in_(sids))
-        )
-    ).all()
-
-    for sid, oracle, prices, market_prices, set_code, set_name, collector, raw in rows:
-        price_by_sid[str(sid)] = resolve_prices(
-            prices, market_prices, source
-        ) or {}
-
-        release_date = raw.get("released_at") if isinstance(raw, dict) else None
-
-        print_by_sid[str(sid)] = (
-            set_code,
-            set_name,
-            collector,
-            release_date,
-        )
-        oracle_sid[oracle] = str(sid)
-
-    return price_by_sid, print_by_sid, oracle_sid
-
-
 def _card_legality(c, fmt: str | None, legal_by_oracle: dict, illegal_oracles: set) -> str | None:
     """Format legality for a card's oracle; records illegal oracles as a side effect."""
     if not (fmt and c.oracle_id):
@@ -609,8 +563,24 @@ async def deck_coverage(
     owned = await _owned_by_oracle(session)
     fmt = fmt if fmt in LEGALITY_FORMATS else None
 
-    sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
-    price_by_sid, print_by_sid, oracle_sid = await _load_deck_printings(session, sids, source)
+    # Load card data
+    cards = (
+            await session.execute(
+                select(Card).where(Card.scryfall_id.in_([c.scryfall_id for c in deck.cards if c.scryfall_id]))
+            )
+        ).all()
+    cards = {card[0].scryfall_id: card[0] for card in cards}
+    
+    price_by_sid: dict[str, dict] = {}
+    oracle_sid: dict = {}
+
+    for scryfall_id, card in cards.items():
+        price_by_sid[str(scryfall_id)] = resolve_prices(
+            card.prices, card.market_prices, source
+        ) or {}
+
+        oracle_sid[card.oracle_id] = str(scryfall_id)
+
     # Legality is judged per oracle from a playable printing, independent of the line's printing.
     legal_by_oracle = await _legalities_by_oracle(
         session, {c.oracle_id for c in deck.cards if c.oracle_id}
@@ -692,21 +662,15 @@ async def deck_coverage(
     cov.legality_details = legality_details
 
     for c in deck.cards:
-        legality = _card_legality(c, fmt, legal_by_oracle, illegal_oracles)
-        set_code, set_name, collector, release_date = print_by_sid.get(str(c.scryfall_id), (None, None, None, None))
         row = CardRow(
             name=c.name,
+            card_id=c.id,
+            scryfall_card=cards[c.scryfall_id] if c.scryfall_id else None,
             quantity=c.quantity,
             board=c.board,
             owned=owned.get(c.oracle_id, 0) if c.oracle_id else 0,
             matched=c.oracle_id is not None,
-            scryfall_id=str(c.scryfall_id) if c.scryfall_id else None,
-            legality=legality,
-            card_id=c.id,
-            set_code=set_code,
-            set_name=set_name,
-            collector_number=collector,
-            release_date=release_date,
+            legality=_card_legality(c, fmt, legal_by_oracle, illegal_oracles),
             proxy=c.proxy,
             special=c.special,
             language=c.language,
@@ -747,7 +711,7 @@ def deck_coverage_combined(coverage: DeckCoverage) -> DeckCoverage:
 
             # Keep the printing with the latest release date.
             # ISO dates (YYYY-MM-DD) can be compared lexicographically.
-            if (entry.release_date or "") > (current.release_date or ""):
+            if (entry.scryfall_card.released_at if entry and entry.scryfall_card else "" or "") > (current.scryfall_card.released_at if current and current.scryfall_card else "" or ""):
                 representative = copy.deepcopy(entry)
             else:
                 representative = current

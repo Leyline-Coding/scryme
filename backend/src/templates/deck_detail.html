@@ -95,16 +95,24 @@
   <div class="card-grid">
     {% for r in cards %}
     <div class="relative">
-      {% if r.scryfall_id and images.get(r.scryfall_id) %}
+      {% if r.scryfall_card %}
       {% if cov.fmt and r.legality and r.legality != 'legal' and r.legality != 'restricted' %}
-      <a href="/card/{{ r.scryfall_id }}"
-         class="block rounded-lg overflow-hidden ring-2 ring-rose-500 hover:ring-accent transition">
+      <a href="/card/{{ r.scryfall_card.scryfall_id }}"
+         class="group block rounded-lg overflow-hidden ring-2 ring-rose-500 hover:ring-accent transition">
       {% else %}
-      <a href="/card/{{ r.scryfall_id }}"
-         class="block rounded-lg overflow-hidden ring-1 ring-edge hover:ring-accent transition">
+      <a href="/card/{{ r.scryfall_card.scryfall_id }}"
+         class="group block rounded-lg overflow-hidden ring-1 ring-edge hover:ring-accent transition">
       {% endif %}
-        <img src="{{ images[r.scryfall_id] }}" alt="{{ r.name }}" loading="lazy"
-             class="w-full aspect-[5/7] object-cover" />
+        <img src="{{ r.scryfall_card.front_image() }}" alt="{{ r.name }}" loading="lazy"
+              class="w-full aspect-[5/7] object-cover grid-card-img" {% if r.scryfall_card.back_face_image() %}data-front="{{ r.scryfall_card.front_image() }}" data-back="{{ r.scryfall_card.back_face_image() }}" data-face="front"{% endif %} />
+        {% if r.scryfall_card.back_face_image() %}
+        <span class="grid-flip-overlay absolute inset-0 z-10 flex items-center justify-center
+                    opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          <button type="button" title="Flip to the other face" aria-label="Flip card"
+                  class="grid-flip-btn pointer-events-auto grid place-items-center w-10 h-10 rounded-full
+                        bg-black/60 text-white text-xl leading-none hover:bg-black/80 shadow-lg">↻</button>
+        </span>
+        {% endif %}
       </a>
       {% else %}
       {% if cov.fmt and r.legality and r.legality != 'legal' and r.legality != 'restricted' %}

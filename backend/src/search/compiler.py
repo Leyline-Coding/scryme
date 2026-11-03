@@ -14,7 +14,7 @@ from collections.abc import Callable
 from sqlalchemy import Float, and_, cast, func, not_, or_, select, exists
 from sqlalchemy.sql.elements import ColumnElement
 
-from src.models import Card, CollectionCard
+from src.models import Card, CollectionCard, Location
 from src.search.ast import And, Node, Not, Or, Term
 from src.search.colors import ColorParseError, parse_colors
 from src.search.errors import SearchError
@@ -234,9 +234,8 @@ def _tag(term: Term) -> ColumnElement:
 
 def _location(term: Term) -> ColumnElement:
     # Physical storage location lives on collection_card; match printings with a stack there
-    # (case-insensitive substring, so `loc:box` matches "Box A").
     located = select(CollectionCard.scryfall_id).where(
-        CollectionCard.location.ilike(f"%{term.value}%")
+        CollectionCard.location.in_(select(Location.id))
     )
     return Card.scryfall_id.in_(located)
 

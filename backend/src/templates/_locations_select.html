@@ -1,0 +1,13 @@
+{% macro locations_select(grouped_locations, attribute='') %}
+<select name="add_location_choice" title="Storage location"
+      class="rounded bg-surface-2 border border-edge px-2 py-1 text-xs max-w-[10rem]">
+  <option value="">📍 unfiled</option>
+  {% for type, locations in grouped_locations.items() %}
+  <optgroup label="{{type}}" class="capitalize">
+  {% for location in locations %}
+  <option value="{{location.id}}">{% if type=='box' %}📦{% elif type=='binder' %}📕{% else %}🃏{% endif %} {{ location.label }}</option>
+  {% endfor %}
+  </optgroup>
+  {% endfor %}
+</select>
+{% endmacro %}

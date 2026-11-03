@@ -8,6 +8,7 @@ from Scryfall (HTMX) so the page renders instantly and stays useful offline if t
 from __future__ import annotations
 
 import uuid
+from collections import defaultdict
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -15,13 +16,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import currency, fx
-from src.binder_service import all_binders, binders_for_card
-from src.box_service import all_boxes
 from src.config import get_settings
 from src.currency import get_currency
 from src.db import get_session
 from src.embeddings import similar_to_oracle
 from src.llm import get_config
+from src.locations import find_or_create_locations
 from src.models import Card, CardEmbedding, CardPricePoint, CollectionCard, Deck
 from src.price_watch import target_for
 from src.prices import (
@@ -218,6 +218,11 @@ async def card_detail(
         and await session.get(CardEmbedding, card.oracle_id) is not None
     )
 
+    
+    grouped_locations = defaultdict(list)
+    for location in (await find_or_create_locations(session)):
+        grouped_locations[location.type].append(location)
+    
     return templates.TemplateResponse(
         request,
         "card_detail.html",
@@ -248,14 +253,7 @@ async def card_detail(
             "read_only": get_settings().read_only,
             "show_similar": show_similar,
             "ai_ready": (await get_config(session)).ready,
-            "binders": await all_binders(session),
-            "in_ids": await binders_for_card(session, str(card.scryfall_id)),
-            "boxes": await all_boxes(session),
-            "picker_binders": await all_binders(session),
-            "decks": [
-                (d.id, d.name) for d in
-                (await session.execute(select(Deck).order_by(Deck.name))).scalars().all()
-            ],
+            "grouped_locations": grouped_locations,
             "printing_opts": await printing_options(session, card.scryfall_id),
             "trade_pools": await open_pools(session),
         },

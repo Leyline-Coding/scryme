@@ -271,31 +271,16 @@ async def remove_route(
 async def locate_stack(
     request: Request,
     stack_id: int,
-    location_choice: str = Form(""),
+    location_id: int = Form(None),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
-    """Unified location picker (#160): file a stack into a box, binder, or deck.
-
-    ``location_choice`` is ``box:<name>`` / ``binder:<id>`` / ``deck:<id>`` / ``""`` (unfile).
-    Boxes set the stack's physical ``location``; binders/decks add the printing to that container.
-    """
+    """Unified location picker (#160): file a stack into a box, binder, or deck. """
     _guard_writable()
-    stack = await session.get(CollectionCard, stack_id)
-    if stack is None:
+    colelction_card = await session.get(CollectionCard, stack_id)
+    if colelction_card is None:
         raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
-    sid = stack.scryfall_id
-    kind, _, ref = location_choice.partition(":")
-    if kind == "box":
-        await update_stack(session, stack_id, location=ref or None)
-    elif kind == "binder" and ref.isdigit():
-        await binder_add_card(session, int(ref), sid)
-    elif kind == "deck" and ref.isdigit():
-        card = await session.get(Card, sid)
-        if card is not None:
-            await add_card_to_deck(session, int(ref), card)
-    else:  # "" / "none" → unfile from any box
-        await update_stack(session, stack_id, location=None)
-    return await _collection_partial(request, session, sid)
+    colelction_card.location = location_id
+    return await session.commit()
 
 
 @router.post("/collection/stack/{stack_id}/trade", response_class=HTMLResponse)

@@ -13,6 +13,7 @@ from src.models.fx_rate import FxRate, FxRateHistory
 from src.models.import_snapshot import ImportSnapshot
 from src.models.ingest import IngestState
 from src.models.llm_settings import LLMSettings
+from src.models.location import Location
 from src.models.preferences import Preferences
 from src.models.price import CardPricePoint, PriceSnapshot
 from src.models.price_target import PriceTarget
@@ -29,7 +30,7 @@ __all__ = [
     "Binder", "BinderCard", "Box", "Card", "CardEmbedding", "CardPricePoint",
     "Checklist", "ChecklistItem", "ClientToken", "CollectionCard", "FxRate", "FxRateHistory",
     "Deck", "DeckCard", "DeckVersion", "DeckChatMessage", "ImportSnapshot", "IngestState",
-    "ImportStaging", "Sleeve",
+    "ImportStaging", "Location", "Sleeve",
     "LLMSettings", "Preferences",
     "PriceSnapshot", "PriceTarget", "RulesChunk", "SavedSearch", "SetRelease", "ShareLink",
     "TradePool", "TradePoolItem", "WishlistItem",

@@ -26,6 +26,9 @@ class Deck(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    updated_at: Mapped[datetime.datetime] =mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
     # Manual Commander bracket override (1–5). NULL = use the computed estimate (#159).
     bracket_override: Mapped[int | None] = mapped_column(Integer)
     # How the deck relates to the collection (#298): 'none' (unowned), 'full', or 'partial'.
@@ -35,6 +38,9 @@ class Deck(Base):
     source_url: Mapped[str | None] = mapped_column(String(512))
 
     cards: Mapped[list[DeckCard]] = relationship(
+        back_populates="deck", cascade="all, delete-orphan", lazy="selectin"
+    )
+    sleeves: Mapped[list[Sleeve]] = relationship(
         back_populates="deck", cascade="all, delete-orphan", lazy="selectin"
     )
 

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import get_settings
@@ -15,6 +16,7 @@ from src.importers.base import UnknownFormatError
 from src.importers.mapping import MAP_FIELDS, csv_headers, guess_mapping
 from src.importers.merge import MergeStrategy
 from src.importers.service import confirm_upload, stage_mapped_upload, stage_upload
+from src.models import Binder
 from src.templating import templates
 
 router = APIRouter(tags=["upload"])
@@ -77,7 +79,24 @@ async def upload_preview(
             )
         return templates.TemplateResponse(request, _UPLOAD_TMPL, {"error": str(exc)})
 
-    return templates.TemplateResponse(request, "upload_preview.html", {"preview": preview})
+    from src.box_service import all_boxes
+    from src.models import Binder
+
+    boxes = await all_boxes(session)
+    binders = await session.execute(select(Binder))
+    binders = binders.scalars().all()
+    # decks = await all_decks(session)
+
+    return templates.TemplateResponse(
+        request, 
+        "upload_preview.html", 
+        {
+            "preview": preview,
+            "boxes": boxes,
+            "binders": binders,
+            # "decks": decks
+        }
+    )
 
 
 @router.post("/upload/mapped", response_class=HTMLResponse)
@@ -110,6 +129,7 @@ async def upload_confirm(
     request: Request,
     token: str = Form(...),
     strategy: str = Form(...),
+    location_choice: str | None = Form(None),
     session: AsyncSession = Depends(get_session),
 ):
     _guard_writable()
@@ -125,9 +145,18 @@ async def upload_confirm(
         for k, v in form.items()
         if k.startswith("decision_")
     }
+    
+    # Parse the location choice and prepare it for merging
+    selected_location = None
+    if location_choice is not None and location_choice != "none":
+        # Strip the prefix to get just the actual location name
+        if location_choice.startswith("box:"):
+            selected_location = location_choice[4:]  # strip "box:"
+        elif location_choice.startswith("binder:"):
+            selected_location = location_choice[7:]  # strip "binder:"
 
     try:
-        await confirm_upload(session, token, strat, decisions)
+        await confirm_upload(session, token, strat, decisions, location=selected_location)
     except UnknownFormatError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

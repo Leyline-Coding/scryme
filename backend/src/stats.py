@@ -54,6 +54,8 @@ class CollectionStats:
     by_color: list[Bar] = field(default_factory=list)
     by_rarity: list[Bar] = field(default_factory=list)
     by_type: list[Bar] = field(default_factory=list)
+    type_counts: dict[str, int] = field(default_factory=dict)
+    type_counts: dict[str, int] = field(default_factory=dict)
     by_set: list[Bar] = field(default_factory=list)
     mana_curve: list[Bar] = field(default_factory=list)
     most_valuable: list[ValuedCard] = field(default_factory=list)

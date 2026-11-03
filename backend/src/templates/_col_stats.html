@@ -1,3 +1,4 @@
+{% import "_currency.html" as currency %}
 {% macro bars(group) %}
   {% set m = (group | map(attribute='count') | max) or 1 %}
   <div class="space-y-1.5">
@@ -103,7 +104,7 @@
   </div>
   <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
     <div class="text-xs text-muted">Est. value ({{ cur.label }})</div>
-    <div class="text-2xl font-bold">{{ cur.symbol }}{{ '{:,.2f}'.format(stats.total_value) }}</div>
+    <div class="text-2xl font-bold">{{ currency.format_and_decorate(stats.total_value, cur.symbol) }}</div>
   </div>
 </div>
 
@@ -111,13 +112,14 @@
 <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-8">
   <div class="flex items-baseline justify-between gap-3 flex-wrap mb-3">
     <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">
-      Value over time{% if cur.code != 'usd' %} (USD){% endif %}</h2>
+      Value over time</h2>
     <a href="/prices" class="text-xs text-muted hover:text-fg">Price history →</a>
   </div>
   {# Time-range selector + chart, shared with the per-card price history (#233). #}
   {% import "_value_chart.html" as vc %}
   {{ vc.chart(value_chart, chart_ranges, chart_range,
-              "/collection?tab=stats&view=overview&", "Collection value over time") }}
+              "/collection?tab=stats&view=overview&", "Collection value over time", 
+              symbol=cur.symbol, currency_code=cur.code) }}
 </section>
 {% endif %}
 

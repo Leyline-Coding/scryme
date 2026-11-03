@@ -15,6 +15,7 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import SessionLocal
+from src import fx
 from src.models import (
     Card,
     CardPricePoint,
@@ -166,7 +167,7 @@ def range_days(label: str) -> int | None:
     return _RANGE_DAYS.get(label, _RANGE_DAYS[DEFAULT_RANGE])
 
 
-async def value_series(session: AsyncSession, days: int | None = 90) -> list[PriceSnapshot]:
+async def value_series(session: AsyncSession, days: int | None = 90, currency: str = "usd") -> list[PriceSnapshot]:
     """Snapshots within the last ``days`` (``None`` = all-time), oldest-first, for the value chart.
     Downsampled to at most ``_MAX_CHART_POINTS`` (keeping the latest) so long ranges stay light."""
     query = select(PriceSnapshot).order_by(PriceSnapshot.captured_at)
@@ -176,7 +177,30 @@ async def value_series(session: AsyncSession, days: int | None = 90) -> list[Pri
     if len(rows) > _MAX_CHART_POINTS:
         step = len(rows) / _MAX_CHART_POINTS
         rows = [rows[int(i * step)] for i in range(_MAX_CHART_POINTS)] + [rows[-1]]
-    return rows
+    
+    if currency == "usd":
+        return rows
+
+    start = await earliest_snapshot_date(session)
+    if not start:
+        return rows
+        
+    have = bool(start) and await fx.ensure_fx_history(session, currency, start)
+    if not have:
+        return rows
+
+    hist_points = await fx.fx_history_points(session, currency) if have else []
+    current_rate = fx.rate(currency) or 1.0
+    
+    converted = []
+    for s in rows:
+        rate = fx.rate_on(hist_points, s.captured_at.date(), current_rate)
+        converted.append(PriceSnapshot(
+            captured_at=s.captured_at,
+            total_usd=round(s.total_usd * rate, 2),
+            card_count=s.card_count
+        ))
+    return converted
 
 
 @dataclass
@@ -369,7 +393,10 @@ class Movers:
 
 
 async def _movers_between(
-    session: AsyncSession, prev_id: int, latest_id: int, limit: int,
+    session: AsyncSession,
+    prev_id: int,
+    latest_id: int,
+    limit: int = 5
 ) -> tuple[list[Mover], list[Mover]]:
     """Top gainers/losers between two snapshots, by absolute USD change."""
     def points(sid):
@@ -440,7 +467,7 @@ class Digest:
             if self.start_value else 0.0
 
 
-async def collection_digest(session: AsyncSession, days: int = 7, limit: int = 5) -> Digest:
+async def collection_digest(session: AsyncSession, days: int = 7, **kwargs) -> Digest:
     """Value change + top movers since ~`days` ago (or the previous snapshot if sparse)."""
     latest = (await session.execute(
         select(PriceSnapshot).order_by(desc(PriceSnapshot.captured_at)).limit(1)
@@ -460,7 +487,7 @@ async def collection_digest(session: AsyncSession, days: int = 7, limit: int = 5
         )).scalars().first()
     if baseline is None:
         return Digest()
-    gainers, losers = await _movers_between(session, baseline.id, latest.id, limit)
+    gainers, losers = await _movers_between(session, baseline.id, latest.id, **kwargs)
     return Digest(
         available=True, latest_at=latest.captured_at, baseline_at=baseline.captured_at,
         start_value=float(baseline.total_usd or 0), end_value=float(latest.total_usd or 0),

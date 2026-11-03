@@ -29,6 +29,8 @@ from src.collection_edit import (
     adjust_quantity,
     bulk_add_tag,
     bulk_add_to_collection,
+    bulk_move_to_box,
+    bulk_move_to_deck,
     delete_stack,
     edit_stack,
     organize_by_color_identity,
@@ -371,7 +373,7 @@ async def bulk(
     bulk_action: str = Form(...),
     scryfall_ids: list[str] = Form(default=[]),
     tag: str = Form(""),
-    binder_id: str = Form(""),
+    bulk_container_id: str = Form(""),
     pool_id: str = Form(""),
     q: str = Form(""),
     scope: str = Form("collection"),
@@ -383,8 +385,12 @@ async def bulk(
     if scryfall_ids:
         if bulk_action == "tag" and tag.strip():
             await bulk_add_tag(session, scryfall_ids, tag)
-        elif bulk_action == "binder" and binder_id.strip():
-            await bulk_add_to_binder(session, int(binder_id), scryfall_ids)
+        elif bulk_action == "binder" and bulk_container_id:
+            await bulk_add_to_binder(session, int(bulk_container_id), scryfall_ids)
+        elif bulk_action == "box" and bulk_container_id:
+            await bulk_move_to_box(session, int(bulk_container_id), scryfall_ids)
+        elif bulk_action == "deck" and bulk_container_id:
+              await bulk_move_to_deck(session, int(bulk_container_id), scryfall_ids)
         elif bulk_action == "add":
             await bulk_add_to_collection(session, scryfall_ids, 1)
         elif bulk_action in ("trade_out", "trade_in") and pool_id.strip().isdigit():

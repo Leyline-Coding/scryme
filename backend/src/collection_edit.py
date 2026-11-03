@@ -25,10 +25,11 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import Card, CollectionCard
+from src.box_service import all_boxes
+from src.models import Card, CollectionCard, Deck
 from src.tags import add_card_tag
 
 
@@ -424,8 +425,82 @@ async def location_summary(session: AsyncSession) -> list[LocationSummary]:
     """Card counts per physical location (None = unfiled), for the locations page."""
     rows = (await session.execute(
         select(CollectionCard.location, func.count(),
-               func.sum(CollectionCard.quantity))
+                func.sum(CollectionCard.quantity))
         .group_by(CollectionCard.location)
         .order_by(CollectionCard.location.nulls_last())
     )).all()
     return [LocationSummary(loc, int(n), int(q or 0)) for loc, n, q in rows]
+
+
+async def bulk_move_to_box(session: AsyncSession, box_id: int, scryfall_ids) -> None:
+    """Move owned printings to a specific box by updating their location."""
+    # Find all boxes from database
+    boxes = await all_boxes(session)
+    box_map = {box.id: box.name for box in boxes}
+    
+    if box_id not in box_map:
+        # Box ID not found, return early 
+        return
+
+    # Update location field for matching collection stack IDs
+    box_name = box_map[box_id]
+    
+    # Convert to UUID if needed
+    sids = {_as_uuid(s) for s in scryfall_ids}
+    
+    # Filter only those cards that exist in collection
+    owned_rows = (await session.execute(
+        select(CollectionCard.id).where(
+            CollectionCard.scryfall_id.in_(sids)
+        )
+    )).scalars().all()
+    
+    if not owned_rows:
+        return
+    
+    await session.execute(
+        update(CollectionCard)
+        .where(CollectionCard.id.in_(owned_rows))
+        .values(location=box_name)
+    )
+    await session.commit()
+
+
+async def bulk_move_to_deck(session: AsyncSession, deck_id: int, scryfall_ids) -> int:
+    """Add owned printings to a specific deck; returns how many were newly added."""
+    # Check if deck exists
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        return 0
+    
+    # Get card names for scryfall ids (we need the oracle IDs)
+    sids = {_as_uuid(s) for s in scryfall_ids}
+    
+    # Check which cards are actually owned
+    owned_rows = (await session.execute(
+        select(CollectionCard.scryfall_id, Card.oracle_id)
+        .join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
+        .where(CollectionCard.scryfall_id.in_(sids))
+    )).all()
+    
+    if not owned_rows:
+        return 0
+    
+    # Get the names of cards that are already in this deck
+    existing_deck_cards = (await session.execute(
+        select(DeckCard.oracle_id)
+        .where(DeckCard.deck_id == deck_id)
+    )).scalars().all()
+    
+    # Prepare to add new cards (only those not already in deck)  
+    added = 0
+    
+    for scryfall_id, oracle_id in owned_rows:
+        if oracle_id not in existing_deck_cards:
+            session.add(DeckCard(deck_id=deck_id, oracle_id=oracle_id))
+            added += 1
+            
+    if added:
+        await session.commit()
+    
+    return added

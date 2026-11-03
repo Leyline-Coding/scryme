@@ -15,6 +15,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.db import Base
+from src.scryfall.mapping import image_url as cdn_image_url
 
 
 class Card(Base):
@@ -70,3 +71,24 @@ class Card(Base):
         Index("ix_cards_keywords_gin", "keywords", postgresql_using="gin"),
         Index("ix_cards_raw_gin", "raw", postgresql_using="gin"),
     )
+
+
+    def front_image(self, cache=None) -> str | None:
+        """Return front-face image URL."""
+        sid = str(self.scryfall_id)
+        return cache.url_path(sid) if cache and cache.is_cached(sid) else cdn_image_url(self.raw)
+
+
+    def back_face_image(self) -> str | None:
+        """Return back-face image URL for a double-faced card (both faces must have their own image)."""
+        faces = self.raw.get("card_faces") or []
+        uris = [f.get("image_uris") or {} for f in faces]
+        if len(uris) < 2:
+            return None
+        front = uris[0].get("normal") or uris[0].get("large") or uris[0].get("small")
+        back = uris[1].get("normal") or uris[1].get("large") or uris[1].get("small")
+        return back if front and back else None
+
+
+
+

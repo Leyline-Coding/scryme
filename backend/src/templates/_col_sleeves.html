@@ -1,0 +1,96 @@
+{# Sleeves index: list all sleeves with their associated decks. #}
+<p class="text-sm text-muted mb-4">
+  Manage your card sleeves. Each sleeve can optionally be associated with a deck.
+</p>
+
+
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div class="flex justify-start items-center gap-3 md:mb-4">
+    <a href="/collection?tab=sleeves&sort_by={{ sort_by }}&sort_dir={{ 'desc' if sort_dir == 'asc' else 'asc' }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}">
+      {{ 'Descending' if sort_dir == 'desc' else 'Ascending' }}
+    </a>
+    <a href="/collection?tab=sleeves&sort_by=name&sort_dir={{ sort_dir }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'name' else '' }}">
+      Name
+    </a>
+    <a href="/collection?tab=sleeves&sort_by=date_added&sort_dir={{ sort_dir }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'date_added' else '' }}">
+      Date Added
+    </a>
+  </div>
+  {% if not read_only %}
+  <form method="post" action="/sleeves/new" class="flex gap-2 items-center" enctype="multipart/form-data">
+    <input type="text" name="name" required placeholder="New sleeve name"
+            class="flex-1 min-w-0 rounded-full bg-surface-2 border border-edge px-3 py-2 w-40 text-sm" />
+    <input type="file" name="image" id="image" accept="image/*"
+               class="rounded-full border border-edge bg-surface px-3 py-2 w-60 text-fg focus:ring-2 focus:ring-accent focus:border-transparent" />
+    <div class="flex gap-2 items-center">
+      <input type="color" name="color" id="color" value="#000000" 
+             class="w-16 h-10 rounded border border-edge bg-surface px-2 py-1 text-fg focus:ring-2 focus:ring-accent focus:border-transparent" />
+      <span class="inline-flex items-center text-sm">Color</span>
+    </div>
+    <button class="rounded-full bg-accent text-accent-fg px-3 py-2 text-sm font-medium text-no-wrap">Add Sleeve</button>
+  </form>
+  {% endif %}
+</div>
+
+
+
+{% if sleeves %}
+  <div class="card-grid">
+    {% for sleeve in sleeves %}
+    <div class="relative">
+      <div class="group relative block rounded-xl bg-surface ring-1 ring-edge
+            hover:ring-accent transition ">
+        {% if sleeve.image %}
+        <img src="/sleeves/{{ sleeve.image }}" alt="{% if sleeve.name %}{{ sleeve.name }}{% else %} Sleeve #{{ sleeve.id }}{% endif %}" loading="lazy" class="grid-card-img w-full aspect-[5/7] object-cover box-border border-8 border-black" />
+        {% elif sleeve.color %}
+        <div class="w-full aspect-[5/7] flex items-center justify-center"
+             style="background-color: {{ sleeve.color }}; border: 8px solid black;">
+        </div>
+        {% else %}
+        <div class="bg-muted border-2 border-dashed rounded w-16 h-20 flex items-center justify-center">
+          <svg class="w-8 h-8 text-muted-fg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828-2.828l4.586 4.586a2 2 0 010 2.828l-4.586 4.586a2 2 0 01-2.828 0L4 16z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01"></path>
+          </svg>
+        </div>
+        {% endif %}
+      
+        <div class="px-2 py-1 text-xs truncate text-fg flex justify-between items-center gap-1">
+          <span class="text-start">
+            {% if sleeve.name %}{{ sleeve.name }}{% else %} Sleeve #{{ sleeve.id }}{% endif %}
+          </span>
+          <form action="/sleeves/{{ sleeve.id }}/delete" method="POST">
+            <button type="submit" class="text-end text-red-500 hover:text-red-70">Delete</button>
+          </form>
+        </div>
+        
+        <div x-data="{ sleeve_selection_open_{{sleeve.id}}: false }" class="flex justify-center pb-1 relative action-scope-collection">
+          <button @click="sleeve_selection_open_{{sleeve.id}} = !sleeve_selection_open_{{sleeve.id}};" type="button" class="truncate rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-sm font-medium" id="sleeve_selection_btn_{{sleeve.id}}">{% if sleeve.deck_id %}{{sleeve.deck_name}}{% else %}Deck Selection{% endif %} ▾</button>
+          <div x-show="sleeve_selection_open_{{sleeve.id}}" @click.outside="sleeve_selection_open_{{sleeve.id}} = false" x-transition="" style="display: none" class="absolute right-0 mt-2 w-64 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
+            <div class="px-3 py-1.5 text-xs font-medium text-muted">Decks</div>
+            {% for deck in decks %}
+            <button type="button" @click="sleeve_selection_open_{{sleeve.id}} = false;" hx-post="/decks/{{ deck.id }}/sleeve" hx-trigger="click consume" hx-swap="none" hx-vals='{"sleeve_id": {{ sleeve.id }}}' hx-swap="none" hx-on::after-request="if(event.detail.successful) document.getElementById('sleeve_selection_btn_{{sleeve.id}}').innerHTML = '{{ deck.name }} ▾'" class="block w-full text-left px-3 py-1.5 hover:bg-surface-2{%if deck.id == sleeve.deck_id %} bg-surface-3{% endif %}">{{ deck.name }}</button>
+            {% endfor %}
+            <div class="block w-full text-left px-3 py-1.5 text-accent hover:bg-surface-2 border-t border-edge mt-1 pt-1" 
+              @click="sleeve_selection_open_{{sleeve.id}} = false;" 
+                 hx-post="/sleeves/{{sleeve.id}}/unassociate"  
+                 hx-trigger="click" 
+                 hx-swap="none" 
+                 hx-on::after-request="if(event.detail.successful) document.getElementById('sleeve_selection_btn_{{sleeve.id}}').innerHTML = 'Deck Selection ▾'" >Clear</div>
+          </div>
+        </div>
+
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-muted py-16 text-center">
+    No sleeves yet. Add a sleeve using the button above.
+  </div>
+{% endif %}

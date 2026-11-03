@@ -13,10 +13,18 @@ from urllib.parse import quote
 import httpx
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.binder_service import all_binders
+from src.box_service import (
+    all_boxes,
+    create_box,
+    delete_box,
+    rename_box,
+)
 from src.config import get_settings
+from src.models import Deck
 from src.currency import get_currency, info
 from src.db import get_session
 from src.facets import compute_facets
@@ -27,7 +35,6 @@ from src.prices import biggest_movers
 from src.routes._safe import local_redirect
 from src.routes.saved import list_saved
 from src.scryfall.images import ImageCache
-from src.scryfall.mapping import image_url as cdn_image_url
 from src.search import SearchError, SearchScope
 from src.search.engine import (
     DEFAULT_PAGE_SIZE,
@@ -61,6 +68,8 @@ class _DisplayPrefs:
     infinite: bool
     search_filter: str
     movers: bool
+    lang: str
+    facet_row_cap: int
 
 
 def _display_prefs(request) -> _DisplayPrefs:
@@ -69,7 +78,15 @@ def _display_prefs(request) -> _DisplayPrefs:
     raw cookies when the prefs middleware didn't run (e.g. a bare unit-test request)."""
     p = getattr(getattr(request, "state", None), "prefs", None)
     if p is not None:
-        return _DisplayPrefs(p.view, p.page_size, p.infinite, p.search_filter, p.movers)
+        return _DisplayPrefs(
+            view=p.view,
+            page_size=p.page_size,
+            infinite=p.infinite,
+            search_filter=p.search_filter,
+            movers=p.movers,
+            lang=p.lang,
+            facet_row_cap=p.facet_row_cap,
+        )
     c = request.cookies
     return _DisplayPrefs(
         view="list" if c.get("scryme_view") == "list" else "grid",
@@ -77,6 +94,8 @@ def _display_prefs(request) -> _DisplayPrefs:
         infinite=c.get("scryme_infinite") == "1",
         search_filter=c.get("scryme_search_filter") or "",
         movers=c.get("scryme_movers") == "1",
+        lang='en',
+        facet_row_cap=4000
     )
 
 
@@ -84,11 +103,11 @@ def _display_prefs(request) -> _DisplayPrefs:
 class CardView:
     card: Card
     quantity: int
-    image: str
     scryfall_uri: str
     tags: list[str]
     flip_back: str | None = None  # back-face image for double-faced cards (grid hover-flip)
     shimmer: str | None = None    # 'foil'/'etched' for a foil-only or etched treatment (#9)
+    card_languages: str = "en"     # the specific language of this printing in collection
 
 
 def _treatment(card) -> str | None:
@@ -99,17 +118,6 @@ def _treatment(card) -> str | None:
     if "foil" in finishes and "nonfoil" not in finishes:
         return "foil"
     return None
-
-
-def _back_face_image(card) -> str | None:
-    """Back-face image URL for a double-faced card (both faces must have their own image)."""
-    faces = card.raw.get("card_faces") or []
-    uris = [f.get("image_uris") or {} for f in faces]
-    if len(uris) < 2:
-        return None
-    front = uris[0].get("normal") or uris[0].get("large") or uris[0].get("small")
-    back = uris[1].get("normal") or uris[1].get("large") or uris[1].get("small")
-    return back if front and back else None
 
 
 def _apply_universal(q: str, universal: str) -> str:
@@ -126,18 +134,24 @@ def _apply_universal(q: str, universal: str) -> str:
 
 def _to_views(result) -> list[CardView]:
     views = []
+    
     for card in result.cards:
         sid = str(card.scryfall_id)
-        image = _cache.url_path(sid) if _cache.is_cached(sid) else cdn_image_url(card.raw)
+        
+        # Get the languages for this specific card in the collection
+        # result.owned_languages is a dict of sid -> "en,fr"
+        card_langs = result.owned_languages.get(sid, "en")
+
         views.append(
+            
             CardView(
                 card=card,
                 quantity=result.quantities.get(sid, 0),
-                image=image or "",
                 scryfall_uri=card.raw.get("scryfall_uri", "#"),
                 tags=result.tags.get(sid, []),
-                flip_back=_back_face_image(card),
                 shimmer=_treatment(card),
+                # Store the raw comma-separated languages
+                card_languages=card_langs,
             )
         )
     return views
@@ -169,20 +183,33 @@ async def search_nl(
     text = q.strip()
     generated = ""
     cfg = await get_config(session)
+    ai_error = None
+
     if cfg.ready and text:
         try:
             generated = await nl_to_query(text, ChatClient(cfg))
-        except (httpx.HTTPError, KeyError, IndexError, ValueError):
+        except httpx.HTTPStatusError as e:
+            # Check for specific HTTP errors that indicate AI service issues
+            if e.response.status_code == 404:
+                # For a 404 error, let the user know the AI endpoint might be misconfigured
+                # But still fallback gracefully to raw search as before
+                generated = ""
+                ai_error = "AI service not found - please check your LLM configuration"
+            else:
+                # For other HTTP errors, fallback to original behavior 
+                generated = ""
+        except (KeyError, IndexError, ValueError):
             generated = ""
-    url = f"/search?q={quote(generated or text)}&scope={quote(scope)}"
-    if generated:
-        url += f"&nl={quote(text)}"
+    url = f"/search?q={quote(generated or text)}&scope={quote(scope)}&nl={quote(text)}"
+    if ai_error:
+        # Add error to URL parameters so it can be displayed on the results page
+        url += f"&ai_error={quote(ai_error)}"
     return local_redirect(url)
 
 
 async def _run_into_ctx(
     ctx: dict, session, query: str, scope_enum, page: int, sort: str, descending: bool,
-    *, with_facets: bool, page_size: int = DEFAULT_PAGE_SIZE,
+    *, with_facets: bool, page_size: int = DEFAULT_PAGE_SIZE, facet_row_cap: int,
 ) -> None:
     """Run the search and populate ctx with result/views, plus facets or name suggestions."""
     result = await run_search(
@@ -194,10 +221,11 @@ async def _run_into_ctx(
     if result.total and with_facets:
         ctx["facets"] = await memoize(
             ("facets", query, scope_enum.value),
-            lambda: compute_facets(session, query, scope_enum),
+            lambda: compute_facets(session, query, scope_enum, facet_row_cap),
         )
     elif not result.total:
         ctx["suggestions"] = await name_suggestions(session, ctx["q"], scope_enum)
+
 
 
 @router.get("/search", response_class=HTMLResponse)
@@ -210,6 +238,7 @@ async def search(
     dir: str = "asc",
     nl: str = "",
     append: int = 0,
+    ai_error: str = "",
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     scope_enum = SearchScope.ALL if scope == SearchScope.ALL.value else SearchScope.COLLECTION
@@ -221,14 +250,17 @@ async def search(
     # (e.g. -is:ub, legal:commander), ANDed into every query.
     universal = dp.search_filter.strip()
     effective_q = _apply_universal(q, universal)
+
     ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir,
-                 "read_only": get_settings().read_only, "view": view, "nl": nl,
-                 "universal": universal, "cur": info(get_currency(request)),
-                 "page_sizes": PAGE_SIZES, "page_size": page_size, "infinite": infinite}
+                  "read_only": get_settings().read_only, "view": view, "nl": nl,
+                  "universal": universal, "cur": info(get_currency(request)),
+                  "page_sizes": PAGE_SIZES, "page_size": page_size, "infinite": infinite,
+                  "prefs": dp, "ai_error": ai_error}
+
     try:
         await _run_into_ctx(
             ctx, session, effective_q, scope_enum, page, sort, descending,
-            with_facets=True, page_size=page_size,
+            with_facets=True, page_size=page_size, facet_row_cap=ctx["prefs"].facet_row_cap,
         )
     except SearchError as exc:
         # If the universal filter is what broke the query, fall back to the bare query so a bad
@@ -237,7 +269,7 @@ async def search(
             try:
                 await _run_into_ctx(
                     ctx, session, q, scope_enum, page, sort, descending,
-                    with_facets=False, page_size=page_size,
+                    with_facets=False, page_size=page_size, facet_row_cap=ctx["prefs"].facet_row_cap,
                 )
                 ctx["universal_error"] = True
             except SearchError:
@@ -259,6 +291,9 @@ async def search(
     ctx["read_only"] = get_settings().read_only
     ctx["ai_ready"] = (await get_config(session)).ready
     ctx["binders"] = await all_binders(session)
+    ctx["boxes"] = await all_boxes(session)
+    ctx["decks"] = await session.execute(select(Deck).order_by(Deck.name))
+    ctx["decks"] = list(ctx["decks"].scalars().all())
     ctx["trade_pools"] = await open_pools(session)
     # Optional biggest-movers panel (opt-in via Settings).
     if dp.movers:

@@ -1,26 +1,53 @@
+{% import "_currency.html" as currency %}
+{% from "_time_utils.html" import humanize_dt %}
+
 {# Custom binders index (#206): flat, user-named binders of owned cards. #}
 <p class="text-sm text-muted mb-4">
   Custom binders group cards however you like — "Ramp", "Removal", "Cats", "Orzhov". Add cards from
   any owned card's page or in bulk from search results.
 </p>
 
-{% if not read_only %}
-<form method="post" action="/binders/new" class="flex gap-2 mb-5 max-w-md">
-  <input type="text" name="name" required placeholder="New binder name"
-         class="flex-1 min-w-0 rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
-  <button class="rounded-lg bg-accent text-accent-fg px-3 py-2 text-sm font-medium">Add binder</button>
-</form>
-{% endif %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div class="flex justify-start items-center gap-3 md:mb-4">
+    <a href="/collection?tab=binders&sort_by={{ 'name' if sort_by == 'price' else 'name' }}&sort_dir={{ sort_dir }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'name' else '' }}">
+      Name
+    </a>
+    <a href="/collection?tab=binders&sort_by={{ sort_by }}&sort_dir={{ 'desc' if sort_dir == 'asc' else 'asc' }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}">
+      {{ 'Descending' if sort_dir == 'desc' else 'Ascending' }}
+    </a>
+  </div>
+  {% if not read_only %}
+  <div class="flex justify-start md:justify-end gap-2 mb-3">
+    <form method="post" action="/binders/new" class="flex gap-2">
+      <input type="text" name="name" required placeholder="New binder name"
+            class="flex-1 min-w-0 rounded-full bg-surface-2 border border-edge px-3 py-2 text-sm" />
+      <button class="rounded-full bg-accent text-accent-fg px-3 py-2 text-sm font-medium">+ Add binder</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
 
 {% if binders %}
-<ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+<ul class="space-y-2">
   {% for b in binders %}
-  <li>
-    <a href="/binders/view/{{ b.id }}"
-       class="block rounded-xl bg-surface ring-1 ring-edge px-4 py-3 hover:ring-accent transition">
-      <div class="font-medium truncate">{{ b.name }}</div>
-      <div class="text-xs text-muted">{{ '{:,}'.format(b.count) }} card{{ '' if b.count == 1 else 's' }}</div>
+  <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3">
+    <a href="/binders/view/{{ b.id }}" class="flex-1 min-w-0 hover:text-accent">
+      <div class="font-medium truncate">🗂️ {{ b.name }}</div>
+      <div class="text-xs text-muted">
+        <span>{{ '{:,}'.format(b.count) }} card{{ '' if b.count == 1 else 's' }}</span>
+        •
+        <span title="Updated {{ b.updated_at.strftime('%Y-%m-%d %H:%M') }}">Updated {{ humanize_dt(b.updated_at, now) }}</span>
+      </div>
     </a>
+    {% if not read_only %}
+    <form action="/binders/{{ b.id }}/delete" method="post"
+          onsubmit="return confirm('Delete this binder?')">
+      <button class="text-muted hover:text-rose-500 text-sm tap" title="Delete">✕</button>
+    </form>
+    {% endif %}
   </li>
   {% endfor %}
 </ul>

@@ -1,0 +1,12 @@
+{# Different currencies are formated differently and their labels are placed in different places #}
+{% macro format_and_decorate(number, symbol) %}
+
+{% if symbol in ['$', 'C$', '¥', '£'] %}
+{{ symbol }}{{ '{:,.2f}'.format(number) }}
+{% elif symbol in ['€']%}
+{{ '{:,.2f}'.format(number) }} {{ symbol }}
+{% else%}
+{{ symbol }}{{ '{:,.2f}'.format(number) }}
+{% endif %}
+
+{% endmacro %}

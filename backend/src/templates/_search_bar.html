@@ -1,0 +1,96 @@
+{# One search bar with a Scryfall ⇄ AI toggle — full-width on its own row. #}
+{# Scryfall syntax mode (live search as you type) #}
+<form {% if request.url.path.startswith('/search') %}name="live-search" hx-get="/search"  hx-target="#results" hx-push-url="true" hx-trigger="submit, keyup changed delay:350ms from:input[name=q], change"{% else %}action="/search" method="get"{% endif %} class="relative flex w-full items-center" x-show="!ai" >
+  <div class="relative flex-1">
+    <input type="search" name="q" id="search-input" value="{{ q }}" autofocus
+            placeholder="Search — e.g. c:r t:instant mv<=2"
+            class="w-full rounded-l-full bg-surface border border-edge border-r-0 px-5 py-2.5
+                  focus:outline-none focus:ring-2 focus:ring-accent" />
+    <button 
+      type="button" 
+      id="search-clear-button"
+      class="absolute top-1/2 -translate-y-1/2 right-3 flex items-center justify-center w-6 h-6 rounded-full bg-surface-2 text-gray-400 hover:text-gray-600 hidden font-bold"
+    >🗙</button>
+  </div>
+  <a href="/advanced"
+    type="button" 
+    class="{% if not ai_ready %}rounded-r-full{% endif %} border border-accent px-5 py-2.5 font-medium text-white hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 whitespace-nowrap">
+    Advanced
+  </a>
+  {% if ai_ready %}
+  <button type="button" title="Ask in plain English"
+          @click="ai = true; $nextTick(() => $refs.ainput && $refs.ainput.focus())"
+          class="rounded-r-full bg-accent border border-accent px-5 py-2.5 font-medium text-white hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 whitespace-nowrap">✨ Ask AI</button>
+  {% endif %}
+</form>
+{% if ai_ready %}
+{# AI / natural-language mode (#171): translate to Scryfall syntax, then run it. #}
+<form x-show="ai" x-cloak method="post" action="/search/nl" class=" flex w-full items-center">
+  <input type="hidden" name="scope" value="{{ scope }}" />
+  <div class="relative flex-1">
+    <input type="search" name="q" x-ref="ainput" id="ai-search-input" value="{{ nl }}"
+            placeholder="✨ Ask in plain English — cheap red removal that hits creatures"
+            class="w-full rounded-l-full bg-surface border border-edge border-r-0 px-5 py-2.5
+                  focus:outline-none focus:ring-2 focus:ring-accent" />
+    <button 
+      type="button" 
+      id="ai-search-clear-button"
+      class="absolute top-1/2 -translate-y-1/2 right-3 flex items-center justify-center w-6 h-6 rounded-full bg-surface-2 text-gray-400 hover:text-gray-600 hidden font-bold"
+    >🗙</button>
+  </div>
+  <button type="button" @click="ai = false" title="Back to Scryfall syntax"
+          class="rounded-r-full bg-accent border border-accent px-5 py-2.5 font-medium text-white hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 whitespace-nowrap">Back to syntax search</button>
+</form>
+{% endif %}
+
+
+<script>
+  function activateSearchClearButton(searchInput, clearButton, form) {
+    // Show/hide the "x" button based on input value
+    searchInput.addEventListener('input', () => {
+      if (searchInput.value.length > 0) {
+        clearButton.classList.remove('hidden');
+        clearButton.classList.add('flex');
+      } else {
+        clearButton.classList.remove('flex');
+        clearButton.classList.add('hidden');
+      }
+    });
+
+    if (searchInput.value.length > 0) {
+      clearButton.classList.remove('hidden');
+      clearButton.classList.add('flex');
+    }
+
+    // Clear the input when "x" is clicked
+    clearButton.addEventListener('click', () => {
+      searchInput.value = '';
+      clearButton.classList.remove('flex');
+      clearButton.classList.add('hidden');
+      searchInput.focus(); // Keep focus on the input after clearing
+      
+      // Trigger form submission or HTMX event
+      if (form) {
+        // For HTMX forms, trigger the change that would normally happen
+        if (form.hasAttribute('hx-get')) {
+          // If using HTMX, dispatch a fake change event 
+          searchInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    });
+  }
+  
+  // Get the form element for regular search
+  activateSearchClearButton(
+    document.getElementById('search-input'),
+    document.getElementById('search-clear-button'),
+    document.querySelector('form[name="live-search"]')
+  );
+  
+  // For AI mode
+  activateSearchClearButton(
+    document.getElementById('ai-search-input'),
+    document.getElementById('ai-search-clear-button'),
+    document.querySelector('form[method="post"][action="/search/nl"]')
+  );
+</script>

@@ -314,13 +314,56 @@
   50%  { transform: perspective(600px) rotateY(90deg); }
   100% { transform: perspective(600px) rotateY(0); }
 }
-.grid-card-img.grid-flipping { animation: grid-flip 0.34s ease; }
+.card-grid:not(bulk-active) .grid-card-img.grid-flipping { animation: grid-flip 0.34s ease; }
 @media (prefers-reduced-motion: reduce) { .grid-card-img.grid-flipping { animation: none; } }
 
 /* Hover overlay behind the grid flip button: the palette's darkest token (--c-bg) at 30%, so it
    tints toward the selected theme. The element's own opacity handles the hover fade (keeping the
    button fully opaque), so the tint stays a true 30% when shown. */
 .grid-flip-overlay { background-color: color-mix(in srgb, var(--c-bg) 30%, transparent); }
+
+/* Card overlay fade effects - temporarily hide overlays on hover/focus for better readability */
+.card-grid > div {
+  transition: all 0.2s ease;
+}
+
+.card-grid > div:hover .tags,
+.card-grid > div:focus-within .tags,
+.card-grid > div:hover .tags,
+.card-grid > div:focus-within .tags {
+  opacity: 0.3;
+  transition: opacity 0.2s ease;
+}
+
+.card-grid:not(bulk-active) > div input {
+  opacity: 0.3;
+  transition: opacity 0.2s ease;
+}
+
+.card-grid > div:hover input {
+  opacity: 1;
+}
+
+/* When bulk bar is active, style cards differently */
+.card-grid.bulk-active > div {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.card-grid.bulk-active > div:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.card-grid.bulk-active > div input {
+  opacity: 1 !important;
+}
+
+/* Make bulk active cards more visible when selected */
+.card-grid.bulk-active > div input:checked + a {
+  box-shadow: 0 0 0 3px var(--c-accent);
+}
 
 /* HTMX request indicator (shown only while a request tagged with hx-indicator is in flight). */
 .htmx-indicator { display: none; }
@@ -362,4 +405,11 @@ i.ms.ms-cost {
   justify-content: center;
   line-height: 1 !important;
   vertical-align: middle;
+}
+
+
+
+/* Set symbols for commons don't display nicely on dark backgrounds. Let's fix that. */ 
+[data-theme*="-dark"] .ss-common {
+  color: #FFF;
 }

@@ -18,6 +18,10 @@
 
   document.addEventListener("pointermove", function (e) {
     if (reduce || !document.documentElement.classList.contains("spin-on")) return;
+    
+    // Skip spinning when bulk bar is active to avoid conflicts with card selection
+    if (document.querySelector('.card-grid.bulk-active')) return;
+    
     var el = target(e.target);
     if (!el) { reset(); return; }
     if (active && active !== el) active.style.transform = "";

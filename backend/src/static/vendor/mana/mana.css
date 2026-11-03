@@ -1378,8 +1378,8 @@
   border-radius: 1em;
   color: #111;
   font-size: 0.95em;
-  width: 1.3em;
-  height: 1.3em;
+  min-width: 1.3em;
+  min-height: 1.3em;
   line-height: 1.35em;
   text-align: center;
 }
@@ -1406,8 +1406,6 @@
   background: -webkit-linear-gradient(135deg, var(--ms-split-top) 0%, var(--ms-split-top) 50%, var(--ms-split-bottom) 50%, var(--ms-split-bottom) 100%);
   background: linear-gradient(135deg, var(--ms-split-top) 0%, var(--ms-split-top) 50%, var(--ms-split-bottom) 50%, var(--ms-split-bottom) 100%);
   position: relative;
-  width: 1.3em;
-  height: 1.3em;
 }
 .ms-cost.ms-wu::before, .ms-cost.ms-wu::after, .ms-cost.ms-wb::before, .ms-cost.ms-wb::after, .ms-cost.ms-ub::before, .ms-cost.ms-ub::after, .ms-cost.ms-ur::before, .ms-cost.ms-ur::after, .ms-cost.ms-br::before, .ms-cost.ms-br::after, .ms-cost.ms-bg::before, .ms-cost.ms-bg::after, .ms-cost.ms-rw::before, .ms-cost.ms-rw::after, .ms-cost.ms-rg::before, .ms-cost.ms-rg::after, .ms-cost.ms-gw::before, .ms-cost.ms-gw::after, .ms-cost.ms-gu::before, .ms-cost.ms-gu::after, .ms-cost.ms-2w::before, .ms-cost.ms-2w::after, .ms-cost.ms-2u::before, .ms-cost.ms-2u::after, .ms-cost.ms-2b::before, .ms-cost.ms-2b::after, .ms-cost.ms-2r::before, .ms-cost.ms-2r::after, .ms-cost.ms-2g::before, .ms-cost.ms-2g::after, .ms-cost.ms-cw::before, .ms-cost.ms-cw::after, .ms-cost.ms-cu::before, .ms-cost.ms-cu::after, .ms-cost.ms-cb::before, .ms-cost.ms-cb::after, .ms-cost.ms-cr::before, .ms-cost.ms-cr::after, .ms-cost.ms-cg::before, .ms-cost.ms-cg::after, .ms-cost.ms-wup::before, .ms-cost.ms-wup::after, .ms-cost.ms-wbp::before, .ms-cost.ms-wbp::after, .ms-cost.ms-ubp::before, .ms-cost.ms-ubp::after, .ms-cost.ms-urp::before, .ms-cost.ms-urp::after, .ms-cost.ms-brp::before, .ms-cost.ms-brp::after, .ms-cost.ms-bgp::before, .ms-cost.ms-bgp::after, .ms-cost.ms-rwp::before, .ms-cost.ms-rwp::after, .ms-cost.ms-rgp::before, .ms-cost.ms-rgp::after, .ms-cost.ms-gwp::before, .ms-cost.ms-gwp::after, .ms-cost.ms-gup::before, .ms-cost.ms-gup::after {
   font-size: 0.55em !important;

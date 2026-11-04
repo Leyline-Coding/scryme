@@ -13,12 +13,14 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.binder_service import binder_summaries
-from src.box_service import box_summaries, other_locations
+from src.binder_service import all_binders
+from src.box_service import all_boxes
 from src.checklists import Checklist
 from src.config import get_settings
 from src.currency import get_currency, info, unit_price
+from src.decks import all_decks
 from src.db import get_session
+from src.locations import get_location_summaries_remapped
 from src.models import Deck, DeckCard, PriceSnapshot, Card
 from src.collection_edit import color_identity_group
 from src.perfcache import memoize
@@ -145,12 +147,15 @@ async def collection(
             select(Deck, func.count()).outerjoin(Deck.cards)
             .group_by(Deck.id).order_by(Deck.name)
         )
-        ctx["boxes"] = await box_summaries(session)
-        ctx["others"] = await other_locations(session)
-        ctx["loc_binders"] = await binder_summaries(session)
-        ctx["loc_decks"] = [(d, n) for d, n in decks.all()]
+        ctx["locations"] = await get_location_summaries_remapped(session)
+        ctx["binders"] = await all_binders(session)
+        ctx["boxes"] = await all_boxes(session)
+        ctx["decks"] = await all_decks(session)
+        ctx["deck_sizes"] = {d.id: {board: sum(c.quantity for c in d.cards if c.board == board) for board in ['main','side']} for d in ctx["decks"]}
+
     elif tab == "binders":
-        ctx["binders"] = await binder_summaries(session)
+        ctx["locations"] = await get_location_summaries_remapped(session)
+        ctx["binders"] = await all_binders(session)
 
         if sort_by == "price" and ctx["binders"]:
             # Binders don't have price, default to name

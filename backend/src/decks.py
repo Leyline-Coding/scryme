@@ -52,6 +52,10 @@ class ParsedLine:
     finish: str = "normal"  # normal | foil | etched
 
 
+async def all_decks(session: AsyncSession) -> list[Deck]:
+    return list((await session.execute(select(Deck).order_by(Deck.name))).scalars().all())
+
+
 def _peel_marker(text: str) -> tuple[str, str] | None:
     """Peel one trailing ``*F*``-style export marker off ``text``.
 

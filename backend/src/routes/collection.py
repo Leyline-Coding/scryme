@@ -8,6 +8,7 @@ redirect back to the same search.
 from __future__ import annotations
 
 import uuid
+from collections import defaultdict
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -15,10 +16,8 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.binder_service import add_card as binder_add_card
-from src.binder_service import all_binders, bulk_add_to_binder
+from src.binder_service import bulk_add_to_binder
 from src.box_service import (
-    all_boxes,
     create_box,
     delete_box,
     rename_box,
@@ -36,13 +35,12 @@ from src.collection_edit import (
     organize_by_color_identity,
     owned_for_oracle,
     remove_copies,
-    update_stack,
 )
 from src.config import get_settings
 from src.db import get_session
-from src.decks import add_card_to_deck
 from src.grading import clear_grade, safe_photo_path, save_grade_photo, set_grade
-from src.models import Card, CollectionCard, Deck
+from src.locations import find_or_create_locations
+from src.models import Card, CollectionCard
 from src.tags import card_tags
 from src.templating import templates
 from src.trade_pool import open_pools, stage_selection, stage_stack
@@ -73,6 +71,10 @@ async def _collection_partial(
         .scalars()
         .all()
     )
+
+    grouped_locations = defaultdict(list)
+    for location in (await find_or_create_locations(session)):
+        grouped_locations[location.type].append(location)
     return templates.TemplateResponse(
         request,
         "_card_collection.html",
@@ -84,21 +86,11 @@ async def _collection_partial(
             "read_only": get_settings().read_only,
             "printing_opts": await printing_options(session, scryfall_id),
             "conflict": conflict,
-            **await location_choices(session),
+            "grouped_locations": grouped_locations,
+            "trade_pools": await open_pools(session),
         },
     )
 
-
-async def location_choices(session: AsyncSession) -> dict:
-    """Boxes / binders / decks offered by the unified location picker (#160), plus the open trade
-    pools a stack can be staged into (#331)."""
-    decks = (await session.execute(select(Deck).order_by(Deck.name))).scalars().all()
-    return {
-        "boxes": await all_boxes(session),
-        "picker_binders": await all_binders(session),
-        "decks": [(d.id, d.name) for d in decks],
-        "trade_pools": await open_pools(session),
-    }
 
 
 async def printing_options(session: AsyncSession, scryfall_id) -> list[tuple[str, str]]:
@@ -280,7 +272,8 @@ async def locate_stack(
     if colelction_card is None:
         raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     colelction_card.location = location_id
-    return await session.commit()
+    await session.commit()
+    return await _collection_partial(request, session, colelction_card.scryfall_id)
 
 
 @router.post("/collection/stack/{stack_id}/trade", response_class=HTMLResponse)

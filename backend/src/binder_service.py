@@ -20,30 +20,8 @@ def _as_uuid(value) -> uuid.UUID:
     return value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))
 
 
-@dataclass
-class BinderSummary:
-    id: int
-    name: str
-    count: int
-    updated_at: datetime
-
-
-async def _counts(session: AsyncSession) -> dict[int, int]:
-    rows = (await session.execute(
-        select(BinderCard.binder_id, func.count()).group_by(BinderCard.binder_id)
-    )).all()
-    return {bid: int(n) for bid, n in rows}
-
-
 async def all_binders(session: AsyncSession) -> list[Binder]:
     return list((await session.execute(select(Binder).order_by(Binder.name))).scalars().all())
-
-
-async def binder_summaries(session: AsyncSession) -> list[BinderSummary]:
-    """Every binder with its card count, for the Binders tab."""
-    counts = await _counts(session)
-    binders = (await session.execute(select(Binder).order_by(Binder.name))).scalars().all()
-    return [BinderSummary(b.id, b.name, counts.get(b.id, 0), b.updated_at) for b in binders]
 
 
 async def create_binder(session: AsyncSession, name: str) -> Binder | None:

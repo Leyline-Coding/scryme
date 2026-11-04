@@ -20,10 +20,10 @@
   <ul class="space-y-2">
     {% for b in boxes %}
     <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3">
-      <a href="/search?q={{ ('loc:\"' ~ b.name ~ '\"') | urlencode }}&scope=collection"
+      <a href="/search?q={{ ('loc:\"box:' ~ b.name ~ '\"') | urlencode }}&scope=collection"
          class="flex-1 min-w-0 hover:text-accent">
         <div class="font-medium truncate">📦 {{ b.name }}</div>
-        <div class="text-xs text-muted">{{ '{:,}'.format(b.quantity) }} cards</div>
+        <div class="text-xs text-muted">{{ '{:,}'.format(locations.get('box', {}).get(b.id, {}) | attr('quantity') | default(0)) }} cards</div>
       </a>
       {% if not read_only %}
       <form method="post" action="/collection/boxes/{{ b.id }}/rename" class="flex gap-1 shrink-0">
@@ -43,19 +43,6 @@
   <p class="text-sm text-muted">No boxes yet.{% if not read_only %} Create one above.{% endif %}</p>
   {% endif %}
 
-  {% if others %}
-  <p class="text-xs text-muted mt-3 mb-1">Other locations (not a managed box):</p>
-  <ul class="flex flex-wrap gap-2">
-    {% for o in others %}
-    <li>
-      <a href="/search?q={{ ('loc:\"' ~ o.name ~ '\"') | urlencode }}&scope=collection"
-         class="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-xs hover:text-accent">
-        📍 {{ o.name }} <span class="text-muted">{{ o.quantity }}</span>
-      </a>
-    </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
 </section>
 
 {# Binders and decks are the other two location kinds; they live in their own tabs. #}
@@ -64,12 +51,12 @@
     <h2 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">
       Binders <a href="/collection?tab=binders" class="ml-1 text-xs normal-case font-normal hover:text-fg">manage →</a>
     </h2>
-    {% if loc_binders %}
+    {% if binders %}
     <ul class="divide-y divide-edge rounded-xl border border-edge bg-surface">
-      {% for b in loc_binders %}
+      {% for b in binders %}
       <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
         <a href="/binders/view/{{ b.id }}" class="font-medium truncate hover:text-accent">📕 {{ b.name }}</a>
-        <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(b.count) }}</span>
+        <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(locations.get('binder', {}).get(b.id, {}) | attr('quantity') | default(0)) }}</span>
       </li>
       {% endfor %}
     </ul>
@@ -82,12 +69,15 @@
     <h2 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">
       Decks <a href="/collection?tab=decks" class="ml-1 text-xs normal-case font-normal hover:text-fg">manage →</a>
     </h2>
-    {% if loc_decks %}
+    {% if decks %}
     <ul class="divide-y divide-edge rounded-xl border border-edge bg-surface">
-      {% for d, n in loc_decks %}
+      {% for d in decks %}
       <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
         <a href="/decks/{{ d.id }}" class="font-medium truncate hover:text-accent">🃏 {{ d.name }}</a>
-        <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(n) }}</span>
+        <span class="text-muted tabular-nums shrink-0">
+          <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(locations.get('deck', {}).get(d.id, {}) | attr('quantity') | default(0)) }} of {{deck_sizes[d.id]['main'] + deck_sizes[d.id]['side']}}</span>
+          <span class="text-muted tabular-nums shrink-0 inline-block w-14 text-right">({{deck_sizes[d.id]['main']}}/{{deck_sizes[d.id]['side']}})</span>
+        </span>
       </li>
       {% endfor %}
     </ul>

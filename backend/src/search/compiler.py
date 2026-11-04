@@ -11,9 +11,10 @@ import datetime
 import operator
 from collections.abc import Callable
 
-from sqlalchemy import Float, and_, cast, func, not_, or_, select, exists
+from sqlalchemy import Float, and_, cast, func, not_, or_, select, exists, union_all
 from sqlalchemy.sql.elements import ColumnElement
 
+from src.locations import _find_location, LOCATION_TYPES
 from src.models import Card, CollectionCard, Location
 from src.search.ast import And, Node, Not, Or, Term
 from src.search.colors import ColorParseError, parse_colors
@@ -234,9 +235,26 @@ def _tag(term: Term) -> ColumnElement:
 
 def _location(term: Term) -> ColumnElement:
     # Physical storage location lives on collection_card; match printings with a stack there
-    located = select(CollectionCard.scryfall_id).where(
-        CollectionCard.location.in_(select(Location.id))
-    )
+    # Handle explicit type prefixed searches like "box:Library" that filter by exact label
+    location_value = term.value.lower()
+
+    if ":" in location_value:
+        # Extract type from format like "box:Library"
+        loc_type, loc_name = location_value.split(":", 1)
+        loc_name = loc_name.strip('"\'')
+        # Join Location Search Statement
+        located = select(CollectionCard.scryfall_id).where(
+            CollectionCard.location == _find_location(loc_type, loc_name)
+        )
+    else:
+        # Backwards compatibility with old style "Library" (string matching)
+        # This approach is here for legacy reasons but creates ambiguous results!
+        loc_name = location_value.strip('"\'')
+        # Join Location Search Statement
+        located = union_all(
+            *(_find_location(type_name, loc_name) for type_name in LOCATION_TYPES.keys())
+        )
+
     return Card.scryfall_id.in_(located)
 
 

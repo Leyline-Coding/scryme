@@ -7,49 +7,16 @@ delete, including empty boxes) and keeps the denormalized location strings in sy
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Box, CollectionCard
 
 
-@dataclass
-class BoxSummary:
-    id: int | None      # None for ad-hoc locations not in the registry
-    name: str
-    quantity: int
-    stacks: int
-
 
 async def all_boxes(session: AsyncSession) -> list[Box]:
     return list((await session.execute(select(Box).order_by(Box.name))).scalars().all())
 
-
-async def _location_counts(session: AsyncSession) -> dict[str, tuple[int, int]]:
-    rows = (await session.execute(
-        select(CollectionCard.location, func.coalesce(func.sum(CollectionCard.quantity), 0),
-               func.count())
-        .where(CollectionCard.location.is_not(None))
-        .group_by(CollectionCard.location)
-    )).all()
-    return {loc: (int(qty), int(stacks)) for loc, qty, stacks in rows}
-
-
-async def box_summaries(session: AsyncSession) -> list[BoxSummary]:
-    """Registry boxes with their card counts (empty boxes included)."""
-    counts = await _location_counts(session)
-    boxes = await all_boxes(session)
-    return [BoxSummary(b.id, b.name, *counts.get(b.name, (0, 0))) for b in boxes]
-
-
-async def other_locations(session: AsyncSession) -> list[BoxSummary]:
-    """Location strings present on stacks but not in the box registry (e.g. legacy auto-filed)."""
-    counts = await _location_counts(session)
-    names = {b.name for b in await all_boxes(session)}
-    return [BoxSummary(None, loc, qty, stacks)
-            for loc, (qty, stacks) in sorted(counts.items()) if loc not in names]
 
 
 async def create_box(session: AsyncSession, name: str) -> Box | None:

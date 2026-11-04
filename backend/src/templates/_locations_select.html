@@ -1,11 +1,11 @@
-{% macro locations_select(grouped_locations, attribute='') %}
-<select name="add_location_choice" title="Storage location"
-      class="rounded bg-surface-2 border border-edge px-2 py-1 text-xs max-w-[10rem]">
+{% macro locations_select(grouped_locations, selected_location=None, name='', onchange='', class='') %}
+<select name="{{name}}" title="Storage location" onchange="{{onchange}}"
+      class="rounded bg-surface-2 border border-edge px-2 py-1 text-xs max-w-[10rem] {{ class }}">
   <option value="">📍 unfiled</option>
   {% for type, locations in grouped_locations.items() %}
   <optgroup label="{{type}}" class="capitalize">
   {% for location in locations %}
-  <option value="{{location.id}}">{% if type=='box' %}📦{% elif type=='binder' %}📕{% else %}🃏{% endif %} {{ location.label }}</option>
+  <option value="{{location.id}}" {% if selected_location == location.id %}selected{% endif %}>{% if type=='box' %}📦{% elif type=='binder' %}📕{% else %}🃏{% endif %} {{ location.label }}</option>
   {% endfor %}
   </optgroup>
   {% endfor %}

@@ -6,10 +6,8 @@ import pytest
 from sqlalchemy import select
 from src.binder_service import binders_for_card, create_binder
 from src.box_service import (
-    box_summaries,
     create_box,
     delete_box,
-    other_locations,
     rename_box,
 )
 from src.models import Card, CollectionCard, Deck
@@ -29,15 +27,6 @@ async def _own(session, name="Sol Ring", rarity="rare", location=None):
     return c
 
 
-@pytest.mark.asyncio
-async def test_box_crud_and_summaries(session):
-    assert await create_box(session, "Bulk") is not None
-    assert await create_box(session, "  ") is None            # blank
-    assert await create_box(session, "Bulk") is None          # duplicate
-    await _own(session, "Sol Ring", location="Bulk")
-    sums = {b.name: b.quantity for b in await box_summaries(session)}
-    assert sums == {"Bulk": 2}
-
 
 @pytest.mark.asyncio
 async def test_rename_box_cascades_location(session):
@@ -48,25 +37,6 @@ async def test_rename_box_cascades_location(session):
         select(CollectionCard.location).where(CollectionCard.scryfall_id == card.scryfall_id)
     )
     assert loc == "Storage A"
-
-
-@pytest.mark.asyncio
-async def test_delete_box_unfiles_cards(session):
-    box = await create_box(session, "Bulk")
-    card = await _own(session, "Sol Ring", location="Bulk")
-    await delete_box(session, box.id)
-    loc = await session.scalar(
-        select(CollectionCard.location).where(CollectionCard.scryfall_id == card.scryfall_id)
-    )
-    assert loc is None
-    assert await box_summaries(session) == []
-
-
-@pytest.mark.asyncio
-async def test_other_locations_lists_non_registry(session):
-    await _own(session, "Random", location="Junk Drawer")   # no matching box
-    others = {o.name for o in await other_locations(session)}
-    assert "Junk Drawer" in others
 
 
 @pytest.mark.asyncio

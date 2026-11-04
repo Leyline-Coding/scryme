@@ -19,7 +19,7 @@ from src.importers.base import UnknownFormatError
 from src.importers.mapping import MAP_FIELDS, csv_headers, guess_mapping
 from src.importers.merge import MergeStrategy
 from src.importers.service import confirm_upload, stage_mapped_upload, stage_upload
-from src.models import Binder
+from src.models import Binder, Box, Location
 from src.templating import templates
 
 router = APIRouter(tags=["upload"])
@@ -82,13 +82,44 @@ async def upload_preview(
             )
         return templates.TemplateResponse(request, _UPLOAD_TMPL, {"error": str(exc)})
 
+    boxes = await all_boxes(session)
+    binders = await all_binders(session)
+
+    # Get the corresponding Location IDs for each box and binder
+    box_locations = {}
+    binder_locations = {}
+    
+    if boxes:
+        box_results = await session.execute(
+            select(Location.id, Location.foreign_id)
+            .where(
+                Location.type == "box",
+                Location.foreign_id.in_([b.id for b in boxes])
+            )
+        )
+        for loc_id, foreign_id in box_results:
+            box_locations[foreign_id] = loc_id
+    
+    if binders:
+        binder_results = await session.execute(
+            select(Location.id, Location.foreign_id)
+            .where(
+                Location.type == "binder",
+                Location.foreign_id.in_([b.id for b in binders])
+            )
+        )
+        for loc_id, foreign_id in binder_results:
+            binder_locations[foreign_id] = loc_id
+
     return templates.TemplateResponse(
         request, 
         "upload_preview.html", 
         {
             "preview": preview,
-            "boxes": await all_boxes(session),
-            "binders": await all_binders(session),
+            "boxes": boxes,
+            "binders": binders,
+            "box_locations": box_locations,
+            "binder_locations": binder_locations,
             # "decks": decks
         }
     )
@@ -143,12 +174,13 @@ async def upload_confirm(
     
     # Parse the location choice and prepare it for merging
     selected_location = None
-    if location_choice is not None and location_choice != "none":
-        # Strip the prefix to get just the actual location name
-        if location_choice.startswith("box:"):
-            selected_location = location_choice[4:]  # strip "box:"
-        elif location_choice.startswith("binder:"):
-            selected_location = location_choice[7:]  # strip "binder:"
+    if location_choice is not None and location_choice != "":
+        # The location_choice now contains the actual Location ID (integer) 
+        # from the dropdown, so we can use it directly
+        try:
+            selected_location = int(location_choice)
+        except (ValueError, TypeError):
+            selected_location = None
 
     try:
         await confirm_upload(session, token, strat, decisions, location=selected_location)

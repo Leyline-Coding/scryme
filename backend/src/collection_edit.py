@@ -59,7 +59,7 @@ async def add_or_increment(
     condition: str | None = None,
     language: str = "en",
     binder: str | None = None,
-    location: str | None = None,
+    location: int | None = None,
     purchase_price: float | None = None,
     commit: bool = True,
 ) -> CollectionCard | None:
@@ -188,9 +188,6 @@ async def update_stack(
     return stack
 
 
-
-
-
 async def delete_stack(session: AsyncSession, stack_id: int, expected_version: int | None = None):
     """Delete a stack outright. Returns its scryfall_id (or None if it didn't exist).
 
@@ -206,14 +203,29 @@ async def delete_stack(session: AsyncSession, stack_id: int, expected_version: i
     return sid
 
 
-async def locate_stack(session: AsyncSession, stack_id: int, location_id: int | None = None):
-    """Move a stack to a new location. Returns its scryfall_id (or None if it didn't exist).
+async def locate_stacks(session: AsyncSession, stack_ids: list[int], location_id: int | None = None):
+    """Move stacks to a new location. Returns a list of scryfall_ids (or None if it didn't exist).
     """
-    colelction_card = await session.get(CollectionCard, stack_id)
-    if colelction_card is None: return None
-    colelction_card.location = location_id
+    collection_cards = await session.scalars(select(CollectionCard).where(CollectionCard.id.in_(stack_ids)))
+    collection_cards_list = collection_cards.all()
+    
+    # Create mapping of stack_id to CollectionCard for efficient lookup
+    stack_to_card = {card.id: card for card in collection_cards_list}
+    
+    # Update location for all cards
+    for stack_id in stack_ids:
+        if stack_id in stack_to_card:
+            stack_to_card[stack_id].location = location_id
+    
     await session.commit()
-    return colelction_card.scryfall_id
+    return [card.scryfall_id for card in collection_cards_list]
+
+
+async def locate_stack(session: AsyncSession, stack_id: int, location_id: int | None = None):
+    """Move a single stack to a new location. Returns its scryfall_id (or None if it didn't exist).
+    """
+    result = await locate_stacks(session, [stack_id], location_id)
+    return result[0] if result else None
 
 
 async def adjust_owned(session: AsyncSession, scryfall_id, delta: int) -> None:

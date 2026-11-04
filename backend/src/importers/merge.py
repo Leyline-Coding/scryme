@@ -115,7 +115,7 @@ class MergeSummary:
     total_quantity: int
 
 
-def _insert(session: AsyncSession, stack: Stack, source_format: str | None, location: str | None = None) -> None:
+def _insert(session: AsyncSession, stack: Stack, source_format: str | None, location: int | None = None) -> None:
     session.add(
         CollectionCard(
             scryfall_id=stack.scryfall_id,
@@ -154,7 +154,7 @@ async def apply_merge(
     *,
     decisions: dict[int, str] | None = None,
     source_format: str | None = None,
-    location: str | None = None,
+    location: int | None = None,
 ) -> MergeSummary:
     decisions = decisions or {}
     stacks = aggregate(matched)
@@ -181,13 +181,19 @@ async def apply_merge(
         if key not in existing:
             # This is a brand-new stack - we should use the given location
             if location is not None:
-                stack.location = location
+                stack.location = int(location) if isinstance(location, str) else location
         else:
             # Existing stack - keep existing location unless stack has location info
             # (which would come from the import file)
             if stack.location is None:
                 stack.location = existing[key].location
-                
+            elif isinstance(stack.location, str):
+                # If stack location is a string, convert it to integer
+                try:
+                    stack.location = int(stack.location)
+                except (ValueError, TypeError):
+                    stack.location = None  # Invalid location, set to None
+                    
         di, du = _merge_stack(session, key, stack, existing, strategy, decision_for, source_format, stack.location)
         inserted += di
         updated += du

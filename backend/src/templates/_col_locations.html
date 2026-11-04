@@ -23,7 +23,7 @@
       <a href="/search?q={{ ('loc:\"box:' ~ b.name ~ '\"') | urlencode }}&scope=collection"
          class="flex-1 min-w-0 hover:text-accent">
         <div class="font-medium truncate">📦 {{ b.name }}</div>
-        <div class="text-xs text-muted">{{ '{:,}'.format(locations.get('box', {}).get(b.id, {}) | attr('quantity') | default(0)) }} cards</div>
+        <div class="text-xs text-muted">{{ '{:,}'.format(locations.get('box', {}).get(b.id, {}) | attr('quantity') | default(0)) }} cards • {{ '{:,}'.format(locations.get('box', {}).get(b.id, {}) | attr('stacks') | default(0)) }} printings</div>
       </a>
       {% if not read_only %}
       <form method="post" action="/collection/boxes/{{ b.id }}/rename" class="flex gap-1 shrink-0">
@@ -56,7 +56,7 @@
       {% for b in binders %}
       <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
         <a href="/binders/view/{{ b.id }}" class="font-medium truncate hover:text-accent">📕 {{ b.name }}</a>
-        <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(locations.get('binder', {}).get(b.id, {}) | attr('quantity') | default(0)) }}</span>
+         <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(locations.get('binder', {}).get(b.id, {}) | attr('quantity') | default(0)) }} cards • {{ '{:,}'.format(locations.get('binder', {}).get(b.id, {}) | attr('stacks') | default(0)) }} printings</span>
       </li>
       {% endfor %}
     </ul>

@@ -13,7 +13,10 @@ from datetime import datetime
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import Binder, Card, CollectionCard, Location
+from src.collection_edit import locate_stacks
+from src.models import Binder, CollectionCard, Location
+
+
 
 
 def _as_uuid(value) -> uuid.UUID:
@@ -45,8 +48,11 @@ async def rename_binder(session: AsyncSession, binder_id: int, name: str) -> Non
 
 
 async def delete_binder(session: AsyncSession, binder_id: int) -> None:
+    ''' When a binder is deleted, all the cards that point to that location are moved to the parent object (unfiled is the root). '''
     binder = await session.get(Binder, binder_id)
+    collection_cards = await get_all_binder_cards(session, binder_id)
     if binder:
+        await locate_stacks(session, [c.id for c in collection_cards], None)
         await session.delete(binder)
         await session.commit()
 

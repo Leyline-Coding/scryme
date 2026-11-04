@@ -57,9 +57,8 @@
       {% if s.location %}<span class="text-accent" title="Storage location">· 📍{{ s.location }}</span>{% endif %}
       {% else %}
       {# Unified location picker (#160): file this stack into a box, binder, or deck. #}
-      <form hx-post="/collection/stack/{{ s.id }}/locate"
-            hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
-        {{ locations_select(grouped_locations, selected_location=s.location, name="location_id", onchange="this.form.requestSubmit()", class="rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs max-w-[10rem]") }}
+      <form hx-post="/collection/stack/{{ s.id }}/locate" name="location_select_{{s.id}}" hx-trigger="hiddenChange" hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
+        {{ locations_select(grouped_locations, selected_location=s.location, name="location_id", selectedAsLabel=True, onchange="document.querySelector('form[name=\"location_select_%s\"]').dispatchEvent(new Event('hiddenChange'))" % s.id, class="rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs max-w-[10rem]") }}
       </form>
       {% endif %}
       {% if trade_pools and not read_only %}
@@ -197,7 +196,7 @@
       <option value="foil">foil</option>
       <option value="etched">etched</option>
     </select>
-    {{ locations_select(grouped_locations, name='add_location_choice') }}
+    {{ locations_select(grouped_locations, name='add_location_choice', label='Location', selectedAsLabel=True, class="rounded bg-surface-2 border border-edge px-2 py-1 text-xs max-w-[10rem]") }}
     <button type="submit"
             class="rounded bg-accent text-accent-fg px-3 py-1 font-medium">+ Add</button>
   </form>

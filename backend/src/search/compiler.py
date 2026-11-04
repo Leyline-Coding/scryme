@@ -251,8 +251,10 @@ def _location(term: Term) -> ColumnElement:
         # This approach is here for legacy reasons but creates ambiguous results!
         loc_name = location_value.strip('"\'')
         # Join Location Search Statement
-        located = union_all(
-            *(_find_location(type_name, loc_name) for type_name in LOCATION_TYPES.keys())
+        located = select(CollectionCard.scryfall_id).where(
+            CollectionCard.location.in_(union_all(
+                *(_find_location(type_name, loc_name) for type_name in LOCATION_TYPES.keys())
+            ))
         )
 
     return Card.scryfall_id.in_(located)

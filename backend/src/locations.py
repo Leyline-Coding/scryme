@@ -86,11 +86,11 @@ def _find_location(type: str, name: str):
     model = LOCATION_TYPES[type]
 
     return (
-        select(Location)
+        select(Location.id)
         .join(model, Location.foreign_id == model.id)
         .where(
             Location.type == type,
-            model.name == name
+            model.name.ilike(name)
         )
     )
 

@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.binder_service import get_all_binder_cards
 from src.config import get_settings
-from src.currency import info
+from src.currency import get_currency, info
 from src.db import get_session
 from src.decks import deck_coverage, deck_stats
 from src.models import Binder, Deck
@@ -38,9 +38,8 @@ from src.templating import templates
 router = APIRouter(tags=["share"])
 
 _GONE = "This share link isn't available."
-# Shared views are always valued in USD: the link has no viewer to read a currency preference from,
-# and the owner's own preference isn't the visitor's.
-_SHARE_CURRENCY = "usd"
+# Shared views are always defaults to USD.
+_DEFAULT_SHARE_CURRENCY = "usd"
 
 
 def _guard_writable() -> None:
@@ -58,15 +57,17 @@ async def view_share(
     confirm to a stranger that a token was once real, which is a small oracle worth not offering.
     """
     link = await resolve_share_link(session, token)
+    currency = link.currency or _DEFAULT_SHARE_CURRENCY
+    
     if link is None:
         raise HTTPException(status_code=404, detail=_GONE)
 
-    ctx: dict = {"link": link, "cur": info(_SHARE_CURRENCY), "show_prices": link.show_prices}
+    ctx: dict = {"link": link, "cur": info(currency), "show_prices": link.show_prices}
     if link.kind == DECK:
         deck = await session.get(Deck, link.target_id)
         if deck is None:
             raise HTTPException(status_code=404, detail=_GONE)
-        ctx["cov"] = await deck_coverage(session, deck, currency=_SHARE_CURRENCY)
+        ctx["cov"] = await deck_coverage(session, deck, currency=currency)
         ctx["deck"] = deck
         # Only priced when the owner opted in — no point computing a total we won't show.
         ctx["stats"] = await deck_stats(session, deck) if link.show_prices else None
@@ -76,12 +77,13 @@ async def view_share(
     if binder is None:
         raise HTTPException(status_code=404, detail=_GONE)
     ctx["binder"] = binder
-    ctx["cards"] = await get_all_binder_cards(session, binder.id)
+    ctx["collection_cards"] = await get_all_binder_cards(session, binder.id)
     return templates.TemplateResponse(request, "share_binder.html", ctx)
 
 
 @router.post("/share/{kind}/{target_id}")
 async def new_share(
+    request: Request,
     kind: str,
     target_id: int,
     show_prices: str = Form(""),
@@ -89,7 +91,8 @@ async def new_share(
 ) -> RedirectResponse:
     """Mint a link and send the owner back to the page they shared from."""
     _guard_writable()
-    created = await create_share_link(session, kind, target_id,
+    currency = get_currency(request)
+    created = await create_share_link(session, kind, target_id, currency=currency,
                                       show_prices=bool(show_prices.strip()))
     if created is None:
         raise HTTPException(status_code=404, detail="Nothing to share.")

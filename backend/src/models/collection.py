@@ -40,7 +40,6 @@ class CollectionCard(Base):
     condition: Mapped[str | None] = mapped_column(String(32))
     language: Mapped[str] = mapped_column(String(8), default="en")
     purchase_price: Mapped[float | None] = mapped_column(Float)
-    binder_name: Mapped[str | None] = mapped_column(String(256))
     location: Mapped[int | None] = mapped_column(Integer)  # physical storage place
     source_format: Mapped[str | None] = mapped_column(String(32))  # manabox | dragonshield | delver
 
@@ -73,7 +72,6 @@ class CollectionCard(Base):
             "finish",
             "condition",
             "language",
-            "binder_name",
             "location",
             name="uq_collection_stack",
         ),

@@ -23,7 +23,6 @@ class ImportRow:
     condition: str | None = None
     language: str = "en"
     purchase_price: float | None = None
-    binder_name: str | None = None
     location: str | None = None
 
     def to_dict(self) -> dict:

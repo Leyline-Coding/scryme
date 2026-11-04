@@ -44,17 +44,18 @@ async def _target_exists(session: AsyncSession, kind: str, target_id: int) -> bo
 
 
 async def create_share_link(
-    session: AsyncSession, kind: str, target_id: int, *, show_prices: bool = False
+    session: AsyncSession, kind: str, target_id: int, currency: str, *, show_prices: bool = False
 ) -> tuple[ShareLink, str] | None:
     """Mint a link for one deck or binder. Returns (row, token), or None if the target is unknown.
 
     The token is returned once and never recoverable — but unlike a device token it is also written
     into a URL the owner can re-open, so losing it is a matter of revoking and re-sharing.
     """
+    
     if kind not in KINDS or not await _target_exists(session, kind, target_id):
         return None
     token = secrets.token_urlsafe(_TOKEN_BYTES)
-    row = ShareLink(kind=kind, target_id=target_id, token_hash=hash_token(token),
+    row = ShareLink(kind=kind, currency=currency, target_id=target_id, token_hash=hash_token(token),
                     show_prices=bool(show_prices))
     session.add(row)
     await session.commit()

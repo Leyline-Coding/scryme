@@ -308,7 +308,6 @@ async def edit_stack(
             CollectionCard.finish == target_finish,
             CollectionCard.language == stack.language,
             _eq_or_null(CollectionCard.condition, stack.condition),
-            _eq_or_null(CollectionCard.binder_name, stack.binder_name),
             _eq_or_null(CollectionCard.location, stack.location),
         )
     )).scalar_one_or_none()

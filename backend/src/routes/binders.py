@@ -24,7 +24,7 @@ from src.binder_service import (
     delete_binder,
     rename_binder,
 )
-from src.collection_edit import delete_binder_stacks, locate_stack, _STACK_NOT_FOUND
+from src.collection_edit import locate_stack, _STACK_NOT_FOUND
 from src.config import get_settings
 from src.db import get_session
 from src.models import Binder, Card, CollectionCard
@@ -125,93 +125,3 @@ async def locate_binder_stack(
     if(not sid): raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     return local_redirect(f"/binders/view/{binder_id}")
 
-
-# Add/remove a card to/from a binder from the card detail page (HTMX-swaps the control).
-
-async def _card_binders_partial(
-    request: Request, session: AsyncSession, scryfall_id: str
-) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request, "_card_binders.html",
-        {"card_id": scryfall_id, "binders": await all_binders(session),
-         "in_ids": await binders_for_card(session, scryfall_id),
-         "read_only": get_settings().read_only},
-    )
-
-
-@router.post("/card/{scryfall_id}/binder-add", response_class=HTMLResponse)
-async def card_binder_add(
-    request: Request, scryfall_id: str, binder_id: str = Form(""),
-    session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
-    _guard_writable()
-    if binder_id.strip():
-        await add_card(session, int(binder_id), scryfall_id)
-    return await _card_binders_partial(request, session, scryfall_id)
-
-
-@router.post("/card/{scryfall_id}/binder-remove", response_class=HTMLResponse)
-async def card_binder_remove(
-    request: Request, scryfall_id: str, binder_id: str = Form(""),
-    session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
-    _guard_writable()
-    if binder_id.strip():
-        await remove_card(session, int(binder_id), scryfall_id)
-    return await _card_binders_partial(request, session, scryfall_id)
-
-
-@router.get("/binders/cards", response_class=HTMLResponse)
-async def binder_cards_browse(
-    request: Request, name: str = "", session: AsyncSession = Depends(get_session)
-) -> HTMLResponse:
-    is_none = name == NONE_SENTINEL or name == ""
-    condition = CollectionCard.binder_name.is_(None) if is_none else (
-        CollectionCard.binder_name == name
-    )
-    rows = (
-        await session.execute(
-            select(Card, func.sum(CollectionCard.quantity))
-            .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
-            .where(condition)
-            .group_by(Card)
-            .order_by(Card.name)
-        )
-    ).all()
-    views = [CardView(card=c, quantity=int(q), image=_image(c)) for c, q in rows]
-    other_binders = [
-        n for (n,) in (await session.execute(
-            select(CollectionCard.binder_name)
-            .where(CollectionCard.binder_name.is_not(None)).distinct()
-            .order_by(CollectionCard.binder_name)
-        )).all() if n and n != name
-    ]
-    return templates.TemplateResponse(
-        request,
-        "binder_detail.html",
-        {"views": views, "label": "Unsorted" if is_none else name,
-         "binder_name": "" if is_none else name, "other_binders": other_binders,
-         "read_only": get_settings().read_only},
-    )
-
-
-@router.post("/binders/cards/remove-from-collection")
-async def binder_remove_from_collection(
-    binder: str = Form(""), scryfall_id: str = Form(""),
-    session: AsyncSession = Depends(get_session),
-) -> RedirectResponse:
-    """#14: delete a card's stacks in a physical binder (the 'remove from collection' choice)."""
-    _guard_writable()
-    await delete_binder_stacks(session, scryfall_id, binder or None)
-    return local_redirect(f"/binders/cards?name={quote(binder)}")
-
-
-@router.post("/binders/cards/relocate")
-async def binder_relocate(
-    binder: str = Form(""), scryfall_id: str = Form(""), new_binder: str = Form(""),
-    session: AsyncSession = Depends(get_session),
-) -> RedirectResponse:
-    """#14: move a card's stacks between physical binders (the 'change location' choice)."""
-    _guard_writable()
-    await move_binder_stacks(session, scryfall_id, binder or None, new_binder)
-    return local_redirect(f"/binders/cards?name={quote(new_binder)}")

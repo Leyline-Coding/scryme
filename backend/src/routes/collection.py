@@ -27,13 +27,13 @@ from src.collection_edit import (
     bulk_add_tag,
     bulk_add_to_collection,
     bulk_move_to_location,
-    bulk_move_to_deck,
     delete_stack,
     edit_stack,
     locate_stack,
     organize_by_color_identity,
     owned_for_oracle,
     remove_copies,
+    pull_stack_from_existing,
     _STACK_NOT_FOUND,
 )
 from src.config import get_settings
@@ -64,7 +64,7 @@ async def _collection_partial(
                 select(CollectionCard)
                 .where(CollectionCard.scryfall_id == scryfall_id)
                 .order_by(CollectionCard.finish, CollectionCard.language,
-                          CollectionCard.binder_name)
+                          CollectionCard.location)
             )
         )
         .scalars()
@@ -329,6 +329,31 @@ async def grade_clear(
     sid = stack.scryfall_id
     await clear_grade(session, stack_id)
     return await _collection_partial(request, session, sid)
+
+
+@router.post("/collection/stack/{stack_id}/pull", response_class=HTMLResponse)
+async def pull_stack(
+    request: Request,
+    stack_id: int,
+    version: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Pull one card from an existing stack into a new stack with all the same attributes."""
+    _guard_writable()
+    stack = await session.get(CollectionCard, stack_id)
+    if stack is None:
+        raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
+    
+    try:
+        # Call the pull function from collection_edit
+        card_sid = await pull_stack_from_existing(session, stack_id, expected_version=_expected(version))
+    except StaleStackError:
+        return await _conflict(request, session, stack.scryfall_id)
+    
+    if card_sid is None:
+        raise HTTPException(status_code=404, detail="Failed to pull stack.")
+        
+    return await _collection_partial(request, session, card_sid)
 
 
 @router.get("/grades/{filename}")

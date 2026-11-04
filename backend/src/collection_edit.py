@@ -58,7 +58,6 @@ async def add_or_increment(
     finish: str = "normal",
     condition: str | None = None,
     language: str = "en",
-    binder: str | None = None,
     location: int | None = None,
     purchase_price: float | None = None,
     commit: bool = True,
@@ -74,7 +73,7 @@ async def add_or_increment(
         return None
     quantity = max(1, quantity)
     finish = finish if finish in ("normal", "foil", "etched") else "normal"
-    condition, binder, location = _clean(condition), _clean(binder), _clean(location)
+    condition, location = _clean(condition), _clean(location)
     language = (language or "en").strip().lower() or "en"
 
     stack = (
@@ -84,7 +83,6 @@ async def add_or_increment(
                 CollectionCard.finish == finish,
                 CollectionCard.language == language,
                 _eq_or_null(CollectionCard.condition, condition),
-                _eq_or_null(CollectionCard.binder_name, binder),
                 _eq_or_null(CollectionCard.location, location),
             )
         )
@@ -93,7 +91,7 @@ async def add_or_increment(
     if stack is None:
         stack = CollectionCard(
             scryfall_id=sid, quantity=quantity, finish=finish, condition=condition,
-            language=language, binder_name=binder, location=location,
+            language=language, location=location,
             purchase_price=purchase_price, source_format="manual",
         )
         session.add(stack)
@@ -151,7 +149,6 @@ async def update_stack(
     finish: str | None = None,
     condition=_UNSET,
     language: str | None = None,
-    binder=_UNSET,
     location=_UNSET,
     tags=_UNSET,
     expected_version: int | None = None,
@@ -177,8 +174,6 @@ async def update_stack(
         stack.language = language or "en"
     if condition is not _UNSET:
         stack.condition = _clean(condition)
-    if binder is not _UNSET:
-        stack.binder_name = _clean(binder)
     if location is not _UNSET:
         stack.location = _clean(location)
     if tags is not _UNSET:
@@ -244,7 +239,6 @@ async def adjust_owned(session: AsyncSession, scryfall_id, delta: int) -> None:
             CollectionCard.scryfall_id == _as_uuid(scryfall_id),
             func.lower(CollectionCard.finish) == "normal",
             CollectionCard.language == "en",
-            CollectionCard.binder_name.is_(None),
             CollectionCard.location.is_(None),
         ).order_by(CollectionCard.id)
     )).scalars().first()
@@ -254,29 +248,6 @@ async def adjust_owned(session: AsyncSession, scryfall_id, delta: int) -> None:
     if stack.quantity <= 0:
         await session.delete(stack)
     await session.commit()
-
-
-def _binder_filter(binder_name: str | None):
-    """Match stacks filed under a physical binder (empty/None = unfiled)."""
-    return CollectionCard.binder_name.is_(None) if not binder_name \
-        else CollectionCard.binder_name == binder_name
-
-
-async def _binder_stacks(session: AsyncSession, scryfall_id, binder_name: str | None):
-    return list((await session.execute(
-        select(CollectionCard).where(
-            CollectionCard.scryfall_id == _as_uuid(scryfall_id), _binder_filter(binder_name)
-        )
-    )).scalars().all())
-
-
-async def delete_binder_stacks(session: AsyncSession, scryfall_id, binder_name: str | None) -> int:
-    """Delete every owned stack of a printing filed under a physical binder (#14)."""
-    stacks = await _binder_stacks(session, scryfall_id, binder_name)
-    for stack in stacks:
-        await session.delete(stack)
-    await session.commit()
-    return len(stacks)
 
 
 
@@ -451,7 +422,9 @@ async def bulk_move_to_location(session: AsyncSession, location_id: int, scryfal
     """Move owned printings to a specific location by updating their location."""
     # Convert to UUID if needed
     sids = {_as_uuid(s) for s in scryfall_ids}
-    
+
+    #TODO: If location is a deck, add cards to the deck card list before moving
+
     # Filter only those cards that exist in collection
     owned_rows = (await session.execute(
         select(CollectionCard.id).where(
@@ -470,44 +443,41 @@ async def bulk_move_to_location(session: AsyncSession, location_id: int, scryfal
     await session.commit()
 
 
-
-
-async def bulk_move_to_deck(session: AsyncSession, location_id: int, scryfall_ids) -> int:
-    """Add owned printings to a specific deck; returns how many were newly added."""
-    # Check if deck exists
+async def pull_stack_from_existing(session: AsyncSession, stack_id: int, expected_version: int | None = None) -> uuid.UUID | None:
+    """Pull one card from an existing stack into a new stack with all the same attributes.
     
-    deck = await session.get(Deck, deck_id)
-    if deck is None:
-        return 0
+    Returns the scryfall_id of the card that was pulled, or None if the operation failed.
+    """
+    original_stack = await session.get(CollectionCard, stack_id)
+    if original_stack is None:
+        return None
     
-    # Get card names for scryfall ids (we need the oracle IDs)
-    sids = {_as_uuid(s) for s in scryfall_ids}
+    _guard_version(original_stack, expected_version)
     
-    # Check which cards are actually owned
-    owned_rows = (await session.execute(
-        select(CollectionCard.scryfall_id, Card.oracle_id)
-        .join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
-        .where(CollectionCard.scryfall_id.in_(sids))
-    )).all()
+    # If we can't reduce quantity, nothing to do
+    if original_stack.quantity <= 1: return None
+        
+    # Create a new stack with all the same attributes but quantity of 1
+    new_stack = CollectionCard(
+        scryfall_id=original_stack.scryfall_id,
+        quantity=1,
+        finish=original_stack.finish,
+        condition=original_stack.condition,
+        language=original_stack.language,
+        location=original_stack.location,
+        purchase_price=original_stack.purchase_price,
+        source_format="manual",
+        tags=original_stack.tags
+    )
     
-    if not owned_rows:
-        return 0
+    session.add(new_stack)
+    await session.flush()  # Get the ID for version update
     
-    # Get the names of cards that are already in this deck
-    existing_deck_cards = (await session.execute(
-        select(DeckCard.oracle_id)
-        .where(DeckCard.deck_id == deck_id)
-    )).scalars().all()
+    # Update original stack quantity
+    original_stack.quantity -= 1
+    original_stack.version += 1
     
-    # Prepare to add new cards (only those not already in deck)  
-    added = 0
+    await session.commit()
+    await session.refresh(new_stack)
     
-    for scryfall_id, oracle_id in owned_rows:
-        if oracle_id not in existing_deck_cards:
-            session.add(DeckCard(deck_id=deck_id, oracle_id=oracle_id))
-            added += 1
-            
-    if added:
-        await session.commit()
-    
-    return added
+    return new_stack.scryfall_id

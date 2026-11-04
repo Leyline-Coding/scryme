@@ -88,6 +88,22 @@
       },
     };
   </script>
+
+
+  <script>
+  function toggleSummaryText(summary_short_id, summary_full_id) {
+    const short = document.getElementById(summary_short_id);
+    const full = document.getElementById(summary_full_id);
+    
+    if (short.style.display === 'none') {
+      short.style.display = '';
+      full.style.display = 'none';
+    } else {
+      short.style.display = 'none';
+      full.style.display = '';
+    }
+  }
+  </script>
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"
           integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
           crossorigin="anonymous" defer></script>

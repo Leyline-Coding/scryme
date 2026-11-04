@@ -1,9 +1,22 @@
 {# Storage-location hub (#160) as a collection tab: boxes (physical) + binders + decks. #}
-<p class="text-sm text-muted mb-6">
-  Where your cards physically live. A card sits in one place — a <b>box</b>, a <b>binder</b>, or a
-  <b>deck</b> — set from the card's page. For flexible, overlapping labels use
-  <a href="/collection?tab=tags" class="underline hover:text-fg">tags</a>.
-</p>
+<summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none">
+  <p class="text-sm text-muted mb-6">
+    <span>
+      Where your cards physically live. A card sits in one place — a <b>box</b>, a <b>binder</b>, or a
+      <b>deck</b> — set from the card's page. For flexible, overlapping labels use
+      <a href="/collection?tab=tags" class="underline hover:text-fg">tags</a>. What's the functional 
+      difference between a box and a binder?
+    </span>
+    <a id="summary_short" href="#" onclick="toggleSummaryText('summary_short', 'summary_full'); return false;" class="text-accent hover:underline">Read more</a>
+    <span id="summary_full" style="display:none;">
+      A box is a basic, bulk storage option where cards are managed in bulk via scryfall syntax and stacks—
+      identical copies of cards with the same name from the same set, same printing, condition, and language etc.
+      A binder is a special kind of storage meant to display individual cards, and can be shared publicly with share links.
+      <a href="#" onclick="toggleSummaryText('summary_short', 'summary_full'); return false;" class="text-accent hover:underline">Read less</a>
+    </span>
+  </p>
+</summary>
+
 
 {# Boxes — the physical bulk-storage containers you create here. #}
 <section class="mb-8">

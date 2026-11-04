@@ -8,7 +8,6 @@ redirect back to the same search.
 from __future__ import annotations
 
 import uuid
-from collections import defaultdict
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -16,7 +15,6 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.binder_service import bulk_add_to_binder
 from src.box_service import (
     create_box,
     delete_box,
@@ -28,7 +26,7 @@ from src.collection_edit import (
     adjust_quantity,
     bulk_add_tag,
     bulk_add_to_collection,
-    bulk_move_to_box,
+    bulk_move_to_location,
     bulk_move_to_deck,
     delete_stack,
     edit_stack,
@@ -39,7 +37,7 @@ from src.collection_edit import (
 from src.config import get_settings
 from src.db import get_session
 from src.grading import clear_grade, safe_photo_path, save_grade_photo, set_grade
-from src.locations import find_or_create_locations
+from src.locations import find_or_create_grouped_locations
 from src.models import Card, CollectionCard
 from src.tags import card_tags
 from src.templating import templates
@@ -72,9 +70,6 @@ async def _collection_partial(
         .all()
     )
 
-    grouped_locations = defaultdict(list)
-    for location in (await find_or_create_locations(session)):
-        grouped_locations[location.type].append(location)
     return templates.TemplateResponse(
         request,
         "_card_collection.html",
@@ -86,7 +81,7 @@ async def _collection_partial(
             "read_only": get_settings().read_only,
             "printing_opts": await printing_options(session, scryfall_id),
             "conflict": conflict,
-            "grouped_locations": grouped_locations,
+            "grouped_locations": await find_or_create_grouped_locations(session),
             "trade_pools": await open_pools(session),
         },
     )
@@ -351,7 +346,7 @@ async def bulk(
     bulk_action: str = Form(...),
     scryfall_ids: list[str] = Form(default=[]),
     tag: str = Form(""),
-    bulk_container_id: str = Form(""),
+    bulk_location_id: str = Form(""),
     pool_id: str = Form(""),
     q: str = Form(""),
     scope: str = Form("collection"),
@@ -363,12 +358,8 @@ async def bulk(
     if scryfall_ids:
         if bulk_action == "tag" and tag.strip():
             await bulk_add_tag(session, scryfall_ids, tag)
-        elif bulk_action == "binder" and bulk_container_id:
-            await bulk_add_to_binder(session, int(bulk_container_id), scryfall_ids)
-        elif bulk_action == "box" and bulk_container_id:
-            await bulk_move_to_box(session, int(bulk_container_id), scryfall_ids)
-        elif bulk_action == "deck" and bulk_container_id:
-              await bulk_move_to_deck(session, int(bulk_container_id), scryfall_ids)
+        elif (bulk_action == "location") and bulk_location_id:
+            await bulk_move_to_location(session, int(bulk_location_id), scryfall_ids)
         elif bulk_action == "add":
             await bulk_add_to_collection(session, scryfall_ids, 1)
         elif bulk_action in ("trade_out", "trade_in") and pool_id.strip().isdigit():

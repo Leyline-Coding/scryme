@@ -432,19 +432,8 @@ async def location_summary(session: AsyncSession) -> list[LocationSummary]:
     return [LocationSummary(loc, int(n), int(q or 0)) for loc, n, q in rows]
 
 
-async def bulk_move_to_box(session: AsyncSession, box_id: int, scryfall_ids) -> None:
-    """Move owned printings to a specific box by updating their location."""
-    # Find all boxes from database
-    boxes = await all_boxes(session)
-    box_map = {box.id: box.name for box in boxes}
-    
-    if box_id not in box_map:
-        # Box ID not found, return early 
-        return
-
-    # Update location field for matching collection stack IDs
-    box_name = box_map[box_id]
-    
+async def bulk_move_to_location(session: AsyncSession, location_id: int, scryfall_ids) -> None:
+    """Move owned printings to a specific location by updating their location."""
     # Convert to UUID if needed
     sids = {_as_uuid(s) for s in scryfall_ids}
     
@@ -457,18 +446,19 @@ async def bulk_move_to_box(session: AsyncSession, box_id: int, scryfall_ids) -> 
     
     if not owned_rows:
         return
-    
+
     await session.execute(
         update(CollectionCard)
         .where(CollectionCard.id.in_(owned_rows))
-        .values(location=box_name)
+        .values(location=location_id)
     )
     await session.commit()
 
 
-async def bulk_move_to_deck(session: AsyncSession, deck_id: int, scryfall_ids) -> int:
+async def bulk_move_to_deck(session: AsyncSession, location_id: int, scryfall_ids) -> int:
     """Add owned printings to a specific deck; returns how many were newly added."""
     # Check if deck exists
+    
     deck = await session.get(Deck, deck_id)
     if deck is None:
         return 0

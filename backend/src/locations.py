@@ -12,7 +12,6 @@ from src.models import Binder, Box, CollectionCard, Deck, Location
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-
 LOCATION_TYPES = {
     "binder": Binder,
     "box": Box,
@@ -20,6 +19,11 @@ LOCATION_TYPES = {
 }
 
 
+async def find_or_create_grouped_locations(*args, **kwargs):
+    grouped_locations = defaultdict(list)
+    for location in (await find_or_create_locations(*args, **kwargs)):
+        grouped_locations[location.type].append(location)
+    return grouped_locations
 
 
 async def find_or_create_locations(session: AsyncSession, binders: bool = True, boxes: bool = True, decks: bool = True) -> list:

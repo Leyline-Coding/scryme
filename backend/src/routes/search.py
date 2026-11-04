@@ -29,6 +29,7 @@ from src.currency import get_currency, info
 from src.db import get_session
 from src.facets import compute_facets
 from src.llm import ChatClient, get_config, nl_to_query
+from src.locations import find_or_create_grouped_locations
 from src.models import Card
 from src.perfcache import memoize
 from src.prices import biggest_movers
@@ -287,6 +288,8 @@ async def search(
     if is_htmx:
         return templates.TemplateResponse(request, "search_results.html", ctx)
 
+
+
     ctx["saved_searches"] = await list_saved(session)
     ctx["read_only"] = get_settings().read_only
     ctx["ai_ready"] = (await get_config(session)).ready
@@ -294,6 +297,7 @@ async def search(
     ctx["boxes"] = await all_boxes(session)
     ctx["decks"] = await session.execute(select(Deck).order_by(Deck.name))
     ctx["decks"] = list(ctx["decks"].scalars().all())
+    ctx["grouped_locations"] = await find_or_create_grouped_locations(session)
     ctx["trade_pools"] = await open_pools(session)
     # Optional biggest-movers panel (opt-in via Settings).
     if dp.movers:

@@ -1,13 +1,18 @@
-{% macro locations_select(grouped_locations, selected_location=None, name='', onchange='', class='') %}
-<select name="{{name}}" title="Storage location" onchange="{{onchange}}"
-      class="rounded bg-surface-2 border border-edge px-2 py-1 text-xs max-w-[10rem] {{ class }}">
-  <option value="">📍 unfiled</option>
-  {% for type, locations in grouped_locations.items() %}
-  <optgroup label="{{type}}" class="capitalize">
-  {% for location in locations %}
-  <option value="{{location.id}}" {% if selected_location == location.id %}selected{% endif %}>{% if type=='box' %}📦{% elif type=='binder' %}📕{% else %}🃏{% endif %} {{ location.label }}</option>
-  {% endfor %}
-  </optgroup>
-  {% endfor %}
-</select>
+{% macro locations_select(grouped_locations, selected_location=None, name='', label='Move To', class='', post_url='', post_context='', onchange='') %}
+<div x-data="{ {{name}}: false }" class="relative action-scope-collection">
+  <button @click="{{name}} = !{{name}}" type="button"
+    class="{{class}}">{{label}} ▾</button>
+  <input type="hidden" name="{{name}}" id="{{name}}" {% if post_url %}hx-post={{post_url}} hx-trigger="change"{% endif %}/>
+  <div x-show="{{name}}" @click.outside="{{name}} = false" x-transition style="display: none"
+    class="absolute right-0 mt-2 w-64 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
+    <button type="button" @click="{{name}} = false; document.getElementById('{{name}}').value = ''; {{onchange}}"
+      class="block w-full text-left px-3 py-1.5 hover:bg-surface-2">📍 Unfiled</button>
+    {% for type, locations in grouped_locations.items() %}
+    <div class="px-3 py-1.5 text-xs font-medium text-muted border-t border-edge mt-1 pt-1 capitalize">{{type}}</div>
+    {% for location in locations %}
+    <button type="button" @click="{{name}} = false; document.getElementById('{{name}}').value = {{location.id}}; {{onchange}}" class="block w-full text-left px-3 py-1.5 hover:bg-surface-2 {% if selected_location == location.id %}selected{% endif %}">{% if type=='box' %}📦{% elif type=='binder' %}📕{% else %}🃏{% endif %} {{ location.label }}</button>
+    {% endfor %}
+    {% endfor %}
+  </div>
+</div>
 {% endmacro %}

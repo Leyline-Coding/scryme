@@ -18,14 +18,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.binder_service import (
     add_card,
     all_binders,
-    binder_cards,
+    get_all_binder_cards,
     binders_for_card,
     create_binder,
     delete_binder,
-    remove_card,
     rename_binder,
 )
-from src.collection_edit import delete_binder_stacks, move_binder_stacks
+from src.collection_edit import delete_binder_stacks, locate_stack, _STACK_NOT_FOUND
 from src.config import get_settings
 from src.db import get_session
 from src.models import Binder, Card, CollectionCard
@@ -46,11 +45,6 @@ NONE_SENTINEL = "__none__"
 def _guard_writable() -> None:
     if get_settings().read_only:
         raise HTTPException(status_code=403, detail="This instance is read-only.")
-
-
-def _image(card: Card) -> str:
-    sid = str(card.scryfall_id)
-    return _cache.url_path(sid) if _cache.is_cached(sid) else (cdn_image_url(card.raw) or "")
 
 
 @dataclass
@@ -77,10 +71,11 @@ async def binder_view(
     binder = await session.get(Binder, binder_id)
     if binder is None:
         raise HTTPException(status_code=404, detail="Binder not found.")
-    cards = await binder_cards(session, binder_id)
+    cards = await get_all_binder_cards(session, binder_id)
     return templates.TemplateResponse(
         request, "binder_view.html",
-        {"binder": binder, "views": [(c, _image(c)) for c in cards],
+        {"binder": binder, 
+         "cards": cards,
          "read_only": get_settings().read_only,
          "share_kind": BINDER, "share_target": binder.id,
          "share_links": await links_for(session, BINDER, binder.id),
@@ -118,12 +113,16 @@ async def delete_binder_route(
     return RedirectResponse(url=_BINDERS_URL, status_code=303)
 
 
-@router.post("/binders/{binder_id}/remove-card")
-async def remove_card_route(
-    binder_id: int, scryfall_id: str = Form(""), session: AsyncSession = Depends(get_session)
+@router.post("/binders/{binder_id}/stack/{stack_id}/locate")
+async def locate_binder_stack(
+    binder_id: int, 
+    stack_id: int,
+    location_id: int = Form(None),
+    session: AsyncSession = Depends(get_session),
 ) -> RedirectResponse:
     _guard_writable()
-    await remove_card(session, binder_id, scryfall_id)
+    sid = await locate_stack(session, stack_id, location_id)
+    if(not sid): raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     return local_redirect(f"/binders/view/{binder_id}")
 
 

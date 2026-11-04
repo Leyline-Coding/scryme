@@ -1,6 +1,6 @@
 """ORM models. Import every model here so Alembic autogenerate sees them."""
 
-from src.models.binder import Binder, BinderCard
+from src.models.binder import Binder
 from src.models.box import Box
 from src.models.card import Card
 from src.models.checklist import Checklist, ChecklistItem
@@ -27,7 +27,7 @@ from src.models.trade_pool import TradePool, TradePoolItem
 from src.models.wishlist import WishlistItem
 
 __all__ = [
-    "Binder", "BinderCard", "Box", "Card", "CardEmbedding", "CardPricePoint",
+    "Binder", "Box", "Card", "CardEmbedding", "CardPricePoint",
     "Checklist", "ChecklistItem", "ClientToken", "CollectionCard", "FxRate", "FxRateHistory",
     "Deck", "DeckCard", "DeckVersion", "DeckChatMessage", "ImportSnapshot", "IngestState",
     "ImportStaging", "Location", "Sleeve",

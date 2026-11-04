@@ -33,6 +33,9 @@ from src.models import Card, CollectionCard, Deck
 from src.tags import add_card_tag
 
 
+_STACK_NOT_FOUND = "Stack not found."
+
+
 def _as_uuid(value) -> uuid.UUID:
     return value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))
 
@@ -185,6 +188,9 @@ async def update_stack(
     return stack
 
 
+
+
+
 async def delete_stack(session: AsyncSession, stack_id: int, expected_version: int | None = None):
     """Delete a stack outright. Returns its scryfall_id (or None if it didn't exist).
 
@@ -192,13 +198,22 @@ async def delete_stack(session: AsyncSession, stack_id: int, expected_version: i
     destructive way to lose their edit.
     """
     stack = await session.get(CollectionCard, stack_id)
-    if stack is None:
-        return None
+    if stack is None: return None
     _guard_version(stack, expected_version)
     sid = stack.scryfall_id
     await session.delete(stack)
     await session.commit()
     return sid
+
+
+async def locate_stack(session: AsyncSession, stack_id: int, location_id: int | None = None):
+    """Move a stack to a new location. Returns its scryfall_id (or None if it didn't exist).
+    """
+    colelction_card = await session.get(CollectionCard, stack_id)
+    if colelction_card is None: return None
+    colelction_card.location = location_id
+    await session.commit()
+    return colelction_card.scryfall_id
 
 
 async def adjust_owned(session: AsyncSession, scryfall_id, delta: int) -> None:
@@ -251,17 +266,6 @@ async def delete_binder_stacks(session: AsyncSession, scryfall_id, binder_name: 
     await session.commit()
     return len(stacks)
 
-
-async def move_binder_stacks(
-    session: AsyncSession, scryfall_id, binder_name: str | None, new_binder: str | None
-) -> int:
-    """Move a printing's stacks from one physical binder to another (or unfiled) (#14)."""
-    stacks = await _binder_stacks(session, scryfall_id, binder_name)
-    cleaned = _clean(new_binder)
-    for stack in stacks:
-        stack.binder_name = cleaned
-    await session.commit()
-    return len(stacks)
 
 
 async def edit_stack(
@@ -453,6 +457,8 @@ async def bulk_move_to_location(session: AsyncSession, location_id: int, scryfal
         .values(location=location_id)
     )
     await session.commit()
+
+
 
 
 async def bulk_move_to_deck(session: AsyncSession, location_id: int, scryfall_ids) -> int:

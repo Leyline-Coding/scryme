@@ -30,9 +30,11 @@ from src.collection_edit import (
     bulk_move_to_deck,
     delete_stack,
     edit_stack,
+    locate_stack,
     organize_by_color_identity,
     owned_for_oracle,
     remove_copies,
+    _STACK_NOT_FOUND,
 )
 from src.config import get_settings
 from src.db import get_session
@@ -45,7 +47,6 @@ from src.trade_pool import open_pools, stage_selection, stage_stack
 
 router = APIRouter(tags=["collection"])
 
-_STACK_NOT_FOUND = "Stack not found."
 _LOCATIONS_URL = "/collection?tab=locations"
 
 
@@ -255,7 +256,7 @@ async def remove_route(
 
 
 @router.post("/collection/stack/{stack_id}/locate", response_class=HTMLResponse)
-async def locate_stack(
+async def locate_collection_stack(
     request: Request,
     stack_id: int,
     location_id: int = Form(None),
@@ -263,12 +264,9 @@ async def locate_stack(
 ) -> HTMLResponse:
     """Unified location picker (#160): file a stack into a box, binder, or deck. """
     _guard_writable()
-    colelction_card = await session.get(CollectionCard, stack_id)
-    if colelction_card is None:
-        raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
-    colelction_card.location = location_id
-    await session.commit()
-    return await _collection_partial(request, session, colelction_card.scryfall_id)
+    sid = await locate_stack(session, stack_id, location_id)
+    if(not sid): raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
+    return await _collection_partial(request, session, sid)
 
 
 @router.post("/collection/stack/{stack_id}/trade", response_class=HTMLResponse)

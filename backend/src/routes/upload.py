@@ -10,6 +10,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
+from src.binder_service import all_binders
+from src.box_service import all_boxes
 from src.config import get_settings
 from src.db import get_session
 from src.importers.base import UnknownFormatError
@@ -79,21 +82,13 @@ async def upload_preview(
             )
         return templates.TemplateResponse(request, _UPLOAD_TMPL, {"error": str(exc)})
 
-    from src.box_service import all_boxes
-    from src.models import Binder
-
-    boxes = await all_boxes(session)
-    binders = await session.execute(select(Binder))
-    binders = binders.scalars().all()
-    # decks = await all_decks(session)
-
     return templates.TemplateResponse(
         request, 
         "upload_preview.html", 
         {
             "preview": preview,
-            "boxes": boxes,
-            "binders": binders,
+            "boxes": await all_boxes(session),
+            "binders": await all_binders(session),
             # "decks": decks
         }
     )

@@ -13,7 +13,7 @@ from datetime import datetime
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import Binder, BinderCard, Card, CollectionCard
+from src.models import Binder, Card, CollectionCard, Location
 
 
 def _as_uuid(value) -> uuid.UUID:
@@ -98,19 +98,14 @@ async def bulk_add_to_binder(session: AsyncSession, binder_id: int, scryfall_ids
     return added
 
 
-async def remove_card(session: AsyncSession, binder_id: int, scryfall_id) -> None:
-    await session.execute(
-        delete(BinderCard).where(
-            BinderCard.binder_id == binder_id, BinderCard.scryfall_id == _as_uuid(scryfall_id)
-        )
-    )
-    await session.commit()
-
-
-async def binder_cards(session: AsyncSession, binder_id: int) -> list[Card]:
+async def get_all_binder_cards(session: AsyncSession, binder_id: int) -> list[CollectionCard]:
     return list((await session.execute(
-        select(Card).join(BinderCard, BinderCard.scryfall_id == Card.scryfall_id)
-        .where(BinderCard.binder_id == binder_id).order_by(Card.name)
+        select(CollectionCard)
+        .join(Location, CollectionCard.location == Location.id)
+        .where(
+            Location.type == "binder",
+            Location.foreign_id == binder_id
+        )
     )).scalars().all())
 
 

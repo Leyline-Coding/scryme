@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.binder_service import binder_cards
+from src.binder_service import get_all_binder_cards
 from src.config import get_settings
 from src.currency import info
 from src.db import get_session
@@ -76,7 +76,7 @@ async def view_share(
     if binder is None:
         raise HTTPException(status_code=404, detail=_GONE)
     ctx["binder"] = binder
-    ctx["cards"] = await binder_cards(session, binder.id)
+    ctx["cards"] = await get_all_binder_cards(session, binder.id)
     return templates.TemplateResponse(request, "share_binder.html", ctx)
 
 

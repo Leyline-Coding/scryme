@@ -39,17 +39,33 @@
 
   
 
-  {% if views %}
+  {% if cards %}
   <div class="card-grid-sm">
-    {% for c, img in views %}
+    {% for c in cards %}
     <div class="relative group">
       <a href="/card/{{ c.scryfall_id }}" class="block rounded-lg overflow-hidden ring-1 ring-edge hover:ring-accent">
-        {% if img %}<img src="{{ img }}" alt="{{ c.name }}" loading="lazy" class="w-full aspect-[5/7] object-cover" />
-        {% else %}<div class="w-full aspect-[5/7] flex items-center justify-center text-[10px] text-muted p-1 text-center">{{ c.name }}</div>{% endif %}
+        {% if c.card.front_image() %}
+        <img src="{{ c.card.front_image() }}" alt="{{ c.name }}" loading="lazy"
+            class="grid-card-img w-full aspect-[5/7] object-cover"
+            {% if c.card.back_face_image() %}data-front="{{ c.card.front_image() }}" data-back="{{ c.card.back_face_image() }}"
+            data-face="front"{% endif %} />
+        {% if c.card.back_face_image() %}
+        <span class="grid-flip-overlay absolute inset-0 z-10 flex items-center justify-center
+                    opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          <button type="button" title="Flip to the other face" aria-label="Flip card"
+                  class="grid-flip-btn pointer-events-auto grid place-items-center w-10 h-10 rounded-full
+                        bg-black/60 text-white text-xl leading-none hover:bg-black/80 shadow-lg">↻</button>
+        </span>
+        {% endif %}
+        {% else %}
+        <div class="w-full aspect-[5/7] flex items-center justify-center text-center p-2 text-xs text-muted">
+          {{ c.name }}
+        </div>
+        {% endif %}
       </a>
       {% if not read_only %}
-      <form method="post" action="/binders/{{ binder.id }}/remove-card" class="absolute top-1 right-1">
-        <input type="hidden" name="scryfall_id" value="{{ c.scryfall_id }}" />
+      <form method="post" action="/binders/{{ binder.id }}/stack/{{ c.id }}/locate" class="absolute top-1 right-1">
+        <input type="hidden" name="location_id" value="" />
         <button title="Remove from binder" class="rounded bg-black/60 text-white text-xs px-1.5 leading-5 opacity-0 group-hover:opacity-100 tap">✕</button>
       </form>
       {% endif %}

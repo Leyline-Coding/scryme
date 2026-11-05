@@ -37,6 +37,7 @@ from src.decks import (
     PROXY_SOURCES,
     add_card_to_deck,
     apply_deck_card_edit,
+    checkout_deck,
     create_deck,
     deck_coverage,
     deck_coverage_combined,
@@ -63,6 +64,11 @@ _DECK_NEW_TMPL = "deck_new.html"
 _img_cache = ImageCache()
 
 
+def _guard_writable() -> None:
+    if get_settings().read_only:
+        raise HTTPException(status_code=403, detail="This instance is read-only.")
+
+
 async def _deck_images(session: AsyncSession, deck: Deck) -> dict[str, str]:
     """Map each deck card's scryfall_id -> image URL (cached path, else CDN) for the grid view."""
     sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
@@ -78,11 +84,6 @@ async def _deck_images(session: AsyncSession, deck: Deck) -> dict[str, str]:
         out[s] = _img_cache.url_path(s) if cached else (cdn_image_url(raw or {}) or "")
     return out
 _CURRENT = "current"  # diff source referring to the deck's live state (vs a saved version)
-
-
-def _guard_writable() -> None:
-    if get_settings().read_only:
-        raise HTTPException(status_code=403, detail="This instance is read-only.")
 
 
 @router.get("/decks")
@@ -721,3 +722,19 @@ async def update_deck_name(
     if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     new_deck_name = await rename_deck(session, deck, name)
     return PlainTextResponse(new_deck_name)
+
+
+@router.post("/decks/{deck_id}/checkout")
+async def deck_checkout(
+    request: Request,
+    deck_id: int,
+    mainboard: bool = Form(False),
+    sideboard: bool = Form(False),
+    session: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    """Checkout cards from a deck to the collection."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    await checkout_deck(session, deck, mainboard=mainboard, sideboard=sideboard)
+    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)

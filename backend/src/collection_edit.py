@@ -28,8 +28,7 @@ from dataclasses import dataclass
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.box_service import all_boxes
-from src.models import Card, CollectionCard, Deck
+from src.models import Card, CollectionCard
 from src.tags import add_card_tag
 
 
@@ -443,8 +442,8 @@ async def bulk_move_to_location(session: AsyncSession, location_id: int, scryfal
     await session.commit()
 
 
-async def pull_stack_from_existing(session: AsyncSession, stack_id: int, expected_version: int | None = None) -> uuid.UUID | None:
-    """Pull one card from an existing stack into a new stack with all the same attributes.
+async def pull_stack_from_existing(session: AsyncSession, stack_id: int, num_cards: int = 1, new_location_id: int | None = None, expected_version: int | None = None) -> uuid.UUID | None:
+    """Pull num_cards card(s) from an existing stack into a new stack with all the same attributes.
     
     Returns the scryfall_id of the card that was pulled, or None if the operation failed.
     """
@@ -455,16 +454,16 @@ async def pull_stack_from_existing(session: AsyncSession, stack_id: int, expecte
     _guard_version(original_stack, expected_version)
     
     # If we can't reduce quantity, nothing to do
-    if original_stack.quantity <= 1: return None
+    if original_stack.quantity <= num_cards: return None
         
-    # Create a new stack with all the same attributes but quantity of 1
+    # Create a new stack with all the same attributes but quantity of num_cards
     new_stack = CollectionCard(
         scryfall_id=original_stack.scryfall_id,
-        quantity=1,
+        quantity=num_cards,
         finish=original_stack.finish,
         condition=original_stack.condition,
         language=original_stack.language,
-        location=original_stack.location,
+        location=(new_location_id if new_location_id else original_stack.location),
         purchase_price=original_stack.purchase_price,
         source_format="manual",
         tags=original_stack.tags
@@ -474,7 +473,7 @@ async def pull_stack_from_existing(session: AsyncSession, stack_id: int, expecte
     await session.flush()  # Get the ID for version update
     
     # Update original stack quantity
-    original_stack.quantity -= 1
+    original_stack.quantity -= num_cards
     original_stack.version += 1
     
     await session.commit()

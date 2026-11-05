@@ -153,63 +153,113 @@
     <a href="/collection?tab=decks" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Decks →</a>
   </header>
 
-  {# Coverage summary #}
-  <div class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
-    <div class="flex items-end justify-between gap-3 mb-2">
-      <div>
-        <div class="text-2xl font-bold">{{ cov.pct_complete }}% owned</div>
-        <div class="text-sm text-muted">{{ cov.owned_count }} of {{ cov.total_needed }} cards</div>
-      </div>
-      <div class=" class="text-center">
-        {% if cov.missing_count %}
-        <div class="text-amber-500 font-medium">{{ cov.missing_count }} missing
-          <span class="text-muted">({{ cov.unique_missing }} distinct)</span>
+  
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+
+    {# Coverage summary #}
+    <section class="md:col-span-3 rounded-xl bg-surface ring-1 ring-edge p-4">
+      <div class="flex items-end justify-between gap-3 mb-2">
+        <div>
+          <div class="text-2xl font-bold">{{ cov.pct_complete }}% owned</div>
+          <div class="text-sm text-muted">{{ cov.owned_count }} of {{ cov.total_needed }} cards</div>
         </div>
-        {% if not read_only and cov.unique_missing > cov.unmatched %}
-        <form method="post" action="/decks/{{ cov.deck.id }}/wishlist" class="mt-1">
-          <button type="submit" class="text-xs rounded bg-surface-2 hover:bg-surface-3 px-2 py-1">
-            ☆ Add missing to wishlist
+        <div class="class="text-center">
+          {% if cov.missing_count %}
+          <div class="text-amber-500 font-medium">{{ cov.missing_count }} missing
+            <span class="text-muted">({{ cov.unique_missing }} distinct)</span>
+          </div>
+          {% if not read_only and cov.unique_missing > cov.unmatched %}
+          <form method="post" action="/decks/{{ cov.deck.id }}/wishlist" class="mt-1">
+            <button type="submit" class="text-xs rounded bg-surface-2 hover:bg-surface-3 px-2 py-1">
+              ☆ Add missing to wishlist
+            </button>
+          </form>
+          {% endif %}
+          {% else %}
+          <div class="text-emerald-500 font-medium">Complete — you own everything</div>
+          {% endif %}
+        </div>
+        <div class="text-right text-sm">
+          <div class="text-xs text-muted">Deck value ({{ cur.label }})</div>
+          <div class="text-2xl font-bold">{{ currency.format_and_decorate(stats.total_value, cur.symbol) }}</div>
+          {% if cov.missing_count %}
+          {% if cov.missing_cost %}<div class="text-muted">≈ {{ currency.format_and_decorate(cov.missing_cost, cur.symbol) }} to complete</div>{% endif %}
+          {% endif %}
+        </div>
+      </div>
+      <div class="bg-surface-2 rounded h-2 overflow-hidden">
+        <div class="h-full bg-accent" style="width: {{ cov.pct_complete }}%"></div>
+      </div>
+      {% if cov.unmatched %}
+      <p class="mt-2 text-xs text-amber-500">{{ cov.unmatched }} line(s) didn't match a known card.</p>
+      {% endif %}
+      
+      {# Show legality summary for all formats #}
+      <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
+        {% for f in formats %}
+          {% if cov.all_legalities[f] %}
+            <a href="/decks/{{ cov.deck.id }}?format={{ f }}#mainboard"
+              class="flex items-center justify-between rounded px-2 py-1 bg-emerald-500/10 text-emerald-500 text-xs hover:bg-emerald-500/20 transition">
+              <span class="capitalize">{{ f }}</span>
+              <span class="capitalize">legal</span>
+            </a>
+          {% else %}
+            <a href="/decks/{{ cov.deck.id }}?format={{ f }}#mainboard"
+              class="flex items-center justify-between rounded px-2 py-1 bg-surface-2 text-muted text-xs hover:bg-surface-3 transition">
+              <span class="capitalize">{{ f }}</span>
+              <span class="capitalize">not legal</span>
+            </a>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </section>
+
+    {# Deck Construction #}
+    <section class="md:col-span-1 rounded-xl bg-surface ring-1 ring-edge p-4">
+      <h2 class="text-xs font-semibold text-muted mb-2 uppercase tracking-wide">Deck Construction</h2>
+      
+      {# Sleeve info #}
+      {% if deck.sleeves %}
+        {% for sleeve in deck.sleeves %}
+          <div class="flex items-center gap-2 mb-2">
+            {% if sleeve.image %}
+              <img src="/sleeves/{{ sleeve.image }}" alt="{{ sleeve.name or 'Sleeve' }}" 
+                  loading="lazy" class="w-12 h-16 object-cover rounded border" />
+            {% else %}
+              <div style="background-color: {{ sleeve.color }}; width: 48px; height: 64px; 
+                        border: 1px solid black; border-radius: 4px; display: flex; align-items: center; 
+                        justify-content: center;" class="flex items-center justify-center">
+                <span class="text-xxs text-white font-bold">{{ sleeve.name or 'Sleeve #' + sleeve.id|string }}</span>
+              </div>
+            {% endif %}
+            <div>
+              <div class="font-medium">{{ sleeve.name or 'Sleeve #' + sleeve.id | string }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-sm text-muted">No sleeve associated with this deck. <a href="/sleeves/new?deck_id={{ cov.deck.id }}" class="text-accent hover:underline">Add a sleeve</a></p>
+      {% endif %}
+
+      {# Checkout buttons #}
+      <div class="mt-4">
+        <form method="post" action="/decks/{{ cov.deck.id }}/checkout" class="mb-1">
+          <input type="hidden" name="mainboard" value="true">
+          <button type="submit" class="w-full rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs mb-1">
+            Checkout Mainboard
           </button>
         </form>
-        {% endif %}
-        {% else %}
-        <div class="text-emerald-500 font-medium">Complete — you own everything</div>
-        {% endif %}
+        <form method="post" action="/decks/{{ cov.deck.id }}/checkout" class="mb-1">
+          <input type="hidden" name="sideboard" value="true">
+          <button type="submit" class="w-full rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs mb-1">
+            Checkout Sideboard
+          </button>
+        </form>
       </div>
-      <div class="text-right text-sm">
-        <div class="text-xs text-muted">Deck value ({{ cur.label }})</div>
-        <div class="text-2xl font-bold">{{ currency.format_and_decorate(stats.total_value, cur.symbol) }}</div>
-        {% if cov.missing_count %}
-        {% if cov.missing_cost %}<div class="text-muted">≈ {{ currency.format_and_decorate(cov.missing_cost, cur.symbol) }} to complete</div>{% endif %}
-        {% endif %}
-      </div>
-    </div>
-    <div class="bg-surface-2 rounded h-2 overflow-hidden">
-      <div class="h-full bg-accent" style="width: {{ cov.pct_complete }}%"></div>
-    </div>
-    {% if cov.unmatched %}
-    <p class="mt-2 text-xs text-amber-500">{{ cov.unmatched }} line(s) didn't match a known card.</p>
-    {% endif %}
-    
-    {# Show legality summary for all formats #}
-    <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
-      {% for f in formats %}
-        {% if cov.all_legalities[f] %}
-          <a href="/decks/{{ cov.deck.id }}?format={{ f }}#mainboard"
-            class="flex items-center justify-between rounded px-2 py-1 bg-emerald-500/10 text-emerald-500 text-xs hover:bg-emerald-500/20 transition">
-            <span class="capitalize">{{ f }}</span>
-            <span class="capitalize">legal</span>
-          </a>
-        {% else %}
-          <a href="/decks/{{ cov.deck.id }}?format={{ f }}#mainboard"
-            class="flex items-center justify-between rounded px-2 py-1 bg-surface-2 text-muted text-xs hover:bg-surface-3 transition">
-            <span class="capitalize">{{ f }}</span>
-            <span class="capitalize">not legal</span>
-          </a>
-        {% endif %}
-      {% endfor %}
-    </div>
+
+    </section>
   </div>
+
 
   {# Legality check #}
   <section x-data="{ open: false }" class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6 md:col-span-2">

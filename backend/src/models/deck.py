@@ -13,10 +13,11 @@ import uuid
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, false, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from src.db import Base
-
+from src.models.location import Location
+from src.models.sleeve import Sleeve
 
 class Deck(Base):
     __tablename__ = "deck"
@@ -43,7 +44,15 @@ class Deck(Base):
     sleeves: Mapped[list[Sleeve]] = relationship(
         back_populates="deck", cascade="all, delete-orphan", lazy="selectin"
     )
-
+    location: Mapped[Location] = relationship(
+        "Location",
+        primaryjoin=lambda: (
+            (Deck.id == foreign(Location.foreign_id)) &
+            (Location.type == "deck")
+        ),
+        uselist=False,
+        viewonly=True,
+    )
 
 class DeckCard(Base):
     __tablename__ = "deck_card"

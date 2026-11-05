@@ -5,7 +5,7 @@
     {% if selectedAsLabel and selected_location %}
       {% for type, locations in grouped_locations.items() %}
         {% for location in locations %}
-          {% if location.id == selected_location %}{% if location.type=='box' %}📦{% elif location.type=='binder' %}📕{% else %}🃏{% endif %}{{ location.label }}{% endif %}
+          {% if location.id == selected_location %}{% if location.type=='box' %}<i class="fa-solid fa-box"></i>{% elif location.type=='binder' %}<i class="fa-solid fa-book-open"></i>{% else %}<i class="fa-solid fa-layer-group"></i>{% endif %} {{ location.label }}{% endif %}
         {% endfor %}
       {% endfor %}
     {% else %}
@@ -16,11 +16,11 @@
   <div x-show="{{name}}" @click.outside="{{name}} = false" x-transition style="display: none"
     class="absolute right-0 mt-2 w-64 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
     <button type="button" @click="{{name}} = false; document.getElementById('{{name}}').value = ''; {{onchange}}"
-      class="block w-full text-left px-3 py-1.5 hover:bg-surface-2">📍 Unfiled</button>
+      class="block w-full text-left px-3 py-1.5 hover:bg-surface-2"><i class="fa-solid fa-bars-staggered"></i> Unfiled</button>
     {% for type, locations in grouped_locations.items() %}
     <div class="px-3 py-1.5 text-xs font-medium text-muted border-t border-edge mt-1 pt-1 capitalize">{{type}}</div>
     {% for location in locations %}
-    <button type="button" @click="{{name}} = false; document.getElementById('{{name}}').value = {{location.id}}; {{onchange}}" class="block w-full text-left px-3 py-1.5 hover:bg-surface-2 {% if selected_location == location.id %}selected{% endif %}">{% if type=='box' %}📦{% elif type=='binder' %}📕{% else %}🃏{% endif %} {{ location.label }}</button>
+    <button type="button" @click="{{name}} = false; document.getElementById('{{name}}').value = {{location.id}}; {{onchange}}" class="block w-full text-left px-3 py-1.5 hover:bg-surface-2 {% if selected_location == location.id %}selected{% endif %}">{% if type=='box' %}<i class="fa-solid fa-box"></i>{% elif type=='binder' %}<i class="fa-solid fa-book-open"></i>{% else %}<i class="fa-solid fa-layer-group"></i>{% endif %} {{ location.label }}</button>
     {% endfor %}
     {% endfor %}
   </div>

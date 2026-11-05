@@ -11,15 +11,11 @@ from dataclasses import dataclass
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import func, select
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.binder_service import (
-    add_card,
-    all_binders,
     get_all_binder_cards,
-    binders_for_card,
     create_binder,
     delete_binder,
     rename_binder,
@@ -27,15 +23,15 @@ from src.binder_service import (
 from src.collection_edit import locate_stack, _STACK_NOT_FOUND
 from src.config import get_settings
 from src.db import get_session
-from src.models import Binder, Card, CollectionCard
+from src.models import Binder, Card
 from src.routes._safe import local_redirect
 from src.scryfall.images import ImageCache
-from src.scryfall.mapping import image_url as cdn_image_url
 from src.share import BINDER, links_for, revoke_links_for
 from src.templating import templates
 
 router = APIRouter(tags=["binders"])
 
+_BINDER_NOT_FOUND = "Binder not found."
 _BINDERS_URL = "/collection?tab=binders"
 _cache = ImageCache()
 
@@ -70,7 +66,7 @@ async def binder_view(
     """``shared`` is a token just minted for this binder, shown once so it can be copied (#80)."""
     binder = await session.get(Binder, binder_id)
     if binder is None:
-        raise HTTPException(status_code=404, detail="Binder not found.")
+        raise HTTPException(status_code=404, detail=_BINDER_NOT_FOUND)
     cards = await get_all_binder_cards(session, binder_id)
     return templates.TemplateResponse(
         request, "binder_view.html",
@@ -95,10 +91,12 @@ async def new_binder(
 @router.post("/binders/{binder_id}/rename")
 async def rename_binder_route(
     binder_id: int, name: str = Form(""), session: AsyncSession = Depends(get_session)
-) -> RedirectResponse:
+) -> PlainTextResponse:
     _guard_writable()
-    await rename_binder(session, binder_id, name)
-    return local_redirect(f"/binders/view/{binder_id}")
+    binder = await session.get(Binder, binder_id)
+    if binder is None: raise HTTPException(status_code=404, detail=_BINDER_NOT_FOUND)
+    new_binder_name = await rename_binder(session, binder, name)
+    return PlainTextResponse(new_binder_name)
 
 
 @router.post("/binders/{binder_id}/delete")

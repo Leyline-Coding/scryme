@@ -43,6 +43,7 @@ from src.decks import (
     deck_printings,
     deck_stats,
     proxy_cards,
+    rename_deck,
     resolve_ownership_rows,
     resync_printings,
 )
@@ -686,8 +687,7 @@ async def deck_suggest_owned(
 ) -> HTMLResponse:
     """Heuristic owned-card upgrade suggestions by thin role (#181) — no LLM, read-only safe."""
     deck = await session.get(Deck, deck_id)
-    if deck is None:
-        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     return await _render_owned_upgrades(request, deck, session)
 
 
@@ -699,8 +699,7 @@ async def deck_add_owned(
     """Add one owned suggestion to the deck and re-render the panel so the pick drops off."""
     _guard_writable()
     deck = await session.get(Deck, deck_id)
-    if deck is None:
-        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     added = None
     try:
         sid = uuid.UUID(scryfall_id)
@@ -713,14 +712,12 @@ async def deck_add_owned(
         added = card.name
     return await _render_owned_upgrades(request, deck, session, added=added)
 
-@router.post("/decks/{deck_id}/name")
+@router.post("/decks/{deck_id}/rename")
 async def update_deck_name(
     request: Request, deck_id: int, name: str = Form(""), session: AsyncSession = Depends(get_session)
-) -> RedirectResponse:
+) -> PlainTextResponse:
     _guard_writable()
     deck = await session.get(Deck, deck_id)
-    if deck is None:
-        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
-    deck.name = name
-    await session.commit()
-    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    new_deck_name = await rename_deck(session, deck, name)
+    return PlainTextResponse(new_deck_name)

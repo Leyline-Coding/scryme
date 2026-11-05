@@ -39,18 +39,18 @@ from src.wishlist import list_wishlist
 router = APIRouter(tags=["collection"])
 
 TABS = [
-    ("stats", "Stats"),
-    ("locations", "Locations"),
-    ("binders", "Binders"),
-    ("decks", "Decks"),
-    ("tags", "Tags"),
-    ("sleeves", "Sleeves"),
-    ("wishlist", "Wishlist"),
-    ("checklists", "Checklists"),
-    ("trade", "Trade"),
-    ("sell", "Sell"),
+    ("stats", "Stats", "fa-solid fa-chart-column"),
+    ("locations", "Locations", "fa-solid fa-compass"),
+    ("binders", "Binders", "fa-solid fa-book-open"),
+    ("decks", "Decks", "fa-solid fa-layer-group"),
+    ("tags", "Tags", "fa-solid fa-tags"),
+    ("sleeves", "Sleeves", "fa-solid fa-shield-halved"),
+    ("wishlist", "Wishlist", "fa-solid fa-heart"),
+    ("checklists", "Checklists", "fa-solid fa-list-check"),
+    ("trade", "Trade", "fa-solid fa-handshake"),
+    ("sell", "Sell", "fa-solid fa-money-bill"),
 ]
-_TAB_KEYS = {t for t, _ in TABS}
+_TAB_KEYS = {t for t, _, _ in TABS}
 
 
 @router.get("/collection", response_class=HTMLResponse)

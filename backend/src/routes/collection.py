@@ -18,7 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.box_service import (
     create_box,
     delete_box,
-    rename_box,
 )
 from src.collection_edit import (
     StaleStackError,
@@ -40,7 +39,7 @@ from src.config import get_settings
 from src.db import get_session
 from src.grading import clear_grade, safe_photo_path, save_grade_photo, set_grade
 from src.locations import find_or_create_grouped_locations
-from src.models import Card, CollectionCard
+from src.models import Box, Card, CollectionCard
 from src.tags import card_tags
 from src.templating import templates
 from src.trade_pool import open_pools, stage_selection, stage_stack
@@ -115,14 +114,13 @@ async def add(
     finish: str = Form("normal"),
     condition: str = Form(""),
     language: str = Form("en"),
-    binder: str = Form(""),
-    location: str = Form(""),
+    location: int = Form(""),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     _guard_writable()
     sid = uuid.UUID(scryfall_id)
     await add_or_increment(session, sid, quantity, finish=finish, condition=condition,
-                           language=language, binder=binder, location=location)
+                           language=language, location=location)
     return await _collection_partial(request, session, sid)
 
 
@@ -404,15 +402,6 @@ async def new_box(
 ) -> RedirectResponse:
     _guard_writable()
     await create_box(session, name)
-    return RedirectResponse(url=_LOCATIONS_URL, status_code=303)
-
-
-@router.post("/collection/boxes/{box_id}/rename")
-async def rename_box_route(
-    box_id: int, name: str = Form(""), session: AsyncSession = Depends(get_session)
-) -> RedirectResponse:
-    _guard_writable()
-    await rename_box(session, box_id, name)
     return RedirectResponse(url=_LOCATIONS_URL, status_code=303)
 
 

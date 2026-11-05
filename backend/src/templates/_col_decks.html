@@ -9,15 +9,15 @@
   <div class="flex justify-start items-center gap-3 md:mb-4">
     <a href="/collection?tab=decks&sort_by={{ sort_by }}&sort_dir={{ 'desc' if sort_dir == 'asc' else 'asc' }}"
       class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}">
-      {{ 'Descending' if sort_dir == 'desc' else 'Ascending' }}
-    </a>
-    <a href="/collection?tab=decks&sort_by=price&sort_dir={{ sort_dir }}"
-      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'price' else '' }}">
-      Price
+      {% if sort_dir == 'desc' %}<i class="fa-solid fa-arrow-down-wide-short"></i>{% else %}<i class="fa-solid fa-arrow-down-short-wide"></i>{% endif %}
     </a>
     <a href="/collection?tab=decks&sort_by=name&sort_dir={{ sort_dir }}"
       class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'name' else '' }}">
       Name
+    </a>
+    <a href="/collection?tab=decks&sort_by=price&sort_dir={{ sort_dir }}"
+      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'price' else '' }}">
+      Price
     </a>
     <a href="/collection?tab=decks&sort_by=updated_at&sort_dir={{ sort_dir }}"
       class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'updated_at' else '' }}">
@@ -30,7 +30,7 @@
       ✨ Build from collection
     </a>
     <a href="/decks/new" class="rounded-full bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:opacity-90 whitespace-nowrap">
-      + New deck
+      <i class="fa-solid fa-plus"></i> New deck
     </a>
   </div>
   {% endif %}
@@ -71,7 +71,7 @@
     {% if not read_only %}
     <form action="/decks/{{ deck.id }}/delete" method="post"
           onsubmit="return confirm('Delete this deck?')">
-      <button class="text-muted hover:text-rose-500 text-sm tap" title="Delete">✕</button>
+      <button class="text-muted hover:text-rose-500 text-sm tap" title="Delete"><i class="fa-solid fa-trash"></i></button>
     </form>
     {% endif %}
   </li>

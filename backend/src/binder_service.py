@@ -40,11 +40,11 @@ async def create_binder(session: AsyncSession, name: str) -> Binder | None:
     return binder
 
 
-async def rename_binder(session: AsyncSession, binder_id: int, name: str) -> None:
-    binder = await session.get(Binder, binder_id)
+async def rename_binder(session: AsyncSession, binder: Binder, name: str) -> str:
     if binder and name.strip():
         binder.name = name.strip()[:128]
         await session.commit()
+    return binder.name
 
 
 async def delete_binder(session: AsyncSession, binder_id: int) -> None:

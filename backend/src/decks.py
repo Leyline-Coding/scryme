@@ -56,6 +56,13 @@ async def all_decks(session: AsyncSession) -> list[Deck]:
     return list((await session.execute(select(Deck).order_by(Deck.name))).scalars().all())
 
 
+async def rename_deck(session: AsyncSession, deck: Deck, name: str = '') -> str:
+    if deck and name.strip():
+        deck.name = name.strip()[:128]
+        await session.commit()
+    return deck.name
+
+
 def _peel_marker(text: str) -> tuple[str, str] | None:
     """Peel one trailing ``*F*``-style export marker off ``text``.
 

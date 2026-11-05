@@ -18,7 +18,6 @@ async def all_boxes(session: AsyncSession) -> list[Box]:
     return list((await session.execute(select(Box).order_by(Box.name))).scalars().all())
 
 
-
 async def create_box(session: AsyncSession, name: str) -> Box | None:
     name = name.strip()[:128]
     if not name:
@@ -31,17 +30,11 @@ async def create_box(session: AsyncSession, name: str) -> Box | None:
     return box
 
 
-async def rename_box(session: AsyncSession, box_id: int, name: str) -> None:
-    box = await session.get(Box, box_id)
-    name = name.strip()[:128]
-    if not box or not name or name == box.name:
-        return
-    old = box.name
-    box.name = name
-    await session.execute(
-        update(CollectionCard).where(CollectionCard.location == old).values(location=name)
-    )
-    await session.commit()
+async def rename_box(session: AsyncSession, box: Box, name: str) -> str:
+    if box and name.strip():
+        box.name = name.strip()[:128]
+        await session.commit()
+    return box.name
 
 
 async def delete_box(session: AsyncSession, box_id: int) -> None:

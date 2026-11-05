@@ -140,7 +140,7 @@
   {% if digest and digest.available and (digest.delta != 0 or digest.gainers or digest.losers) %}
   <div class="mt-4 w-full max-w-2xl rounded-xl border border-edge bg-surface p-4">
     <div class="flex items-baseline justify-between gap-3 mb-2">
-      <p class="text-sm font-semibold text-accent">📈 Collection movers</p>
+      <p class="text-sm font-semibold text-accent"><i class="fa-solid fa-chart-line"></i> Collection movers</p>
       <p class="text-sm">
         {% if digest.delta >= 0 %}<span class="text-emerald-500 font-semibold">▲ + {{ currency.format_and_decorate(digest.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>
         {% else %}<span class="text-rose-500 font-semibold">▼ - {{ currency.format_and_decorate(-digest.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>{% endif %}

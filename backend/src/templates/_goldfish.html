@@ -3,7 +3,7 @@
    state. The library is passed as JSON via the x-data attribute (server values never enter the
    inline script block, which stays pure JS); it's expanded to individual cards client-side. #}
 {% set ns = namespace(lines=[]) %}
-{% for r in cov.main %}{% set ns.lines = ns.lines + [{'n': r.name, 'i': images.get(r.scryfall_id, ''), 'q': r.quantity}] %}{% endfor %}
+{% for r in cov.main %}{% set ns.lines = ns.lines + [{'n': r.name, 'i': r.scryfall_card.front_image() if r.scryfall_card else '', 'b': r.scryfall_card.back_face_image() if r.scryfall_card else '', 'q': r.quantity}] %}{% endfor %}
 {# tojson emits double-quoted JSON, so the x-data attribute MUST be single-quoted or the first
    `"` closes it and Alpine gets a broken expression; tojson escapes ' < > & for exactly this. #}
 <section x-data='goldfish({{ ns.lines | tojson }})' x-cloak
@@ -11,7 +11,7 @@
   <div class="flex items-center gap-2 flex-wrap">
     <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">Playtest</h2>
     <button type="button" @click="start()"
-            class="rounded-lg bg-accent text-accent-fg px-2.5 py-1 text-xs font-medium">🎴 Test hand</button>
+            class="rounded-lg bg-accent text-accent-fg px-2.5 py-1 text-xs font-medium"><i class="fa-solid fa-flask-vial"></i> Test hand</button>
     <span x-show="open" class="text-xs text-muted" x-text="libCount + ' in library'"></span>
     <span x-show="open && mulligans > 0" class="text-xs text-muted" x-text="'· ' + mulligans + ' mulligan' + (mulligans > 1 ? 's' : '')"></span>
     <button type="button" x-show="open" @click="open = false"
@@ -81,7 +81,7 @@
 <script>
   function goldfish(lines) {
     const deck = [];
-    lines.forEach((l) => { for (let k = 0; k < l.q; k++) deck.push({ name: l.n, img: l.i }); });
+    lines.forEach((l) => { for (let k = 0; k < l.q; k++) deck.push({ name: l.n, img: l.i, back: l.b }); });
     return {
       open: false,
       deck,
@@ -135,7 +135,7 @@
       scryBottom() {
         if (this.library.length) this.library.push(this.library.shift());
         this.scryCard = null;
-      },
+      }
     };
   }
 </script>

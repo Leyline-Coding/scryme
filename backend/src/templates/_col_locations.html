@@ -25,30 +25,42 @@
     <form method="post" action="/collection/boxes/new" class="flex gap-2">
       <input type="text" name="name" required placeholder="New box name"
              class="flex-1 min-w-0 rounded-full bg-surface-2 border border-edge px-3 py-2 text-sm" />
-      <button class="rounded-full bg-accent text-accent-fg px-3 py-2 text-sm font-medium">Add box</button>
+      <button class="rounded-full bg-accent text-accent-fg px-3 py-2 text-sm font-medium"><i class="fa-solid fa-plus"></i> Add box</button>
     </form>
   </div>
   {% endif %}
   {% if boxes %}
   <ul class="space-y-2">
     {% for b in boxes %}
-    <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3">
-      <a href="/search?q={{ ('loc:\"box:' ~ b.name ~ '\"') | urlencode }}&scope=collection"
-         class="flex-1 min-w-0 hover:text-accent">
-        <div class="font-medium truncate">📦 {{ b.name }}</div>
+    <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3 cursor-pointer" 
+      onclick='window.location.href="/search?q={{ ('loc:\"box:' ~ b.name ~ '\"') | urlencode }}&scope=collection"'>
+      <div class="flex-1">
+        <div class="font-medium truncate">
+          <i class="fa-solid fa-box"></i> <span id="box-name"
+                  onclick="event.stopPropagation();">{{ b.name }}</span>
+          {% if not read_only %}
+          <button type="button" 
+                  hx-post="/edit-name-form"
+                  hx-vals='{"placeholder": "{{b.name}}", "action": "/box/{{ b.id }}/rename", "target": "#box-name"}'
+                  hx-target="#box-name"
+                  hx-swap="innerHTML"
+                  hx-trigger="click"
+                  class="ml-2 text-muted hover:text-accent"
+                  onclick="event.stopPropagation();">
+            <i class="fa-solid fa-pen"></i>
+          </button>
+          {% endif %}
+        </div>
         <div class="text-xs text-muted">{{ '{:,}'.format(locations.get('box', {}).get(b.id, {}) | attr('quantity') | default(0)) }} cards • {{ '{:,}'.format(locations.get('box', {}).get(b.id, {}) | attr('stacks') | default(0)) }} printings</div>
-      </a>
-      {% if not read_only %}
-      <form method="post" action="/collection/boxes/{{ b.id }}/rename" class="flex gap-1 shrink-0">
-        <input type="text" name="name" value="{{ b.name }}"
-               class="w-24 rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs" />
-        <button class="text-xs text-muted hover:text-fg tap" title="Rename">✎</button>
-      </form>
-      <form method="post" action="/collection/boxes/{{ b.id }}/delete" class="shrink-0"
-            onsubmit="return confirm('Delete box {{ b.name }}? Its cards become unfiled.')">
-        <button class="text-xs text-muted hover:text-rose-500 tap" title="Delete">✕</button>
-      </form>
-      {% endif %}
+      </div>
+      <div>
+        {% if not read_only %}
+        <form method="post" action="/collection/boxes/{{ b.id }}/delete" class="shrink-0" onclick="event.stopPropagation();"
+              onsubmit="return confirm('Delete box {{ b.name }}? Its cards become unfiled.')">
+          <button class="text-muted hover:text-rose-500 tap" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        </form>
+        {% endif %}
+      </div>
     </li>
     {% endfor %}
   </ul>
@@ -67,8 +79,8 @@
     {% if binders %}
     <ul class="divide-y divide-edge rounded-xl border border-edge bg-surface">
       {% for b in binders %}
-      <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-        <a href="/binders/view/{{ b.id }}" class="font-medium truncate hover:text-accent">📕 {{ b.name }}</a>
+      <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm" >
+        <a href="/binders/view/{{ b.id }}" class="font-medium truncate hover:text-accent flex-1 min-w-0"><i class="fa-solid fa-book-open"></i> {{ b.name }}</a>
          <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(locations.get('binder', {}).get(b.id, {}) | attr('quantity') | default(0)) }} cards • {{ '{:,}'.format(locations.get('binder', {}).get(b.id, {}) | attr('stacks') | default(0)) }} printings</span>
       </li>
       {% endfor %}
@@ -86,7 +98,7 @@
     <ul class="divide-y divide-edge rounded-xl border border-edge bg-surface">
       {% for d in decks %}
       <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-        <a href="/decks/{{ d.id }}" class="font-medium truncate hover:text-accent">🃏 {{ d.name }}</a>
+        <a href="/decks/{{ d.id }}" class="font-medium truncate hover:text-accent flex-1 min-w-0"><i class="fa-solid fa-layer-group"></i> {{ d.name }}</a>
         <span class="text-muted tabular-nums shrink-0">
           <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(locations.get('deck', {}).get(d.id, {}) | attr('quantity') | default(0)) }} of {{deck_sizes[d.id]['main'] + deck_sizes[d.id]['side']}}</span>
           <span class="text-muted tabular-nums shrink-0 inline-block w-14 text-right">({{deck_sizes[d.id]['main']}}/{{deck_sizes[d.id]['side']}})</span>

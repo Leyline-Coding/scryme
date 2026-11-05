@@ -47,7 +47,7 @@
         {% elif not r.owned %}<span class="text-xs text-muted shrink-0">missing</span>{% endif %}
         {% if not read_only %}
         <button type="button" title="Rename / change card" @click="editing = !editing"
-                class="shrink-0 text-xs text-muted hover:text-accent tap">✎</button>
+                class="shrink-0 text-xs text-muted hover:text-accent tap"><i class="fa-solid fa-pen"></i></button>
         <form method="post" action="/checklists/{{ cov.checklist.id }}/items/{{ r.item_id }}/delete"
               class="shrink-0">
           <button type="submit" title="Remove from checklist" class="text-xs text-muted hover:text-rose-500 tap">✕</button>

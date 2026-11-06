@@ -197,29 +197,86 @@ async def delete_stack(session: AsyncSession, stack_id: int, expected_version: i
     return sid
 
 
-async def locate_stacks(session: AsyncSession, stack_ids: list[int], location_id: int | None = None):
+async def move_stacks_location(session: AsyncSession, stack_ids: list[int], location_id: int | None = None) -> list[uuid.UUID]:
     """Move stacks to a new location. Returns a list of scryfall_ids (or None if it didn't exist).
+    
+    If a target location already has an identical collection card, the source card's quantity
+    will be added to the existing card and the source card will be deleted.
     """
-    collection_cards = await session.scalars(select(CollectionCard).where(CollectionCard.id.in_(stack_ids)))
-    collection_cards_list = collection_cards.all()
+    stacks_to_move = (await session.scalars(select(CollectionCard).where(CollectionCard.id.in_(stack_ids)))).all()
     
-    # Create mapping of stack_id to CollectionCard for efficient lookup
-    stack_to_card = {card.id: card for card in collection_cards_list}
-    
-    # Update location for all cards
-    for stack_id in stack_ids:
-        if stack_id in stack_to_card:
-            stack_to_card[stack_id].location = location_id
+    # Preload CollectionCard matches coarsely: location and scryfall_id. _cards_are_identical will perform the fine-grained match
+    existing_stacks_preloaded = (await session.scalars(
+        select(CollectionCard).where(
+            CollectionCard.location == location_id,
+            CollectionCard.scryfall_id.in_([card.scryfall_id for card in stacks_to_move])
+        )
+    )).all()
+
+    sids = []
+    # Process each stack one by one
+    for stack_to_move in stacks_to_move:
+          
+          # Check coarsely preload CollectionCard matches using _cards_are_identical()
+          identical_existing = next(
+              (existing_stack for existing_stack in existing_stacks_preloaded if _cards_are_identical(stack_to_move, existing_stack)),
+              None
+          )
+          
+          if identical_existing:
+              # Increment the quantity of the existing card and delete source
+              identical_existing.quantity += stack_to_move.quantity
+              await session.delete(stack_to_move)
+              sids += [identical_existing.scryfall_id]
+          else:
+              # No identical card at target location, just update location
+              stack_to_move.location = location_id
+              sids += [stack_to_move.scryfall_id]
     
     await session.commit()
-    return [card.scryfall_id for card in collection_cards_list]
+    return sids
 
 
-async def locate_stack(session: AsyncSession, stack_id: int, location_id: int | None = None):
+
+async def move_stack_location(session: AsyncSession, stack_id: int, location_id: int | None = None) -> uuid.UUID | None:
     """Move a single stack to a new location. Returns its scryfall_id (or None if it didn't exist).
     """
-    result = await locate_stacks(session, [stack_id], location_id)
+    result = await move_stacks_location(session, [stack_id], location_id)
     return result[0] if result else None
+
+
+async def _cards_are_identical(card1: CollectionCard, card2: CollectionCard) -> bool:
+    """Check if two CollectionCards are identical (excluding id, source_format, and version).
+    
+    Two cards are considered identical if they have the same:
+    - scryfall_id
+    - quantity
+    - finish
+    - condition
+    - language
+    - purchase_price
+    - location (this is ignored for comparison)
+    - tags
+    - grade_company
+    - grade
+    - cert_number
+    - grade_photo
+    - value_override
+    """
+    return (
+        card1.scryfall_id == card2.scryfall_id and
+        card1.quantity == card2.quantity and
+        card1.finish == card2.finish and
+        card1.condition == card2.condition and
+        card1.language == card2.language and
+        card1.purchase_price == card2.purchase_price and
+        card1.tags == card2.tags and
+        card1.grade_company == card2.grade_company and
+        card1.grade == card2.grade and
+        card1.cert_number == card2.cert_number and
+        card1.grade_photo == card2.grade_photo and
+        card1.value_override == card2.value_override
+    )
 
 
 async def adjust_owned(session: AsyncSession, scryfall_id, delta: int) -> None:

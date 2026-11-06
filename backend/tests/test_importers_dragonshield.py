@@ -31,7 +31,7 @@ def test_parse_strips_sep_and_maps_fields():
     assert lotus.collector_number == "232"
     assert lotus.scryfall_id is None  # Dragon Shield has no Scryfall ID
     assert lotus.language == "en"  # English -> en
-    assert lotus.binder_name == "Vault"
+    assert lotus.source_location_name == "Vault"
 
     bolt = rows[1]
     assert bolt.finish == "foil"  # Printing=Foil

@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from collections import OrderedDict
 
-from src.collection_edit import locate_stack, pull_stack_from_existing
+from src.collection_edit import move_stack_location, pull_stack_from_existing
 from src.currency import unit_price
 from src.models import Card, CollectionCard, Deck, DeckCard, Location
 from src.pricing import resolve_prices
@@ -919,16 +919,20 @@ async def checkout_deck(session: AsyncSession, deck: Deck, mainboard: bool = Tru
 
         # Look through available stacks as long as not all cards are checked out and there are still cards to checkout
         while quantity_to_checkout > 0 and available_cards > 0:
-            # Find largest matching stack that is <= to quantity_to_checkout
+            # Find largest matching stack
             stack_to_move_ix = max(range(len(unreserved_matching_stacks[card_to_checkout.scryfall_id])), key=lambda i: unreserved_matching_stacks[card_to_checkout.scryfall_id][i].quantity)
-            # If the stack has more cards than we need, split it
+            # If the stack has more cards than we need, split it into the new location
             if(unreserved_matching_stacks[card_to_checkout.scryfall_id][stack_to_move_ix].quantity > quantity_to_checkout):
                 await pull_stack_from_existing(session, stack_id=unreserved_matching_stacks[card_to_checkout.scryfall_id][stack_to_move_ix].id, num_cards=quantity_to_checkout, new_location_id=deck.location.id)
-                quantity_to_checkout -= 0
+                quantity_to_checkout = 0
+            # If the stack has as many or fewer cards than we need move the whole stack
             else:
-                await locate_stack(session, unreserved_matching_stacks[card_to_checkout.scryfall_id][stack_to_move_ix].id, location_id=deck.location.id)
+                await move_stack_location(session, unreserved_matching_stacks[card_to_checkout.scryfall_id][stack_to_move_ix].id, location_id=deck.location.id)
                 quantity_to_checkout -= unreserved_matching_stacks[card_to_checkout.scryfall_id][stack_to_move_ix].quantity
                 available_cards -= unreserved_matching_stacks[card_to_checkout.scryfall_id][stack_to_move_ix].quantity
+                # If the stack was insufficient to fill the need, and more stacks exist, we will pop this stack out of the canddidates sos that we can move to the next biggest stack.
+                if(quantity_to_checkout > 0 and available_cards > 0):
+                    unreserved_matching_stacks[card_to_checkout.scryfall_id].pop(stack_to_move_ix)
 
 
     await session.commit()
@@ -951,7 +955,7 @@ async def deconstruct_deck(session: AsyncSession, deck: Deck, location: int | No
 
             # Move each matching collection card to the specified location
             for collection_card in collection_cards:
-                await locate_stack(session, collection_card.id, location_id=location)
+                await move_stack_location(session, collection_card.id, location_id=location)
 
     await session.commit()
     return True

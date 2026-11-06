@@ -53,7 +53,7 @@ class DragonShieldImporter:
                     condition=(raw.get("Condition") or "").strip() or None,
                     language=normalize_language(raw.get("Language")),
                     purchase_price=to_float(raw.get("Price Bought")),
-                    binder_name=(raw.get("Folder Name") or "").strip() or None,
+                    source_location_name=(raw.get("Folder Name") or "").strip() or None,
                     location=None,
                 )
             )

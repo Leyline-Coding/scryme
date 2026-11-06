@@ -13,7 +13,7 @@ from datetime import datetime
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.collection_edit import locate_stacks
+from src.collection_edit import move_stacks_location
 from src.models import Binder, CollectionCard, Location
 
 
@@ -52,7 +52,7 @@ async def delete_binder(session: AsyncSession, binder_id: int) -> None:
     binder = await session.get(Binder, binder_id)
     collection_cards = await get_all_binder_cards(session, binder_id)
     if binder:
-        await locate_stacks(session, [c.id for c in collection_cards], None)
+        await move_stacks_location(session, [c.id for c in collection_cards], None)
         await session.delete(binder)
         await session.commit()
 

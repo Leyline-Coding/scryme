@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.box_service import (
     rename_box,
 )
-from src.collection_edit import locate_stack, _STACK_NOT_FOUND
 from src.config import get_settings
 from src.db import get_session
 from src.models import Box

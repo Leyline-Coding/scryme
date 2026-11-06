@@ -20,7 +20,7 @@ from src.binder_service import (
     delete_binder,
     rename_binder,
 )
-from src.collection_edit import locate_stack, _STACK_NOT_FOUND
+from src.collection_edit import move_stack_location, _STACK_NOT_FOUND
 from src.config import get_settings
 from src.db import get_session
 from src.models import Binder, Card
@@ -119,7 +119,7 @@ async def locate_binder_stack(
     session: AsyncSession = Depends(get_session),
 ) -> RedirectResponse:
     _guard_writable()
-    sid = await locate_stack(session, stack_id, location_id)
+    sid = await move_stack_location(session, stack_id, location_id)
     if(not sid): raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     return local_redirect(f"/binders/view/{binder_id}")
 

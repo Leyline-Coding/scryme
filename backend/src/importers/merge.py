@@ -37,7 +37,7 @@ class Stack:
     finish: str
     condition: str | None
     language: str
-    binder_name: str | None
+    source_location_name: str | None
     quantity: int
     purchase_price: float | None
     name: str  # for display only
@@ -45,7 +45,7 @@ class Stack:
 
     @property
     def key(self) -> StackKey:
-        return (self.scryfall_id, self.finish, self.condition, self.language, self.binder_name)
+        return (self.scryfall_id, self.finish, self.condition, self.language, self.source_location_name)
 
 
 @dataclass
@@ -69,7 +69,7 @@ def aggregate(matched: list[MatchedRow]) -> dict[StackKey, Stack]:
             finish=r.finish,
             condition=r.condition,
             language=r.language,
-            binder_name=r.binder_name,
+            source_location_name=r.source_location_name,
             quantity=r.quantity,
             purchase_price=r.purchase_price,
             name=r.name,
@@ -85,7 +85,7 @@ def aggregate(matched: list[MatchedRow]) -> dict[StackKey, Stack]:
 async def load_existing(session: AsyncSession) -> dict[StackKey, CollectionCard]:
     res = await session.execute(select(CollectionCard))
     return {
-        (str(c.scryfall_id), c.finish, c.condition, c.language, c.binder_name): c
+        (str(c.scryfall_id), c.finish, c.condition, c.language, c.source_location_name): c
         for c in res.scalars().all()
     }
 
@@ -124,7 +124,7 @@ def _insert(session: AsyncSession, stack: Stack, source_format: str | None, loca
             condition=stack.condition,
             language=stack.language,
             purchase_price=stack.purchase_price,
-            binder_name=stack.binder_name,
+            source_location_name=stack.source_location_name,
             location=location,
             source_format=source_format,
         )

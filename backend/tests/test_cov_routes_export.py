@@ -37,14 +37,14 @@ def test_stream_generators_directly():
     # Unowned (no qmap entry) defaults the quantity to 1.
     assert "".join(export_mod._txt_stream(cards, {})) == "1x Lightning Bolt (MH2) 122\n"
 
-    stack = SimpleNamespace(binder_name="Reds", finish="foil", rarity=None, quantity=3,
+    stack = SimpleNamespace(source_location_name="Reds", finish="foil", rarity=None, quantity=3,
                             purchase_price=2.5, condition="near_mint", language="en")
     card = SimpleNamespace(name="Lightning Bolt", set_code="mh2", set_name="MH2",
                            collector_number="122", scryfall_id="sid-1", rarity="uncommon")
     mb = "".join(export_mod._manabox_stream([(stack, card)]))
     assert "Scryfall ID" in mb and ",foil," in mb and "near_mint" in mb and "Reds" in mb
     # A stack without a purchase price leaves the price/currency columns blank.
-    stack2 = SimpleNamespace(binder_name=None, finish="normal", quantity=1, purchase_price=None,
+    stack2 = SimpleNamespace(source_location_name=None, finish="normal", quantity=1, purchase_price=None,
                              condition=None, language="en")
     mb2 = "".join(export_mod._manabox_stream([(stack2, card)]))
     assert "Lightning Bolt" in mb2

@@ -104,7 +104,7 @@ async def test_incoming_cards_can_be_filed_on_the_way_in(session):
 
     await commit_trade(session, pool.id, binder="Trades", location="Shoebox")
     stack = (await session.execute(select(CollectionCard))).scalar_one()
-    assert stack.binder_name == "Trades" and stack.location == "Shoebox"
+    assert stack.source_location_name == "Trades" and stack.location == "Shoebox"
 
 
 @pytest.mark.asyncio
@@ -132,7 +132,7 @@ async def test_outgoing_is_resolved_by_copy_kind_not_by_the_staged_stack(session
     await session.delete(stack)
     await session.commit()
     replacement = CollectionCard(scryfall_id=card.scryfall_id, quantity=2, finish="normal",
-                                 language="en", binder_name="Elsewhere")
+                                 language="en", source_location_name="Elsewhere")
     session.add(replacement)
     await session.commit()
 
@@ -161,7 +161,7 @@ async def test_outgoing_draws_from_the_smallest_stack_first(session):
     card = await _card(session, "Spare")
     small = await _stack(session, card, qty=1, language="en")
     big = CollectionCard(scryfall_id=card.scryfall_id, quantity=5, finish="normal", language="en",
-                         binder_name="Bulk")
+                         source_location_name="Bulk")
     session.add(big)
     await session.commit()
     await stage_stack(session, pool.id, small.id, 1)

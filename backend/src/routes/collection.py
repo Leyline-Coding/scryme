@@ -28,7 +28,7 @@ from src.collection_edit import (
     bulk_move_to_location,
     delete_stack,
     edit_stack,
-    locate_stack,
+    move_stack_location,
     organize_by_color_identity,
     owned_for_oracle,
     remove_copies,
@@ -262,7 +262,7 @@ async def locate_collection_stack(
 ) -> HTMLResponse:
     """Unified location picker (#160): file a stack into a box, binder, or deck. """
     _guard_writable()
-    sid = await locate_stack(session, stack_id, location_id)
+    sid = await move_stack_location(session, stack_id, location_id)
     if(not sid): raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     return await _collection_partial(request, session, sid)
 

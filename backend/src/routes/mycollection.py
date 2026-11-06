@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
-from sqlalchemy import func, select
+from sqlalchemy import func, select, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.binder_service import all_binders
@@ -168,7 +168,7 @@ async def collection(
         # Apply sorting
         if sort_by == "updated_at":
             ctx["binders"].sort(key=lambda x: x.updated_at, reverse=(sort_dir == "desc"))
-        elif ctx["binders"]:
+        else:
             ctx["binders"].sort(key=lambda x: x.name, reverse=(sort_dir == "desc"))
 
     elif tab == "tags":
@@ -206,9 +206,20 @@ async def collection(
         ctx["view_obj"] = wl
         ctx["rows"] = [(item, wishlist_image(item.card)) for item in wl.items]
     elif tab == "checklists":
+        # Handle sorting for checklists
+        if sort_by == "updated_at":
+            order_by = Checklist.created_at
+        else:
+            order_by = Checklist.name
+        
+        if sort_dir == "desc":
+            order_by = order_by.desc()
+        else:
+            order_by = order_by.asc()
+            
         rows = await session.execute(
             select(Checklist, func.count()).outerjoin(Checklist.items)
-            .group_by(Checklist.id).order_by(Checklist.created_at.desc())
+            .group_by(Checklist.id).order_by(order_by)
         )
         ctx["checklists"] = [(c, n) for c, n in rows.all()]
     elif tab == "trade":
@@ -246,8 +257,8 @@ async def collection_wishlist_redirect(request: Request, session: AsyncSession =
     return await collection(request, tab="wishlist", session=session)
 
 @router.get("/collection/checklists", response_class=HTMLResponse)
-async def collection_checklists_redirect(request: Request, session: AsyncSession = Depends(get_session)) -> HTMLResponse:
-    return await collection(request, tab="checklists", session=session)
+async def collection_checklists_redirect(request: Request, sort_by: str = "created_at", sort_dir: str = "desc", session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+    return await collection(request, tab="checklists", sort_by=sort_by, sort_dir=sort_dir, session=session)
 
 @router.get("/collection/trade", response_class=HTMLResponse)
 async def collection_trade_redirect(request: Request, keep: int = 1, session: AsyncSession = Depends(get_session)) -> HTMLResponse:

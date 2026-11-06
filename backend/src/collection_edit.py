@@ -205,9 +205,10 @@ async def move_stacks_location(session: AsyncSession, stack_ids: list[int], loca
     """
     stacks_to_move = (await session.scalars(select(CollectionCard).where(CollectionCard.id.in_(stack_ids)))).all()
     
-    # Preload CollectionCard matches coarsely: location and scryfall_id. _cards_are_identical will perform the fine-grained match
+    # Preload any OTHER CollectionCard witch a matching target loaction and which matches scryfall_id. _cards_are_identical will perform the fine-grained match
     existing_stacks_preloaded = (await session.scalars(
         select(CollectionCard).where(
+            CollectionCard.id.not_in([card.id for card in stacks_to_move]),
             CollectionCard.location == location_id,
             CollectionCard.scryfall_id.in_([card.scryfall_id for card in stacks_to_move])
         )
@@ -217,19 +218,19 @@ async def move_stacks_location(session: AsyncSession, stack_ids: list[int], loca
     # Process each stack one by one
     for stack_to_move in stacks_to_move:
           
-          # Check coarsely preload CollectionCard matches using _cards_are_identical()
+          # Finely check the coarsely preload CollectionCard matches using _cards_are_identical()
           identical_existing = next(
               (existing_stack for existing_stack in existing_stacks_preloaded if _cards_are_identical(stack_to_move, existing_stack)),
               None
           )
           
           if identical_existing:
-              # Increment the quantity of the existing card and delete source
+              # Merge the stacks: increment the quantity of the existing card and delete source
               identical_existing.quantity += stack_to_move.quantity
               await session.delete(stack_to_move)
               sids += [identical_existing.scryfall_id]
           else:
-              # No identical card at target location, just update location
+              # No identical card at target location, just update location of the existing stack
               stack_to_move.location = location_id
               sids += [stack_to_move.scryfall_id]
     

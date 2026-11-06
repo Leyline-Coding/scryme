@@ -79,20 +79,30 @@ class WishlistView:
 
 
 async def list_wishlist(
-    session: AsyncSession, currency: str = "usd", source: str = "tcgplayer"
+    session: AsyncSession, currency: str = "usd", source: str = "tcgplayer", sort_by: str = "name", sort_dir: str = "asc"
 ) -> WishlistView:
-    items = list(
-        (
-            await session.execute(
-                select(WishlistItem).order_by(WishlistItem.added_at.desc())
-            )
-        )
-        .scalars()
-        .all()
-    )
+    
+    # Apply sorting based on parameters
+    if sort_by == "updated_at":
+        order_by = WishlistItem.added_at
+    elif sort_by == "quantity":
+        order_by = WishlistItem.quantity
+    else:
+        order_by = Card.name
+
+    if sort_dir == "desc":
+        order_by = order_by.desc()
+    else:
+        order_by = order_by.asc()
+            
+    items = list((await session.execute(
+        select(WishlistItem).join(Card, Card.scryfall_id == WishlistItem.scryfall_id).order_by(order_by)
+    )).scalars().all())
+
     total_cost = sum(
         item.quantity * unit_price(effective_prices(item.card, source), "normal", currency)
         for item in items
     )
+    
     total_cards = sum(item.quantity for item in items)
     return WishlistView(items=items, total_cost=round(total_cost, 2), total_cards=total_cards)

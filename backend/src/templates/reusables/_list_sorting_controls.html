@@ -1,4 +1,4 @@
-{% macro list_sorting_controls(url, sort_by, sort_dir, seperator="?", sort_by_name=True, sort_by_updated_at=True, sort_by_price=False ) %}
+{% macro list_sorting_controls(url, sort_by, sort_dir, seperator="?", sort_by_name=True, sort_by_updated_at=True, sort_by_price=False, sort_by_quantity=True ) %}
 <div class="flex justify-start gap-2 md:mb-4">
   <a href="{{url}}{{seperator}}sort_by={{ sort_by }}&sort_dir={{ 'desc' if sort_dir == 'asc' else 'asc' }}"
     class="rounded-full bg-surface border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}">
@@ -10,6 +10,7 @@
       {% if sort_by_name %}<option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name</option>{% endif %}
       {% if sort_by_price %}<option value="price" {% if sort_by == 'price' %}selected{% endif %}>Price</option>{% endif %}
       {% if sort_by_updated_at %}<option value="updated_at" {% if sort_by == 'updated_at' %}selected{% endif %}>Updated</option>{% endif %}
+      {% if sort_by_quantity %}<option value="quantity" {% if sort_by == 'quantity' %}selected{% endif %}>Quantity</option>{% endif %}
     </select>
   </form>
 </div>

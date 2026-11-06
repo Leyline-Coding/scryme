@@ -202,7 +202,7 @@ async def collection(
         )
         ctx["decks"] = decks.scalars().all()
     elif tab == "wishlist":
-        wl = await list_wishlist(session, currency, source)
+        wl = await list_wishlist(session, currency, source, sort_by=sort_by, sort_dir=sort_dir)
         ctx["view_obj"] = wl
         ctx["rows"] = [(item, wishlist_image(item.card)) for item in wl.items]
     elif tab == "checklists":
@@ -253,8 +253,8 @@ async def collection_sleeves_redirect(request: Request, sort_by: str = "name", s
     return await collection(request, tab="sleeves", sort_by=sort_by, sort_dir=sort_dir, session=session)
 
 @router.get("/collection/wishlist", response_class=HTMLResponse)
-async def collection_wishlist_redirect(request: Request, session: AsyncSession = Depends(get_session)) -> HTMLResponse:
-    return await collection(request, tab="wishlist", session=session)
+async def collection_wishlist_redirect(request: Request, sort_by: str = "name", sort_dir: str = "asc", session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+    return await collection(request, tab="wishlist", sort_by=sort_by, sort_dir=sort_dir, session=session)
 
 @router.get("/collection/checklists", response_class=HTMLResponse)
 async def collection_checklists_redirect(request: Request, sort_by: str = "created_at", sort_dir: str = "desc", session: AsyncSession = Depends(get_session)) -> HTMLResponse:

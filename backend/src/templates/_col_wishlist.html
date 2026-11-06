@@ -1,44 +1,64 @@
-{% if rows %}
-<div class="flex items-baseline justify-between mb-4">
-  <p class="text-sm text-muted">
-    {{ '{:,}'.format(view_obj.total_cards) }} card{{ '' if view_obj.total_cards == 1 else 's' }}
-    across {{ rows | length }} printing{{ '' if rows | length == 1 else 's' }}
+{% import "reusables/_currency.html" as currency %}
+{% from "reusables/_list_sorting_controls.html" import list_sorting_controls %}
+<summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none">
+  <p class="text-sm text-muted mb-6">
+    <span>
+      A simple wishlist of cards, their quantities and prices.
+    </span>
+    <a id="summary_short" href="#" onclick="toggleSummaryText('summary_short', 'summary_full'); return false;" class="text-accent hover:underline hidden">Read more</a>
+    <span id="summary_full" style="display:none;">
+      <a href="#" onclick="toggleSummaryText('summary_short', 'summary_full'); return false;" class="text-accent hover:underline">Read less</a>
+    </span>
   </p>
-  <p class="text-sm">Est. cost <span class="font-bold">{{ cur.symbol }}{{ '{:,.2f}'.format(view_obj.total_cost) }}</span></p>
-</div>
+</summary>
 
-<ul class="space-y-2">
-  {% for item, image in rows %}
-  <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-3 py-2">
-    <a href="/card/{{ item.scryfall_id }}" class="shrink-0">
-      {% if image %}<img src="{{ image }}" alt="{{ item.card.name }}" loading="lazy"
-           class="w-10 aspect-[5/7] object-cover rounded" />{% endif %}
-    </a>
-    <div class="flex-1 min-w-0">
-      <a href="/card/{{ item.scryfall_id }}" class="font-medium truncate hover:text-accent block">
-        {{ item.card.name }}
-        {{ set_symbol(item.card.set_code, item.card.rarity) }}
-        <span class="text-xs text-muted uppercase">{{ item.card.set_code }}</span>
+
+<section class="mb-8">
+  {% if rows %}
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {{ list_sorting_controls("/collection/wishlist", sort_by, sort_dir, sort_by_quantity=True) }}
+    <div class="flex justify-start md:justify-end gap-2 md:mb-4">
+      <p class="text-sm text-muted">
+        {{ '{:,}'.format(view_obj.total_cards) }} card{{ '' if view_obj.total_cards == 1 else 's' }}
+        across {{ rows | length }} printing{{ '' if rows | length == 1 else 's' }}
+      </p>
+      <p class="text-sm">Est. cost <span class="font-bold">{{ cur.symbol }}{{ '{:,.2f}'.format(view_obj.total_cost) }}</span></p>
+    </div>
+  </div>
+
+  <ul class="space-y-2">
+    {% for item, image in rows %}
+    <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-3 py-2">
+      <a href="/card/{{ item.scryfall_id }}" class="shrink-0">
+        {% if image %}<img src="{{ image }}" alt="{{ item.card.name }}" loading="lazy"
+            class="w-10 aspect-[5/7] object-cover rounded" />{% endif %}
       </a>
-      {% if item.note %}<div class="text-xs text-muted truncate">{{ item.note }}</div>{% endif %}
-    </div>
-    <div class="text-right text-sm shrink-0">
-      <div class="tabular-nums">×{{ item.quantity }}</div>
-      {% set price = item.card.prices.get(cur.key) if item.card.prices else None %}
-      {% if price %}<div class="text-xs text-muted tabular-nums">{{ cur.symbol }}{{ '{:,.2f}'.format(item.quantity * (price | float)) }}</div>{% endif %}
-    </div>
-    {% if not read_only %}
-    <form method="post" action="/wishlist/remove" class="shrink-0">
-      <input type="hidden" name="scryfall_id" value="{{ item.scryfall_id }}" />
-      <button type="submit" title="Remove" class="text-muted hover:text-rose-500 px-1 tap">×</button>
-    </form>
-    {% endif %}
-  </li>
-  {% endfor %}
-</ul>
-{% else %}
-<div class="text-muted py-16 text-center">
-  Your wishlist is empty. Add cards from a card's page, or add a deck's missing cards from the
-  <a href="/collection?tab=decks" class="underline">decks</a> tab.
-</div>
-{% endif %}
+      <div class="flex-1 min-w-0">
+        <a href="/card/{{ item.scryfall_id }}" class="font-medium truncate hover:text-accent block">
+          {{ item.card.name }}
+          {{ set_symbol(item.card.set_code, item.card.rarity) }}
+          <span class="text-xs text-muted uppercase">{{ item.card.set_code }}</span>
+        </a>
+        {% if item.note %}<div class="text-xs text-muted truncate">{{ item.note }}</div>{% endif %}
+      </div>
+      <div class="text-right text-sm shrink-0">
+        <div class="tabular-nums">×{{ item.quantity }}</div>
+        {% set price = item.card.prices.get(cur.key) if item.card.prices else None %}
+        {% if price %}<div class="text-xs text-muted tabular-nums">{{ currency.format_and_decorate(item.quantity * (price | float), cur.symbol) }}</div>{% endif %}
+      </div>
+      {% if not read_only %}
+      <form method="post" action="/wishlist/remove" class="shrink-0">
+        <input type="hidden" name="scryfall_id" value="{{ item.scryfall_id }}" />
+        <button type="submit" title="Remove" class="text-muted hover:text-rose-500 px-1 tap"><i class="fa-solid fa-trash"></i></button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="text-muted py-16 text-center">
+    Your wishlist is empty. Add cards from a card's page, or add a deck's missing cards from the
+    <a href="/collection/decks" class="underline">decks</a> tab.
+  </div>
+  {% endif %}
+</section>

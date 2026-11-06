@@ -1,4 +1,4 @@
-{% import "_currency.html" as currency %}
+{% import "reusables/_currency.html" as currency %}
 {% macro bars(group) %}
   {% set m = (group | map(attribute='count') | max) or 1 %}
   <div class="space-y-1.5">

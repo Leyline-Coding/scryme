@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% import "_currency.html" as currency %}
+{% import "reusables/_currency.html" as currency %}
 {% block title %}{{ cov.deck.name }} · scryme{% endblock %}
 
 {% set _COLOR_PIPS = {"White": "w", "Blue": "u", "Black": "b", "Red": "r", "Green": "g",
@@ -150,7 +150,7 @@
       </button>
       {% endif %}
     </h1>
-    <a href="/collection?tab=decks" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Decks →</a>
+    <a href="/collection/decks" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Decks →</a>
   </header>
 
   

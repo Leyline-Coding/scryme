@@ -24,13 +24,13 @@
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     {{ list_sorting_controls("/collection/locations", sort_by, sort_dir) }}
     {% if not read_only %}
-      <div class="flex justify-start md:justify-end gap-2 md:mb-4">
-        <form method="post" action="/collection/boxes/new" class="flex gap-2">
-          <input type="text" name="name" required placeholder="New box name"
-                class="flex-1 min-w-0 rounded-full bg-surface border border-edge px-3 py-2 text-sm" />
-          <button class="rounded-full bg-accent text-accent-fg px-3 py-2 text-sm font-medium"><i class="fa-solid fa-plus"></i> Add box</button>
-        </form>
-      </div>
+    <div class="flex justify-start md:justify-end gap-2 md:mb-4">
+      <form method="post" action="/collection/boxes/new" class="flex gap-2">
+        <input type="text" name="name" required placeholder="New box name"
+              class="flex-1 min-w-0 rounded-full bg-surface border border-edge px-3 py-2 text-sm" />
+        <button class="rounded-full bg-accent text-accent-fg px-3 py-2 text-sm font-medium"><i class="fa-solid fa-plus"></i> Add box</button>
+      </form>
+    </div>
     {% endif %}
   </div>
 
@@ -79,7 +79,7 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
   <section>
     <h2 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">
-      Binders <a href="/collection?tab=binders" class="ml-1 text-xs normal-case font-normal hover:text-fg">manage →</a>
+      Binders <a href="/collection/binders" class="ml-1 text-xs normal-case font-normal hover:text-fg">manage →</a>
     </h2>
     {% if binders %}
     <ul class="divide-y divide-edge rounded-xl border border-edge bg-surface">
@@ -97,7 +97,7 @@
 
   <section>
     <h2 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">
-      Decks <a href="/collection?tab=decks" class="ml-1 text-xs normal-case font-normal hover:text-fg">manage →</a>
+      Decks <a href="/collection/decks" class="ml-1 text-xs normal-case font-normal hover:text-fg">manage →</a>
     </h2>
     {% if decks %}
     <ul class="divide-y divide-edge rounded-xl border border-edge bg-surface">

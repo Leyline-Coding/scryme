@@ -196,7 +196,7 @@ async def import_profile_confirm(
         await create_deck(session, name, decklist)
         if ownership == "full":
             await _mark_all_owned(session, decklist)
-    return RedirectResponse(url="/collection?tab=decks", status_code=303)
+    return RedirectResponse(url="/collection/decks", status_code=303)
 
 
 @router.post("/decks")

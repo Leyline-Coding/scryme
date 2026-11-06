@@ -92,27 +92,24 @@
   <form action="/search" method="get" class="mt-16 mb-16 max-w-4xl w-full" x-data="{ ai: {{ 'true' if nl else 'false' }} }">
     {% include "_search_bar.html" %}
     <button type="submit" style="display: none;"></button>
-    <div class="flex flex-col md:flex-row items-end justify-between gap-3 mb-2">
-      <div class="inline-flex rounded-full ring-1 ring-edge overflow-hidden shrink-0" title="Search scope">
+    <div class="grid grid-cols-3 gap-3 mb-2 text-xs md:text-sm whitespace-nowrap">
+      <div class="inline-flex rounded-full ring-1 ring-edge overflow-hidden shrink-0 text-start w-max" title="Search scope">
         <label class="cursor-pointer">
           <input type="radio" name="scope" value="collection" class="peer sr-only" {% if scope != 'all' %}checked{% endif %} />
-          <span class="block px-4 py-2 text-muted peer-checked:bg-surface peer-checked:text-fg">Mine</span>
+          <span class="block px-4 py-1 text-muted peer-checked:bg-surface peer-checked:text-fg">Mine</span>
         </label>
         <label class="cursor-pointer border-l border-edge">
           <input type="radio" name="scope" value="all" class="peer sr-only" {% if scope == 'all' %}checked{% endif %} />
-          <span class="block px-4 py-2 text-muted peer-checked:bg-surface peer-checked:text-fg">All cards</span>
+          <span class="block px-4 py-1 text-muted peer-checked:bg-surface peer-checked:text-fg">All cards</span>
         </label>
       </div>
-      <p class="pb-3 text-sm text-muted">
+      <div class="text-muted flex items-center justify-center overflow-hidden">
         Supports <a class="underline" href="https://scryfall.com/docs/syntax" target="_blank" rel="noopener">Scryfall syntax</a>.
-      </p>
-      <div>
-        <a href="/collection" class="inline-flex items-center rounded-full bg-surface border border-edge px-4 py-2 text-sm font-medium hover:border-accent"> My Collection</a>
-        <a href="/prices" class="inline-flex items-center rounded-full bg-surface border border-edge px-4 py-2 text-sm font-medium hover:border-accent"> Prices</a>
       </div>
-      
+      <div class="text-end overflow-hidden">
+        <a href="/collection" class="inline-flex items-center rounded-full bg-surface border border-edge px-4 py-1 font-medium hover:border-accent"> My Collection</a>
+      </div>
     </div>
-    
   </form>
   
   {% if alerts %}
@@ -156,7 +153,7 @@
   {% if digest and digest.available and (digest.delta != 0 or digest.gainers or digest.losers) %}
   <div class="mt-4 w-full max-w-2xl rounded-xl border border-edge bg-surface p-4">
     <div class="flex items-baseline justify-between gap-3 mb-2">
-      <p class="text-sm font-semibold text-accent"><i class="fa-solid fa-chart-line"></i> Collection movers</p>
+      <h2 class="text-sm font-semibold text-muted uppercase tracking-wide"><i class="fa-solid fa-chart-line"></i> Prices <a href="prices" class="ml-1 text-xs normal-case font-normal hover:text-fg">details →</a></h2>
       <p class="text-sm">
         {% if digest.delta >= 0 %}<span class="text-emerald-500 font-semibold">▲ + {{ currency.format_and_decorate(digest.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>
         {% else %}<span class="text-rose-500 font-semibold">▼ - {{ currency.format_and_decorate(-digest.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>{% endif %}
@@ -187,7 +184,6 @@
       </div>
     </div>
     {% endif %}
-    <p class="mt-2 text-xs text-muted"><a href="/prices" class="underline">Price history</a></p>
   </div>
   {% endif %}
   {% else %}

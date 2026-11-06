@@ -190,7 +190,7 @@ class DeckCardOut(BaseModel):
 class DeckDetailOut(BaseModel):
     id: int
     name: str
-    pct_complete: int
+    pct_own: int
     total_needed: int
     owned_count: int
     missing_count: int
@@ -465,7 +465,7 @@ def _deck_card_out(r) -> DeckCardOut:
 async def _deck_detail(session: AsyncSession, deck: Deck, fmt: str | None) -> DeckDetailOut:
     cov = await deck_coverage(session, deck, fmt=fmt or None)
     return DeckDetailOut(
-        id=deck.id, name=deck.name, pct_complete=cov.pct_complete,
+        id=deck.id, name=deck.name, pct_own=cov.pct_own,
         total_needed=cov.total_needed, owned_count=cov.owned_count,
         missing_count=cov.missing_count, missing_cost=round(cov.missing_cost, 2),
         fmt=cov.fmt, is_legal=cov.is_legal if cov.fmt else None, illegal_count=cov.illegal_count,
@@ -921,7 +921,7 @@ class ChecklistDetailOut(BaseModel):
     total: int
     owned_count: int
     unmatched: int
-    pct_complete: int
+    pct_own: int
     rows: list[ChecklistRowOut]
 
 
@@ -959,7 +959,7 @@ async def _checklist_out(session: AsyncSession, cl: Checklist) -> ChecklistDetai
     cov = await checklist_coverage(session, cl)
     return ChecklistDetailOut(
         id=cl.id, name=cl.name, total=cov.total, owned_count=cov.owned_count,
-        unmatched=cov.unmatched, pct_complete=cov.pct_complete,
+        unmatched=cov.unmatched, pct_own=cov.pct_own,
         rows=[ChecklistRowOut(item_id=r.item_id, name=r.name, scryfall_id=r.scryfall_id,
                               matched=r.matched, owned=r.owned) for r in cov.rows],
     )

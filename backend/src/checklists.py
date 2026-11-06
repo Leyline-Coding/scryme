@@ -85,7 +85,7 @@ class ChecklistCoverage:
         return sum(1 for r in self.rows if not r.owned and r.matched)
 
     @property
-    def pct_complete(self) -> int:
+    def pct_own(self) -> int:
         return round(100 * self.owned_count / self.total) if self.total else 0
 
 

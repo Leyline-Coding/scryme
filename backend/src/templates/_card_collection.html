@@ -1,5 +1,5 @@
 {# Owned stacks for one printing, with inline edit controls. Swapped (outerHTML) after each edit. #}
- {% from "_locations_select.html" import locations_select %}
+{% from "_locations_select.html" import locations_select %}
 <div id="card-collection" class="rounded-lg bg-surface ring-1 ring-edge p-3">
   {% if conflict %}
   {# Someone else changed this stack while the form was open (#207). Show what it is now rather

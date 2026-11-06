@@ -43,12 +43,14 @@ from src.decks import (
     deck_coverage_combined,
     deck_printings,
     deck_stats,
+    deconstruct_deck,
     proxy_cards,
     rename_deck,
     resolve_ownership_rows,
     resync_printings,
 )
 from src.llm import get_config
+from src.locations import find_or_create_locations, find_or_create_grouped_locations
 from src.models import Card, CollectionCard, Deck, DeckCard, DeckVersion, Sleeve
 from src.pricing import get_price_source
 from src.scryfall.images import ImageCache
@@ -281,6 +283,10 @@ async def view_deck(
     coverage = await deck_coverage(session, deck, fmt=format or None, currency=currency,
                                     source=source)
     coverage_combined = deck_coverage_combined(coverage)
+    
+    # Get locations for the location picker
+    locations = await find_or_create_locations(session, binders=True, boxes=True, decks=True)
+    
     return templates.TemplateResponse(
         request,
         "deck_detail.html",
@@ -302,6 +308,7 @@ async def view_deck(
             "share_links": await links_for(session, DECK, deck.id),
             "share_new": shared,
             "ai_ready": (await get_config(session)).ready,
+            "locations": locations,
         },
     )
 
@@ -738,3 +745,44 @@ async def deck_checkout(
     if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     await checkout_deck(session, deck, mainboard=mainboard, sideboard=sideboard)
     return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+
+
+@router.post("/decks/{deck_id}/deconstruct")
+async def deck_deconstruct(
+    request: Request,
+    deck_id: int,
+    location_id: int = Form(None),
+    session: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    """Deconstruct a deck by moving its cards to a specific location."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    
+    # Call the deconstruct function with the specified location
+    await deconstruct_deck(session, deck, location=location_id)
+    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+
+
+@router.get("/decks/{deck_id}/deconstruct", response_class=HTMLResponse)
+async def deconstruct_form(
+    request: Request,
+    deck_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Show the deconstruction form for a deck."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    
+    # Get locations for the location picker
+    grouped_locations = await find_or_create_grouped_locations(session, binders=True, boxes=True, decks=False)
+    
+    return templates.TemplateResponse(
+        request,
+        "deck_deconstruct.html",
+        {
+            "deck": deck,
+            "grouped_locations": grouped_locations,
+        },
+    )

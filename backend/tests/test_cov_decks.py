@@ -220,12 +220,12 @@ async def test_deck_printings_orders_playable_first(session):
 
 @pytest.mark.asyncio
 async def test_coverage_properties_and_illegal_card(session):
-    # Bolt legal in modern but not standard; covers pct_complete, is_legal, illegal legality branch.
+    # Bolt legal in modern but not standard; covers pct_own, is_legal, illegal legality branch.
     await _add(session, _raw("Lightning Bolt", cn="1",
                              legal={"modern": "legal", "standard": "not_legal"}), owned=0)
     deck = await create_deck(session, "D", "2 Lightning Bolt")
     legal = await deck_coverage(session, deck, fmt="modern")
-    assert legal.pct_complete == 0  # own none
+    assert legal.pct_own == 0  # own none
     illegal = await deck_coverage(session, deck, fmt="standard")
     assert illegal.illegal_count == 1 and illegal.is_legal is False
 

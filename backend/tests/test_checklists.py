@@ -48,7 +48,7 @@ async def test_coverage_counts(session):
     assert cov.total == 3
     assert cov.owned_count == 1
     assert cov.unmatched == 1
-    assert cov.pct_complete == 33
+    assert cov.pct_own == 33
     assert cov.missing_matched == 1  # Mox Sapphire (matched, not owned); UnknownCard isn't matched
     assert [r.name for r in cov.missing] == ["Mox Sapphire", "UnknownCard"]
 

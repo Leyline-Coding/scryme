@@ -59,7 +59,7 @@ async def test_coverage_counts(session):
     cl = await create_checklist(session, "P9", "Black Lotus\nMox Sapphire\nUnknownCard")
     cov = await checklist_coverage(session, cl)
     assert cov.total == 3 and cov.owned_count == 1 and cov.unmatched == 1
-    assert cov.pct_complete == 33 and cov.missing_matched == 1
+    assert cov.pct_own == 33 and cov.missing_matched == 1
     assert [r.name for r in cov.missing] == ["Mox Sapphire", "UnknownCard"]
 
 
@@ -67,7 +67,7 @@ async def test_coverage_counts(session):
 async def test_coverage_empty_checklist(session):
     cl = await create_checklist(session, "Empty", "")
     cov = await checklist_coverage(session, cl)
-    assert cov.total == 0 and cov.pct_complete == 0
+    assert cov.total == 0 and cov.pct_own == 0
 
 
 @pytest.mark.asyncio

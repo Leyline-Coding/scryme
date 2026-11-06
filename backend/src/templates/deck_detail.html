@@ -158,12 +158,20 @@
 
     {# Coverage summary #}
     <section class="md:col-span-3 rounded-xl bg-surface ring-1 ring-edge p-4">
-      <div class="flex items-end justify-between gap-3 mb-2">
+      <div class="flex flex-col md:flex-row items-end justify-between gap-3 mb-2">
         <div>
-          <div class="text-2xl font-bold">{{ cov.pct_complete }}% owned</div>
-          <div class="text-sm text-muted">{{ cov.owned_count }} of {{ cov.total_needed }} cards</div>
+          <div class="text-2xl font-bold">
+            {% if cov.pct_own == 0 %}
+            {{ cov.pct_own }}% owned
+            {% elif cov.pct_in_deck >= 100 %}
+            {{ cov.pct_in_deck }}% constructed
+            {% else %}
+            {{ cov.pct_own }}% owned, {{ cov.pct_in_deck }}% constructed
+            {% endif %}
+          </div>
+          <div class="text-sm text-muted">{{ cov.owned_count }} of {{ cov.total_needed }} cards owned, {{ cov.total_in_deck }} in deck</div>
         </div>
-        <div class="class="text-center">
+        <div class="text-center">
           {% if cov.missing_count %}
           <div class="text-amber-500 font-medium">{{ cov.missing_count }} missing
             <span class="text-muted">({{ cov.unique_missing }} distinct)</span>
@@ -187,8 +195,13 @@
           {% endif %}
         </div>
       </div>
-      <div class="bg-surface-2 rounded h-2 overflow-hidden">
-        <div class="h-full bg-accent" style="width: {{ cov.pct_complete }}%"></div>
+      <div class="mb-2">
+        <div class="bg-surface-2 rounded h-2 overflow-hidden" title="Ownership">
+          <div class="h-full bg-accent" style="width: {{ cov.pct_own }}%"></div>
+        </div>
+        <div class="bg-surface-2 rounded h-2 overflow-hidden mt-1" title="Deck Construction">
+          <div class="h-full bg-blue-500" style="width: {{ cov.pct_in_deck }}%"></div>
+        </div>
       </div>
       {% if cov.unmatched %}
       <p class="mt-2 text-xs text-amber-500">{{ cov.unmatched }} line(s) didn't match a known card.</p>
@@ -243,18 +256,27 @@
 
       {# Checkout buttons #}
       <div class="mt-4">
+        {% if cov.pct_in_deck < 100 %}
         <form method="post" action="/decks/{{ cov.deck.id }}/checkout" class="mb-1">
           <input type="hidden" name="mainboard" value="true">
           <button type="submit" class="w-full rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs mb-1">
-            Checkout Mainboard
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Checkout Mainboard
           </button>
         </form>
+        {% if cov.side %}
         <form method="post" action="/decks/{{ cov.deck.id }}/checkout" class="mb-1">
           <input type="hidden" name="sideboard" value="true">
           <button type="submit" class="w-full rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs mb-1">
-            Checkout Sideboard
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Checkout Sideboard
           </button>
         </form>
+        {% endif %}
+        {% endif %}
+        {% if cov.total_in_deck > 0 %}
+        <a href="/decks/{{ cov.deck.id }}/deconstruct" class="w-full rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs mb-1 block text-center">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i> Deconstruct Deck
+        </a>
+        {% endif %}
       </div>
 
     </section>

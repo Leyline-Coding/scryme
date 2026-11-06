@@ -378,7 +378,7 @@ def normalize_language(code: str | None) -> str:
 @dataclass
 class CardRow:
     name: str                       # Although scryfall cards have names, they are not guaranteed. A user could submit any name... so we track DeckCard.name independantly
-    scryfall_card: Card             # Inherit the attributes of a scryfall card
+    scryfall_card: Card | None      # Inherit the attributes of a scryfall card
     quantity: int
     board: str
     owned: int
@@ -484,13 +484,16 @@ class DeckCoverage:
     # Detailed breakdown of why a deck is illegal or incomplete for each format
     # Maps format -> {"illegal_cards": [names], "unmatched": [names]}
     legality_details: dict[str, dict[str, list[str]]] = field(default_factory=dict)
+    # New statistics for deck location coverage
+    total_in_deck: int = 0          # total quantity of cards located in this deck
+    pct_in_deck: float = 0.0        # percentage of cards located in this deck
 
     @property
     def owned_count(self) -> int:
         return self.total_needed - self.missing_count
 
     @property
-    def pct_complete(self) -> int:
+    def pct_own(self) -> int:
         return round(100 * self.owned_count / self.total_needed) if self.total_needed else 0
 
     @property
@@ -673,6 +676,18 @@ async def deck_coverage(
     cov.all_legalities = all_legalities
     cov.legality_details = legality_details
 
+    # Count total cards in deck location (those that are not in a deck location or are in this deck)
+    total_in_deck = 0
+    
+    # Calculate the total quantity of cards located in this deck's location
+    await session.refresh(deck, ["location"])
+    if deck.location is not None:
+        # Get all collection cards that are in this deck's location using the existing async pattern
+        result = await session.execute(
+            select(func.sum(CollectionCard.quantity)).where(CollectionCard.location == deck.location.id)
+        )
+        total_in_deck = result.scalar_one_or_none() or 0
+    
     for c in deck.cards:
         row = CardRow(
             name=c.name,
@@ -690,7 +705,10 @@ async def deck_coverage(
         )
         (cov.main if c.board == "main" else cov.side).append(row)
         cov.total_needed += c.quantity
+    
     cov.illegal_count = len(illegal_oracles)
+    cov.total_in_deck = total_in_deck
+    cov.pct_in_deck = round(100 * total_in_deck / cov.total_needed) if cov.total_needed else 0
 
     # Missing math, counted once per oracle (and per unmatched line).
     _tally_missing(cov, deck, needed_by_oracle, owned, price_by_sid, oracle_sid, currency)
@@ -918,14 +936,22 @@ async def checkout_deck(session: AsyncSession, deck: Deck, mainboard: bool = Tru
 
 
 async def deconstruct_deck(session: AsyncSession, deck: Deck, location: int | None = None) -> bool:
-    """ Move cards in a deck to the specified location. 
-    """
+    """ Move cards in a deck to the specified location. """
 
-    # Get cards to checkout based on parameters 
-    cards_to_move = []
-    
+    # For each deck card, find all matching collection cards and move them to the location
+    for deck_card in deck.cards:
+        if deck_card.scryfall_id is not None:
+            # Find all collection cards that match this scryfall_id (regardless of their current location)
+            result = await session.execute(
+                select(CollectionCard).where(
+                    CollectionCard.scryfall_id == deck_card.scryfall_id
+                )
+            )
+            collection_cards = result.scalars().all()
 
-
+            # Move each matching collection card to the specified location
+            for collection_card in collection_cards:
+                await locate_stack(session, collection_card.id, location_id=location)
 
     await session.commit()
     return True

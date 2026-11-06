@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% from "_locations_select.html" import locations_select %}
+
+{% block title %}Deconstruct {{ deck.name }} · scryme{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 py-6">
+  <header class="page-header flex flex-wrap items-center gap-3 mb-6">
+    {% include "_brand.html" %}
+    <h1 class="text-lg font-semibold truncate">
+      Deconstruct Deck
+    </h1>
+    <a href="/decks/{{ deck.id }}" class="ml-auto text-sm text-muted hover:text-fg">Back to deck →</a>
+  </header>
+
+  <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
+    <h2 class="text-sm font-semibold text-muted mb-3 uppercase tracking-wide">Deck: {{ deck.name }}</h2>
+    
+    <p class="text-sm mb-4">This will move all cards from this deck to a specified location.</p>
+    
+    <form method="post" action="/decks/{{ deck.id }}/deconstruct" class="mb-4">
+      <div class="mb-4">
+        <label class="text-sm text-muted block mb-2">Move to location:</label>
+        {{ locations_select(grouped_locations, name="location_id", selectedAsLabel=True, onchange="", class="rounded bg-surface-2 border border-edge px-4 py-2 text-sm font-medium", open_right=False) }}
+      </div>
+      
+      <button type="submit" class="rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium">
+        Deconstruct Deck
+      </button>
+    </form>
+    
+  </section>
+</div>
+{% endblock %}

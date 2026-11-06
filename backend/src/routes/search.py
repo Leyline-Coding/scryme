@@ -19,9 +19,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.binder_service import all_binders
 from src.box_service import (
     all_boxes,
-    create_box,
-    delete_box,
-    rename_box,
 )
 from src.config import get_settings
 from src.models import Deck
@@ -172,7 +169,7 @@ async def advanced(request: Request) -> HTMLResponse:
 
 @router.post("/search/nl")
 async def search_nl(
-    q: str = Form(""),
+    nl: str = Form(""),
     scope: str = Form(SearchScope.COLLECTION.value),
     session: AsyncSession = Depends(get_session),
 ) -> RedirectResponse:
@@ -181,7 +178,7 @@ async def search_nl(
     Falls back to searching the request text as-is when AI is off or translation fails, so the box
     always does *something*. The generated query is shown editable on the results page.
     """
-    text = q.strip()
+    text = nl.strip()
     generated = ""
     cfg = await get_config(session)
     ai_error = None

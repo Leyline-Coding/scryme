@@ -1,16 +1,17 @@
 {# One search bar with a Scryfall ⇄ AI toggle — full-width on its own row. #}
 {# Scryfall syntax mode (live search as you type) #}
-<form {% if request.url.path.startswith('/search') %}name="live-search" hx-get="/search"  hx-target="#results" hx-push-url="true" hx-trigger="submit, keyup changed delay:350ms from:input[name=q], change"{% else %}action="/search" method="get"{% endif %} class="relative flex w-full items-center" x-show="!ai" >
+<input type="hidden" name="scope" value="{{ scope }}" />
+<div x-show="!ai" class="relative flex w-full items-center mb-2">
   <div class="relative flex-1">
     <input type="search" name="q" id="search-input" value="{{ q }}" autofocus
-            placeholder="Search — e.g. c:r t:instant mv<=2"
+            placeholder='Search — e.g. "Lightning Bolt" or "c:r t:instant mv<=2"'
             class="w-full rounded-l-full bg-surface border border-edge border-r-0 px-5 py-2.5
                   focus:outline-none focus:ring-2 focus:ring-accent" />
     <button 
       type="button" 
       id="search-clear-button"
       class="absolute top-1/2 -translate-y-1/2 right-3 flex items-center justify-center w-6 h-6 rounded-full bg-surface-2 text-gray-400 hover:text-gray-600 hidden"
-    ><i class="fas fa-times-circle"></i></button>
+    ><i class="fas fa-xmark"></i></button>
   </div>
   <a href="/advanced"
     type="button" 
@@ -22,13 +23,12 @@
           @click="ai = true; $nextTick(() => $refs.ainput && $refs.ainput.focus())"
           class="rounded-r-full bg-accent border border-accent px-5 py-2.5 font-medium text-white hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 whitespace-nowrap">✨ Ask AI</button>
   {% endif %}
-</form>
+</div>
 {% if ai_ready %}
 {# AI / natural-language mode (#171): translate to Scryfall syntax, then run it. #}
-<form x-show="ai" x-cloak method="post" action="/search/nl" class=" flex w-full items-center">
-  <input type="hidden" name="scope" value="{{ scope }}" />
+<div x-show="ai" class=" flex w-full items-center mb-2">
   <div class="relative flex-1">
-    <input type="search" name="q" x-ref="ainput" id="ai-search-input" value="{{ nl }}"
+    <input type="search" name="nl" x-ref="ainput" id="ai-search-input" value="{{ nl }}"
             placeholder="✨ Ask in plain English — cheap red removal that hits creatures"
             class="w-full rounded-l-full bg-surface border border-edge border-r-0 px-5 py-2.5
                   focus:outline-none focus:ring-2 focus:ring-accent" />
@@ -36,11 +36,11 @@
       type="button" 
       id="ai-search-clear-button"
       class="absolute top-1/2 -translate-y-1/2 right-3 flex items-center justify-center w-6 h-6 rounded-full bg-surface-2 text-gray-400 hover:text-gray-600 hidden font-bold"
-    >🗙</button>
+    ><i class="fa-solid fa-xmark"></i></button>
   </div>
   <button type="button" @click="ai = false" title="Back to Scryfall syntax"
           class="rounded-r-full bg-accent border border-accent px-5 py-2.5 font-medium text-white hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 whitespace-nowrap">Back to syntax search</button>
-</form>
+</div>
 {% endif %}
 
 

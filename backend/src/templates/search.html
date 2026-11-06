@@ -47,21 +47,26 @@
     <a href="/upload"
        class="shrink-0 rounded-full bg-surface-2 hover:bg-surface-3 px-4 py-2 text-sm font-medium">+ Upload</a>
 
-    <div class="order-last w-full">
-      <div class="flex flex-col gap-2" x-data="{ ai: {{ 'true' if nl else 'false' }} }">
+    <div class="order-last w-full" x-data="{ ai: {{ 'true' if nl else 'false' }}, dir: '{{dir}}' }">
+      <form name="live-search" id="live-search" hx-get="/search"  hx-target="#results" hx-push-url="true" hx-trigger="submit, keyup changed delay:350ms from:input[name=q], change">
         {% include "_search_bar.html" %}
         <div class="flex flex-wrap items-center gap-2 text-sm">
           <div class="inline-flex rounded-full ring-1 ring-edge overflow-hidden shrink-0" title="Search scope">
             <label class="cursor-pointer">
-              <input type="radio" name="scope" value="collection" class="peer sr-only" {% if scope != 'all' %}checked{% endif %} />
-              <span class="block px-3 py-1 text-muted peer-checked:bg-surface-2 peer-checked:text-fg">Mine</span>
+              <input type="radio" name="scope" value="collection" class="peer sr-only" {% if scope != 'all' %}checked{% endif %} hx-trigger="change" />
+              <span class="block px-4 py-2 text-muted peer-checked:bg-surface peer-checked:text-fg">Mine</span>
             </label>
             <label class="cursor-pointer border-l border-edge">
-              <input type="radio" name="scope" value="all" class="peer sr-only" {% if scope == 'all' %}checked{% endif %} />
-              <span class="block px-3 py-1 text-muted peer-checked:bg-surface-2 peer-checked:text-fg">All cards</span>
+              <input type="radio" name="scope" value="all" class="peer sr-only" {% if scope == 'all' %}checked{% endif %} hx-trigger="change" />
+              <span class="block px-4 py-2 text-muted peer-checked:bg-surface peer-checked:text-fg">All cards</span>
             </label>
           </div>
-          <select name="sort" title="Sort by" class="rounded-full bg-surface border border-edge px-3 py-1.5">
+          <input type="hidden" name="dir" :value='dir'>
+          <button class="rounded-full bg-surface border border-edge px-4 py-2 text-sm font-medium hover:border-accent" 
+            @click="dir = (dir=='desc' ? 'asc': 'desc') ; $nextTick(() => $el.form.requestSubmit())">
+            <i x-show="dir=='desc'" class="fa-solid fa-arrow-down-wide-short"></i><i x-show="dir=='asc'" class="fa-solid fa-arrow-down-short-wide"></i>
+          </button>
+          <select name="sort" title="Sort by" class="rounded-full bg-surface border border-edge px-4 py-2 text-sm font-medium hover:border-accent">
             <option value="name" {% if sort == 'name' %}selected{% endif %}>Name</option>
             <option value="mv" {% if sort == 'mv' %}selected{% endif %}>Mana value</option>
             <option value="price" {% if sort == 'price' %}selected{% endif %}>Price (USD)</option>
@@ -69,15 +74,11 @@
             <option value="rarity" {% if sort == 'rarity' %}selected{% endif %}>Rarity</option>
             <option value="released" {% if sort == 'released' %}selected{% endif %}>Released</option>
           </select>
-          <select name="dir" title="Direction" class="rounded-full bg-surface border border-edge px-3 py-1.5">
-            <option value="asc" {% if dir != 'desc' %}selected{% endif %}>Asc ↑</option>
-            <option value="desc" {% if dir == 'desc' %}selected{% endif %}>Desc ↓</option>
-          </select>
           <button class="rounded-full bg-surface border border-edge px-3 py-1.5 md:hidden" onclick="openSidebar()">
             Filter
           </button>
         </div>
-      </div>
+      </form>
     </div>
 
   {% if ai_error %}

@@ -8,7 +8,7 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
   <div class="flex justify-start items-center gap-3 md:mb-4">
     <a href="/collection?tab=sleeves&sort_by={{ sort_by }}&sort_dir={{ 'desc' if sort_dir == 'asc' else 'asc' }}"
-      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}">
+      class="rounded-full bg-surface border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}">
       {% if sort_dir == 'desc' %}<i class="fa-solid fa-arrow-down-wide-short"></i>{% else %}<i class="fa-solid fa-arrow-down-short-wide"></i>{% endif %}
     </a>
     <a href="/collection?tab=sleeves&sort_by=name&sort_dir={{ sort_dir }}"

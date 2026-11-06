@@ -11,7 +11,7 @@
 
   <nav class="flex flex-wrap gap-1 border-b border-edge mb-6 scrollbar-none w-full min-w-0">
     {% for key, label, icon in tabs %}
-    <a href="/collection?tab={{ key }}"
+    <a href="/collection/{{ key }}"
        class="shrink-0 whitespace-nowrap px-3 py-2 text-sm -mb-px border-b-2 transition
               {% if tab == key %}border-accent text-fg font-medium{% else %}border-transparent text-muted hover:text-fg{% endif %}">
       <i class="{{icon}}"></i> {{ label }}

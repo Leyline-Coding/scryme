@@ -76,7 +76,7 @@ async def create_sleeve(
     await session.commit()
     
     # Redirect back to collection sleeves tab
-    return RedirectResponse(url="/collection?tab=sleeves", status_code=303)
+    return RedirectResponse(url="/collection/sleeves", status_code=303)
 
 
 @router.post("/sleeves/{sleeve_id}/unassociate", response_class=HTMLResponse)
@@ -118,7 +118,7 @@ async def delete_sleeve(
     await session.delete(sleeve)
     await session.commit()
     
-    return RedirectResponse(url="/collection?tab=sleeves", status_code=303)
+    return RedirectResponse(url="/collection/sleeves", status_code=303)
 
 
 @router.get("/sleeves/{filename}")

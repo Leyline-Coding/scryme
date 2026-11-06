@@ -150,6 +150,14 @@ async def collection(
         ctx["locations"] = await get_location_summaries_remapped(session)
         ctx["binders"] = await all_binders(session)
         ctx["boxes"] = await all_boxes(session)
+        
+        # Apply sorting to boxes
+        if sort_by == "updated_at":
+            # Boxes don't have updated_at, so we'll sort by name as fallback
+            ctx["boxes"].sort(key=lambda x: x.created_at, reverse=(sort_dir == "desc"))
+        else:
+            ctx["boxes"].sort(key=lambda x: x.name, reverse=(sort_dir == "desc"))
+        
         ctx["decks"] = await all_decks(session)
         ctx["deck_sizes"] = {d.id: {board: sum(c.quantity for c in d.cards if c.board == board) for board in ['main','side']} for d in ctx["decks"]}
 
@@ -157,9 +165,9 @@ async def collection(
         ctx["locations"] = await get_location_summaries_remapped(session)
         ctx["binders"] = await all_binders(session)
 
-        if sort_by == "price" and ctx["binders"]:
-            # Binders don't have price, default to name
-            ctx["binders"].sort(key=lambda x: x.name, reverse=(sort_dir == "desc"))
+        # Apply sorting
+        if sort_by == "updated_at":
+            ctx["binders"].sort(key=lambda x: x.updated_at, reverse=(sort_dir == "desc"))
         elif ctx["binders"]:
             ctx["binders"].sort(key=lambda x: x.name, reverse=(sort_dir == "desc"))
 
@@ -181,9 +189,7 @@ async def collection(
             sleeves_with_names.append(sleeve)
         
         # Apply sorting
-        if sort_by == "name":
-            sleeves_with_names.sort(key=lambda x: x.name or "", reverse=(sort_dir == "desc"))
-        elif sort_by == "date_added":
+        if sort_by == "updated_at":
             sleeves_with_names.sort(key=lambda x: x.added_at, reverse=(sort_dir == "desc"))
         else:
             # Default to sorting by name
@@ -212,3 +218,45 @@ async def collection(
         ctx["sell"] = await sell_list(session, currency, source)
 
     return templates.TemplateResponse(request, "collection.html", ctx)
+
+
+# New routes for cleaner paths
+@router.get("/collection/stats", response_class=HTMLResponse)
+async def collection_stats_redirect(request: Request, view: str = "overview", range: str = DEFAULT_RANGE, session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+    return await collection(request, tab="stats", view=view, chart_range=range, session=session)
+
+@router.get("/collection/decks", response_class=HTMLResponse)
+async def collection_decks_redirect(request: Request, sort_by: str = "name", sort_dir: str = "asc", session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+    return await collection(request, tab="decks", sort_by=sort_by, sort_dir=sort_dir, session=session)
+
+@router.get("/collection/binders", response_class=HTMLResponse)
+async def collection_binders_redirect(request: Request, sort_by: str = "name", sort_dir: str = "asc", session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+    return await collection(request, tab="binders", sort_by=sort_by, sort_dir=sort_dir, session=session)
+
+@router.get("/collection/tags", response_class=HTMLResponse)
+async def collection_tags_redirect(request: Request, session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+    return await collection(request, tab="tags", session=session)
+
+@router.get("/collection/sleeves", response_class=HTMLResponse)
+async def collection_sleeves_redirect(request: Request, sort_by: str = "name", sort_dir: str = "asc", session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+    return await collection(request, tab="sleeves", sort_by=sort_by, sort_dir=sort_dir, session=session)
+
+@router.get("/collection/wishlist", response_class=HTMLResponse)
+async def collection_wishlist_redirect(request: Request, session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+    return await collection(request, tab="wishlist", session=session)
+
+@router.get("/collection/checklists", response_class=HTMLResponse)
+async def collection_checklists_redirect(request: Request, session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+    return await collection(request, tab="checklists", session=session)
+
+@router.get("/collection/trade", response_class=HTMLResponse)
+async def collection_trade_redirect(request: Request, keep: int = 1, session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+    return await collection(request, tab="trade", keep=keep, session=session)
+
+@router.get("/collection/sell", response_class=HTMLResponse)
+async def collection_sell_redirect(request: Request, session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+    return await collection(request, tab="sell", session=session)
+
+@router.get("/collection/locations", response_class=HTMLResponse)
+async def collection_locations_redirect(request: Request, sort_by: str = "name", sort_dir: str = "asc", session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+    return await collection(request, tab="locations", sort_by=sort_by, sort_dir=sort_dir, session=session)

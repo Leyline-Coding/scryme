@@ -1,4 +1,5 @@
 {# Sleeves index: list all sleeves with their associated decks. #}
+{% from "reusables/_list_sorting_controls.html" import list_sorting_controls %}
 <p class="text-sm text-muted mb-4">
   Manage your card sleeves. Each sleeve can optionally be associated with a deck.
 </p>
@@ -6,20 +7,7 @@
 
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <div class="flex justify-start items-center gap-3 md:mb-4">
-    <a href="/collection?tab=sleeves&sort_by={{ sort_by }}&sort_dir={{ 'desc' if sort_dir == 'asc' else 'asc' }}"
-      class="rounded-full bg-surface border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}">
-      {% if sort_dir == 'desc' %}<i class="fa-solid fa-arrow-down-wide-short"></i>{% else %}<i class="fa-solid fa-arrow-down-short-wide"></i>{% endif %}
-    </a>
-    <a href="/collection?tab=sleeves&sort_by=name&sort_dir={{ sort_dir }}"
-      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'name' else '' }}">
-      Name
-    </a>
-    <a href="/collection?tab=sleeves&sort_by=date_added&sort_dir={{ sort_dir }}"
-      class="rounded-full border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_by == 'date_added' else '' }}">
-      Date Added
-    </a>
-  </div>
+  {{ list_sorting_controls("/collection/sleeves", sort_by, sort_dir) }}
   {% if not read_only %}
   <form method="post" action="/sleeves/new" class="flex gap-2 items-center" enctype="multipart/form-data">
     <input type="text" name="name" required placeholder="New sleeve name"

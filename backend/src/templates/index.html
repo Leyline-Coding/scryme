@@ -89,7 +89,7 @@
     }
   </script>
   {% elif has_collection %}
-  <form action="/search" method="get" class="mt-16 mb-16 max-w-4xl w-full" x-data="{ ai: {{ 'true' if nl else 'false' }} }">
+  <form action="/search" method="get" class="mt-16 mb-16 max-w-2xl w-full" x-data="{ ai: {{ 'true' if nl else 'false' }} }">
     {% include "_search_bar.html" %}
     <button type="submit" style="display: none;"></button>
     <div class="grid grid-cols-3 gap-3 mb-2 text-xs md:text-sm whitespace-nowrap">

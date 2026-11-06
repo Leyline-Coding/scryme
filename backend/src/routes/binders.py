@@ -1,6 +1,6 @@
 """Custom binders (#206): a binder's card view + create/rename/delete + card-page add/remove.
 
-The binder *index* lives on the collection page's Binders tab (``/collection?tab=binders``); the
+The binder *index* lives on the collection page's Binders tab (/collection/binders); the
 legacy import-``binder_name`` browse (``/binders/cards``) is kept for cards imported with a binder
 column.
 """
@@ -32,7 +32,7 @@ from src.templating import templates
 router = APIRouter(tags=["binders"])
 
 _BINDER_NOT_FOUND = "Binder not found."
-_BINDERS_URL = "/collection?tab=binders"
+_BINDERS_URL = "/collection/binders"
 _cache = ImageCache()
 
 NONE_SENTINEL = "__none__"

@@ -91,7 +91,7 @@ _CURRENT = "current"  # diff source referring to the deck's live state (vs a sav
 @router.get("/decks")
 async def list_decks() -> RedirectResponse:
     # The deck index is now the Decks tab of /collection.
-    return RedirectResponse(url="/collection?tab=decks", status_code=307)
+    return RedirectResponse(url="/collection/decks", status_code=307)
 
 
 @router.get("/decks/new", response_class=HTMLResponse)

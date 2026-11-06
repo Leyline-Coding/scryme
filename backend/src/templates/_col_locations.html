@@ -1,10 +1,11 @@
 {# Storage-location hub (#160) as a collection tab: boxes (physical) + binders + decks. #}
+{% from "reusables/_list_sorting_controls.html" import list_sorting_controls %}
 <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none">
   <p class="text-sm text-muted mb-6">
     <span>
       Where your cards physically live. A card sits in one place — a <b>box</b>, a <b>binder</b>, or a
       <b>deck</b> — set from the card's page. For flexible, overlapping labels use
-      <a href="/collection?tab=tags" class="underline hover:text-fg">tags</a>. What's the functional 
+      <a href="/collection/tags" class="underline hover:text-fg">tags</a>. What's the functional 
       difference between a box and a binder?
     </span>
     <a id="summary_short" href="#" onclick="toggleSummaryText('summary_short', 'summary_full'); return false;" class="text-accent hover:underline">Read more</a>
@@ -20,15 +21,19 @@
 
 {# Boxes — the physical bulk-storage containers you create here. #}
 <section class="mb-8">
-  {% if not read_only %}
-  <div class="flex justify-end gap-2 mb-3">
-    <form method="post" action="/collection/boxes/new" class="flex gap-2">
-      <input type="text" name="name" required placeholder="New box name"
-             class="flex-1 min-w-0 rounded-full bg-surface-2 border border-edge px-3 py-2 text-sm" />
-      <button class="rounded-full bg-accent text-accent-fg px-3 py-2 text-sm font-medium"><i class="fa-solid fa-plus"></i> Add box</button>
-    </form>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {{ list_sorting_controls("/collection/locations", sort_by, sort_dir) }}
+    {% if not read_only %}
+      <div class="flex justify-start md:justify-end gap-2 md:mb-4">
+        <form method="post" action="/collection/boxes/new" class="flex gap-2">
+          <input type="text" name="name" required placeholder="New box name"
+                class="flex-1 min-w-0 rounded-full bg-surface border border-edge px-3 py-2 text-sm" />
+          <button class="rounded-full bg-accent text-accent-fg px-3 py-2 text-sm font-medium"><i class="fa-solid fa-plus"></i> Add box</button>
+        </form>
+      </div>
+    {% endif %}
   </div>
-  {% endif %}
+
   {% if boxes %}
   <ul class="space-y-2">
     {% for b in boxes %}
@@ -100,8 +105,8 @@
       <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
         <a href="/decks/{{ d.id }}" class="font-medium truncate hover:text-accent flex-1 min-w-0"><i class="fa-solid fa-layer-group"></i> {{ d.name }}</a>
         <span class="text-muted tabular-nums shrink-0">
-          <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(locations.get('deck', {}).get(d.id, {}) | attr('quantity') | default(0)) }} of {{deck_sizes[d.id]['main'] + deck_sizes[d.id]['side']}}</span>
-          <span class="text-muted tabular-nums shrink-0 inline-block w-14 text-right">({{deck_sizes[d.id]['main']}}/{{deck_sizes[d.id]['side']}})</span>
+          <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(locations.get('deck', {}).get(d.id, {}) | attr('quantity') | default(0)) }} of {{deck_sizes[d.id]['main'] + deck_sizes[d.id]['side']}} cards</span>
+          <span class="text-muted tabular-nums shrink-0 inline-block w-10 text-right" title="Mainboard deck size">({{deck_sizes[d.id]['main']}})</span>
         </span>
       </li>
       {% endfor %}

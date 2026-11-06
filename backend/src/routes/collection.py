@@ -46,7 +46,7 @@ from src.trade_pool import open_pools, stage_selection, stage_stack
 
 router = APIRouter(tags=["collection"])
 
-_LOCATIONS_URL = "/collection?tab=locations"
+_LOCATIONS_URL = "/collection/locations"
 
 
 def _guard_writable() -> None:
@@ -388,12 +388,6 @@ async def bulk(
             await stage_selection(session, int(pool_id), side, scryfall_ids)
     params = urlencode({"q": q, "scope": scope, "sort": sort, "dir": dir})
     return RedirectResponse(url=f"/search?{params}", status_code=303)
-
-
-@router.get("/collection/locations")
-async def locations() -> RedirectResponse:
-    # The storage hub is now the collection Locations tab.
-    return RedirectResponse(url=_LOCATIONS_URL, status_code=307)
 
 
 @router.post("/collection/boxes/new")

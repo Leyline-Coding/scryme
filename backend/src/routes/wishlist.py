@@ -30,7 +30,7 @@ def _image(card) -> str:
 @router.get("/wishlist")
 async def wishlist_page() -> RedirectResponse:
     # The wishlist is now the Wishlist tab of /collection.
-    return RedirectResponse(url="/collection?tab=wishlist", status_code=307)
+    return RedirectResponse(url="/collection/wishlist", status_code=307)
 
 
 def _button(request: Request, scryfall_id: str, wishlisted: bool) -> HTMLResponse:

@@ -32,7 +32,7 @@ def _guard_writable() -> None:
 @router.get("/checklists")
 async def list_checklists() -> RedirectResponse:
     # The checklist index is now the Checklists tab of /collection.
-    return RedirectResponse(url="/collection?tab=checklists", status_code=307)
+    return RedirectResponse(url="/collection/checklists", status_code=307)
 
 
 @router.post("/checklists")

@@ -10,4 +10,4 @@ router = APIRouter(tags=["stats"])
 
 @router.get("/stats")
 async def stats() -> RedirectResponse:
-    return RedirectResponse(url="/collection?tab=stats", status_code=307)
+    return RedirectResponse(url="/collection/stats", status_code=307)

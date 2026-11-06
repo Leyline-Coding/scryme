@@ -23,7 +23,7 @@ router = APIRouter(tags=["sell"])
 @router.get("/sell")
 async def sell_page() -> RedirectResponse:
     # The sell list is the Sell tab of /collection.
-    return RedirectResponse(url="/collection?tab=sell", status_code=307)
+    return RedirectResponse(url="/collection/sell", status_code=307)
 
 
 @router.get("/sell/export")

@@ -52,7 +52,7 @@ async def upload_undo(session: AsyncSession = Depends(get_session)):
     from src.import_undo import undo_last
 
     await undo_last(session)
-    return RedirectResponse(url="/collection?tab=stats", status_code=303)
+    return RedirectResponse(url="/collection/stats", status_code=303)
 
 
 @router.post("/upload", response_class=HTMLResponse)

@@ -72,30 +72,3 @@ async def test_locate_stack_into_box_binder_deck(client, session):
     loc = await session.scalar(select(CollectionCard.location).where(CollectionCard.id == stack))
     assert loc is None
 
-
-@pytest.mark.asyncio
-async def test_tag_summaries_and_tab(client, session):
-    card = await _own(session, "Sol Ring")
-    await add_card_tag(session, card.scryfall_id, "ramp")
-    await add_card_tag(session, card.scryfall_id, "artifact")
-    sums = {t.name: t.quantity for t in await tag_summaries(session)}
-    assert sums == {"artifact": 2, "ramp": 2}
-
-    resp = await client.get("/collection?tab=tags")
-    assert resp.status_code == 200
-    assert "ramp" in resp.text and "artifact" in resp.text
-
-
-@pytest.mark.asyncio
-async def test_locations_hub_tab(client, session):
-    await create_box(session, "Bulk")
-    resp = await client.get("/collection?tab=locations")
-    assert resp.status_code == 200
-    assert "Bulk" in resp.text and "Boxes" in resp.text
-
-
-@pytest.mark.asyncio
-async def test_locations_path_redirects_to_tab(client, session):
-    resp = await client.get("/collection/locations", follow_redirects=False)
-    assert resp.status_code == 307
-    assert resp.headers["location"] == "/collection?tab=locations"

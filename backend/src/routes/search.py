@@ -156,14 +156,20 @@ def _to_views(result) -> list[CardView]:
 
 
 @router.get("/advanced", response_class=HTMLResponse)
-async def advanced(request: Request) -> HTMLResponse:
+async def advanced(request: Request, session: AsyncSession = Depends(get_session)) -> HTMLResponse:
     """Form-based query builder for users who don't know Scryfall syntax.
 
     The form assembles a Scryfall query string client-side (Alpine) and navigates to /search, so
     there's a single search-engine path and the generated query is visible/editable afterward.
     """
+    from src.locations import find_or_create_grouped_locations
+    grouped_locations = await find_or_create_grouped_locations(session, binders=True, boxes=True, decks=True)
+    
     return templates.TemplateResponse(
-        request, "advanced.html", {"read_only": get_settings().read_only}
+        request, "advanced.html", {
+            "read_only": get_settings().read_only,
+            "grouped_locations": grouped_locations
+        }
     )
 
 

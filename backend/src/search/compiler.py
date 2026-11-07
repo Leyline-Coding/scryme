@@ -238,6 +238,12 @@ def _location(term: Term) -> ColumnElement:
     # Handle explicit type prefixed searches like "box:Library" that filter by exact label
     location_value = term.value.lower()
 
+    # Special case for "unfiled" - cards where CollectionCard.location is NULL
+    if location_value == "unfiled":
+        return Card.scryfall_id.in_(
+            select(CollectionCard.scryfall_id).where(CollectionCard.location.is_(None))
+        )
+
     if ":" in location_value:
         # Extract type from format like "box:Library"
         loc_type, loc_name = location_value.split(":", 1)

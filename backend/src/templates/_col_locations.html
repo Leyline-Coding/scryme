@@ -3,14 +3,14 @@
 <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none">
   <p class="text-sm text-muted mb-6">
     <span>
-      Where your cards physically live. A card sits in one place — a <b>box</b>, a <b>binder</b>, or a
-      <b>deck</b> — set from the card's page. For flexible, overlapping labels use
+      Where your cards physically live. A card sits in one place - a <b>box</b>, a <b>binder</b>, or a
+      <b>deck</b> - set from the card's page. For flexible, overlapping labels use
       <a href="/collection/tags" class="underline hover:text-fg">tags</a>. What's the functional 
       difference between a box and a binder?
     </span>
     <a id="summary_short" href="#" onclick="toggleSummaryText('summary_short', 'summary_full'); return false;" class="text-accent hover:underline">Read more</a>
     <span id="summary_full" style="display:none;">
-      A box is a basic, bulk storage option where cards are managed in bulk via scryfall syntax and stacks—
+      A box is a basic, bulk storage option where cards are managed in bulk via scryfall syntax and stacks-
       identical copies of cards with the same name from the same set, same printing, condition, and language etc.
       A binder is a special kind of storage meant to display individual cards, and can be shared publicly with share links.
       <a href="#" onclick="toggleSummaryText('summary_short', 'summary_full'); return false;" class="text-accent hover:underline">Read less</a>
@@ -21,6 +21,25 @@
 
 {# Boxes — the physical bulk-storage containers you create here. #}
 <section class="mb-8">
+  {% if unfiled_count and unfiled_count > 0 %}
+  <div class="mt-1 mb-3 p-2 pl-4 pr-4 rounded bg-surface text-accent text-xs">
+    <span class="block">{{ unfiled_count }} card{{ 's' if unfiled_count != 1 else '' }} are currently unfiled.
+      <a href="/search?q=loc%3A%22unfiled%22&scope=collection" class="underline hover:text-fg">View them</a>.
+      <form method="post" action="/collection/bulk" class="inline-block ml-2">
+        <input type="hidden" name="bulk_action" value="location">
+        <input type="hidden" name="bulk_location_id" value="">
+        <select name="bulk_location_id" class="rounded bg-surface-2 border border-edge px-2 py-1 text-xs font-medium">
+          <option value="">Select location...</option>
+          {% for loc in available_locations %}
+            <option value="{{ loc.id }}">{{ loc.type }}: {{ loc.foreign_id }}</option>
+          {% endfor %}
+        </select>
+        <button class="rounded-full bg-accent text-accent-fg px-3 py-1 text-xs font-medium ml-2">File all unfiled cards</button>
+      </form>
+    </span>
+  </div>
+  {% endif %}
+  
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     {{ list_sorting_controls("/collection/locations", sort_by, sort_dir) }}
     {% if not read_only %}

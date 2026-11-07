@@ -21,7 +21,7 @@ from src.currency import get_currency, info, unit_price
 from src.decks import all_decks
 from src.db import get_session
 from src.locations import get_location_summaries_remapped
-from src.models import Deck, DeckCard, PriceSnapshot, Card
+from src.models import Deck, DeckCard, PriceSnapshot, Card, CollectionCard, Location
 from src.collection_edit import color_identity_group
 from src.perfcache import memoize
 from src.prices import CHART_RANGES, DEFAULT_RANGE, build_value_chart, range_days, value_series
@@ -150,6 +150,23 @@ async def collection(
         ctx["locations"] = await get_location_summaries_remapped(session)
         ctx["binders"] = await all_binders(session)
         ctx["boxes"] = await all_boxes(session)
+        
+        # Count unfiled cards
+        unfiled_count = await session.scalar(
+            select(func.coalesce(func.sum(CollectionCard.quantity), 0))
+            .where(CollectionCard.location.is_(None))
+        )
+        ctx["unfiled_count"] = unfiled_count
+        
+        # Get all non-deck, non-unfiled locations for the dropdown
+        location_rows = await session.execute(
+            select(Location.id, Location.type, Location.foreign_id)
+            .where(Location.type != "deck")
+        )
+        ctx["available_locations"] = [
+            {"id": row.id, "type": row.type, "foreign_id": row.foreign_id}
+            for row in location_rows.all()
+        ]
         
         # Apply sorting to boxes
         if sort_by == "updated_at":

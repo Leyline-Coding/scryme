@@ -44,6 +44,8 @@ from src.decks import (
     deck_printings,
     deck_stats,
     deconstruct_deck,
+    match_deck_cards_in_deck_collection_cards,
+    move_qty_from_existing_stack,
     proxy_cards,
     rename_deck,
     resolve_ownership_rows,
@@ -51,7 +53,7 @@ from src.decks import (
 )
 from src.llm import get_config
 from src.locations import find_or_create_locations, find_or_create_grouped_locations
-from src.models import Card, CollectionCard, Deck, DeckCard, DeckVersion, Sleeve
+from src.models import Card, CollectionCard, Deck, DeckCard, DeckVersion, Location, Sleeve
 from src.pricing import get_price_source
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
@@ -404,17 +406,32 @@ async def change_deck_card_qty(
     deck_id: int, card_id: int, delta: int = Form(0),
     session: AsyncSession = Depends(get_session),
 ) -> Response:
-    """Nudge a deck line's quantity by ±1 (#298); mirror it to the collection for an owned card."""
+    """Nudge a deck line's quantity by ±1 (#298); mirror it to the collection for an owned card.
+    
+    If all quanitites of this card are located in the deck, delta of these cards will be moved to unfiled.
+    """
     _guard_writable()
+    ## Modify deck_card
     dc = await _get_deck_card(session, deck_id, card_id)
     delta = 1 if delta > 0 else -1
     new_qty = max(1, dc.quantity + delta)
     applied = new_qty - dc.quantity  # 0 when already at the floor of 1
     dc.quantity = new_qty
+    
+    ## Modify collection_card if as many a qty is located in this deck and the new quantity has decreased
+    if(delta < 0 and dc.scryfall_id):
+      location = (await session.scalars(select(Location).where(Location.type == 'deck', Location.foreign_id==deck_id))).first()
+      matches = await match_deck_cards_in_deck_collection_cards(session, source_cards=[dc], source_location=location.id if location else None)
+      matching_collection_cards = matches[dc.scryfall_id]
+      if(sum([c.quantity for c in matching_collection_cards]) > 0):
+          collection_card_to_move = matching_collection_cards[max(range(len(matching_collection_cards)), key=lambda i: matching_collection_cards[i].quantity)]
+          moved_cards = await move_qty_from_existing_stack(session, collection_card=collection_card_to_move, quantity=abs(delta), new_location_id=None)
+
     await session.commit()
     if applied:
         deck = await session.get(Deck, deck_id)
-        await sync_quantity(session, deck, dc, applied)
+        if deck is not None:
+            await sync_quantity(session, deck, dc, applied)
     return Response(status_code=204, headers={"HX-Redirect": f"/decks/{deck_id}"})
 
 

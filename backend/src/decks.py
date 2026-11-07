@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from collections import OrderedDict
 
-from src.collection_edit import move_stack_location, pull_stack_from_existing
+from src.collection_edit import move_stack_location, move_qty_from_existing_stack
 from src.currency import unit_price
 from src.models import Card, CollectionCard, Deck, DeckCard, Location
 from src.pricing import resolve_prices
@@ -862,13 +862,40 @@ async def deck_stats(
         total_value=round(total, 2),
     )
 
-
-async def match_unreserved_stacks(session: AsyncSession, source_cards: list[DeckCard]) -> dict[uuid.UUID, list[CollectionCard]]:
-    """Find CollectionCards matching DeckCards, excluding those in deck locations.
+async def match_deck_cards_in_deck_collection_cards(session: AsyncSession, source_cards: list[DeckCard], source_location: int | None) -> dict[uuid.UUID, list[CollectionCard]]:
+    """Find CollectionCards matching DeckCards, in source_location. (Custom wrapper for match_deck_cards_in_collection_cards)
     
-    Returns a dict mapping scryfall_id to a list of matching CollectionCards.
+    Returns a dict mapping each DeckCard's scryfall_id to a list of matching CollectionCards.
     """
 
+    # Get all the unique scryfall_ids we're looking for
+    scryfall_ids = [card.scryfall_id for card in source_cards if card.scryfall_id]
+    # Get all CollectionCards with matching scryfall_ids and not in a deck location
+    custom_collection_cards = list((await session.execute(select(CollectionCard).where(CollectionCard.scryfall_id.in_(scryfall_ids), (CollectionCard.location == source_location)))).scalars().all())
+    
+    return await match_deck_cards_in_collection_cards(session, source_cards=source_cards, custom_collection_cards=custom_collection_cards)
+
+
+
+async def match_deck_cards_in_unreserved_collection_cards(session: AsyncSession, source_cards: list[DeckCard]) -> dict[uuid.UUID, list[CollectionCard]]:
+    """Find CollectionCards matching DeckCards, excluding those in deck locations. (Custom wrapper for match_deck_cards_in_collection_cards)
+    
+    Returns a dict mapping each DeckCard's scryfall_id to a list of matching CollectionCards.
+    """
+
+    # Get all the unique scryfall_ids we're looking for
+    scryfall_ids = [card.scryfall_id for card in source_cards if card.scryfall_id]
+    # Get all CollectionCards with matching scryfall_ids and not in a deck location
+    custom_collection_cards = list((await session.execute(select(CollectionCard).outerjoin(Location, CollectionCard.location == Location.id).where(CollectionCard.scryfall_id.in_(scryfall_ids), (Location.type != "deck") | (Location.id.is_(None))))).scalars().all())
+    
+    return await match_deck_cards_in_collection_cards(session, source_cards=source_cards, custom_collection_cards=custom_collection_cards)
+
+
+async def match_deck_cards_in_collection_cards(session: AsyncSession, source_cards: list[DeckCard], custom_collection_cards: list[CollectionCard] | None = None) -> dict[uuid.UUID, list[CollectionCard]]:
+    """Find CollectionCards matching DeckCards.
+    
+    Returns a dict mapping each DeckCard's scryfall_id to a list of matching CollectionCards.
+    """
     # Get all the unique scryfall_ids we're looking for
     scryfall_ids = [card.scryfall_id for card in source_cards if card.scryfall_id]
     
@@ -876,7 +903,10 @@ async def match_unreserved_stacks(session: AsyncSession, source_cards: list[Deck
     matching_cards = {scryfall_id: [] for scryfall_id in scryfall_ids}
     
     # Get all CollectionCards with matching scryfall_ids and not in a deck location
-    collection_cards = (await session.execute(select(CollectionCard).outerjoin(Location, CollectionCard.location == Location.id).where(CollectionCard.scryfall_id.in_(scryfall_ids), (Location.type != "deck") | (Location.id.is_(None))))).scalars().all()
+    if(custom_collection_cards is not None):
+        collection_cards = custom_collection_cards
+    else:
+        collection_cards = (await session.execute(select(CollectionCard).where(CollectionCard.scryfall_id.in_(scryfall_ids)))).scalars().all()
 
     # Filter cards based on exact matching properties
     for source_card in source_cards:
@@ -893,7 +923,7 @@ async def match_unreserved_stacks(session: AsyncSession, source_cards: list[Deck
 
 
 async def checkout_deck(session: AsyncSession, deck: Deck, mainboard: bool = True, sideboard: bool = False) -> bool:
-    """ Move cards in the collection (other than other decks) to this deck's location. 
+    """ Move cards in the collection (other than decks) to this deck's location. 
    
     For each card in the deck:
     1. If there is no matching unreserved cards in collection, do nothing
@@ -901,42 +931,45 @@ async def checkout_deck(session: AsyncSession, deck: Deck, mainboard: bool = Tru
     3. If there are matching card stack quanities in collection simply move them
     4. If there are more cards than needed (quantity), handle properly via splitting and quantity adjustment
     """
+    await session.refresh(deck, ["location"])
 
     # Get cards to checkout based on parameters 
-    cards_to_checkout = []
+    deck_cards = []
     
-    if mainboard: cards_to_checkout += [c for c in deck.cards if c.board == "main"]
-    if sideboard: cards_to_checkout += [c for c in deck.cards if c.board == "side"]
+    if mainboard: deck_cards += [c for c in deck.cards if c.board == "main"]
+    if sideboard: deck_cards += [c for c in deck.cards if c.board == "side"]
 
-    unreserved_matching_stacks = await match_unreserved_stacks(session, cards_to_checkout)
+    unreserved_matching_stacks = await match_deck_cards_in_unreserved_collection_cards(session, deck_cards)
+    deck_matching_stacks = await match_deck_cards_in_deck_collection_cards(session, deck_cards, source_location=deck.location.id)
 
-    await session.refresh(deck, ["location"])
+
     # For each card to checkout:
-    for card_to_checkout in cards_to_checkout:
+    for deck_card in deck_cards:
 
-        available_cards = sum([c.quantity for c in unreserved_matching_stacks[card_to_checkout.scryfall_id]])
-        quantity_to_checkout = card_to_checkout.quantity
+        available_cards = sum([c.quantity for c in unreserved_matching_stacks[deck_card.scryfall_id]])
+        existing_cards = sum([c.quantity for c in deck_matching_stacks[deck_card.scryfall_id]])
+        quantity_to_checkout = deck_card.quantity-existing_cards
 
         # Look through available stacks as long as not all cards are checked out and there are still cards to checkout
         while quantity_to_checkout > 0 and available_cards > 0:
             # Find largest matching stack
-            stack_to_move_ix = max(range(len(unreserved_matching_stacks[card_to_checkout.scryfall_id])), key=lambda i: unreserved_matching_stacks[card_to_checkout.scryfall_id][i].quantity)
-            # If the stack has more cards than we need, split it into the new location
-            if(unreserved_matching_stacks[card_to_checkout.scryfall_id][stack_to_move_ix].quantity > quantity_to_checkout):
-                await pull_stack_from_existing(session, stack_id=unreserved_matching_stacks[card_to_checkout.scryfall_id][stack_to_move_ix].id, num_cards=quantity_to_checkout, new_location_id=deck.location.id)
-                quantity_to_checkout = 0
-            # If the stack has as many or fewer cards than we need move the whole stack
-            else:
-                await move_stack_location(session, unreserved_matching_stacks[card_to_checkout.scryfall_id][stack_to_move_ix].id, location_id=deck.location.id)
-                quantity_to_checkout -= unreserved_matching_stacks[card_to_checkout.scryfall_id][stack_to_move_ix].quantity
-                available_cards -= unreserved_matching_stacks[card_to_checkout.scryfall_id][stack_to_move_ix].quantity
-                # If the stack was insufficient to fill the need, and more stacks exist, we will pop this stack out of the canddidates sos that we can move to the next biggest stack.
-                if(quantity_to_checkout > 0 and available_cards > 0):
-                    unreserved_matching_stacks[card_to_checkout.scryfall_id].pop(stack_to_move_ix)
+            stack_to_move_ix = max(range(len(unreserved_matching_stacks[deck_card.scryfall_id])), key=lambda i: unreserved_matching_stacks[deck_card.scryfall_id][i].quantity)
+
+            moved_cards_count = await move_qty_from_existing_stack(session, collection_card=unreserved_matching_stacks[deck_card.scryfall_id][stack_to_move_ix], quantity=quantity_to_checkout, new_location_id=deck.location.id)
+            quantity_to_checkout -= quantity_to_checkout
+            available_cards -= quantity_to_checkout
+
+            # If the stack was insufficient to fill the need, and more stacks exist, we will pop this stack out of the canddidates sos that we can move to the next biggest stack.
+            if(quantity_to_checkout > 0 and available_cards > 0):
+                unreserved_matching_stacks[deck_card.scryfall_id].pop(stack_to_move_ix)
 
 
     await session.commit()
     return True
+
+
+
+
 
 
 async def deconstruct_deck(session: AsyncSession, deck: Deck, location: int | None = None) -> bool:

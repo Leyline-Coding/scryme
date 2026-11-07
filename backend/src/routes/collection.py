@@ -32,7 +32,7 @@ from src.collection_edit import (
     organize_by_color_identity,
     owned_for_oracle,
     remove_copies,
-    pull_stack_from_existing,
+    pull_stack_from_existing_stack,
     _STACK_NOT_FOUND,
 )
 from src.config import get_settings
@@ -344,7 +344,7 @@ async def pull_stack(
     
     try:
         # Call the pull function from collection_edit
-        card_sid = await pull_stack_from_existing(session, stack_id, expected_version=_expected(version))
+        card_sid = await pull_stack_from_existing_stack(session, stack_id, expected_version=_expected(version))
     except StaleStackError:
         return await _conflict(request, session, stack.scryfall_id)
     

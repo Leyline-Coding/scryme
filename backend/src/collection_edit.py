@@ -500,7 +500,7 @@ async def bulk_move_to_location(session: AsyncSession, location_id: int, scryfal
     await session.commit()
 
 
-async def pull_stack_from_existing(session: AsyncSession, stack_id: int, num_cards: int = 1, new_location_id: int | None = None, expected_version: int | None = None) -> uuid.UUID | None:
+async def pull_stack_from_existing_stack(session: AsyncSession, stack_id: int, num_cards: int = 1, new_location_id: int | None = None, expected_version: int | None = None) -> uuid.UUID | None:
     """Pull num_cards card(s) from an existing stack into a new stack with all the same attributes.
     
     Returns the scryfall_id of the card that was pulled, or None if the operation failed.
@@ -511,7 +511,7 @@ async def pull_stack_from_existing(session: AsyncSession, stack_id: int, num_car
     
     _guard_version(original_stack, expected_version)
     
-    # If we can't reduce quantity, nothing to do
+    # If we can't reduce quantity, or the old stack will be 0, nothing to do
     if original_stack.quantity <= num_cards: return None
         
     # Create a new stack with all the same attributes but quantity of num_cards
@@ -521,9 +521,10 @@ async def pull_stack_from_existing(session: AsyncSession, stack_id: int, num_car
         finish=original_stack.finish,
         condition=original_stack.condition,
         language=original_stack.language,
-        location=(new_location_id if new_location_id else original_stack.location),
+        location=new_location_id,
         purchase_price=original_stack.purchase_price,
         source_format="manual",
+        added_at=original_stack.added_at,
         tags=original_stack.tags
     )
     
@@ -538,3 +539,21 @@ async def pull_stack_from_existing(session: AsyncSession, stack_id: int, num_car
     await session.refresh(new_stack)
     
     return new_stack.scryfall_id
+
+
+
+
+async def move_qty_from_existing_stack(session: AsyncSession, collection_card: CollectionCard, quantity: int, new_location_id: int | None) -> int:
+    """ Move arbitrary qty of cards in CollectionCard to the specified location. 
+    
+    Will attempt to move up to but no more than collection_card.quantity. Returns the number of cards in the new location, thus the number of cards actualyl moved.
+    """
+    # If the stack has more cards than we need, split it into the new location
+    if(collection_card.quantity > quantity):
+        await pull_stack_from_existing_stack(session, stack_id=collection_card.id, num_cards=quantity, new_location_id=new_location_id)
+        return quantity
+    # If the stack has as many or fewer cards than we need, move the whole stack
+    else:
+        remainder = collection_card.quantity - quantity
+        await move_stack_location(session, collection_card.id, location_id=new_location_id)
+        return collection_card.quantity

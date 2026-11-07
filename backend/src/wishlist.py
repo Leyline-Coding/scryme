@@ -74,6 +74,7 @@ async def add_deck_missing(session: AsyncSession, deck: Deck) -> int:
 @dataclass
 class WishlistView:
     items: list[WishlistItem]
+    card_prices: dict[int, float]
     total_cost: float
     total_cards: int
 
@@ -87,6 +88,8 @@ async def list_wishlist(
         order_by = WishlistItem.added_at
     elif sort_by == "quantity":
         order_by = WishlistItem.quantity
+    elif sort_by == "price":
+        order_by = Card.prices
     else:
         order_by = Card.name
 
@@ -104,5 +107,8 @@ async def list_wishlist(
         for item in items
     )
     
+    # Calculate individual item costs using the same logic as the total cost
+    card_prices = {item.id:unit_price(effective_prices(item.card, source), "normal", currency) for item in items}
+    
     total_cards = sum(item.quantity for item in items)
-    return WishlistView(items=items, total_cost=round(total_cost, 2), total_cards=total_cards)
+    return WishlistView(items=items, card_prices=card_prices, total_cost=round(total_cost, 2), total_cards=total_cards)

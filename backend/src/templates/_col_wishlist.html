@@ -16,7 +16,7 @@
 <section class="mb-8">
   {% if rows %}
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    {{ list_sorting_controls("/collection/wishlist", sort_by, sort_dir, sort_by_quantity=True) }}
+    {{ list_sorting_controls("/collection/wishlist", sort_by, sort_dir, sort_by_price=True, sort_by_quantity=True) }}
     <div class="flex justify-start md:justify-end gap-2 md:mb-4">
       <p class="text-sm text-muted">
         {{ '{:,}'.format(view_obj.total_cards) }} card{{ '' if view_obj.total_cards == 1 else 's' }}
@@ -41,10 +41,11 @@
         </a>
         {% if item.note %}<div class="text-xs text-muted truncate">{{ item.note }}</div>{% endif %}
       </div>
-      <div class="text-right text-sm shrink-0">
-        <div class="tabular-nums">×{{ item.quantity }}</div>
-        {% set price = item.card.prices.get(cur.key) if item.card.prices else None %}
-        {% if price %}<div class="text-xs text-muted tabular-nums">{{ currency.format_and_decorate(item.quantity * (price | float), cur.symbol) }}</div>{% endif %}
+
+      <div class="tabular-nums text-right text-sm text-muted shrink-0 flex flex-row items-center justify-end gap-4 ">
+        {% if view_obj.card_prices[item.id] %}<span class="w-16 inline-block">{{ currency.format_and_decorate((view_obj.card_prices[item.id] | float), cur.symbol) }}</span>{% endif %}
+        <span class="w-16 inline-block">×{{ item.quantity }}</span>
+        {% if view_obj.card_prices[item.id] %}<span class="w-16 inline-block">{{ currency.format_and_decorate(item.quantity * (view_obj.card_prices[item.id] | float), cur.symbol) }}</span>{% endif %}
       </div>
       {% if not read_only %}
       <form method="post" action="/wishlist/remove" class="shrink-0">

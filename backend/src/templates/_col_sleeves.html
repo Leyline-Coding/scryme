@@ -52,7 +52,7 @@
             {% if sleeve.name %}{{ sleeve.name }}{% else %} Sleeve #{{ sleeve.id }}{% endif %}
           </span>
           <form action="/sleeves/{{ sleeve.id }}/delete" method="POST">
-            <button type="submit" class="text-end text-red-500 hover:text-red-70">Delete</button>
+            <button type="submit" class="text-end text-red-500 hover:text-red-70"><i class="fa-solid fa-trash"></i></button>
           </form>
         </div>
         

@@ -35,18 +35,12 @@ async def find_or_create_locations(session: AsyncSession, binders: bool = True, 
             "binder": binders,
             "box": boxes,
             "deck": decks,
-        }[type_name]:
-            continue
+        }[type_name]: continue
 
         # Fetch source IDs and names
-        rows = (
-            await session.execute(
-                select(model.id, model.name)
-            )
-        ).all()
+        rows = (await session.execute(select(model.id, model.name))).all()
 
-        if not rows:
-            continue
+        if not rows:continue
 
         source_names = {row.id: row.name for row in rows}
         ids = list(source_names.keys())

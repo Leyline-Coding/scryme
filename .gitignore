@@ -43,3 +43,4 @@ deploy/k8s/**/secret.yaml
 /wiki_deck_types.txt
 /mtg_comprehensive_rules.txt
 backend/.env
+backend/.env-test

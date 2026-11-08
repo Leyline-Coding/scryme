@@ -40,7 +40,6 @@ from src.decks import (
     checkout_deck,
     create_deck,
     deck_coverage,
-    deck_coverage_combined,
     deck_printings,
     deck_stats,
     deconstruct_deck,
@@ -284,17 +283,16 @@ async def view_deck(
     source = get_price_source(request)
     coverage = await deck_coverage(session, deck, fmt=format or None, currency=currency,
                                     source=source)
-    coverage_combined = deck_coverage_combined(coverage)
     
     # Get locations for the location picker
     locations = await find_or_create_locations(session, binders=True, boxes=True, decks=True)
+    
     
     return templates.TemplateResponse(
         request,
         "deck_detail.html",
         {
             "cov": coverage,
-            "cov_combined": coverage_combined,
             "deck": deck,
             "formats": LEGALITY_FORMATS,
             "versions": await list_versions(session, deck_id),

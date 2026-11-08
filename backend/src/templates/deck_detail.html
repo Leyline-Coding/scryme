@@ -39,14 +39,14 @@
         {% else %}
         <span class="w-8 shrink-0 text-right text-muted tabular-nums">{{ r.quantity }}×</span>
         {% endif %}
-        {% if r.scryfall_id %}
-        <a href="/card/{{ r.scryfall_id }}" class="min-w-0 truncate hover:text-accent">{{ r.name }}</a>
+        {% if r.scryfall_card.scryfall_id %}
+        <a href="/card/{{ r.scryfall_card.scryfall_id }}" class="min-w-0 truncate hover:text-accent">{{ r.name }}</a>
         {% else %}
         <span class="min-w-0 truncate" title="Not found in the card database">{{ r.name }}</span>
         {% endif %}
-        {% if r.set_code %}
+        {% if r.scryfall_card.set_code %}
         <span class="shrink-0 text-[10px] uppercase tracking-wide text-muted"
-              title="{{ r.set_name }} · #{{ r.collector_number }} · {{ r.language|upper }}">{{ r.set_code }}·{{ r.collector_number }}·{{ r.language|upper }}</span>
+              title="{{ r.scryfall_card.set_name }} · #{{ r.scryfall_card.collector_number }} · {{ r.language|upper }}">{{ r.scryfall_card.set_code }} {{ set_symbol(r.scryfall_card.set_code, r.scryfall_card.rarity) }} {{ r.language|upper }}</span>
         {% endif %}
         {% if r.finish and r.finish != 'normal' %}
         <span class="shrink-0 rounded px-1 text-[10px] font-medium {% if r.finish == 'etched' %}etched-chip{% else %}foil-chip{% endif %}"
@@ -70,10 +70,14 @@
         {% endif %}
         {% if not r.matched %}
         <span class="shrink-0 text-xs">unrecognized</span>
-        {% elif r.owned >= r.quantity %}
-        <span class="shrink-0 text-xs text-emerald-500" title="You own enough">✓ own {{ r.owned }}</span>
         {% else %}
-        <span class="shrink-0 text-xs text-muted">own {{ r.owned }}/{{ r.quantity }}</span>
+        <span class="shrink-0 text-xs text-muted">
+            {% if not r.legality or r.legality in ('legal', 'restricted') %}
+            <span class="rounded bg-{% if r.quantity > r.stack_coverage.in_deck %}amber{%else%}emerald{%endif%}-500/80 text-white text-[9px] px-1 py-0.5" title="Constructed">{% if r.stack_coverage.in_deck==0 %}0{% elif r.quantity > r.stack_coverage.in_deck %}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%else%}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%endif%}</span>
+            <span class="rounded bg-{% if r.quantity > (r.stack_coverage.in_deck+r.stack_coverage.owned) %}amber{%else%}emerald{%endif%}-700/80 text-white text-[9px] px-1 py-0.5" title="Exact copies available">{{ r.stack_coverage.owned }}{% if r.quantity > r.stack_coverage.in_deck %}/{{ r.quantity }}{%endif%}</span>
+            {% endif %}
+            <span class="rounded bg-emerald-900/90 text-white text-[9px] px-1 py-0.5" title="Swappable copies available">{{ r.stack_coverage.swappable }}</span>
+        </span>
         {% endif %}
         {% if not read_only and r.matched %}
         <button type="button" title="Change printing / mark as proxy"
@@ -122,10 +126,12 @@
       {% endif %}
       {% endif %}
       <span class="absolute top-1 left-1 rounded-full bg-black/70 text-white text-[10px] px-1.5 py-0.5 tabular-nums">{{ r.quantity }}×</span>
-      {% if r.matched and r.owned >= r.quantity %}
-      <span class="absolute bottom-1 right-1 rounded bg-emerald-600/90 text-white text-[9px] px-1 py-0.5" title="You own enough">✓</span>
-      {% elif r.matched %}
-      <span class="absolute bottom-1 right-1 rounded bg-amber-600/90 text-white text-[9px] px-1 py-0.5">{{ r.owned }}/{{ r.quantity }}</span>
+      {% if r.matched and r.stack_coverage.in_deck >= r.quantity %}
+      <span class="absolute bottom-1 right-1 rounded bg-emerald-600/90 text-white text-[9px] px-1 py-0.5" title="Constructed"><i class="fa-solid fa-check"></i></span>
+      {% elif r.matched and r.stack_coverage.owned+r.stack_coverage.swappable >= r.quantity %}
+      <span class="absolute bottom-1 right-1 rounded bg-amber-600/90 text-white text-[9px] px-1 py-0.5" title="Cards available for construction"><i class="fa-solid fa-check"></i></span>
+      {% else %}
+      <span class="absolute bottom-1 right-1 rounded bg-red-600/90 text-white text-[9px] px-1 py-0.5" title="Missing cards"><i class="fa-solid fa-exclamation"></i></span>
       {% endif %}
     </div>
     {% endfor %}
@@ -169,7 +175,7 @@
             {{ cov.pct_own }}% owned, {{ cov.pct_in_deck }}% constructed
             {% endif %}
           </div>
-          <div class="text-sm text-muted">{{ cov.owned_count }} of {{ cov.total_needed }} cards owned, {{ cov.total_in_deck }} in deck</div>
+          <div class="text-sm text-muted">{{ cov.total_owned }} of {{ cov.total_needed }} cards owned, {{ cov.total_in_deck }} in deck</div>
         </div>
         <div class="text-center">
           {% if cov.missing_count %}
@@ -545,7 +551,7 @@
          become one endless narrow column. Beside a sideboard it stays single-column. #}
       <div x-show="view === 'list'" :class="layout === 'rows' || {{ 'true' if not cov.side else 'false' }} ? 'lg:columns-2 xl:columns-3 [column-gap:2rem]' : ''">{{ rows(cov.main) }}</div>
       <div x-show="view === 'grid'" x-cloak>{{ grid(cov.main) }}</div>
-      <div x-show="view === 'grid-combined'" x-cloak>{{ grid(cov_combined.main) }}</div>
+      <div x-show="view === 'grid-combined'" x-cloak>{{ grid(cov.main_combined) }}</div>
     </section>
     {% if cov.side %}
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
@@ -554,7 +560,7 @@
       </h2>
       <div x-show="view === 'list'">{{ rows(cov.side) }}</div>
       <div x-show="view === 'grid'" x-cloak>{{ grid(cov.side) }}</div>
-      <div x-show="view === 'grid-combined'" x-cloak>{{ grid(cov_combined.side) }}</div>
+      <div x-show="view === 'grid-combined'" x-cloak>{{ grid(cov.side_combined) }}</div>
     </section>
     {% endif %}
   </div>

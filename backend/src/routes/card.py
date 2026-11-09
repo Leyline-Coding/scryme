@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import currency, fx
 from src.card import _image
 from src.config import get_settings
-from src.currency import get_currency
+from src.currency import CURRENCIES, get_currency
 from src.db import get_session
 from src.embeddings import similar_to_oracle
 from src.llm import get_config
@@ -93,18 +93,40 @@ def _hist_currencies() -> list[dict]:
     ]
 
 
-def _price_rows(request: Request, card: Card, default_source_name: str = "tcgplayer") -> list[tuple[str, float]]:
+def _price_rows(request: Request, card: Card) -> dict[str, dict[str, dict[str, float]]]:
     """Non-empty (label, price) rows, led by the visitor's chosen currency and price source."""
-    source = get_price_source(request)
-    prices = effective_prices(card, source) or {}
-    src = SOURCES.get(source, SOURCES[default_source_name])
-    usd_label = f"{src['label']}" if source != default_source_name else "USD"
-    usd_rows = [(usd_label, "usd"), (f"{usd_label} foil", "usd_foil")]
-    eur_rows = [("EUR", "eur"), ("EUR foil", "eur_foil")]
-    ordered = eur_rows + usd_rows if get_currency(request) == "eur" else usd_rows + eur_rows
-    return [
-        (label, prices.get(key)) for label, key in [*ordered, ("TIX", "tix")] if prices.get(key)
-    ]
+    # Use market_prices directly instead of effective_prices
+    market_prices = getattr(card, "market_prices", None) or {}
+    currency = get_currency(request) ## User's chosen currency
+    currency_symbol = CURRENCIES[currency]['symbol']
+    default_currency_symbol = CURRENCIES['usd']['symbol']
+
+    # Convert each source's prices to user's currency and relabel
+    for source, prices in market_prices.items():
+        for key in list(prices.keys()):
+            price_value = float(market_prices[source][key])
+            del market_prices[source][key]
+            new_key = '❖ etched' if 'etched' in key else '✦ foil' if 'foil' in key else 'normal'
+            ## Check collision on new key
+            if(new_key in prices.keys()): new_key+='_'+key
+            try:
+                # Convert to user's currency if not already in USD/EUR (which are native)
+                if currency != "usd":
+                    fx_rate = fx.rate(currency)
+                    if fx_rate:
+                        market_prices[source][new_key] = {'amount': price_value * fx_rate, 'currency_symbol': currency_symbol}
+                    else:
+                        market_prices[source][new_key] = {'amount': float(price_value), 'currency_symbol': default_currency_symbol}
+                else:
+                    market_prices[source][new_key] = {'amount': float(price_value), 'currency_symbol': default_currency_symbol}
+                    
+            except (ValueError, TypeError):
+                market_prices[source][new_key] = {'amount': float(price_value), 'currency_symbol': default_currency_symbol}
+            
+
+    # Get TIX prices from the card's raw prices (not market_prices) since TIX is a native Scryfall field
+    market_prices['TIX'] = {'': {'amount': float((getattr(card, "prices", None) or {}).get("tix", 0.0)), 'currency_symbol': ''}}
+    return market_prices
 
 
 async def _price_history_ctx(request: Request, session: AsyncSession, card: Card,
@@ -143,17 +165,15 @@ async def card_detail(
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     
-    collection_partial_data = await _collection_partial_generator(request, session, scryfall_id)
+    collection_partial_data = await _collection_partial_generator(request, session, uuid.UUID(scryfall_id))
     card = collection_partial_data['card']
-
+    
     # Double-faced cards (transform / modal DFC / battles / reversible) carry a separate image per
     # face — offer a Scryfall-style flip button. Battles, Planes/Phenomena, and Aftermath cards read
     # sideways, so offer a rotate button. Both get playful animations on the card page.
     can_flip, flip_image, can_rotate = _flip_rotate(card)
     # Battles read by turning the card clockwise; planes/aftermath turn counter-clockwise (#11).
     rotate_cw = "battle" in (card.type_line or "").lower()
-    price_rows = _price_rows(request, card)
-    chart_ctx = await _price_history_ctx(request, session, card, chart_range)
     legalities = card.legalities or {}
     legality_rows = [(fmt, legalities.get(fmt, "not_legal")) for fmt in LEGALITY_FORMATS]
 
@@ -186,14 +206,14 @@ async def card_detail(
             "flip_image": flip_image,
             "can_rotate": can_rotate,
             "rotate_cw": rotate_cw,
-            "price_rows": price_rows,
             "legality_rows": legality_rows,
-            **chart_ctx,
             "wishlisted": await is_wishlisted(session, card.scryfall_id),
             "price_target": await target_for(session, str(card.scryfall_id)),
             "card_usd": float((card.prices or {}).get("usd") or 0.0),
             "show_similar": show_similar,
             "ai_ready": (await get_config(session)).ready,
+            "price_rows": _price_rows(request, card),
+            **(await _price_history_ctx(request, session, card, chart_range)),
             **collection_partial_data
         },
     )

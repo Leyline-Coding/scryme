@@ -138,10 +138,18 @@
       {# Prices #}
       {% if price_rows %}
       <div class="flex flex-wrap gap-2">
-        {% for label, value in price_rows %}
-        <span class="rounded-full border border-edge bg-surface px-3 py-1 text-sm">
-          {{ label }} <b>{{ value }}</b>
-        </span>
+        {% for source_label in price_rows.keys() %}
+          {% for price_type_label in price_rows[source_label].keys() %}
+          <span class="rounded-full border border-edge bg-surface px-3 py-1 text-sm">
+            {% import "reusables/_currency.html" as currency %}
+            <div class="inline-flex flex-col relative">
+              <span class="text-xs text-gray-500 absolute top-0 left-0 -mt-1">{{ source_label }}</span>
+              <span class="mt-2">
+                {{ price_type_label }} <b>{{ currency.format_and_decorate(price_rows[source_label][price_type_label]['amount'], price_rows[source_label][price_type_label]['currency_symbol']) }}</b>
+              </span>
+            </div>
+          </span>
+          {% endfor %}
         {% endfor %}
       </div>
       {% endif %}

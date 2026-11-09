@@ -17,7 +17,7 @@
          Wired by the vanilla script below (no Alpine) so it can't collide with the hover-tilt. #}
       <div class="art-stage" id="card-art-stage" data-rotate-deg="{% if rotate_cw %}90{% else %}-90{% endif %}"
            {% if can_flip %}data-front="{{ image }}" data-back="{{ flip_image }}"{% endif %}>
-        <div class="card-art {% if anim_etched %}etched {% elif anim_foil %}foil {% endif %}rounded-2xl ring-1 ring-edge shadow-lg"
+        <div class="card-art {% if anim_etched %}etched {% elif anim_foil %}foil {% endif %}rounded-2xl border border-edge shadow-lg"
              style="perspective: 1200px">
           <img id="card-art-img" src="{{ image }}" alt="{{ card.name }}"
                class="w-full rounded-2xl card-fx-img" />
@@ -67,7 +67,7 @@
         })();
       </script>
       {% else %}
-      <div class="card-art {% if anim_etched %}etched {% elif anim_foil %}foil {% endif %}rounded-2xl ring-1 ring-edge shadow-lg">
+      <div class="card-art {% if anim_etched %}etched {% elif anim_foil %}foil {% endif %}rounded-2xl border border-edge shadow-lg">
         <img src="{{ image }}" alt="{{ card.name }}" class="w-full rounded-2xl" />
       </div>
       {% endif %}
@@ -79,7 +79,7 @@
       </p>
       {% endif %}
       {% else %}
-      <div class="w-full aspect-[5/7] rounded-2xl ring-1 ring-edge flex items-center
+      <div class="w-full aspect-[5/7] rounded-2xl border border-edge flex items-center
                   justify-center text-muted">{{ card.name }}</div>
       {% endif %}
       <a href="{{ scryfall_uri }}" target="_blank" rel="noopener"
@@ -102,7 +102,7 @@
       <div class="space-y-3">
         {% if faces %}
         {% for f in faces %}
-        <div class="rounded-lg bg-surface ring-1 ring-edge p-3">
+        <div class="rounded-lg bg-surface border border-edge p-3">
           <div class="flex items-baseline justify-between gap-2">
             <p class="font-title font-semibold tracking-wide">{{ f.name }}</p>
             {% if f.mana_cost %}<span class="text-sm">{{ f.mana_cost | mana }}</span>{% endif %}
@@ -113,7 +113,7 @@
         </div>
         {% endfor %}
         {% elif card.oracle_text %}
-        <p class="font-card whitespace-pre-line rounded-lg bg-surface ring-1 ring-edge p-3 text-[15px] leading-snug">{{ card.oracle_text | mana }}</p>
+        <p class="font-card whitespace-pre-line rounded-lg bg-surface border border-edge p-3 text-[15px] leading-snug">{{ card.oracle_text | mana }}</p>
         {% endif %}
 
         {% if card.power and not faces %}
@@ -148,35 +148,11 @@
 
       {# Price history (#233): recorded USD snapshots, shown in a chosen currency. The header holds a
          currency dropdown; the first non-USD pick confirms a one-time historical-rate download. #}
-      <div x-data="histCurrency('{{ hist_currency }}')">
-        <div class="flex items-baseline justify-between gap-2 mb-2">
-          <h3 class="text-sm font-semibold text-muted uppercase tracking-wide flex items-center gap-1.5">
-            Price history
-            {% if has_card_history %}
-            <span class="relative inline-flex items-center">
-              <label for="hist-currency" class="sr-only">Price history currency</label>
-              <select id="hist-currency" x-model="cur" @change="onChange()" :disabled="loading"
-                      class="appearance-none rounded bg-surface-2 border border-edge pl-2 pr-6 py-0.5
-                             text-xs font-medium normal-case tracking-normal text-fg
-                             hover:border-accent disabled:opacity-50 cursor-pointer">
-                {% for c in hist_currencies %}
-                <option value="{{ c.id }}">{{ c.label }}</option>
-                {% endfor %}
-              </select>
-              <svg x-show="!loading" class="pointer-events-none absolute right-1.5 h-3 w-3 text-muted"
-                   viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd"
-                   d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-                   clip-rule="evenodd"/></svg>
-              <svg x-show="loading" x-cloak class="absolute right-1.5 h-3 w-3 animate-spin text-muted"
-                   viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10"
-                   stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor"
-                   d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
-            </span>
-            {% else %}(USD){% endif %}
-          </h3>
-          {% if has_card_history %}
+      <section class="rounded-lg bg-surface border border-edge p-4 mb-8" x-data="histCurrency('{{ hist_currency }}')">
+        <div class="flex items-baseline justify-between gap-3 flex-wrap mb-3">
+          <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">
+            Value over time</h2>
           <a href="/prices" class="text-xs text-muted hover:text-fg">All prices →</a>
-          {% endif %}
         </div>
         {% if has_card_history %}
         {% import "_value_chart.html" as vc %}
@@ -188,7 +164,7 @@
         <div x-show="showModal" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <button type="button" class="absolute inset-0 w-full h-full border-0 bg-black/50"
                   @click="cancel()"><span class="sr-only">Cancel</span></button>
-          <div class="relative w-full max-w-md rounded-xl bg-surface ring-1 ring-edge shadow-2xl p-4">
+          <div class="relative w-full max-w-md rounded-xl bg-surface border border-edge shadow-2xl p-4">
             <h3 class="font-semibold">Show prices in <span x-text="labels[pending]"></span>?</h3>
             <p class="text-sm text-muted mt-2">
               Card prices are recorded in USD. To chart past values in
@@ -208,7 +184,8 @@
           No price history yet — owned and tracked cards build history over time.
         </p>
         {% endif %}
-      </div>
+      </section>
+
       {# A global (plain script runs before deferred Alpine) so x-data can call it (#233). Pure JS
          with no Jinja — labels are static, like settingsMenu — so SonarJS can parse it. The chosen
          currency rides the scryme_hist_currency cookie, set client-side exactly like settingsMenu's
@@ -277,27 +254,30 @@
         <h2 class="text-sm font-semibold text-muted mb-1 tracking-wide flex flex-wrap items-center gap-2">
             Alert me when price is...
         </h2>
-        <form action="/watch/add" method="post" class="flex flex-wrap items-end gap-2 text-sm py-1.5">
-          <input type="hidden" name="scryfall_id" value="{{ card.scryfall_id }}" />
-          <select name="direction" class="rounded-full bg-surface border border-edge px-2 py-1.5">
-            <option value="below">at or below</option>
-            <option value="above">at or above</option>
-          </select>
-          <div class="currency-wrapper currency-wrapper-usd">
-            <input type="number" name="threshold" step="0.01" min="0.01" required
-              value="{{ '%.2f'|format(card_usd) if card_usd else '' }}" placeholder="5.00"
-              class="w-24 rounded-full bg-surface border border-edge px-2 py-1.5" />
-          </div>
-          <button class="rounded-full bg-surface-2 border border-edge hover:border-accent px-3 py-1.5">Watch price</button>
-        </form>
-        {% endif %}
+        <div class="flex flex-wrap items-end gap-2 text-sm py-1.5">
+          <form action="/watch/add" method="post" class="flex flex-wrap items-end gap-2">
+            <input type="hidden" name="scryfall_id" value="{{ card.scryfall_id }}" />
+            <select name="direction" class="rounded-full bg-surface border border-edge px-2 py-1.5">
+              <option value="below">at or below</option>
+              <option value="above">at or above</option>
+            </select>
+            <div class="currency-wrapper currency-wrapper-usd">
+              <input type="number" name="threshold" step="0.01" min="0.01" required
+                value="{{ '%.2f'|format(card_usd) if card_usd else '' }}" placeholder="5.00"
+                class="w-24 rounded-full bg-surface border border-edge px-2 py-1.5" />
+            </div>
+            <button class="rounded-full bg-surface-2 border border-edge hover:border-accent px-3 py-1.5">Watch price</button>
+          </form>
+          {# Wishlist #}
+          {% if not read_only or wishlisted %}
+          {% set card_id = card.scryfall_id %}
+          {% include "_wishlist_button.html" %}
+          {% endif %}
+          {% endif %}
+        </div>
       </div>
       {% endif %}
-      {# Wishlist #}
-      {% if not read_only or wishlisted %}
-      {% set card_id = card.scryfall_id %}
-      {% include "_wishlist_button.html" %}
-      {% endif %}
+      
 
       {# Owned + manual editing #}
       {% set card_id = card.scryfall_id %}
@@ -336,7 +316,7 @@
     <h2 class="text-lg font-semibold mb-3">Other printings ({{ printings|length }})</h2>
     <div class="card-grid-sm">
       {% for p, img in printings %}
-      <a href="/card/{{ p.scryfall_id }}" class="block rounded-lg overflow-hidden ring-1 ring-edge hover:ring-accent transition"
+      <a href="/card/{{ p.scryfall_id }}" class="block rounded-lg overflow-hidden border border-edge hover:ring-accent transition"
          title="{{ p.set_name }} #{{ p.collector_number }}">
         {% if img %}
         <img src="{{ img }}" alt="{{ p.name }} ({{ p.set_code }})" loading="lazy" class="w-full aspect-[5/7] object-cover" />

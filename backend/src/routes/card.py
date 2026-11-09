@@ -21,7 +21,7 @@ from src.currency import get_currency
 from src.db import get_session
 from src.embeddings import similar_to_oracle
 from src.llm import get_config
-from src.models import Card, CardEmbedding, CardPricePoint, CollectionCard, Deck
+from src.models import Card, CardEmbedding, CardPricePoint
 from src.price_watch import target_for
 from src.prices import (
     CHART_RANGES,
@@ -93,12 +93,12 @@ def _hist_currencies() -> list[dict]:
     ]
 
 
-def _price_rows(request: Request, card: Card) -> list[tuple[str, float]]:
+def _price_rows(request: Request, card: Card, default_source_name: str = "tcgplayer") -> list[tuple[str, float]]:
     """Non-empty (label, price) rows, led by the visitor's chosen currency and price source."""
     source = get_price_source(request)
     prices = effective_prices(card, source) or {}
-    src = SOURCES.get(source, SOURCES["tcgplayer"])
-    usd_label = f"{src['label']}" if source != "tcgplayer" else "USD"
+    src = SOURCES.get(source, SOURCES[default_source_name])
+    usd_label = f"{src['label']}" if source != default_source_name else "USD"
     usd_rows = [(usd_label, "usd"), (f"{usd_label} foil", "usd_foil")]
     eur_rows = [("EUR", "eur"), ("EUR foil", "eur_foil")]
     ordered = eur_rows + usd_rows if get_currency(request) == "eur" else usd_rows + eur_rows

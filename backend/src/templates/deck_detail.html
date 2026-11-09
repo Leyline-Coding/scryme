@@ -29,38 +29,39 @@
     <li class="py-1.5 text-sm break-inside-avoid" x-data="{ editing: false }">
       <div class="flex flex-wrap items-center gap-x-2 {% if not r.matched %}text-amber-500{% endif %}">
         {% if not read_only and r.matched %}
-        <span class="shrink-0 flex items-center gap-0.5">
+        <span class="shrink-0 flex items-center md:gap-0.5">
           <button type="button" title="One fewer" hx-post="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/qty"
-                  hx-vals='{"delta": -1}' class="w-4 text-muted hover:text-accent leading-none tap">−</button>
-          <span class="w-7 text-center text-muted tabular-nums">{{ r.quantity }}×</span>
+                  hx-vals='{"delta": -1}' class="w-3 md:w4 text-muted hover:text-accent leading-none tap">−</button>
+          <span class="w5 md:w-7 text-center text-muted tabular-nums">{{ r.quantity }}×</span>
           <button type="button" title="One more" hx-post="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/qty"
-                  hx-vals='{"delta": 1}' class="w-4 text-muted hover:text-accent leading-none tap">+</button>
+                  hx-vals='{"delta": 1}' class="w-3 md:w4  text-muted hover:text-accent leading-none tap">+</button>
         </span>
         {% else %}
         <span class="w-8 shrink-0 text-right text-muted tabular-nums">{{ r.quantity }}×</span>
         {% endif %}
-        {% if r.scryfall_card.scryfall_id %}
-        <a href="/card/{{ r.scryfall_card.scryfall_id }}" class="min-w-0 truncate hover:text-accent">{{ r.name }}</a>
-        {% else %}
-        <span class="min-w-0 truncate" title="Not found in the card database">{{ r.name }}</span>
-        {% endif %}
-        {% if r.scryfall_card.set_code %}
-        <span class="shrink-0 text-[10px] uppercase tracking-wide text-muted"
-              title="{{ r.scryfall_card.set_name }} · #{{ r.scryfall_card.collector_number }} · {{ r.language|upper }}">{{ r.scryfall_card.set_code }} {{ set_symbol(r.scryfall_card.set_code, r.scryfall_card.rarity) }} {{ r.language|upper }}</span>
-        {% endif %}
-        {% if r.finish and r.finish != 'normal' %}
-        <span class="shrink-0 rounded px-1 text-[10px] font-medium {% if r.finish == 'etched' %}etched-chip{% else %}foil-chip{% endif %}"
-              title="{{ r.finish|capitalize }} copy">{{ '❖' if r.finish == 'etched' else '✦' }} {{ r.finish|upper }}</span>
-        {% endif %}
-        {% if r.proxy %}
-        <span class="shrink-0 rounded bg-surface-2 px-1 text-[10px] font-medium text-accent"
-              title="Printed proxy">PROXY</span>
-        {% endif %}
-        {% if r.special %}
-        <span class="shrink-0 rounded bg-surface-2 px-1 text-[10px] font-medium text-amber-500"
-              title="Art card / alter / other non-standard copy">SPECIAL</span>
-        {% endif %}
-        <span class="flex-1"></span>
+        <div class="min-w-0 flex-1 flex items-center gap-x-2">
+          {% if r.scryfall_card.scryfall_id %}
+          <a href="/card/{{ r.scryfall_card.scryfall_id }}" class="truncate min-w-0 truncate hover:text-accent">{{ r.name }}</a>
+          {% else %}
+          <span class="truncate min-w-0 truncate" title="Not found in the card database">{{ r.name }}</span>
+          {% endif %}
+          {% if r.scryfall_card.set_code %}
+          <span class="truncate shrink-[2] text-[10px] uppercase tracking-wide text-muted"
+                title="{{ r.scryfall_card.set_name }} · #{{ r.scryfall_card.collector_number }} · {{ r.language|upper }}">{{ r.scryfall_card.set_code }} {{ set_symbol(r.scryfall_card.set_code, r.scryfall_card.rarity) }} {{ r.language|upper }}</span>
+          {% endif %}
+          {% if r.finish and r.finish != 'normal' %}
+          <span class="truncate shrink-[3] rounded px-1 text-[10px] font-medium {% if r.finish == 'etched' %}etched-chip{% else %}foil-chip{% endif %}"
+                title="{{ r.finish|capitalize }} copy">{{ '❖' if r.finish == 'etched' else '✦' }} {{ r.finish|upper }}</span>
+          {% endif %}
+          {% if r.proxy %}
+          <span class="truncate shrink-[5] rounded bg-surface-2 px-1 text-[10px] font-medium text-accent"
+                title="Printed proxy">PROXY</span>
+          {% endif %}
+          {% if r.special %}
+          <span class="truncate shrink-[10] rounded bg-surface-2 px-1 text-[10px] font-medium text-amber-500"
+                title="Art card / alter / other non-standard copy">SPECIAL</span>
+          {% endif %}
+        </div>
         {% if r.legality and r.legality not in ('legal', 'restricted') %}
         <span class="shrink-0 text-xs text-rose-500 capitalize" title="Not legal in {{ cov.fmt }}">{{ r.legality.replace('_', ' ') }}</span>
         {% elif r.legality == 'restricted' %}
@@ -73,8 +74,8 @@
         {% else %}
         <span class="shrink-0 text-xs text-muted">
             {% if not r.legality or r.legality in ('legal', 'restricted') %}
-            <span class="rounded bg-{% if r.quantity > r.stack_coverage.in_deck %}amber{%else%}emerald{%endif%}-500/80 text-white text-[9px] px-1 py-0.5" title="Constructed">{% if r.stack_coverage.in_deck==0 %}0{% elif r.quantity > r.stack_coverage.in_deck %}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%else%}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%endif%}</span>
-            <span class="rounded bg-{% if r.quantity > (r.stack_coverage.in_deck+r.stack_coverage.owned) %}amber{%else%}emerald{%endif%}-700/80 text-white text-[9px] px-1 py-0.5" title="Exact copies available">{{ r.stack_coverage.owned }}{% if r.quantity > r.stack_coverage.in_deck %}/{{ r.quantity }}{%endif%}</span>
+            <span class="rounded bg-{% if r.quantity > r.stack_coverage.in_deck %}amber{%else%}emerald{%endif%}-500/80 text-white text-[9px] px-1 py-0.5" title="Constructed{% if r.stack_coverage.in_deck!=0 %}/required{%endif%}">{% if r.stack_coverage.in_deck==0 %}0{% elif r.quantity > r.stack_coverage.in_deck %}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%else%}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%endif%}</span>
+            <span class="rounded bg-{% if r.quantity > (r.stack_coverage.in_deck+r.stack_coverage.owned) %}amber{%else%}emerald{%endif%}-700/80 text-white text-[9px] px-1 py-0.5" title="Exact copies available{% if r.quantity > r.stack_coverage.in_deck %}/required{%endif%}">{{ r.stack_coverage.owned }}{% if r.quantity > r.stack_coverage.in_deck %}/{{ r.quantity }}{%endif%}</span>
             {% endif %}
             <span class="rounded bg-emerald-900/90 text-white text-[9px] px-1 py-0.5" title="Swappable copies available">{{ r.stack_coverage.swappable }}</span>
         </span>
@@ -488,13 +489,15 @@
               :class="view === 'grid-combined' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
               class="rounded px-2 py-0.5 text-xs">Grid (Combined)</button>
       {% if cov.side %}
-      <span class="mx-1 text-muted">|</span>
-      <button type="button" @click="setLayout('rows')"
-              :class="layout === 'rows' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
-              class="rounded px-2 py-0.5 text-xs">Sideboard Below</button>
-      <button type="button" @click="setLayout('grid')"
-              :class="layout === 'grid' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
-              class="rounded px-2 py-0.5 text-xs">Sideboard Aside</button>
+      <div class="hidden md:block">
+        <span class="mx-1 text-muted">|</span>
+        <button type="button" @click="setLayout('rows')"
+                :class="layout === 'rows' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
+                class="rounded px-2 py-0.5 text-xs">Sideboard Below</button>
+        <button type="button" @click="setLayout('grid')"
+                :class="layout === 'grid' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
+                class="rounded px-2 py-0.5 text-xs">Sideboard Aside</button>
+      </div>
       {% endif %}
     </div>
 

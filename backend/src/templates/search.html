@@ -5,8 +5,8 @@
 <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
   <header class="flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
-    <a href="/search" class="text-sm text-muted hover:text-fg shrink-0">All Cards</a>
-    <a href="/collection" class="text-sm text-muted hover:text-fg shrink-0">My Collection</a>
+    <a href="/search?scope=all" class="text-sm text-muted hover:text-fg shrink-0" id="all-cards-link">All Cards</a>
+    <a href="/collection" class="text-sm text-muted hover:text-fg shrink-0" id="my-collection-link">My Collection</a>
     <a href="/prices" class="text-sm text-muted hover:text-fg shrink-0">Prices</a>
 
     {# Page actions — pushed to the right of the top row. #}

@@ -92,21 +92,23 @@
   <form action="/search" method="get" class="mt-16 mb-16 max-w-2xl w-full" x-data="{ ai: {{ 'true' if nl else 'false' }} }">
     {% include "_search_bar.html" %}
     <button type="submit" style="display: none;"></button>
-    <div class="grid grid-cols-3 gap-3 mb-2 text-xs md:text-sm whitespace-nowrap">
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-2 text-sm whitespace-nowrap">
       <div class="inline-flex rounded-full ring-1 ring-edge overflow-hidden shrink-0 text-start w-max" title="Search scope">
         <label class="cursor-pointer">
           <input type="radio" name="scope" value="collection" class="peer sr-only" {% if scope != 'all' %}checked{% endif %} />
-          <span class="block px-4 py-1 text-muted peer-checked:bg-surface peer-checked:text-fg">Mine</span>
+          <span class="block px-4 py-1 text-muted peer-checked:bg-surface peer-checked:text-fg" 
+                onclick="if(this.previousElementSibling.checked) { window.location.href = '/search?scope=collection'; }">Mine</span>
         </label>
         <label class="cursor-pointer border-l border-edge">
           <input type="radio" name="scope" value="all" class="peer sr-only" {% if scope == 'all' %}checked{% endif %} />
-          <span class="block px-4 py-1 text-muted peer-checked:bg-surface peer-checked:text-fg">All cards</span>
+          <span class="block px-4 py-1 text-muted peer-checked:bg-surface peer-checked:text-fg" 
+                onclick="if(this.previousElementSibling.checked) { window.location.href = '/search?scope=all'; }">All cards</span>
         </label>
       </div>
-      <div class="text-muted flex items-center justify-center overflow-hidden">
-        Supports <a class="underline" href="https://scryfall.com/docs/syntax" target="_blank" rel="noopener">Scryfall syntax</a>.
+      <div class="text-muted flex items-center justify-end md:justify-center overflow-hidden">
+        Supports <a class="pl-1 underline" href="https://scryfall.com/docs/syntax" target="_blank" rel="noopener">Scryfall syntax</a>.
       </div>
-      <div class="text-end overflow-hidden">
+      <div class="md:text-end overflow-hidden">
         <a href="/collection" class="inline-flex items-center rounded-full bg-surface border border-edge px-4 py-1 font-medium hover:border-accent"> My Collection</a>
       </div>
     </div>

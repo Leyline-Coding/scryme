@@ -413,3 +413,24 @@ i.ms.ms-cost {
 [data-theme*="-dark"] .ss-common {
   color: #FFF;
 }
+
+
+.currency-wrapper {
+    position: relative;
+    display: inline-block;
+}
+/* Positions the currency symbol inside the input box */
+.currency-wrapper::before {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none; /* Allows clicking through the symbol */
+}
+.currency-wrapper-usd::before {
+    content: "$";
+}
+/* Adds padding on the left so text doesn't overlap the symbol */
+.currency-wrapper input {
+    padding-left: 30px !important; 
+}

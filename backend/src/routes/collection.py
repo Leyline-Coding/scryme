@@ -83,7 +83,6 @@ async def _collection_partial_generator(
                 await session.execute(
                     select(Card)
                     .where(Card.oracle_id == card.oracle_id)
-                    .where(Card.scryfall_id != card.scryfall_id)
                     .order_by(Card.released_at.desc().nulls_last())
                     .limit(24)
                 )
@@ -96,6 +95,7 @@ async def _collection_partial_generator(
             (
                 await session.execute(
                     select(CollectionCard)
+                    .where(CollectionCard.scryfall_id != card.scryfall_id)
                     .where(CollectionCard.scryfall_id.in_([x.scryfall_id for x in printings]))
                     .order_by(CollectionCard.finish, CollectionCard.language)
                 )
@@ -115,13 +115,11 @@ async def _collection_partial_generator(
             "tags": await card_tags(session, scryfall_id),
             "read_only": get_settings().read_only,
             "printings": [(p, _image(p, "small")) for p in printings],
-            "printing_opts": await printing_options(session, scryfall_id),
             "conflict": conflict,
             "grouped_locations": await find_or_create_grouped_locations(session),
             "trade_pools": await open_pools(session),
             "languages": sorted(list(set(_LANGUAGES.values()))),
         }
-    
 
 
 async def _collection_partial(
@@ -137,22 +135,7 @@ async def _collection_partial(
 
 
 
-async def printing_options(session: AsyncSession, scryfall_id) -> list[tuple[str, str]]:
-    """(scryfall_id, "SET·NUM") for every printing of this card's oracle — the printing picker."""
-    sid = scryfall_id if isinstance(scryfall_id, uuid.UUID) else uuid.UUID(str(scryfall_id))
-    card = await session.get(Card, sid)
-    if card is None:
-        return []
-    others: list = []
-    if card.oracle_id is not None:
-        others = (await session.execute(
-            select(Card).where(Card.oracle_id == card.oracle_id, Card.scryfall_id != sid)
-            .order_by(Card.released_at.desc().nulls_last())
-        )).scalars().all()
-    opts = []
-    for p in [card, *others]:
-        opts.append((str(p.scryfall_id), f"{p.set_code.upper()}·{p.collector_number}"))
-    return opts
+
 
 
 @router.post("/collection/add", response_class=HTMLResponse)
@@ -230,43 +213,6 @@ async def remove_stack(
     return await _collection_partial(request, session, card_sid)
 
 
-@router.post("/collection/stack/{stack_id}/edit", response_class=HTMLResponse)
-async def edit_stack_route(
-    request: Request,
-    stack_id: int,
-    card_id: str = Form(...),
-    quantity: str = Form(""),
-    finish: str = Form(""),
-    printing: str = Form(""),
-    version: str = Form(""),
-    session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
-    """Edit a stack's quantity / finish / printing (#collection-edit).
-
-    Carries the version the form was rendered with, so an edit based on a stale view is refused
-    rather than silently overwriting whatever changed in between (#207).
-    """
-    _guard_writable()
-    qty: int | None = None
-    if quantity.strip():
-        try:
-            qty = int(quantity)
-        except ValueError:
-            qty = None
-    try:
-        survivor = await edit_stack(
-            session, stack_id, quantity=qty, finish=finish.strip() or None,
-            scryfall_id=printing.strip() or None, expected_version=_expected(version),
-        )
-    except StaleStackError:
-        return await _conflict(request, session, uuid.UUID(card_id))
-    # If the printing changed, the stack now lives on a *different* card page — send the user there
-    # so they see the copy they still own (rather than an empty "you don't own this printing yet").
-    if survivor is not None and str(survivor.scryfall_id) != card_id:
-        return HTMLResponse("", headers={"HX-Redirect": f"/card/{survivor.scryfall_id}"})
-    return await _collection_partial(request, session, uuid.UUID(card_id))
-
-
 @router.get("/card/{scryfall_id}/remove-modal", response_class=HTMLResponse)
 async def remove_modal(
     request: Request, scryfall_id: str, session: AsyncSession = Depends(get_session)
@@ -302,32 +248,34 @@ async def remove_route(
     return await _collection_partial(request, session, uuid.UUID(card_id))
 
 
-@router.post("/collection/stack/{stack_id}/quick_edit", response_class=HTMLResponse)
+@router.post("/collection/stack/{stack_id}/edit", response_class=HTMLResponse)
 async def locate_collection_stack(
     request: Request,
     stack_id: int,
     printing: str = Form(""),
     finish: ValidFinish = Form(""),
     language: ValidLanguage = Form(""),
+    location_moved: bool = Form(False), #location_id = None is a valid edited location
     location_id: int = Form(None),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     """Unified location picker (#160): file a stack into a box, binder, or deck. """
     _guard_writable()
-    sid = stack_id
+    stack = await session.get(CollectionCard, stack_id)
+    if stack is None: raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
+    scryfall_id = stack.scryfall_id
     if(printing or finish or language):
-        stack = (await session.scalars(select(CollectionCard).where(CollectionCard.id == sid))).first()
         if(stack and language):
             stack.language = language
         if(stack and finish):
             stack.finish = finish
         if(stack and printing):
-            import pdb; pdb.set_trace()
-            stack.printing = printing
+            stack.scryfall_id = uuid.UUID(printing)
     await session.commit()
-    sid = await move_stack_location(session, stack_id, location_id)
-    if(not sid): raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
-    return await _collection_partial(request, session, sid)
+    if(location_moved):
+      new_stack_id = await move_stack_location(session, stack_id, location_id)
+      if(not new_stack_id): raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
+    return await _collection_partial(request, session, scryfall_id)
 
 
 @router.post("/collection/stack/{stack_id}/trade", response_class=HTMLResponse)
@@ -345,8 +293,7 @@ async def stage_stack_for_trade(
     """
     _guard_writable()
     stack = await session.get(CollectionCard, stack_id)
-    if stack is None:
-        raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
+    if stack is None: raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     if pool_id.strip().isdigit():
         await stage_stack(session, int(pool_id), stack_id, quantity)
     return await _collection_partial(request, session, stack.scryfall_id)

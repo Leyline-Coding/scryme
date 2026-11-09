@@ -197,7 +197,7 @@ async def delete_stack(session: AsyncSession, stack_id: int, expected_version: i
     return sid
 
 
-async def move_stacks_location(session: AsyncSession, stack_ids: list[int], location_id: int | None = None) -> list[uuid.UUID]:
+async def move_stacks_location(session: AsyncSession, stack_ids: list[int], location_id: int | None = None) -> list[int]:
     """Move stacks to a new location. Returns a list of scryfall_ids (or None if it didn't exist).
     
     If a target location already has an identical collection card, the source card's quantity
@@ -228,18 +228,18 @@ async def move_stacks_location(session: AsyncSession, stack_ids: list[int], loca
               # Merge the stacks: increment the quantity of the existing card and delete source
               identical_existing.quantity += stack_to_move.quantity
               await session.delete(stack_to_move)
-              sids += [identical_existing.scryfall_id]
+              sids += [identical_existing.id]
           else:
               # No identical card at target location, just update location of the existing stack
               stack_to_move.location = location_id
-              sids += [stack_to_move.scryfall_id]
+              sids += [stack_to_move.id]
     
     await session.commit()
     return sids
 
 
 
-async def move_stack_location(session: AsyncSession, stack_id: int, location_id: int | None = None) -> uuid.UUID | None:
+async def move_stack_location(session: AsyncSession, stack_id: int, location_id: int | None = None) -> int | None:
     """Move a single stack to a new location. Returns its scryfall_id (or None if it didn't exist).
     """
     result = await move_stacks_location(session, [stack_id], location_id)

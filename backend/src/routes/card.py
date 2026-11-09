@@ -32,7 +32,7 @@ from src.prices import (
     range_days,
 )
 from src.pricing import SOURCES, effective_prices, get_price_source
-from src.routes.collection import printing_options, _collection_partial_generator
+from src.routes.collection import _collection_partial_generator
 from src.scryfall.client import ScryfallClient, ScryfallError
 from src.scryfall.images import ImageCache
 from src.tags import add_card_tag, remove_card_tag
@@ -194,7 +194,6 @@ async def card_detail(
             "card_usd": float((card.prices or {}).get("usd") or 0.0),
             "show_similar": show_similar,
             "ai_ready": (await get_config(session)).ready,
-            "printing_opts": await printing_options(session, card.scryfall_id),
             **collection_partial_data
         },
     )

@@ -1,13 +1,22 @@
-{% macro locations_select(grouped_locations, selected_location=None, name='', label='Move To', selectedAsLabel=False, class='', onchange='', open_right=True) %}
+{% macro locations_select(grouped_locations, selected_location=None, name='location', label='Move To', selectedAsLabel=False, class='', onchange='', open_right=True) %}
 <div x-data="{ {{name}}: false }" class="relative action-scope-collection">
   <button @click="{{name}} = !{{name}}" type="button"
     class="{{class}}">
-    {% if selectedAsLabel and selected_location %}
-      {% for type, locations in grouped_locations.items() %}
-        {% for location in locations %}
-          {% if location.id == selected_location %}{% if location.type=='box' %}<i class="fa-solid fa-box"></i>{% elif location.type=='binder' %}<i class="fa-solid fa-book-open"></i>{% else %}<i class="fa-solid fa-layer-group"></i>{% endif %} {{ location.label }}{% endif %}
+    {% if selectedAsLabel and selected_location!=False %}
+      {% if selected_location==None %}
+        <i class="fa-solid fa-bars-staggered"></i> Unfiled
+      {% else %}
+        {% for type, locations in grouped_locations.items() %}
+          {% for location in locations %}
+            {% if location.id == selected_location %}
+              {% if location.type=='box' %}<i class="fa-solid fa-box"></i>
+              {% elif location.type=='binder' %}<i class="fa-solid fa-book-open"></i>
+              {% else %}<i class="fa-solid fa-layer-group"></i>{% endif %}
+              {{ location.label }}
+            {% endif %}
+          {% endfor %}
         {% endfor %}
-      {% endfor %}
+      {% endif %}
     {% else %}
       {{label}}
     {% endif %} ▾

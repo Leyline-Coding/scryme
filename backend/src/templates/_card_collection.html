@@ -9,56 +9,96 @@
     Below is the current state — re-apply your change if you still want it.
   </p>
   {% endif %}
-  <p class="text-sm font-semibold mb-1 flex items-center gap-2">
-    <span>In your collection{% if owned_total %}<span class="text-accent"> · {{ owned_total }} total</span>{% endif %}</span>
-    {% if owned and not read_only %}
-    <button type="button" class="ml-auto text-xs font-normal text-muted hover:text-rose-500"
-            hx-get="/card/{{ card_id }}/remove-modal" hx-target="#remove-modal" hx-swap="innerHTML">Remove…</button>
-    {% endif %}
-  </p>
 
   {% if owned %}
-  <ul class="text-sm divide-y divide-edge">
+  <ul class="text-sm">
+    <h2 class="text-sm font-semibold text-muted mb-1 tracking-wide flex flex-wrap items-center gap-2">This printing
+      {% if owned_total %}
+      <span class="ml-1 text-xs normal-case font-normal"> {{ owned_total }} of {{owned_total+owned_other_printing_total}} total</span>
+      {% endif %}
+      {% if owned and not read_only %}
+      <button type="button" class="ml-auto text-sm hover:text-accent tap"
+              hx-get="/card/{{ card_id }}/remove-modal" hx-target="#remove-modal" hx-swap="innerHTML" title="Bulk Edit…"><i class="fa-solid fa-pen-ruler"></i></button>
+      {% endif %}
+    </h2>
     {% for s in owned %}
-    <li class="py-1.5" x-data="{ g: false, e: false }">
+    <li class="py-1.5 text-xs text-accent-fg" x-data="{ g: false, e: false }">
       <div class="flex flex-wrap items-center gap-2">
       {% if not read_only %}
       <span class="inline-flex items-center rounded-full bg-surface-2 overflow-hidden shrink-0">
-        <button type="button" title="Remove one" class="px-2 leading-none hover:bg-surface-3 tap"
+        <button type="button" title="Remove one" class="px-2 py-1.5 leading-none hover:bg-surface-3 tap"
                 hx-post="/collection/stack/{{ s.id }}/adjust" hx-vals='{"delta": -1}'
                 hx-target="#card-collection" hx-swap="outerHTML">−</button>
         <span class="px-1.5 tabular-nums">{{ s.quantity }}</span>
-        <button type="button" title="Add one" class="px-2 leading-none hover:bg-surface-3 tap"
+        <button type="button" title="Add one" class="px-2 py-1.5 leading-none hover:bg-surface-3 tap"
                 hx-post="/collection/stack/{{ s.id }}/adjust" hx-vals='{"delta": 1}'
                 hx-target="#card-collection" hx-swap="outerHTML">+</button>
       </span>
       {% else %}
-      <span class="rounded-full bg-accent text-accent-fg text-xs font-semibold px-2 py-0.5">×{{ s.quantity }}</span>
-      {% endif %}
-      {% if s.finish == 'foil' %}
-      <span class="capitalize rounded-full foil-chip px-2 py-0.5 text-xs font-semibold">✦ foil</span>
-      {% elif s.finish == 'etched' %}
-      <span class="capitalize rounded-full etched-chip px-2 py-0.5 text-xs font-semibold">❖ etched</span>
-      {% else %}<span class="capitalize">{{ s.finish }}</span>{% endif %}
-      {% if s.condition %}<span class="text-muted">· {{ s.condition }}</span>{% endif %}
-      <span class="text-muted uppercase">· {{ s.language }}</span>
-      {% if s.binder_name %}<span class="text-muted">· {{ s.binder_name }}</span>{% endif %}
-      {% if s.grade_company %}
-      <span class="rounded bg-amber-500/15 text-amber-500 text-xs font-semibold px-1.5 py-0.5"
-            title="{{ s.grade_company }} {{ s.grade }}{% if s.cert_number %} · cert {{ s.cert_number }}{% endif %}{% if s.value_override %} · ${{ '%.2f'|format(s.value_override) }}{% endif %}">
-        🏅 {{ s.grade_company }} {{ s.grade }}</span>
+      <span class="px-2 py-0.5">×{{ s.quantity }}</span>
       {% endif %}
       {% if not read_only %}
-      <button type="button" @click="e = !e" title="Edit quantity / finish / printing"
-              class="shrink-0 text-muted hover:text-fg tap"><i class="fa-solid fa-pen"></i></button>
-      <button type="button" @click="g = !g" title="Grading" class="shrink-0 text-muted hover:text-fg tap"><i class="fa-solid fa-medal"></i></button>
+      <select name="printing" class="rounded-full bg-surface border border-edge px-1.5 py-1 max-w-[10rem]">
+        {% for pid, plabel in printing_opts %}
+        <option value="{{ pid }}" {% if pid == card_id|string %}selected{% endif %}>{{ plabel }}</option>
+        {% endfor %}
+      </select>
+      {% else %}
+      <span class="px-2 py-0.5">{{ s.card.set_code }}</span>
+      {% endif %}
+      {% if not read_only %}
+      <form hx-post="/collection/stack/27496/quick_edit" name="finish_select_{{s.id}}" hx-trigger="hiddenChange" hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
+        <div x-data="{ finish_select_{{s.id}}: false }" class="relative action-scope-collection">
+          <button @click="finish_select_{{s.id}} = !finish_select_{{s.id}}" type="button" class="capitalize rounded-full bg-surface-2 border border-edge px-1.5 py-1 text-sm max-w-[10rem]">
+            {% if s.finish == 'foil' %}
+            <span class="rounded-full foil-chip px-2 py-0.5 text-xs font-semibold">✦ Foil</span>
+            {% elif s.finish == 'etched' %}
+            <span class="rounded-full etched-chip px-2 py-0.5 text-xs font-semibold">❖ Etched</span>
+            {% else %}
+            {{ s.finish }}
+            {% endif %}
+            ▾
+          </button>
+          <input type="hidden" name="finish" id="finish_{{s.id}}">
+          <div x-show="finish_select_{{s.id}}" @click.outside="finish_select_{{s.id}} = false" x-transition="" style="display: none" class="absolute left-0 mt-2 w-24 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
+            <button type="button" @click="finish_select_{{s.id}} = false; document.getElementById('finish_{{s.id}}').value = 'normal'; document.querySelector('form[name=&quot;finish_select_{{s.id}}&quot;]').dispatchEvent(new Event('hiddenChange'))" class="block w-full text-left px-3 py-1.5 hover:bg-surface-2">Normal</button>
+            <button type="button" @click="finish_select_{{s.id}} = false; document.getElementById('finish_{{s.id}}').value = 'foil'; document.querySelector('form[name=&quot;finish_select_{{s.id}}&quot;]').dispatchEvent(new Event('hiddenChange'))" class="block w-full text-left px-3 py-1.5 hover:bg-surface-2"><span class="capitalize rounded-full foil-chip px-2 py-0.5 text-xs font-semibold">✦ Foil</span></button>
+            <button type="button" @click="finish_select_{{s.id}} = false; document.getElementById('finish_{{s.id}}').value = 'etched'; document.querySelector('form[name=&quot;finish_select_{{s.id}}&quot;]').dispatchEvent(new Event('hiddenChange'))" class="block w-full text-left px-3 py-1.5 hover:bg-surface-2"><span class="capitalize rounded-full etched-chip px-2 py-0.5 text-xs font-semibold">❖ Etched</span></button>
+          </div>
+        </div>
+      </form>
+      {% else %}
+      <span class="px-2 py-0.5 capitalize">{{ s.card.finish }}</span>
+      {% endif %}
+      {% if s.condition %}<span class="text-muted">{{ s.condition }}</span>{% endif %}
+      {% if not read_only %}
+      <form hx-post="/collection/stack/27496/quick_edit" name="language_select_{{s.id}}" hx-trigger="hiddenChange" hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
+        <div x-data="{ language_select_{{s.id}}: false }" class="relative action-scope-collection">
+          <button @click="language_select_{{s.id}} = !language_select_{{s.id}}" type="button" class="uppercase rounded-full bg-surface-2 border border-edge px-1.5 py-1 text-sm max-w-[10rem]"> {{s.language}}
+            ▾
+          </button>
+          <input type="hidden" name="language" id="language_{{s.id}}">
+          <div x-show="language_select_{{s.id}}" @click.outside="language_select_{{s.id}} = false" x-transition="" style="display: none" class="absolute left-0 mt-2 w-14 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
+            {% for language in languages %}
+            <button type="button" @click="language_select_{{s.id}} = false; document.getElementById('language_{{s.id}}').value = '{{language}}'; document.querySelector('form[name=&quot;language_select_{{s.id}}&quot;]').dispatchEvent(new Event('hiddenChange'))" class="block w-full text-left px-3 py-1.5 hover:bg-surface-2 uppercase">{{language}}</button>
+            {% endfor %}
+          </div>
+        </div>
+      </form>
+      {% else %}
+      <span class="px-2 py-0.5 capitalize">{{ s.language }}</span>
+      {% endif %}
+      {% if s.grade_company %}
+      <span class="rounded-full bg-amber-500/15 text-amber-500 text-xs font-semibold px-1.5 py-0.5"
+            title="{{ s.grade_company }} {{ s.grade }}{% if s.cert_number %} · cert {{ s.cert_number }}{% endif %}{% if s.value_override %} · ${{ '%.2f'|format(s.value_override) }}{% endif %}">
+        <i class="fa-solid fa-award"></i> {{ s.grade_company }} {{ s.grade }}</span>
       {% endif %}
       {% if read_only %}
       {% if s.location %}<span class="text-accent" title="Storage location">· <i class="fa-solid fa-compass"></i> {{ s.location }}</span>{% endif %}
       {% else %}
       {# Unified location picker (#160): file this stack into a box, binder, or deck. #}
-      <form hx-post="/collection/stack/{{ s.id }}/locate" name="location_select_{{s.id}}" hx-trigger="hiddenChange" hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
-        {{ locations_select(grouped_locations, selected_location=s.location, name="location_id", selectedAsLabel=True, onchange="document.querySelector('form[name=\"location_select_%s\"]').dispatchEvent(new Event('hiddenChange'))" % s.id, class="rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs max-w-[10rem]") }}
+      <form hx-post="/collection/stack/{{ s.id }}/quick_edit" name="location_select_{{s.id}}" hx-trigger="hiddenChange" hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
+        {{ locations_select(grouped_locations, selected_location=s.location, name="location_id", selectedAsLabel=True, onchange="document.querySelector('form[name=\"location_select_%s\"]').dispatchEvent(new Event('hiddenChange'))" % s.id, class="rounded-full bg-surface-2 border border-edge px-1.5 py-1 text-sm max-w-[10rem]") }}
       </form>
       {% endif %}
       {% if trade_pools and not read_only %}
@@ -74,7 +114,7 @@
           <span class="sr-only">Stage this copy for trade</span>
           <select name="pool_id"
                   onchange="this.form.requestSubmit()"
-                  class="rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs max-w-[9rem]">
+                  class="rounded-full bg-surface-2 border border-edge px-1.5 py-0.5 text-xs max-w-[9rem]">
             <option value=""><i class="fa-solid fa-handshake"></i> trade…</option>
             {% for tp in trade_pools %}<option value="{{ tp.id }}">→ {{ tp.name }}</option>{% endfor %}
           </select>
@@ -82,8 +122,11 @@
       </form>
       {% endif %}
       {% if not read_only %}
+      <button type="button" @click="e = !e" title="Edit quantity / finish / printing"
+              class="ml-auto shrink-0 text-muted hover:text-accent tap"><i class="fa-solid fa-pen"></i></button>
+      <button type="button" @click="g = !g" title="Grading" class="shrink-0 text-muted hover:text-accent tap"><i class="fa-solid fa-medal"></i></button>
       <button type="button" title="Pull one card into a copy stack"
-              class="ml-auto shrink-0 text-muted hover:text-accent tap {% if s.quantity <= 1 %} disabled disabled:opacity-50 disabled:pointer-events-none{% endif %}"
+              class="shrink-0 text-muted hover:text-accent tap {% if s.quantity <= 1 %} disabled disabled:opacity-50 disabled:pointer-events-none{% endif %}"
               hx-post="/collection/stack/{{ s.id }}/pull"
               hx-vals='{"version": "{{ s.version }}"}'
               hx-target="#card-collection" hx-swap="outerHTML"
@@ -183,11 +226,34 @@
   <p class="text-sm text-muted">You don't own this printing yet.</p>
   {% endif %}
 
-  {% if owned or tags %}
-  <div class="mt-2 pt-2 border-t border-edge">
-    <p class="text-xs text-muted">Tags</p>
-    {% include "_card_tags.html" %}
-  </div>
+  
+  {% if owned_other_printing %}
+  <ul class="text-sm mt-2 pt-2 border-t border-edge">
+    <h2 class="text-sm font-semibold text-muted mb-1 tracking-wide">Other printings
+      {% if owned_total %}
+      <span class="ml-1 text-xs normal-case font-normal"> {{ owned_other_printing_total }} of {{owned_total+owned_other_printing_total}} total</span>
+      {% endif %}
+    </h2>
+    {% for s in owned_other_printing %}
+      {% if not read_only %}
+      <li class="py-1.5">
+        <span class="inline-flex items-center rounded-full bg-surface-2 overflow-hidden shrink-0">
+          <button type="button" title="Remove one" class="px-2 p-1.5 leading-none hover:bg-surface-3 tap" hx-post="/collection/stack/{{s.id}}/adjust" hx-vals="{&quot;delta&quot;: -1}" hx-target="#card-collection" hx-swap="outerHTML">−</button>
+          <span class="px-1.5 tabular-nums">{{s.quantity}}</span>
+          <button type="button" title="Add one" class="px-2 p-1.5 leading-none hover:bg-surface-3 tap" hx-post="/collection/stack/{{s.id}}/adjust" hx-vals="{&quot;delta&quot;: 1}" hx-target="#card-collection" hx-swap="outerHTML">+</button>
+        </span>
+        {% if s.finish=='foil' %}
+        <span class="rounded-full foil-chip px-2 py-0.5 text-xs font-semibold">✦ Foil</span>
+        {% elif s.finish=='etched' %}
+        <span class="rounded-full etched-chip px-2 py-0.5 text-xs font-semibold">❖ Etched</span>
+        {% endif %}
+        <a href="/card/{{s.scryfall_id}}" class="ml-1 text-xs normal-case font-normal"> {{ s.card.set_name }} {{ set_symbol(s.card.set_code, s.card.rarity) }} {{ s.language|upper }} →</a>
+      </li>
+      {% else %}
+      <span class="rounded-full bg-accent text-accent-fg text-xs font-semibold px-2 py-0.5">×{{ s.quantity }}</span>
+      {% endif %}
+    {% endfor %}
+  </ul>
   {% endif %}
 
   {% if not read_only %}
@@ -198,14 +264,21 @@
     <input type="number" name="quantity" value="1" min="1" title="Quantity"
            class="w-14 rounded bg-surface-2 px-2 py-1" />
     <select name="finish" title="Finish" class="rounded bg-surface-2 px-2 py-1">
-      <option value="normal">normal</option>
-      <option value="foil">foil</option>
-      <option value="etched">etched</option>
+      <option value="normal">Normal</option>
+      <option value="foil">Foil</option>
+      <option value="etched">Etched</option>
     </select>
-    {{ locations_select(grouped_locations, name='add_location_choice', label='Location', selectedAsLabel=True, class="rounded bg-surface-2 border border-edge px-2 py-1 text-xs max-w-[10rem]") }}
+    {{ locations_select(grouped_locations, selected_location=None, name='location', selectedAsLabel=True, class="rounded bg-surface-2 border border-edge px-2 py-1 text-xs max-w-[10rem]") }}
     <button type="submit"
             class="rounded bg-accent text-accent-fg px-3 py-1 font-medium"><i class="fa-solid fa-plus"></i> Add</button>
   </form>
+  {% endif %}
+
+  {% if owned or tags %}
+  <div class="mt-2 pt-2 border-t border-edge">
+    <p class="text-xs text-muted">Tags</p>
+    {% include "_card_tags.html" %}
+  </div>
   {% endif %}
 
   {# Remove-from-collection modal loads here (HTMX). #}

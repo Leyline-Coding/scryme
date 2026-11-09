@@ -27,8 +27,8 @@ from src.llm import (
     suggest_from_collection,
     test_connection,
 )
-from src.models import Deck, DeckChatMessage
-from src.routes.card import _load_card, fetch_rulings
+from src.models import Card, Deck, DeckChatMessage
+from src.routes.card import fetch_rulings
 from src.rules_rag import rules_for_question
 from src.templating import templates
 
@@ -242,7 +242,8 @@ async def card_ask(
     request: Request, scryfall_id: str, question: str = Form(""),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
-    card = await _load_card(session, scryfall_id)
+    card = await session.get(Card, scryfall_id)
+    if(card is None): raise HTTPException(status_code=404, detail="Card not found.")
     cfg = await get_config(session)
     if not cfg.ready or not question.strip():
         return templates.TemplateResponse(

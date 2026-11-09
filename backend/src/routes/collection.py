@@ -6,6 +6,7 @@ redirect back to the same search.
 """
 
 from __future__ import annotations
+from typing import Optional
 
 import uuid
 from urllib.parse import urlencode
@@ -19,6 +20,7 @@ from src.box_service import (
     create_box,
     delete_box,
 )
+from src.card import _image
 from src.collection_edit import (
     StaleStackError,
     add_or_increment,
@@ -38,15 +40,16 @@ from src.collection_edit import (
 from src.config import get_settings
 from src.db import get_session
 from src.grading import clear_grade, safe_photo_path, save_grade_photo, set_grade
+from src.importers.util import _LANGUAGES
 from src.locations import find_or_create_grouped_locations
-from src.models import Box, Card, CollectionCard
+from src.models import Card, CollectionCard
+from src.routes.validators import ValidFinish, ValidLanguage
 from src.tags import card_tags
 from src.templating import templates
 from src.trade_pool import open_pools, stage_selection, stage_stack
 
 router = APIRouter(tags=["collection"])
 
-_LOCATIONS_URL = "/collection/locations"
 
 
 def _guard_writable() -> None:
@@ -54,36 +57,82 @@ def _guard_writable() -> None:
         raise HTTPException(status_code=403, detail="This instance is read-only.")
 
 
-async def _collection_partial(
+
+async def _collection_partial_generator(
     request: Request, session: AsyncSession, scryfall_id: uuid.UUID, conflict: bool = False
-) -> HTMLResponse:
+) -> dict:
+    card = await session.get(Card, scryfall_id)
+    if(card is None): raise HTTPException(status_code=404, detail="Card not found.")
     owned = list(
         (
             await session.execute(
                 select(CollectionCard)
-                .where(CollectionCard.scryfall_id == scryfall_id)
-                .order_by(CollectionCard.finish, CollectionCard.language,
-                          CollectionCard.location)
+                .where(CollectionCard.scryfall_id == card.scryfall_id)
+                .order_by(CollectionCard.finish, CollectionCard.language)
             )
         )
         .scalars()
         .all()
     )
 
-    return templates.TemplateResponse(
-        request,
-        "_card_collection.html",
-        {
-            "card_id": scryfall_id,
+    printings: list[Card] = []
+    owned_other_printing: list[CollectionCard] = []
+    if card.oracle_id is not None:
+        printings = list(
+            (
+                await session.execute(
+                    select(Card)
+                    .where(Card.oracle_id == card.oracle_id)
+                    .where(Card.scryfall_id != card.scryfall_id)
+                    .order_by(Card.released_at.desc().nulls_last())
+                    .limit(24)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        owned_other_printing = list(
+            (
+                await session.execute(
+                    select(CollectionCard)
+                    .where(CollectionCard.scryfall_id.in_([x.scryfall_id for x in printings]))
+                    .order_by(CollectionCard.finish, CollectionCard.language)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    return {
+            "card":card,
             "owned": owned,
             "owned_total": sum(s.quantity for s in owned),
+            "owned_foil": any((s.finish or "").lower() == "foil" for s in owned),
+            "owned_etched": any((s.finish or "").lower() == "etched" for s in owned),
+            "owned_other_printing": owned_other_printing,
+            "owned_other_printing_total": sum(s.quantity for s in owned_other_printing),
             "tags": await card_tags(session, scryfall_id),
             "read_only": get_settings().read_only,
+            "printings": [(p, _image(p, "small")) for p in printings],
             "printing_opts": await printing_options(session, scryfall_id),
             "conflict": conflict,
             "grouped_locations": await find_or_create_grouped_locations(session),
             "trade_pools": await open_pools(session),
-        },
+            "languages": sorted(list(set(_LANGUAGES.values()))),
+        }
+    
+
+
+async def _collection_partial(
+    request: Request, session: AsyncSession, scryfall_id: uuid.UUID, conflict: bool = False
+) -> HTMLResponse:
+    
+
+    return templates.TemplateResponse(
+        request,
+        "_card_collection.html",
+        (await _collection_partial_generator(request, session, scryfall_id)),
     )
 
 
@@ -114,7 +163,7 @@ async def add(
     finish: str = Form("normal"),
     condition: str = Form(""),
     language: str = Form("en"),
-    location: int = Form(""),
+    location: Optional[int] = Form(None),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     _guard_writable()
@@ -253,15 +302,29 @@ async def remove_route(
     return await _collection_partial(request, session, uuid.UUID(card_id))
 
 
-@router.post("/collection/stack/{stack_id}/locate", response_class=HTMLResponse)
+@router.post("/collection/stack/{stack_id}/quick_edit", response_class=HTMLResponse)
 async def locate_collection_stack(
     request: Request,
     stack_id: int,
+    printing: str = Form(""),
+    finish: ValidFinish = Form(""),
+    language: ValidLanguage = Form(""),
     location_id: int = Form(None),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     """Unified location picker (#160): file a stack into a box, binder, or deck. """
     _guard_writable()
+    sid = stack_id
+    if(printing or finish or language):
+        stack = (await session.scalars(select(CollectionCard).where(CollectionCard.id == sid))).first()
+        if(stack and language):
+            stack.language = language
+        if(stack and finish):
+            stack.finish = finish
+        if(stack and printing):
+            import pdb; pdb.set_trace()
+            stack.printing = printing
+    await session.commit()
     sid = await move_stack_location(session, stack_id, location_id)
     if(not sid): raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     return await _collection_partial(request, session, sid)
@@ -396,7 +459,7 @@ async def new_box(
 ) -> RedirectResponse:
     _guard_writable()
     await create_box(session, name)
-    return RedirectResponse(url=_LOCATIONS_URL, status_code=303)
+    return RedirectResponse(url='/collection/locations', status_code=303)
 
 
 @router.post("/collection/boxes/{box_id}/delete")
@@ -405,7 +468,7 @@ async def delete_box_route(
 ) -> RedirectResponse:
     _guard_writable()
     await delete_box(session, box_id)
-    return RedirectResponse(url=_LOCATIONS_URL, status_code=303)
+    return RedirectResponse(url='/collection/locations', status_code=303)
 
 
 @router.post("/collection/organize-by-identity")
@@ -414,4 +477,4 @@ async def organize_locations(
 ) -> RedirectResponse:
     _guard_writable()
     await organize_by_color_identity(session)
-    return RedirectResponse(url=_LOCATIONS_URL, status_code=303)
+    return RedirectResponse(url='/collection/locations', status_code=303)

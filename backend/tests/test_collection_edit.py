@@ -7,7 +7,6 @@ from sqlalchemy import func, select
 from src.collection_edit import (
     add_or_increment,
     adjust_quantity,
-    bulk_add_tag,
     bulk_add_to_collection,
     delete_stack,
 )
@@ -87,8 +86,6 @@ async def test_bulk_add_and_tag(session):
     assert added == 2
     assert await _count(session, a.scryfall_id) == 1
 
-    tagged = await bulk_add_tag(session, [str(a.scryfall_id), str(b.scryfall_id)], "Trade")
-    assert tagged == 2
     tags = await session.scalar(
         select(CollectionCard.tags).where(CollectionCard.scryfall_id == a.scryfall_id)
     )

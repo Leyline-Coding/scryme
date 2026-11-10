@@ -20,7 +20,7 @@ from src.config import get_settings
 from src.currency import get_currency, info, unit_price
 from src.decks import all_decks
 from src.db import get_session
-from src.locations import get_location_summaries_remapped
+from src.locations import get_location_summaries_remapped, find_or_create_grouped_locations
 from src.models import Deck, DeckCard, PriceSnapshot, Card, CollectionCard, Location
 from src.collection_edit import color_identity_group
 from src.perfcache import memoize
@@ -152,11 +152,12 @@ async def collection(
         ctx["boxes"] = await all_boxes(session)
         
         # Count unfiled cards
-        unfiled_count = await session.scalar(
-            select(func.coalesce(func.sum(CollectionCard.quantity), 0))
+        ctx["unfiled"] = (await session.scalars(
+            select(CollectionCard)
             .where(CollectionCard.location.is_(None))
-        )
-        ctx["unfiled_count"] = unfiled_count
+        )).all()
+        ctx["unfiled_card_count"] = sum([x.quantity for x in ctx["unfiled"]])
+        ctx["unfiled_stack_count"] = len(ctx["unfiled"])
         
         # Get all non-deck, non-unfiled locations for the dropdown
         location_rows = await session.execute(
@@ -177,6 +178,9 @@ async def collection(
         
         ctx["decks"] = await all_decks(session)
         ctx["deck_sizes"] = {d.id: {board: sum(c.quantity for c in d.cards if c.board == board) for board in ['main','side']} for d in ctx["decks"]}
+
+        ctx["grouped_locations"] = await find_or_create_grouped_locations(session, binders=True, boxes=True, decks=False)
+    
 
     elif tab == "binders":
         ctx["locations"] = await get_location_summaries_remapped(session)

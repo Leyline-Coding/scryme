@@ -71,7 +71,17 @@ async def card_tags(session: AsyncSession, scryfall_id: uuid.UUID) -> list[str]:
     return sorted(out)
 
 
-async def add_card_tag(session: AsyncSession, scryfall_id: uuid.UUID, raw: str) -> list[str]:
+async def add_stacks_tag(session: AsyncSession, stack_ids: list[int], tag: str) -> int:
+    """Add a tag to every owned stack. Returns how many printings were tagged."""
+    tagged = 0
+    for stack_id in stack_ids:
+        result = await add_card_tag(session, stack_id, tag)
+        if result:
+            tagged += 1
+    return tagged
+
+
+async def add_card_tag(session: AsyncSession, stack_id: int, raw: str) -> list[str]:
     """Add a normalized tag to every owned stack of this printing. Returns the new tag set."""
     tag = normalize_tag(raw)
     if tag:
@@ -80,7 +90,7 @@ async def add_card_tag(session: AsyncSession, scryfall_id: uuid.UUID, raw: str) 
             if tag not in current:
                 stack.tags = sorted(current + [tag])
         await session.commit()
-    return await card_tags(session, scryfall_id)
+    return await card_tags(session, stack_id)
 
 
 async def remove_card_tag(session: AsyncSession, scryfall_id: uuid.UUID, raw: str) -> list[str]:

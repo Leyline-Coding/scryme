@@ -11,7 +11,7 @@ from typing import Optional
 import uuid
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,12 +25,10 @@ from src.collection_edit import (
     StaleStackError,
     add_or_increment,
     adjust_quantity,
-    bulk_add_tag,
     bulk_add_to_collection,
-    bulk_move_to_location,
     delete_stack,
-    edit_stack,
     move_stack_location,
+    move_stacks_location,
     organize_by_color_identity,
     owned_for_oracle,
     remove_copies,
@@ -44,7 +42,7 @@ from src.importers.util import _LANGUAGES
 from src.locations import find_or_create_grouped_locations
 from src.models import Card, CollectionCard
 from src.routes.validators import ValidFinish, ValidLanguage
-from src.tags import card_tags
+from src.tags import card_tags, add_stacks_tag
 from src.templating import templates
 from src.trade_pool import open_pools, stage_selection, stage_stack
 
@@ -376,6 +374,7 @@ async def grade_photo(filename: str) -> FileResponse:
 async def bulk(
     bulk_action: str = Form(...),
     scryfall_ids: list[str] = Form(default=[]),
+    stack_ids: list[int] = Form(default=[]),
     tag: str = Form(""),
     bulk_location_id: str = Form(""),
     pool_id: str = Form(""),
@@ -383,21 +382,31 @@ async def bulk(
     scope: str = Form("collection"),
     sort: str = Form("name"),
     dir: str = Form("asc"),
+    refresh: bool = Form(False),
     session: AsyncSession = Depends(get_session),
 ) -> RedirectResponse:
     _guard_writable()
+    ## When scryfall_ids are passed, convert these to stack ids first. The difference betwee a scryfall_id and a stack ID is that scryfall_id can match multiple stacks with the same scryfall_id but other different prooperties, such as finish, location, etc.
     if scryfall_ids:
-        if bulk_action == "tag" and tag.strip():
-            await bulk_add_tag(session, scryfall_ids, tag)
-        elif (bulk_action == "location") and bulk_location_id:
-            await bulk_move_to_location(session, int(bulk_location_id), scryfall_ids)
-        elif bulk_action == "add":
+        if bulk_action == "add":
             await bulk_add_to_collection(session, scryfall_ids, 1)
+        rows = (await session.execute(
+                select(CollectionCard.id)
+                .where(CollectionCard.scryfall_id.in_(scryfall_ids))
+            )).all()
+        stack_ids += [row[0] for row in rows]
+    if stack_ids:
+        if bulk_action == "tag" and tag.strip():
+            await add_stacks_tag(session, stack_ids=stack_ids, tag=tag)
+        elif (bulk_action == "location") and bulk_location_id:
+            await move_stacks_location(session, stack_ids=stack_ids, location_id=int(bulk_location_id))
         elif bulk_action in ("trade_out", "trade_in") and pool_id.strip().isdigit():
             side = "out" if bulk_action == "trade_out" else "in"
-            await stage_selection(session, int(pool_id), side, scryfall_ids)
+            await stage_selection(session, int(pool_id), side, stack_ids=stack_ids)
+    if(refresh): return Response(status_code=200, headers={"HX-Refresh": "true"})
     params = urlencode({"q": q, "scope": scope, "sort": sort, "dir": dir})
     return RedirectResponse(url=f"/search?{params}", status_code=303)
+
 
 
 @router.post("/collection/boxes/new")

@@ -7,7 +7,6 @@ from sqlalchemy import select
 from src.collection_edit import (
     add_or_increment,
     adjust_quantity,
-    bulk_add_tag,
     bulk_add_to_collection,
     color_identity_group,
     delete_stack,
@@ -137,7 +136,6 @@ async def test_bulk_add_and_tag(session):
                                         [str(a.scryfall_id), str(b.scryfall_id)], 1) == 2
     # An unknown id doesn't count.
     assert await bulk_add_to_collection(session, [str(uuid.uuid4())], 1) == 0
-    assert await bulk_add_tag(session, [str(a.scryfall_id), str(b.scryfall_id)], "trade") == 2
 
 
 @pytest.mark.asyncio

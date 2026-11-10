@@ -197,6 +197,7 @@ async def delete_stack(session: AsyncSession, stack_id: int, expected_version: i
     return sid
 
 
+
 async def move_stacks_location(session: AsyncSession, stack_ids: list[int], location_id: int | None = None) -> list[int]:
     """Move stacks to a new location. Returns a list of scryfall_ids (or None if it didn't exist).
     
@@ -367,15 +368,6 @@ async def bulk_add_to_collection(
     return added
 
 
-async def bulk_add_tag(session: AsyncSession, scryfall_ids: list, tag: str) -> int:
-    """Add a tag to every owned stack of each printing. Returns how many printings were tagged."""
-    tagged = 0
-    for sid in scryfall_ids:
-        result = await add_card_tag(session, _as_uuid(sid), tag)
-        if result:
-            tagged += 1
-    return tagged
-
 
 # --- organize by color identity (#160) ----------------------------------------------------------
 
@@ -440,30 +432,6 @@ async def location_summary(session: AsyncSession) -> list[LocationSummary]:
     )).all()
     return [LocationSummary(loc, int(n), int(q or 0)) for loc, n, q in rows]
 
-
-async def bulk_move_to_location(session: AsyncSession, location_id: int, scryfall_ids) -> None:
-    """Move owned printings to a specific location by updating their location."""
-    # Convert to UUID if needed
-    sids = {_as_uuid(s) for s in scryfall_ids}
-
-    #TODO: If location is a deck, add cards to the deck card list before moving
-
-    # Filter only those cards that exist in collection
-    owned_rows = (await session.execute(
-        select(CollectionCard.id).where(
-            CollectionCard.scryfall_id.in_(sids)
-        )
-    )).scalars().all()
-    
-    if not owned_rows:
-        return
-
-    await session.execute(
-        update(CollectionCard)
-        .where(CollectionCard.id.in_(owned_rows))
-        .values(location=location_id)
-    )
-    await session.commit()
 
 
 async def pull_stack_from_existing_stack(session: AsyncSession, stack_id: int, num_cards: int = 1, new_location_id: int | None = None, expected_version: int | None = None) -> uuid.UUID | None:

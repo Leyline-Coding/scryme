@@ -20,22 +20,19 @@
 
 {# Boxes — the physical bulk-storage containers you create here. #}
 <section class="mb-8">
-  {% if unfiled_count and unfiled_count > 0 %}
-  <div class="mt-1 mb-3 p-2 pl-4 pr-4 rounded bg-surface text-accent text-xs">
-    <span class="block">{{ unfiled_count }} card{{ 's' if unfiled_count != 1 else '' }} are currently unfiled.
-      <a href="/search?q=loc%3A%22unfiled%22&scope=collection" class="underline hover:text-fg">View them</a>.
-      <form method="post" action="/collection/bulk" class="inline-block ml-2">
-        <input type="hidden" name="bulk_action" value="location">
-        <input type="hidden" name="bulk_location_id" value="">
-        <select name="bulk_location_id" class="rounded bg-surface-2 border border-edge px-2 py-1 text-xs font-medium">
-          <option value="">Select location...</option>
-          {% for loc in available_locations %}
-            <option value="{{ loc.id }}">{{ loc.type }}: {{ loc.foreign_id }}</option>
-          {% endfor %}
-        </select>
-        <button class="rounded-full bg-accent text-accent-fg px-3 py-1 text-xs font-medium ml-2">File all unfiled cards</button>
-      </form>
-    </span>
+  {% if unfiled and unfiled_card_count > 0 %}
+  <div class="mt-1 mb-3 p-2 pl-4 pr-4 rounded border border-amber-800/50 bg-amber-950/90 text-xs">
+    <span>{{ unfiled_card_count }} card{{ 's' if unfiled_card_count != 1 else '' }} ({{ unfiled_stack_count }} distinct) are currently unfiled.</span>
+    <a href="/search?q=loc%3A%22unfiled%22&scope=collection" class="underline text-accent hover:text-fg">View them</a>.
+    <form name="unfiled_location_select" hx-post="/collection/bulk" hx-trigger="hiddenChange" class="w-max inline-block ml-2 text-inherit">
+      <input type="hidden" name="bulk_action" value="location"/>
+      <input type="hidden" name="refresh" value="True"/>
+      {% for u in unfiled %}
+      <input type="hidden" name="stack_ids" value="{{u.id}}"/>
+      {%endfor%}
+      {% from "_locations_select.html" import locations_select %}
+      {{ locations_select(grouped_locations, name="bulk_location_id", label="Move to ...", onchange="document.querySelector('form[name=\"unfiled_location_select\"]').dispatchEvent(new Event('hiddenChange'))", class="rounded-full bg-accent border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem] overflow_hidden whitespace-nowrap") }}
+    </form>
   </div>
   {% endif %}
   

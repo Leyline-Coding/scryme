@@ -35,7 +35,7 @@ from src.pricing import SOURCES, effective_prices, get_price_source
 from src.routes.collection import _collection_partial_generator
 from src.scryfall.client import ScryfallClient, ScryfallError
 from src.scryfall.images import ImageCache
-from src.tags import add_card_tag, remove_card_tag
+from src.tags import modify_stack_tag
 from src.templating import templates
 from src.wishlist import is_wishlisted
 
@@ -50,6 +50,11 @@ LEGALITY_FORMATS = [
 
 # Lazily-fetched rulings cached per printing for the process lifetime (single-user, polite).
 _rulings_cache: dict[str, list[dict]] = {}
+
+
+def _guard_writable() -> None:
+    if get_settings().read_only:
+        raise HTTPException(status_code=403, detail="This instance is read-only.")
 
 
 def _flip_rotate(card: Card) -> tuple[bool, str | None, bool]:
@@ -284,42 +289,12 @@ async def card_similar(
     return templates.TemplateResponse(request, "_similar_cards.html", {"items": items})
 
 
-def _tags_response(request: Request, card_id: uuid.UUID, tags: list[str]) -> HTMLResponse:
+def _tags_response(request: Request, card_id: str, tags: list[str]) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "_card_tags.html",
         {"card_id": card_id, "tags": tags, "read_only": get_settings().read_only},
     )
-
-
-@router.post("/card/{scryfall_id}/tags", response_class=HTMLResponse)
-async def add_tag(
-    request: Request,
-    scryfall_id: str,
-    tag: str = Form(""),
-    session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
-    if get_settings().read_only:
-        raise HTTPException(status_code=403, detail="This demo is read-only.")
-    card = await session.get(Card, scryfall_id)
-    if(card is None): raise HTTPException(status_code=404, detail="Card not found.")
-    tags = await add_card_tag(session, card.scryfall_id, tag)
-    return _tags_response(request, card.scryfall_id, tags)
-
-
-@router.post("/card/{scryfall_id}/tags/delete", response_class=HTMLResponse)
-async def delete_tag(
-    request: Request,
-    scryfall_id: str,
-    tag: str = Form(""),
-    session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
-    if get_settings().read_only:
-        raise HTTPException(status_code=403, detail="This demo is read-only.")
-    card = await session.get(Card, scryfall_id)
-    if(card is None): raise HTTPException(status_code=404, detail="Card not found.")
-    tags = await remove_card_tag(session, card.scryfall_id, tag)
-    return _tags_response(request, card.scryfall_id, tags)
 
 
 async def fetch_rulings(scryfall_id: str, card: Card) -> list[dict] | None:

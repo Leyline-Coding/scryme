@@ -35,6 +35,7 @@ from src.collection_edit import (
     StaleStackError,
     add_or_increment,
     delete_stack,
+    scryfall_ids_to_stack_ids,
     update_stack,
 )
 from src.config import get_settings
@@ -66,7 +67,7 @@ from src.search import SearchError, SearchScope
 from src.search.engine import DEFAULT_SORT, SORT_KEYS, run_search
 from src.sets import set_detail, set_progress
 from src.stats import collection_stats
-from src.tags import add_card_tag, card_tags, remove_card_tag
+from src.tags import modify_stack_tag, card_tags
 from src.wishlist import add_to_wishlist, list_wishlist, remove_from_wishlist
 
 
@@ -681,22 +682,24 @@ class TagIn(BaseModel):
     tag: str
 
 
-@router.post("/cards/{scryfall_id}/tags", response_model=OkOut)
+@router.post("/collection/{scryfall_id}/tags", response_model=OkOut)
 async def api_add_tag(
     scryfall_id: str, body: TagIn, session: AsyncSession = Depends(get_session)
 ) -> OkOut:
     _guard_writable()
-    card = await _get_card(session, scryfall_id)
-    return OkOut(tags=await add_card_tag(session, card.scryfall_id, body.tag))
+    stack_id = (await scryfall_ids_to_stack_ids(session, [scryfall_id]))[0]
+    await modify_stack_tag(session, stack_id, tag=body.tag)
+    return OkOut(tags=(await session.get(CollectionCard, stack_id)).tags)
 
 
-@router.delete("/cards/{scryfall_id}/tags", response_model=OkOut)
+@router.delete("/collection/{scryfall_id}/tags", response_model=OkOut)
 async def api_remove_tag(
     scryfall_id: str, tag: str = Query(...), session: AsyncSession = Depends(get_session)
 ) -> OkOut:
     _guard_writable()
-    card = await _get_card(session, scryfall_id)
-    return OkOut(tags=await remove_card_tag(session, card.scryfall_id, tag))
+    stack_id = (await scryfall_ids_to_stack_ids(session, [scryfall_id]))[0]
+    await modify_stack_tag(session, stack_id, tag=tag, remove=True)
+    return OkOut(tags=(await session.get(CollectionCard, stack_id)).tags)
 
 
 class WishlistAddIn(BaseModel):

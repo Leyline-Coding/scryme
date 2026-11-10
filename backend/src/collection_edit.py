@@ -22,6 +22,7 @@ Every mutation bumps ``version``, so an absolute edit notices a relative one tha
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 import uuid
 from dataclasses import dataclass
 
@@ -29,7 +30,6 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Card, CollectionCard
-from src.tags import add_card_tag
 
 
 _STACK_NOT_FOUND = "Stack not found."
@@ -47,6 +47,14 @@ def _clean(value: str | None) -> str | None:
 
 def _eq_or_null(col, value):
     return col.is_(None) if value is None else col == value
+
+
+async def scryfall_ids_to_stack_ids(session, scryfall_ids: Sequence[str | uuid.UUID]):
+    return (await session.execute(
+                select(CollectionCard.id)
+                .where(CollectionCard.scryfall_id.in_(scryfall_ids))
+            )).scalars().all()
+
 
 
 async def add_or_increment(

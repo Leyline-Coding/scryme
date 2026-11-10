@@ -33,7 +33,7 @@
       {% endif %}
     </h2>
     {% for s in owned %}
-    <li class="py-1.5 text-xs text-accent-fg" x-data="{ g: false, e: false }">
+    <li class="py-1.5 text-xs text-accent-fg" x-data="{ g: false, tags: {%if s.tags %}true{%else%}false{%endif%} }">
       <div class="flex flex-wrap items-center gap-2">
       {% if not read_only %}
       <span class="inline-flex items-center rounded-full bg-surface-2 overflow-hidden shrink-0">
@@ -144,7 +144,8 @@
       </form>
       {% endif %}
       {% if not read_only %}
-      <button type="button" @click="g = !g" title="Grading" class="ml-auto shrink-0 text-muted hover:text-accent tap"><i class="fa-solid fa-medal"></i></button>
+      <button type="button" @click="tags = !tags" title="Toggle tag editor" class="ml-auto shrink-0 text-muted hover:text-accent tap"><i class="fa-solid fa-tags"></i></button>
+      <button type="button" @click="g = !g" title="Toggle grading editor" class="shrink-0 text-muted hover:text-accent tap"><i class="fa-solid fa-medal"></i></button>
       <button type="button" title="Pull one card into a new copied stack, i.e. to distinguish one copy from the others"
               class="shrink-0 text-muted hover:text-accent tap {% if s.quantity <= 1 %} disabled disabled:opacity-50 disabled:pointer-events-none{% endif %}"
               hx-post="/collection/stack/{{ s.id }}/pull"
@@ -206,6 +207,15 @@
         </form>
       </div>
       {% endif %}
+
+      {# Tag Editor #}
+      {% if not read_only %}
+      <div x-show="tags" x-cloak class="mt-2">
+        {% include "_card_tags.html" %}
+      </div>
+      {% endif %}
+
+
     </li>
     {% endfor %}
   </ul>
@@ -241,13 +251,6 @@
       {% endif %}
     {% endfor %}
   </ul>
-  {% endif %}
-
-  {% if owned or tags %}
-  <div class="mt-2 pt-2 border-t border-edge">
-    <h2 class="text-sm font-semibold text-muted mb-1 tracking-wide flex flex-wrap items-center gap-2">Tags</h2>
-    {% include "_card_tags.html" %}
-  </div>
   {% endif %}
 
   {# Remove-from-collection modal loads here (HTMX). #}

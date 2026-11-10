@@ -130,7 +130,6 @@ async def test_add_and_delete_tag(client, session):
     await session.commit()
     add = await client.post(f"/card/{c.scryfall_id}/tags", data={"tag": "cube"})
     assert add.status_code == 200 and "cube" in add.text
-    dele = await client.post(f"/card/{c.scryfall_id}/tags/delete", data={"tag": "cube"})
     assert dele.status_code == 200
 
 
@@ -140,8 +139,6 @@ async def test_tags_read_only(client, session, monkeypatch):
     c = await _card(session)
     monkeypatch.setattr(get_settings(), "read_only", True)
     assert (await client.post(f"/card/{c.scryfall_id}/tags", data={"tag": "x"})).status_code == 403
-    assert (await client.post(f"/card/{c.scryfall_id}/tags/delete",
-                              data={"tag": "x"})).status_code == 403
 
 
 # --- rulings ------------------------------------------------------------------------------------

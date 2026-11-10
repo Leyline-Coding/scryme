@@ -12,7 +12,7 @@ from src.box_service import (
 )
 from src.models import Card, CollectionCard, Deck
 from src.scryfall.mapping import card_to_columns
-from src.tags import add_card_tag, tag_summaries
+from src.tags import modify_stack_tag, tag_summaries
 
 
 async def _own(session, name="Sol Ring", rarity="rare", location=None):

@@ -33,6 +33,7 @@ from src.collection_edit import (
     owned_for_oracle,
     remove_copies,
     pull_stack_from_existing_stack,
+    scryfall_ids_to_stack_ids,
     _STACK_NOT_FOUND,
 )
 from src.config import get_settings
@@ -42,7 +43,7 @@ from src.importers.util import _LANGUAGES
 from src.locations import find_or_create_grouped_locations
 from src.models import Card, CollectionCard
 from src.routes.validators import ValidFinish, ValidLanguage
-from src.tags import card_tags, add_stacks_tag
+from src.tags import modify_stacks_tag
 from src.templating import templates
 from src.trade_pool import open_pools, stage_selection, stage_stack
 
@@ -110,7 +111,6 @@ async def _collection_partial_generator(
             "owned_etched": any((s.finish or "").lower() == "etched" for s in owned),
             "owned_other_printing": owned_other_printing,
             "owned_other_printing_total": sum(s.quantity for s in owned_other_printing),
-            "tags": await card_tags(session, scryfall_id),
             "read_only": get_settings().read_only,
             "printings": [(p, _image(p, "small")) for p in printings],
             "conflict": conflict,
@@ -390,14 +390,12 @@ async def bulk(
     if scryfall_ids:
         if bulk_action == "add":
             await bulk_add_to_collection(session, scryfall_ids, 1)
-        rows = (await session.execute(
-                select(CollectionCard.id)
-                .where(CollectionCard.scryfall_id.in_(scryfall_ids))
-            )).all()
-        stack_ids += [row[0] for row in rows]
+        stack_ids += (await scryfall_ids_to_stack_ids(session, scryfall_ids))
     if stack_ids:
         if bulk_action == "tag" and tag.strip():
-            await add_stacks_tag(session, stack_ids=stack_ids, tag=tag)
+            await modify_stacks_tag(session, stack_ids=stack_ids, tag=tag)
+        elif bulk_action == "tag-remove" and tag.strip():
+            await modify_stacks_tag(session, stack_ids=stack_ids, tag=tag, remove=True)
         elif (bulk_action == "location") and bulk_location_id:
             await move_stacks_location(session, stack_ids=stack_ids, location_id=int(bulk_location_id))
         elif bulk_action in ("trade_out", "trade_in") and pool_id.strip().isdigit():

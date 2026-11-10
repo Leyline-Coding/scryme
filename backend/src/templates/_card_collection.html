@@ -52,7 +52,7 @@
       <form hx-post="/collection/stack/27496/edit" name="printing_select_{{s.id}}" hx-trigger="hiddenChange" hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
         <div x-data="{ printing_select_{{s.id}}: false }" class="relative action-scope-collection">
           <button @click="printing_select_{{s.id}} = !printing_select_{{s.id}}" type="button" class="capitalize rounded-full bg-surface-2 border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem]"> 
-            {{ card.set_name }} {{ set_symbol(card.set_code, card.rarity) }} <span class="uppercase">{{card.set_code}}</span> ▾
+            <span class="uppercase">{{card.set_code}}</span> {{ set_symbol(card.set_code, card.rarity) }} #{{ card.collector_number }} ▾
           </button>
           <input type="hidden" name="printing" id="printing_{{s.id}}">
           <div x-show="printing_select_{{s.id}}" @click.outside="printing_select_{{s.id}} = false" x-transition="" style="display: none" class="absolute left-0 mt-2 w-80 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">

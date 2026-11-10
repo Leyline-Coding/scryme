@@ -472,12 +472,14 @@ async def deck_printings(session: AsyncSession, oracle_id) -> list[dict]:
 @dataclass
 class StackCoverage:
     """Detailed coverage information for a single stack in a deck."""
+    scryfall_id: uuid.UUID
     quantity: int  # The quantity of this stack in the deck
     in_deck: int   # Quantity in the deck (already in this deck)
     owned: int     # Quantity owned but not in this deck (perfect match)
     swappable: int # Quantity eligible for substitution by name match
     
-    def __init__(self, quantity: int):
+    def __init__(self, scryfall_id: uuid.UUID, quantity: int):
+        self.scryfall_id = scryfall_id
         self.quantity = quantity
         self.in_deck = 0
         self.owned = 0
@@ -654,7 +656,7 @@ async def deck_coverage(
 
 
     # Calculate stack coverage
-    stack_coverage = await deck_stack_coverage(session, deck)
+    stack_coverages = await deck_stack_coverages(session, deck)
 
     
     ## Generate details for each deck card
@@ -665,7 +667,7 @@ async def deck_coverage(
             scryfall_card=cards[c.scryfall_id] if c.scryfall_id else None,
             board=c.board,
             quantity=c.quantity,
-            stack_coverage=stack_coverage[c.scryfall_id],
+            stack_coverage=stack_coverages[c.id],
             matched=c.oracle_id is not None,
             legality=_card_legality(c, fmt, legal_by_oracle, illegal_oracles),
             proxy=c.proxy,
@@ -679,10 +681,10 @@ async def deck_coverage(
     # Add a second coverage by combining CardRow by name
     cov.main_combined = []
     cov.side_combined = []
-    for result_store, source in [[cov.main_combined, cov.main], [cov.side_combined, cov.side]]:
-        for name in list({obj.name for obj in source}):
+    for result_store, source_board in [[cov.main_combined, cov.main], [cov.side_combined, cov.side]]:
+        for name in list({obj.name for obj in source_board}):
         
-            rows_to_be_combined = [row for row in source if row.name == name]
+            rows_to_be_combined = [row for row in source_board if row.name == name]
             result_store.append(copy.deepcopy(rows_to_be_combined[0]))
             for row_to_be_combined in rows_to_be_combined[1:]:
                 result_store[-1].quantity += row_to_be_combined.quantity
@@ -877,53 +879,52 @@ async def deck_legality(
 
 
 
-async def deck_stack_coverage(
-    session: AsyncSession, deck: Deck) -> dict[uuid.UUID, StackCoverage]:
+async def deck_stack_coverages(
+    session: AsyncSession, deck: Deck) -> dict[int, StackCoverage]:
     """Calculate detailed coverage for each stack in the deck."""
     await session.refresh(deck, ["location"])
     # Get all collection cards that are located in this deck (already in the deck)
     deck_collection_cards = {}
     if deck.location.id is not None:
         result = await session.execute(
-            select(CollectionCard.scryfall_id, func.sum(CollectionCard.quantity).label('quantity'))
+            select(CollectionCard.scryfall_id, CollectionCard.finish, func.sum(CollectionCard.quantity).label('quantity'))
             .where(CollectionCard.location == deck.location.id)
-            .group_by(CollectionCard.scryfall_id)
+            .group_by(CollectionCard.scryfall_id, CollectionCard.finish)
         )
-        deck_collection_cards = {row.scryfall_id: row.quantity for row in result.all()}
-    # Get all collection cards that are not in any deck location (available for building the deck)
+        deck_collection_cards = {str(row.scryfall_id)+'_'+row.finish: row.quantity for row in result.all()}
+    # Get all collection cards that might match which are not in any deck location (available for building the deck)
     unreserved_collection_cards = {}
     result = await session.execute(
-        select(CollectionCard.scryfall_id, func.sum(CollectionCard.quantity).label('quantity'))
+        select(CollectionCard.scryfall_id, CollectionCard.finish, func.sum(CollectionCard.quantity).label('quantity'))
         .outerjoin(Location, CollectionCard.location == Location.id)
         .where((Location.type != "deck") | (Location.id.is_(None)))
-        .group_by(CollectionCard.scryfall_id)
+        .group_by(CollectionCard.scryfall_id, CollectionCard.finish)
     )
-    unreserved_collection_cards = {row.scryfall_id: row.quantity for row in result.all()}
-    
-    # Calculate coverage for each stack
+    unreserved_collection_cards = {str(row.scryfall_id)+'_'+row.finish: row.quantity for row in result.all()}
+    # Calculate coverage for each deck card stack
     stack_coverage = {}
     for dc in deck.cards:
         if dc.scryfall_id is None:
             continue
-            
         # Create StackCoverage object
-        sc = StackCoverage(quantity=dc.quantity)
+        sc = StackCoverage(scryfall_id=dc.scryfall_id, quantity=dc.quantity)
+        match_id = str(dc.scryfall_id)+'_'+dc.finish
         
-        # Count cards already in this deck (matching the exact same scryfall_id and location)
-        if dc.scryfall_id in deck_collection_cards:
-            sc.in_deck = deck_collection_cards[dc.scryfall_id]
+        # Count cards already in this deck (matching the exact same scryfall_id, finish, and location)
+        if match_id in deck_collection_cards:
+            sc.in_deck = deck_collection_cards[match_id]
             
         # Count cards available but not in any deck location (matching by scryfall_id, with exact match)
-        if dc.scryfall_id in unreserved_collection_cards:
-            sc.owned = unreserved_collection_cards[dc.scryfall_id]
+        if match_id in unreserved_collection_cards:
+            sc.owned = unreserved_collection_cards[match_id]
         
         # Count all cards that can be used for substitution (matching by name only)
         sc.swappable = 0  # Will compute this properly below
         
-        stack_coverage[dc.scryfall_id] = sc
+        stack_coverage[dc.id] = sc ## We use dc.id and not dc.scryfall_id because a deck could specify multiple different stacks with the same scryfall_id, for example one normal copy and one foil copy
 
-    # For swappable cards, we need to find all collection cards that match by name
-    # but not necessarily by scryfall_id (to allow substitution) - but only for the specific card names in the deck
+    # For swappable cards, we need to find all collection cards that match by name only
+    # not necessarily by scryfall_id (to allow substitution) - but only for the specific card names in the deck
     if deck.cards:
         # Get unique card names from this deck
         card_names = {dc.name.lower() for dc in deck.cards if dc.scryfall_id}
@@ -979,8 +980,7 @@ async def deck_stack_coverage(
                         if card_name and card_name == dc.name.lower():
                             swappable_count += quantity
                 
-                stack_coverage[dc.scryfall_id].swappable = swappable_count
-
+                stack_coverage[dc.id].swappable = swappable_count
     return stack_coverage
 
 

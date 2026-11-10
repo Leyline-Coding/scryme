@@ -6,8 +6,10 @@ from src.models.card import Card
 from src.models.checklist import Checklist, ChecklistItem
 from src.models.client_token import ClientToken
 from src.models.collection import CollectionCard
-from src.models.deck import Deck, DeckCard, DeckVersion
+from src.models.deck import Deck
+from src.models.deck_card import DeckCard
 from src.models.deck_chat import DeckChatMessage
+from src.models.deck_version import DeckVersion
 from src.models.embedding import CardEmbedding
 from src.models.fx_rate import FxRate, FxRateHistory
 from src.models.import_snapshot import ImportSnapshot

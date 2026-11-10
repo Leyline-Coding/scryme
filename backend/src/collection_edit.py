@@ -205,7 +205,7 @@ async def move_stacks_location(session: AsyncSession, stack_ids: list[int], loca
     """
     stacks_to_move = (await session.scalars(select(CollectionCard).where(CollectionCard.id.in_(stack_ids)))).all()
     
-    # Preload any OTHER CollectionCard witch a matching target loaction and which matches scryfall_id. _cards_are_identical will perform the fine-grained match
+    # Preload any OTHER CollectionCard witch both a matching target location and with a matching scryfall_id. _cards_are_identical will perform the fine-grained match
     existing_stacks_preloaded = (await session.scalars(
         select(CollectionCard).where(
             CollectionCard.id.not_in([card.id for card in stacks_to_move]),
@@ -220,10 +220,10 @@ async def move_stacks_location(session: AsyncSession, stack_ids: list[int], loca
           
           # Finely check the coarsely preload CollectionCard matches using _cards_are_identical()
           identical_existing = next(
-              (existing_stack for existing_stack in existing_stacks_preloaded if _cards_are_identical(stack_to_move, existing_stack)),
+              (existing_stack for existing_stack in existing_stacks_preloaded if stack_to_move.is_identical_to_stack(existing_stack)),
               None
           )
-          
+
           if identical_existing:
               # Merge the stacks: increment the quantity of the existing card and delete source
               identical_existing.quantity += stack_to_move.quantity
@@ -244,40 +244,6 @@ async def move_stack_location(session: AsyncSession, stack_id: int, location_id:
     """
     result = await move_stacks_location(session, [stack_id], location_id)
     return result[0] if result else None
-
-
-async def _cards_are_identical(card1: CollectionCard, card2: CollectionCard) -> bool:
-    """Check if two CollectionCards are identical (excluding id, source_format, and version).
-    
-    Two cards are considered identical if they have the same:
-    - scryfall_id
-    - quantity
-    - finish
-    - condition
-    - language
-    - purchase_price
-    - location (this is ignored for comparison)
-    - tags
-    - grade_company
-    - grade
-    - cert_number
-    - grade_photo
-    - value_override
-    """
-    return (
-        card1.scryfall_id == card2.scryfall_id and
-        card1.quantity == card2.quantity and
-        card1.finish == card2.finish and
-        card1.condition == card2.condition and
-        card1.language == card2.language and
-        card1.purchase_price == card2.purchase_price and
-        card1.tags == card2.tags and
-        card1.grade_company == card2.grade_company and
-        card1.grade == card2.grade and
-        card1.cert_number == card2.cert_number and
-        card1.grade_photo == card2.grade_photo and
-        card1.value_override == card2.value_override
-    )
 
 
 async def adjust_owned(session: AsyncSession, scryfall_id, delta: int) -> None:

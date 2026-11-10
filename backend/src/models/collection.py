@@ -25,24 +25,25 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db import Base
 from src.models.card import Card
+from src.models.stack import Stack
 
 
-class CollectionCard(Base):
+class CollectionCard(Stack, Base):
     __tablename__ = "collection_card"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    scryfall_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("cards.scryfall_id", ondelete="CASCADE"), index=True
-    )
 
-    quantity: Mapped[int] = mapped_column(Integer, default=1)
-    finish: Mapped[str] = mapped_column(String(16), default="normal")  # normal | foil | etched
+    ## Inheritied from Stack
+    # scryfall_id: Mapped[uuid.UUID]
+    # quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # finish: Mapped[str] = mapped_column(String(16), nullable=False, default="normal")  # normal | foil | etched
+    # language: Mapped[str] = mapped_column(String(8), nullable=False, default="en")
+    
     condition: Mapped[str | None] = mapped_column(String(32))
-    language: Mapped[str] = mapped_column(String(8), default="en")
     purchase_price: Mapped[float | None] = mapped_column(Float)
+    source_format: Mapped[str | None] = mapped_column(String(32))  # manabox | dragonshield | delver
     source_location_name: Mapped[str | None] = mapped_column(String(256))
     location: Mapped[int | None] = mapped_column(Integer)  # physical storage place
-    source_format: Mapped[str | None] = mapped_column(String(32))  # manabox | dragonshield | delver
 
     # User-defined labels (e.g. "for-trade", "deck:goblins"), searchable via `tag:`.
     tags: Mapped[list[str] | None] = mapped_column(ARRAY(String(64)))
@@ -78,3 +79,40 @@ class CollectionCard(Base):
         ),
         Index("ix_collection_card_tags_gin", "tags", postgresql_using="gin"),
     )
+
+
+    def is_identical_to_stack(self, collection_card_2: CollectionCard) -> bool:
+        """Check if two CollectionCards are identical (excluding id, source_format, and version).
+        
+        Two cards are considered identical if they have the same:
+        - scryfall_id
+        - quantity
+        - finish
+        - condition
+        - language
+        - purchase_price
+        - location (this is ignored for comparison)
+        - tags
+        - grade_company
+        - grade
+        - cert_number
+        - grade_photo
+        - value_override
+
+        Use this function only for backend stack operations, such as cleaning up split stacks or recombining stacks.
+        Use Stack.get_unique_stack_key() instead for substituable identical printings, for example for deck coverage.
+        """
+        return (
+            self.scryfall_id == collection_card_2.scryfall_id and
+            self.quantity == collection_card_2.quantity and
+            self.finish == collection_card_2.finish and
+            self.condition == collection_card_2.condition and
+            self.language == collection_card_2.language and
+            self.purchase_price == collection_card_2.purchase_price and
+            self.tags == collection_card_2.tags and
+            self.grade_company == collection_card_2.grade_company and
+            self.grade == collection_card_2.grade and
+            self.cert_number == collection_card_2.cert_number and
+            self.grade_photo == collection_card_2.grade_photo and
+            self.value_override == collection_card_2.value_override
+        )

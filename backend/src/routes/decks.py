@@ -735,6 +735,7 @@ async def deck_add_owned(
         added = card.name
     return await _render_owned_upgrades(request, deck, session, added=added)
 
+
 @router.post("/decks/{deck_id}/rename")
 async def update_deck_name(
     request: Request, deck_id: int, name: str = Form(""), session: AsyncSession = Depends(get_session)

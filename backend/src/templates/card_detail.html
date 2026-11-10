@@ -324,6 +324,7 @@
     <h2 class="text-lg font-semibold mb-3">Other printings ({{ printings|length }})</h2>
     <div class="card-grid-sm">
       {% for p, img in printings %}
+      {% if p.scryfall_id != card.scryfall_id %}
       <a href="/card/{{ p.scryfall_id }}" class="block rounded-lg overflow-hidden border border-edge hover:ring-accent transition"
          title="{{ p.set_name }} #{{ p.collector_number }}">
         {% if img %}
@@ -334,6 +335,7 @@
         </div>
         {% endif %}
       </a>
+      {% endif %}
       {% endfor %}
     </div>
   </section>

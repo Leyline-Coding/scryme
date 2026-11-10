@@ -8,16 +8,18 @@ their text with null ids.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 import datetime
 import uuid
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, false, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import DateTime, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from src.db import Base
 from src.models.location import Location
 from src.models.sleeve import Sleeve
+
+if TYPE_CHECKING: from src.models.deck_card import DeckCard
 
 class Deck(Base):
     __tablename__ = "deck"
@@ -38,7 +40,7 @@ class Deck(Base):
     # Where the deck was imported from, so its printings can be re-synced from the source later.
     source_url: Mapped[str | None] = mapped_column(String(512))
 
-    cards: Mapped[list[DeckCard]] = relationship(
+    cards: Mapped[list['DeckCard']] = relationship(
         back_populates="deck", cascade="all, delete-orphan", lazy="selectin"
     )
     sleeves: Mapped[list[Sleeve]] = relationship(
@@ -53,53 +55,3 @@ class Deck(Base):
         uselist=False,
         viewonly=True,
     )
-
-class DeckCard(Base):
-    __tablename__ = "deck_card"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    deck_id: Mapped[int] = mapped_column(
-        ForeignKey("deck.id", ondelete="CASCADE"), index=True
-    )
-    name: Mapped[str] = mapped_column(String(512))
-    quantity: Mapped[int] = mapped_column(Integer, default=1)
-    board: Mapped[str] = mapped_column(String(8), default="main")  # main | side
-
-    # Resolved at import: representative printing (display) + oracle id (ownership matching).
-    # The printing prefers a copy you own, else a tournament-legal one; the user can override it.
-    scryfall_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    oracle_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
-    # Non-standard-copy markers (independent): a printed proxy vs. a genuine special (art card,
-    # alter, misprint, …). Language is the copy's language (Scryfall code, English default) — the
-    # card DB is English-only per printing, so this is stored on the line rather than a card row.
-    proxy: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
-    special: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
-    language: Mapped[str] = mapped_column(String(8), nullable=False, server_default="en")
-    # The copy's finish (normal | foil | etched) — drives this line's price and what a
-    # fully-owned import puts in the collection.
-    finish: Mapped[str] = mapped_column(String(16), nullable=False, server_default="normal")
-    # True when this card is owned as part of an owned deck (#298): its quantity/printing edits
-    # sync to the collection. Set at import (full = all matched; partial = the cards you ticked).
-    owned: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
-
-    deck: Mapped[Deck] = relationship(back_populates="cards")
-
-
-class DeckVersion(Base):
-    """An immutable snapshot of a deck's card list at a point in time (#100).
-
-    The snapshot lives in ``cards`` (JSONB) — a list of ``{name, quantity, board, oracle_id,
-    scryfall_id}`` — so a version is self-contained and diffing is a pure in-memory operation that
-    doesn't depend on the deck's later edits.
-    """
-    __tablename__ = "deck_version"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    deck_id: Mapped[int] = mapped_column(
-        ForeignKey("deck.id", ondelete="CASCADE"), index=True
-    )
-    label: Mapped[str] = mapped_column(String(128))
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    cards: Mapped[list[dict]] = mapped_column(JSONB)

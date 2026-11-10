@@ -1,5 +1,4 @@
 {# Sleeves index: list all sleeves with their associated decks. #}
-{% from "reusables/_list_sorting_controls.html" import list_sorting_controls %}
 <p class="text-sm text-muted mb-4">
   Manage your card sleeves. Each sleeve can optionally be associated with a deck.
 </p>
@@ -7,7 +6,7 @@
 
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-  {{ list_sorting_controls("/collection/sleeves", sort_by, sort_dir) }}
+  {{ list_sorting.controls("/collection/sleeves", sort_by, sort_dir) }}
   {% if not read_only %}
   <form method="post" action="/sleeves/new" class="flex gap-2 items-center" enctype="multipart/form-data">
     <input type="text" name="name" required placeholder="New sleeve name"
@@ -33,9 +32,9 @@
       <div class="group relative block rounded-xl bg-surface ring-1 ring-edge
             hover:ring-accent transition ">
         {% if sleeve.image %}
-        <img src="/sleeves/{{ sleeve.image }}" alt="{% if sleeve.name %}{{ sleeve.name }}{% else %} Sleeve #{{ sleeve.id }}{% endif %}" loading="lazy" class="grid-card-img w-full aspect-[5/7] object-cover box-border border-8 border-black" />
+        <img src="/sleeves/{{ sleeve.image }}" alt="{% if sleeve.name %}{{ sleeve.name }}{% else %} Sleeve #{{ sleeve.id }}{% endif %}" loading="lazy" class="rounded-t-xl grid-card-img w-full aspect-[5/7] object-cover box-border border-8 border-black" />
         {% elif sleeve.color %}
-        <div class="w-full aspect-[5/7] flex items-center justify-center"
+        <div class="w-full aspect-[5/7] rounded-t-xl flex items-center justify-center"
              style="background-color: {{ sleeve.color }}; border: 8px solid black;">
         </div>
         {% else %}

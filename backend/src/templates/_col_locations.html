@@ -1,5 +1,4 @@
 {# Storage-location hub (#160) as a collection tab: boxes (physical) + binders + decks. #}
-{% from "reusables/_list_sorting_controls.html" import list_sorting_controls %}
 <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none">
   <p class="text-sm text-muted mb-6">
     <span>
@@ -41,7 +40,7 @@
   {% endif %}
   
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    {{ list_sorting_controls("/collection/locations", sort_by, sort_dir) }}
+    {{ list_sorting.controls("/collection/locations", sort_by, sort_dir, sort_by_quantity=True) }}
     {% if not read_only %}
     <div class="flex justify-start md:justify-end gap-2 md:mb-4">
       <form method="post" action="/collection/boxes/new" class="flex gap-2">

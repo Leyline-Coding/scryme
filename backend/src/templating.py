@@ -10,6 +10,7 @@ from src.symbols import mana_symbols, set_symbol
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = BASE_DIR / "templates"
+REUSABLES_DIR = TEMPLATES_DIR / "reusables"
 STATIC_DIR = BASE_DIR / "static"
 
 
@@ -35,6 +36,12 @@ def _inject_prefs(request) -> dict:
 
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR), context_processors=[_inject_prefs])
+
+if REUSABLES_DIR.exists() and REUSABLES_DIR.is_dir():
+    jinja_env = templates.env
+    for file in REUSABLES_DIR.iterdir():
+        if file.is_file() and file.suffix in [".html", ".jinja", ".j2"]:
+            jinja_env.globals[file.stem] = jinja_env.get_template(f"reusables/{file.name}").module
 
 # Render Scryfall {…} symbol tokens and set symbols via the vendored Mana/Keyrune fonts.
 templates.env.filters["mana"] = mana_symbols

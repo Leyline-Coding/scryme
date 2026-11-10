@@ -1,4 +1,4 @@
-{% macro list_sorting_controls(url, sort_by, sort_dir, seperator="?", sort_by_name=True, sort_by_updated_at=True, sort_by_price=False, sort_by_quantity=True ) %}
+{% macro controls(url, sort_by, sort_dir, seperator="?", sort_by_name=True, sort_by_updated_at=True, sort_by_price=False, sort_by_quantity=False ) %}
 <div class="flex justify-start gap-2 md:mb-4">
   <a href="{{url}}{{seperator}}sort_by={{ sort_by }}&sort_dir={{ 'desc' if sort_dir == 'asc' else 'asc' }}"
     class="rounded-full bg-surface border border-edge px-4 py-2 text-sm font-medium hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}">

@@ -141,7 +141,6 @@
         {% for source_label in price_rows.keys() %}
           {% for price_type_label in price_rows[source_label].keys() %}
           <span class="rounded-full border border-edge bg-surface px-3 py-1 text-sm">
-            {% import "reusables/_currency.html" as currency %}
             <div class="inline-flex flex-col relative">
               <span class="text-xs text-gray-500 absolute top-0 left-0 -mt-1">{{ source_label }}</span>
               <span class="mt-2">

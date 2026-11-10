@@ -1,5 +1,3 @@
-{% import "reusables/_currency.html" as currency %}
-{% from "reusables/_list_sorting_controls.html" import list_sorting_controls %}
 <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none">
   <p class="text-sm text-muted mb-6">
     <span>
@@ -16,7 +14,7 @@
 <section class="mb-8">
   {% if rows %}
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    {{ list_sorting_controls("/collection/wishlist", sort_by, sort_dir, sort_by_price=True, sort_by_quantity=True) }}
+    {{ list_sorting.controls("/collection/wishlist", sort_by, sort_dir, sort_by_price=True, sort_by_quantity=True) }}
     <div class="flex justify-start md:justify-end gap-2 md:mb-4">
       <p class="text-sm text-muted">
         {{ '{:,}'.format(view_obj.total_cards) }} card{{ '' if view_obj.total_cards == 1 else 's' }}

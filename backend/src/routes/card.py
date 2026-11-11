@@ -130,7 +130,8 @@ def _price_rows(request: Request, card: Card) -> dict[str, dict[str, dict[str, f
             
 
     # Get TIX prices from the card's raw prices (not market_prices) since TIX is a native Scryfall field
-    market_prices['TIX'] = {'': {'amount': float((getattr(card, "prices", None) or {}).get("tix", 0.0)), 'currency_symbol': ''}}
+    tix_amount = (getattr(card, "prices", None) or {}).get("tix", None)
+    market_prices['TIX'] = {'': {'amount': None if tix_amount is None else float(tix_amount), 'currency_symbol': ''}}
     return market_prices
 
 

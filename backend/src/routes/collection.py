@@ -23,6 +23,7 @@ from src.box_service import (
 from src.card import _image
 from src.collection_edit import (
     StaleStackError,
+    _CONDITION_CODES,
     add_or_increment,
     adjust_quantity,
     bulk_add_to_collection,
@@ -37,12 +38,12 @@ from src.collection_edit import (
     _STACK_NOT_FOUND,
 )
 from src.config import get_settings
+from src.decks import DECK_LANGUAGES
 from src.db import get_session
 from src.grading import clear_grade, safe_photo_path, save_grade_photo, set_grade
-from src.importers.util import _LANGUAGES
 from src.locations import find_or_create_grouped_locations
 from src.models import Card, CollectionCard
-from src.routes.validators import ValidFinish, ValidLanguage
+from src.routes.validators import ValidCondition, ValidFinish, ValidLanguage
 from src.tags import modify_stacks_tag
 from src.templating import templates
 from src.trade_pool import open_pools, stage_selection, stage_stack
@@ -76,6 +77,7 @@ async def _collection_partial_generator(
 
     printings: list[Card] = []
     owned_other_printing: list[CollectionCard] = []
+    owned_equivalent_oracle_id: list[CollectionCard] = []
     if card.oracle_id is not None:
         printings = list(
             (
@@ -103,6 +105,25 @@ async def _collection_partial_generator(
             .all()
         )
 
+        owned_equivalent_oracle_id = list(
+            (
+                await session.execute(
+                    select(CollectionCard)
+                    .join(Card, CollectionCard.scryfall_id==Card.scryfall_id)
+                    .where(CollectionCard.scryfall_id != card.scryfall_id)
+                    .where(Card.oracle_id == card.oracle_id)
+                    .order_by(CollectionCard.finish, CollectionCard.language)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        
+
+
+
+
     return {
             "card":card,
             "owned": owned,
@@ -111,12 +132,15 @@ async def _collection_partial_generator(
             "owned_etched": any((s.finish or "").lower() == "etched" for s in owned),
             "owned_other_printing": owned_other_printing,
             "owned_other_printing_total": sum(s.quantity for s in owned_other_printing),
+            "owned_equivalent_oracle_id": owned_equivalent_oracle_id,
+            "owned_equivalent_oracle_id_total": sum(s.quantity for s in owned_equivalent_oracle_id),
             "read_only": get_settings().read_only,
             "printings": [(p, _image(p, "small")) for p in printings],
             "conflict": conflict,
             "grouped_locations": await find_or_create_grouped_locations(session),
             "trade_pools": await open_pools(session),
-            "languages": sorted(list(set(_LANGUAGES.values()))),
+            "languages": DECK_LANGUAGES,
+            "condition_codes": _CONDITION_CODES,
         }
 
 
@@ -252,6 +276,7 @@ async def locate_collection_stack(
     stack_id: int,
     printing: str = Form(""),
     finish: ValidFinish = Form(""),
+    condition: ValidCondition = Form(""),
     language: ValidLanguage = Form(""),
     location_moved: bool = Form(False), #location_id = None is a valid edited location
     location_id: int = Form(None),
@@ -262,13 +287,14 @@ async def locate_collection_stack(
     stack = await session.get(CollectionCard, stack_id)
     if stack is None: raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     scryfall_id = stack.scryfall_id
-    if(printing or finish or language):
-        if(stack and language):
-            stack.language = language
-        if(stack and finish):
-            stack.finish = finish
-        if(stack and printing):
-            stack.scryfall_id = uuid.UUID(printing)
+    if(stack and condition):
+        stack.condition = condition
+    if(stack and language):
+        stack.language = language
+    if(stack and finish):
+        stack.finish = finish
+    if(stack and printing):
+        stack.scryfall_id = uuid.UUID(printing)
     await session.commit()
     if(location_moved):
       new_stack_id = await move_stack_location(session, stack_id, location_id)

@@ -33,7 +33,12 @@ from src.models import Card, CollectionCard
 
 
 _STACK_NOT_FOUND = "Stack not found."
-
+_CONDITION_CODES = [
+    ('nm', 'near_mint'),
+    ('lp', 'lightly_played'),
+    ('mp', 'moderatly_played'),
+    ('hp', 'heavily_played')
+]
 
 def _as_uuid(value) -> uuid.UUID:
     return value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))

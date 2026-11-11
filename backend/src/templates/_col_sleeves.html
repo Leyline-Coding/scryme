@@ -55,7 +55,7 @@
           </form>
         </div>
         
-        <div x-data="{ sleeve_selection_open_{{sleeve.id}}: false }" class="flex justify-center pb-1 relative action-scope-collection">
+        <div x-data="{ sleeve_selection_open_{{sleeve.id}}: false }" class="flex justify-center pb-1 sm:relative action-scope-collection">
           <button @click="sleeve_selection_open_{{sleeve.id}} = !sleeve_selection_open_{{sleeve.id}};" type="button" class="truncate rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-sm font-medium" id="sleeve_selection_btn_{{sleeve.id}}">{% if sleeve.deck_id %}{{sleeve.deck_name}}{% else %}Deck Selection{% endif %} ▾</button>
           <div x-show="sleeve_selection_open_{{sleeve.id}}" @click.outside="sleeve_selection_open_{{sleeve.id}} = false" x-transition="" style="display: none" class="absolute right-0 mt-2 w-64 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
             <div class="px-3 py-1.5 text-xs font-medium text-muted">Decks</div>

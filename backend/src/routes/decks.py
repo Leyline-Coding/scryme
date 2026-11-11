@@ -19,6 +19,7 @@ from src.config import get_settings
 from src.currency import get_currency, info
 from src.db import get_session
 from src.deck_builder import BuildError, build_commander_deck, owned_commanders
+from src.deck_card import find_swappable_deck_card_in_collection_card, quickswap_deck_card
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
 from src.deck_import import (
     PROFILE_PROVIDERS,
@@ -397,6 +398,20 @@ async def update_deck_card(
     url = f"/decks/{deck_id}" + (f"?format={format}" if format in LEGALITY_FORMATS else "")
     # HTMX form post -> refresh the whole deck page (coverage + legality change).
     return Response(status_code=204, headers={"HX-Redirect": url})
+
+
+@router.post("/decks/{deck_id}/card/{card_id}/quickswap")
+async def update_deck_card(
+    deck_id: int,
+    card_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """If there is no coverage in the collection for the exact printing of card (card_id),
+    the quick swap function will modify the card to match the first swappable copy, by oracle id."""
+    _guard_writable()
+    dc = await _get_deck_card(session, deck_id, card_id)
+    await quickswap_deck_card(session, dc)
+    return Response(status_code=200, headers={"HX-Refresh": "true"})
 
 
 @router.post("/decks/{deck_id}/card/{card_id}/qty")

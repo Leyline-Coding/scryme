@@ -74,12 +74,15 @@
         <span class="shrink-0 text-xs text-muted">
             {% if not r.legality or r.legality in ('legal', 'restricted') %}
             <span class="rounded bg-{% if r.quantity > r.stack_coverage.in_deck %}amber{%else%}emerald{%endif%}-500/80 text-white text-[9px] px-1 py-0.5" title="Constructed{% if r.stack_coverage.in_deck!=0 %}/required{%endif%}">{% if r.stack_coverage.in_deck==0 %}0{% elif r.quantity > r.stack_coverage.in_deck %}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%else%}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%endif%}</span>
-            <span class="rounded bg-{% if r.quantity > (r.stack_coverage.in_deck+r.stack_coverage.owned) %}amber{%else%}emerald{%endif%}-700/80 text-white text-[9px] px-1 py-0.5" title="Exact copies available{% if r.quantity > r.stack_coverage.in_deck %}/required{%endif%}">{{ r.stack_coverage.owned }}{% if r.quantity > r.stack_coverage.in_deck %}/{{ r.quantity }}{%endif%}</span>
+            <span class="rounded bg-{% if r.quantity > (r.stack_coverage.in_deck+r.stack_coverage.owned) %}amber{%else%}emerald{%endif%}-700/80 text-white text-[9px] px-1 py-0.5" title="Exact copies available in collection{% if r.quantity > r.stack_coverage.in_deck %}/required{%endif%}">{{ r.stack_coverage.owned }}{% if r.quantity > r.stack_coverage.in_deck %}/{{ r.quantity }}{%endif%}</span>
             {% endif %}
-            <span class="rounded bg-emerald-900/90 text-white text-[9px] px-1 py-0.5" title="Swappable copies available">{{ r.stack_coverage.swappable }}</span>
+            <span class="rounded bg-emerald-900/90 text-white text-[9px] px-1 py-0.5" title="Other swappable copies available in collection">{{ r.stack_coverage.swappable }}</span>
         </span>
         {% endif %}
         {% if not read_only and r.matched %}
+        {% if r.stack_coverage.in_deck==0 and r.stack_coverage.owned==0 and r.stack_coverage.swappable > 0 %}
+        <button type="button" hx-post="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/quickswap" hx-swap="none" class="shrink-0 text-xs text-muted hover:text-accent tap" title="Swap this card for the next available card in the colelction that functionaly substitutes it (by Oracle ID)."><i class="fa-solid fa-retweet"></i></button>
+        {% endif %}
         <button type="button" title="Change printing / mark as proxy"
                 class="shrink-0 text-xs text-muted hover:text-accent tap"
                 @click="editing = !editing"
@@ -87,7 +90,7 @@
                 hx-target="#ed-{{ r.card_id }}" hx-swap="innerHTML"><i class="fa-solid fa-pen"></i></button>
         {% endif %}
       </div>
-      <div id="ed-{{ r.card_id }}" x-show="editing" x-cloak class="mt-1.5 pl-10"></div>
+      <div id="ed-{{ r.card_id }}" x-show="editing" x-cloak class="px-2 py-1.5"></div>
     </li>
     {% endfor %}
   </ul>

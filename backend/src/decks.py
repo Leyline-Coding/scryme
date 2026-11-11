@@ -21,6 +21,7 @@ from collections import OrderedDict
 
 from src.collection_edit import move_stack_location, move_qty_from_existing_stack
 from src.currency import unit_price
+from src.deck_card import find_swappable_deck_card_in_collection_card
 from src.models import Card, CollectionCard, Deck, DeckCard, Location
 from src.pricing import resolve_prices
 from src.stats import Bar, _bars, _color_bucket, _primary_type
@@ -918,69 +919,12 @@ async def deck_stack_coverages(
         if match_id in unreserved_collection_cards:
             sc.owned = unreserved_collection_cards[match_id]
         
-        # Count all cards that can be used for substitution (matching by name only)
-        sc.swappable = 0  # Will compute this properly below
+        # For swappable cards, we simply find all other cards in collection (outside of decks) with the same oracle ID
+        result = await find_swappable_deck_card_in_collection_card(session, dc.oracle_id)
+        if(result): sc.swappable = max(0, sum([x.quantity for x in result])-sc.owned)
         
         stack_coverage[dc.id] = sc ## We use dc.id and not dc.scryfall_id because a deck could specify multiple different stacks with the same scryfall_id, for example one normal copy and one foil copy
-
-    # For swappable cards, we need to find all collection cards that match by name only
-    # not necessarily by scryfall_id (to allow substitution) - but only for the specific card names in the deck
-    if deck.cards:
-        # Get unique card names from this deck
-        card_names = {dc.name.lower() for dc in deck.cards if dc.scryfall_id}
-
-        if card_names:
-            # Get all CollectionCards with matching names (but not in deck location) 
-            # and group them by scryfall_id to get total quantities per scryfall_id
-            result = await session.execute(
-                select(CollectionCard.scryfall_id, Card.name, func.sum(CollectionCard.quantity).label('quantity'))
-                .join(Card, CollectionCard.scryfall_id == Card.scryfall_id)
-                .outerjoin(Location, CollectionCard.location == Location.id)
-                .where(
-                    func.lower(Card.name).in_(list(card_names)),
-                    (Location.type != "deck") | (Location.id.is_(None))
-                )
-                .group_by(CollectionCard.scryfall_id, Card.name)
-            )
-
-            # Group all matching cards by their scryfall_id
-            name_matching_cards = {}
-            for row in result.all():
-                if row.scryfall_id not in name_matching_cards:
-                    name_matching_cards[row.scryfall_id] = 0
-                name_matching_cards[row.scryfall_id] += row.quantity
-
-            # Now update the swappable counts - we need to calculate how many unreserved cards 
-            # with matching names are available, but exclude exact matches from our calculation
-            
-            # Create a mapping of scryfall_id -> card name for all cards in name_matching_cards
-            # This avoids making individual queries for each card
-            scryfall_id_to_name = {}
-            if name_matching_cards:
-                result = await session.execute(
-                    select(Card.scryfall_id, Card.name)
-                    .where(Card.scryfall_id.in_(list(name_matching_cards.keys())))
-                )
-                for row in result.all():
-                    scryfall_id_to_name[row.scryfall_id] = row.name.lower()
-            
-            for dc in deck.cards:
-                if dc.scryfall_id is None:
-                    continue
-                    
-                # For each deck card, count all unreserved cards that match by name (but not the exact same scryfall_id)
-                # This counts all substitute candidates for this specific card
-                swappable_count = 0
-                for scryfall_id, quantity in name_matching_cards.items():
-                    # Only count as swappable if it's a different scryfall_id (not the exact same card) 
-                    # but has the same name
-                    if scryfall_id != dc.scryfall_id:
-                        # Check if this scryfall_id corresponds to a card with the same name as our deck card
-                        card_name = scryfall_id_to_name.get(scryfall_id)
-                        if card_name and card_name == dc.name.lower():
-                            swappable_count += quantity
-                
-                stack_coverage[dc.id].swappable = swappable_count
+        
     return stack_coverage
 
 

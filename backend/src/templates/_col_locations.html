@@ -60,7 +60,7 @@
                   onclick="event.stopPropagation();">{{ b.name }}</span>
           {% if not read_only %}
           <button type="button" 
-                  hx-post="/edit-name-form"
+                  hx-post="/edit-name"
                   hx-vals='{"placeholder": "{{b.name}}", "action": "/box/{{ b.id }}/rename", "target": "#box-name"}'
                   hx-target="#box-name"
                   hx-swap="innerHTML"

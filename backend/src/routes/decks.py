@@ -817,3 +817,19 @@ async def deconstruct_form(
             "grouped_locations": grouped_locations,
         },
     )
+
+
+@router.post("/decks/{deck_id}/update-description", response_class=HTMLResponse)
+async def update_deck_description(
+    deck_id: int, 
+    description: str = Form(""), 
+    session: AsyncSession = Depends(get_session)
+) -> str | None:
+    """Update the description for a deck."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None: 
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    deck.description = description or None
+    await session.commit()
+    return deck.description

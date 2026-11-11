@@ -11,7 +11,7 @@
   <div class="flex items-center gap-2 flex-wrap">
     <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">Playtest</h2>
     <button type="button" @click="start()"
-            class="rounded-lg bg-accent text-accent-fg px-2.5 py-1 text-xs font-medium"><i class="fa-solid fa-flask-vial"></i> Test hand</button>
+            class="rounded-full bg-accent text-accent-fg px-2.5 py-1 text-xs font-medium"><i class="fa-solid fa-flask-vial"></i> Test hand</button>
     <span x-show="open" class="text-xs text-muted" x-text="libCount + ' in library'"></span>
     <span x-show="open && mulligans > 0" class="text-xs text-muted" x-text="'· ' + mulligans + ' mulligan' + (mulligans > 1 ? 's' : '')"></span>
     <button type="button" x-show="open" @click="open = false"

@@ -16,7 +16,7 @@ from src.templating import templates
 
 router = APIRouter()
 
-@router.post("/edit-name-form", response_class=HTMLResponse)
+@router.post("/edit-name", response_class=HTMLResponse)
 async def edit_name_form(
     request: Request,
     placeholder: str = Form(...),
@@ -25,5 +25,19 @@ async def edit_name_form(
 ) -> HTMLResponse:
     """Return the form for editing the binder name."""
     return templates.TemplateResponse(
-        request, "reusables/_edit_name_form.html", {"placeholder": placeholder, "action": action, "target": target}
+        request, "forms/edit_name.html", {"placeholder": placeholder, "action": action, "target": target}
+    )
+
+
+@router.post("/edit-description", response_class=HTMLResponse)
+async def edit_description_form(
+    request: Request,
+    placeholder: str = Form(''),
+    action: str = Form(...),
+    target: str = Form(...),
+) -> HTMLResponse:
+    """Return the form for editing the deck description."""
+    # We need to pass the deck ID to the template
+    return templates.TemplateResponse(
+        request, "forms/edit_description.html", {"placeholder": placeholder, "action": action, "target": target}
     )

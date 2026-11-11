@@ -18,7 +18,7 @@
   var RE = /^\/card\/([0-9a-fA-F-]{36})(?:[?#]|$)/;
 
   function target(el) {
-    var a = el.closest && el.closest('a[href^="/card/"]');
+    var a = el && el.closest && el.closest('a[href^="/card/"]');
     if (!a || a.querySelector("img")) return null;   // skip thumbnail links
     var m = (a.getAttribute("href") || "").match(RE);
     return m ? m[1] : null;

@@ -149,7 +149,7 @@
       <span id="deck-name">{{ deck.name }}</span>
       {% if not read_only %}
       <button type="button" 
-              hx-post="/edit-name-form"
+              hx-post="/edit-name"
               hx-vals='{"placeholder": "{{deck.name}}", "action": "/decks/{{ deck.id }}/rename", "target": "#deck-name"}'
               hx-target="#deck-name"
               hx-swap="innerHTML"
@@ -162,7 +162,7 @@
     <a href="/collection/decks" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Decks →</a>
   </header>
 
-  
+
   <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
 
     {# Coverage summary #}
@@ -234,6 +234,24 @@
           {% endif %}
         {% endfor %}
       </div>
+
+      <h2 class="mt-4 text-sm font-semibold text-muted mb-2 uppercase tracking-wide">Description</h2>
+      <form hx-post="/decks/{{ deck.id }}/update-description" hx-target="#deck-description" class="mt-2">
+        <p class="text-sm text-muted" id="deck-description">{{ deck.description or "No description provided." }}</p>
+      </form>
+      {% if not read_only %}
+      <div class="mt-2">
+        <button type="button" 
+                hx-post="/edit-description"
+                hx-vals='{"placeholder": "{{deck.description or ''}}", "action": "/decks/{{ deck.id }}/update-description", "target": "#deck-description"}'
+                hx-target="#deck-description"
+                hx-swap="innerHTML"
+                hx-trigger="click"
+                class="text-xs rounded-full bg-surface-2 text-muted border border-edge hover:border-accent px-2 py-1">
+          <i class="fa-solid fa-pen"></i> Edit Description
+        </button>
+      </div>
+      {% endif %}
     </section>
 
     {# Deck Construction #}
@@ -512,7 +530,7 @@
         </h2>
 
         <div x-data="{ deck_legality_inspector_open: false}" class="sm:relative action-scope-collection">
-          <button @click="deck_legality_inspector_open = !deck_legality_inspector_open" type="button" class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-sm font-medium">Inspect Deck Legality Details ▾</button>
+          <button @click="deck_legality_inspector_open = !deck_legality_inspector_open" type="button" class="rounded-full bg-surface-2  border border-edge hover:border-accent px-2.5 py-1 text-sm font-medium">Inspect Deck Legality Details ▾</button>
           <div x-show="deck_legality_inspector_open" @click.outside="deck_legality_inspector_open = false" x-transition="" style="display: none" class="absolute right-0 mt-2 w-64 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
             <div class="px-3 py-1.5 text-xs font-medium text-muted">Formats</div>
             {% for f in formats %}

@@ -8,11 +8,12 @@ their text with null ids.
 
 from __future__ import annotations
 
+from typing import Optional
 from typing import TYPE_CHECKING
 import datetime
 import uuid
 
-from sqlalchemy import DateTime, Integer, String, func
+from sqlalchemy import DateTime, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from src.db import Base
@@ -26,6 +27,7 @@ class Deck(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(256))
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

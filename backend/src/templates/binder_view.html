@@ -8,7 +8,7 @@
       <span id="binder-name">{{ binder.name }}</span>
       {% if not read_only %}
       <button type="button" 
-              hx-post="/edit-name-form"
+              hx-post="/edit-name"
               hx-vals='{"placeholder": "{{binder.name}}", "action": "/binders/{{ binder.id }}/rename", "target": "#binder-name"}'
               hx-target="#binder-name"
               hx-swap="innerHTML"

@@ -331,14 +331,20 @@ async def resolve_ownership_rows(session: AsyncSession, decklist_text: str) -> l
     return rows
 
 
-async def create_deck(session: AsyncSession, name: str, decklist_text: str,
-                      source_url: str = "") -> Deck:
+async def create_deck(
+    session: AsyncSession, 
+    name: str, 
+    decklist_text: str,
+    source_url: str = "",
+    description: str = ""
+) -> Deck:
     parsed = _merge_lines(parse_decklist(decklist_text))
     owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
     resolved = await _resolve_names(session, [p.name for p in parsed], owned_sids)
     exact = await _resolve_exact(session, {(p.set_code, p.collector_number) for p in parsed})
 
     deck = Deck(name=(name or "").strip()[:256] or "Untitled deck",
+                description=(description or None),
                 source_url=(source_url or None))
     for p in parsed:
         oracle, sid = _printing_for(p, exact, resolved)

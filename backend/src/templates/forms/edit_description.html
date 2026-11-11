@@ -1,0 +1,16 @@
+{# This is a reusable edit description form fragment to be swapped in #}
+<textarea 
+  name="description" 
+  rows="4" 
+  class="w-full rounded bg-surface-2 border border-edge px-2 py-1 text-sm mb-2"
+  placeholder="Enter deck description">{{ placeholder }}</textarea>
+<div class="flex gap-2">
+  <button type="submit" 
+          class="rounded-full bg-surface-2 border border-edge hover:border-accent px-2 py-1 text-xs tap"><i class="fa-solid fa-check"></i> Save</button>
+  <button type="button" 
+          hx-post="{{action}}"
+          hx-target="{{target}}"
+          hx-swap="innerHTML"
+          hx-trigger="click"
+          class="rounded-full bg-surface-2 border border-edge hover:border-accent px-2 py-1 text-xs tap"><i class="fa-solid fa-circle-xmark"></i> Cancel</button>
+</div>

@@ -119,11 +119,6 @@ async def _collection_partial_generator(
             .all()
         )
 
-        
-
-
-
-
     return {
             "card":card,
             "owned": owned,

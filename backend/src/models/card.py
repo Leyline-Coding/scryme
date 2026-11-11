@@ -73,7 +73,30 @@ class Card(Base):
     )
 
 
-    def front_image(self, cache=None) -> str | None:
+    def can_rotate(self) -> bool:
+        """ determine if a card should have visual rotation controls.
+        Sideways-read cards get a rotate button. Battles are stored with layout "transform" (so they
+        also get the flip button — front battle ⇄ back permanent), so detect them by type line;
+        planes use the "planar" layout; aftermath is a keyword.
+        """
+        return (
+            "planar" in self.layout # type: ignore
+            or "split" in self.layout # type: ignore
+            or self.rotate_cw()
+        )
+
+    
+    def rotate_cw(self) -> bool:
+        """ Battles read by turning the card clockwise; planes/aftermath turn counter-clockwise (#11).
+        """
+        keywords = [k.lower() for k in (self.keywords or [])]
+        return (
+            "battle" in (self.type_line or "").lower() 
+            or "aftermath" in keywords
+        )
+
+
+    def front_face_image(self, cache=None) -> str | None:
         """Return front-face image URL."""
         sid = str(self.scryfall_id)
         return cache.url_path(sid) if cache and cache.is_cached(sid) else cdn_image_url(self.raw)

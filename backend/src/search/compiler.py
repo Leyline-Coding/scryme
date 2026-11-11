@@ -274,9 +274,11 @@ _IS_FLAG_ALIASES = {
 }
 
 _IS_LAYOUTS = {
+    "doublesided": ["transform", "modal_dfc"],
     "split": ["split"],
     "flip": ["flip"],
     "transform": ["transform"],
+    "modal_dfc": ["modal_dfc"],
     "mdfc": ["modal_dfc"],
     "dfc": ["transform", "modal_dfc"],
     "meld": ["meld"],

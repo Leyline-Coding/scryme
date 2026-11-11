@@ -1,6 +1,6 @@
 """Storage boxes (#160): a registry of physical boxes over ``collection_card.location``.
 
-A box's "membership" is just the set of stacks whose ``location`` equals the box name, so ``loc:``
+A box's "membership" is just the set of stacks whose ``location`` equals the box's location, so ``loc:``
 search and the location column keep working. This module manages the registry (create / rename /
 delete, including empty boxes) and keeps the denormalized location strings in sync on rename/delete.
 """

@@ -57,27 +57,6 @@ def _guard_writable() -> None:
         raise HTTPException(status_code=403, detail="This instance is read-only.")
 
 
-def _flip_rotate(card: Card) -> tuple[bool, str | None, bool]:
-    """(can_flip, flip_image, can_rotate) for a card's page controls, from its faces/layout."""
-    raw_faces = card.raw.get("card_faces") or []
-    face_images = [
-        (f.get("image_uris") or {}).get("normal") or (f.get("image_uris") or {}).get("png")
-        for f in raw_faces
-    ]
-    can_flip = sum(1 for u in face_images if u) >= 2
-    flip_image = face_images[1] if can_flip else None
-    keywords = [k.lower() for k in (card.keywords or [])]
-    # Sideways-read cards get a rotate button. Battles are stored with layout "transform" (so they
-    # also get the flip button — front battle ⇄ back permanent), so detect them by type line;
-    # planes use the "planar" layout; aftermath is a keyword.
-    can_rotate = (
-        "battle" in (card.type_line or "").lower()
-        or card.layout == "planar"
-        or "aftermath" in keywords
-    )
-    return can_flip, flip_image, can_rotate
-
-
 def _hist_currency(request: Request) -> str:
     """Display currency for the per-card price-history chart (#233).
 
@@ -174,12 +153,6 @@ async def card_detail(
     collection_partial_data = await _collection_partial_generator(request, session, uuid.UUID(scryfall_id))
     card = collection_partial_data['card']
     
-    # Double-faced cards (transform / modal DFC / battles / reversible) carry a separate image per
-    # face — offer a Scryfall-style flip button. Battles, Planes/Phenomena, and Aftermath cards read
-    # sideways, so offer a rotate button. Both get playful animations on the card page.
-    can_flip, flip_image, can_rotate = _flip_rotate(card)
-    # Battles read by turning the card clockwise; planes/aftermath turn counter-clockwise (#11).
-    rotate_cw = "battle" in (card.type_line or "").lower()
     legalities = card.legalities or {}
     legality_rows = [(fmt, legalities.get(fmt, "not_legal")) for fmt in LEGALITY_FORMATS]
 
@@ -208,10 +181,6 @@ async def card_detail(
             "artist": card.raw.get("artist"),
             "anim_foil": anim_foil,
             "anim_etched": anim_etched,
-            "can_flip": can_flip,
-            "flip_image": flip_image,
-            "can_rotate": can_rotate,
-            "rotate_cw": rotate_cw,
             "legality_rows": legality_rows,
             "wishlisted": await is_wishlisted(session, card.scryfall_id),
             "price_target": await target_for(session, str(card.scryfall_id)),

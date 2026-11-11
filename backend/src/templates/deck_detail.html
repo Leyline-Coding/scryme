@@ -110,8 +110,8 @@
       <a href="/card/{{ r.scryfall_card.scryfall_id }}"
          class="group block rounded-lg overflow-hidden ring-1 ring-edge hover:ring-accent transition">
       {% endif %}
-        <img src="{{ r.scryfall_card.front_image() }}" alt="{{ r.name }}" loading="lazy"
-              class="w-full aspect-[5/7] object-cover grid-card-img" {% if r.scryfall_card.back_face_image() %}data-front="{{ r.scryfall_card.front_image() }}" data-back="{{ r.scryfall_card.back_face_image() }}" data-face="front"{% endif %} />
+        <img src="{{ r.scryfall_card.front_face_image() }}" alt="{{ r.name }}" loading="lazy"
+              class="w-full aspect-[5/7] object-cover grid-card-img" {% if r.scryfall_card.back_face_image() %}data-front="{{ r.scryfall_card.front_face_image() }}" data-back="{{ r.scryfall_card.back_face_image() }}" data-face="front"{% endif %} />
         {% if r.scryfall_card.back_face_image() %}
         <span class="grid-flip-overlay absolute inset-0 z-10 flex items-center justify-center
                     opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">

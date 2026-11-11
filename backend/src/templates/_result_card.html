@@ -11,10 +11,10 @@
   <a href="/card/{{ v.card.scryfall_id }}"
      class="group relative block rounded-xl overflow-hidden bg-surface ring-1 ring-edge
             hover:ring-accent transition {{ v.shimmer or '' }}">
-    {% if v.card.front_image() %}
-    <img src="{{ v.card.front_image() }}" alt="{{ v.card.name }}" loading="lazy"
+    {% if v.card.front_face_image() %}
+    <img src="{{ v.card.front_face_image() }}" alt="{{ v.card.name }}" loading="lazy"
          class="grid-card-img w-full aspect-[5/7] object-cover"
-         {% if v.card.back_face_image() %}data-front="{{ v.card.front_image() }}" data-back="{{ v.card.back_face_image() }}"
+         {% if v.card.back_face_image() %}data-front="{{ v.card.front_face_image() }}" data-back="{{ v.card.back_face_image() }}"
          data-face="front"{% endif %} />
     {% if v.card.back_face_image() %}
     <span class="grid-flip-overlay absolute inset-0 z-10 flex items-center justify-center
@@ -38,7 +38,7 @@
       {% if v.card_languages and v.card_languages != preferedLang %}
       {% for lan in v.card_languages.split(',') %}
       <span class="mb-1 rounded-full bg-surface text-fg text-xs
-                  font-semibold px-2 py-0.5 shadow" title="Card language">{{ lan }}</span>
+                  font-semibold px-2 py-0.5 shadow uppercase" title="Card language">{{ lan }}</span>
       {% endfor %}
       {% endif %}
     </div>

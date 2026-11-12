@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import uuid
 import datetime
+import html
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
@@ -881,6 +882,6 @@ async def update_deck_description(
     deck = await session.get(Deck, deck_id)
     if deck is None: 
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
-    deck.description = description or None
+    deck.description = html.escape(description) if description else None
     await session.commit()
     return deck.description

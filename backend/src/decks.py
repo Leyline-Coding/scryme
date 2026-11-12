@@ -430,6 +430,7 @@ async def apply_deck_card_edit(
     language: str | None = None,
     proxy: bool | None = None,
     special: bool | None = None,
+    finish: str | None = None,
 ) -> DeckCard:
     """Apply a printing / language / proxy / special change to a deck card.
 
@@ -450,6 +451,10 @@ async def apply_deck_card_edit(
         dc.proxy = bool(proxy)
     if special is not None:
         dc.special = bool(special)
+    if finish is not None:
+        # Validate that the finish is one of the allowed values
+        if finish in ("normal", "foil", "etched"):
+            dc.finish = finish
     await session.commit()
     return dc
 

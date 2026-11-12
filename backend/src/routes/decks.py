@@ -411,6 +411,7 @@ async def edit_deck_card(
             "current_sid": str(dc.scryfall_id) if dc.scryfall_id else "",
             "languages": DECK_LANGUAGES,
             "current_lang": dc.language,
+            "current_finish": dc.finish,
             "proxy": dc.proxy,
             "special": dc.special,
             "fmt": format if format in LEGALITY_FORMATS else "",
@@ -424,6 +425,7 @@ async def update_deck_card(
     card_id: int,
     scryfall_id: str = Form(""),
     language: str = Form("en"),
+    finish: str = Form("normal"),
     proxy: str | None = Form(None),
     special: str | None = Form(None),
     format: str = Form(""),
@@ -439,6 +441,7 @@ async def update_deck_card(
         language=language,
         proxy=proxy is not None,
         special=special is not None,
+        finish=finish,
     )
     # Mirror a printing change into the collection for an owned deck card (#298).
     deck = await session.get(Deck, deck_id)

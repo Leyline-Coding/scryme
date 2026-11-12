@@ -1,6 +1,5 @@
 {# One search bar with a Scryfall ⇄ AI toggle — full-width on its own row. #}
 {# Scryfall syntax mode (live search as you type) #}
-<input type="hidden" name="scope" value="{{ scope }}" />
 <div x-show="!ai" class="relative flex w-full items-center mb-2">
   <div class="relative flex-1">
     <input type="search" name="q" id="search-input" value="{{ q }}" autofocus

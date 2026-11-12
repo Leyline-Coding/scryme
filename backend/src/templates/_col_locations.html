@@ -30,8 +30,7 @@
       {% for u in unfiled %}
       <input type="hidden" name="stack_ids" value="{{u.id}}"/>
       {%endfor%}
-      {% from "_locations_select.html" import locations_select %}
-      {{ locations_select(grouped_locations, name="bulk_location_id", label="Move to ...", onchange="document.querySelector('form[name=\"unfiled_location_select\"]').dispatchEvent(new Event('hiddenChange'))", class="rounded-full bg-accent border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem] overflow_hidden whitespace-nowrap") }}
+      {{ locations_select.render(grouped_locations, name="bulk_location_id", label="Move to ...", onchange="document.querySelector('form[name=\"unfiled_location_select\"]').dispatchEvent(new Event('hiddenChange'))", class="rounded-full bg-accent border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem] overflow_hidden whitespace-nowrap") }}
     </form>
   </div>
   {% endif %}

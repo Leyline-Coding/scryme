@@ -47,6 +47,7 @@ from src.routes.validators import ValidCondition, ValidFinish, ValidLanguage
 from src.tags import modify_stacks_tag
 from src.templating import templates
 from src.trade_pool import open_pools, stage_selection, stage_stack
+from src.wishlist import add_to_wishlist
 
 router = APIRouter(tags=["collection"])
 
@@ -411,6 +412,10 @@ async def bulk(
     if scryfall_ids:
         if bulk_action == "add":
             await bulk_add_to_collection(session, scryfall_ids, 1)
+        elif bulk_action == "wishlist":
+            # Add selected cards to wishlist with quantity = 1
+            for sid in scryfall_ids:
+                await add_to_wishlist(session, sid, quantity=1)
         stack_ids += (await scryfall_ids_to_stack_ids(session, scryfall_ids))
     if stack_ids:
         if bulk_action == "tag" and tag.strip():

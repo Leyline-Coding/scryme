@@ -1,5 +1,4 @@
 {# Owned stacks for one printing, with inline edit controls. Swapped (outerHTML) after each edit. #}
-{% from "_locations_select.html" import locations_select %}
 <div id="card-collection" class="rounded-lg bg-surface ring-1 ring-edge p-3">
   {% if conflict %}
   {# Someone else changed this stack while the form was open (#207). Show what it is now rather
@@ -136,7 +135,7 @@
       {# Unified location picker (#160): file this stack into a box, binder, or deck. #}
       <form hx-post="/collection/stack/{{ s.id }}/edit" name="location_select_{{s.id}}" hx-trigger="hiddenChange" hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
         <input type="hidden" name="location_moved" value="True"/>
-        {{ locations_select(grouped_locations, selected_location=s.location, name="location_id", selectedAsLabel=True, onchange="document.querySelector('form[name=\"location_select_%s\"]').dispatchEvent(new Event('hiddenChange'))" % s.id, class="rounded-full bg-surface-2 border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem] overflow_hidden whitespace-nowrap") }}
+        {{ locations_select.render(grouped_locations, selected_location=s.location, name="location_id", selectedAsLabel=True, onchange="document.querySelector('form[name=\"location_select_%s\"]').dispatchEvent(new Event('hiddenChange'))" % s.id, class="rounded-full bg-surface-2 border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem] overflow_hidden whitespace-nowrap") }}
       </form>
       {% endif %}
       {% if trade_pools and not read_only %}

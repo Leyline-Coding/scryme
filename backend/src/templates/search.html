@@ -1,8 +1,7 @@
 {% extends "base.html" %}
-{% from "_locations_select.html" import locations_select %}
 {% block title %}Search · scryme{% endblock %}
 {% block content %}
-<div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
+<div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6" x-data="{ ai: {{ 'true' if nl else 'false' }}, dir: '{{dir}}', scope: '{{scope}}'}">
   <header class="flex flex-wrap items-center gap-3 mb-6">
     {% include "_brand.html" %}
     <a href="/search?scope=all" class="text-sm text-muted hover:text-fg shrink-0" id="all-cards-link">All Cards</a>
@@ -47,18 +46,18 @@
     <a href="/upload"
        class="shrink-0 rounded-full bg-surface-2 hover:bg-surface-3 px-4 py-2 text-sm font-medium">+ Upload</a>
 
-    <div class="order-last w-full" x-data="{ ai: {{ 'true' if nl else 'false' }}, dir: '{{dir}}' }">
+    <div class="order-last w-full">
       <form name="live-search" id="live-search" hx-get="/search"  hx-target="#results" hx-push-url="true" hx-trigger="submit, keyup changed delay:350ms from:input[name=q], change">
         {% include "_search_bar.html" %}
         <div class="flex flex-wrap items-center gap-2 text-sm">
           <div class="inline-flex rounded-full ring-1 ring-edge overflow-hidden shrink-0" title="Search scope">
             <label class="cursor-pointer">
-              <input type="radio" name="scope" value="collection" class="peer sr-only" {% if scope != 'all' %}checked{% endif %} hx-trigger="change" />
-              <span class="block px-4 py-2 text-muted peer-checked:bg-surface peer-checked:text-fg">Mine</span>
+              <input type="radio" name="scope" value="collection" class="peer sr-only" {% if scope != 'all' %}checked{% endif %} />
+              <span class="block px-4 py-2 text-muted peer-checked:bg-surface peer-checked:text-fg" @click="scope='collection'">Mine</span>
             </label>
             <label class="cursor-pointer border-l border-edge">
-              <input type="radio" name="scope" value="all" class="peer sr-only" {% if scope == 'all' %}checked{% endif %} hx-trigger="change" />
-              <span class="block px-4 py-2 text-muted peer-checked:bg-surface peer-checked:text-fg">All cards</span>
+              <input type="radio" name="scope" value="all" class="peer sr-only" {% if scope == 'all' %}checked{% endif %} />
+              <span class="block px-4 py-2 text-muted peer-checked:bg-surface peer-checked:text-fg" @click="scope='all'">All cards</span>
             </label>
           </div>
           <input type="hidden" name="dir" :value='dir'>
@@ -81,17 +80,15 @@
       </form>
     </div>
 
-  {% if ai_error %}
-  <div class="order-last w-full mb-4 p-3 bg-amber-500/15 text-amber-500 rounded-lg text-sm">
-    <span class="font-medium">AI Error:</span> {{ ai_error }}
-  </div>
-  {% elif nl %}
-  <p class="order-last w-full text-xs text-muted">
-    AI generated the scryfall query <span class="text-fg">“{{ q }}”</span> from the prompt <span class="text-fg">“{{ nl }}”</span>.
-  </p>
-  {% endif %}
-
-  
+    {% if ai_error %}
+    <div class="order-last w-full mb-4 p-3 bg-amber-500/15 text-amber-500 rounded-lg text-sm">
+      <span class="font-medium">AI Error:</span> {{ ai_error }}
+    </div>
+    {% elif nl %}
+    <p class="order-last w-full text-xs text-muted">
+      AI generated the scryfall query <span class="text-fg">“{{ q }}”</span> from the prompt <span class="text-fg">“{{ nl }}”</span>.
+    </p>
+    {% endif %}
   </header>
 
   {% include "_movers_panel.html" %}
@@ -184,20 +181,29 @@
       <!-- Left side buttons -->
       <div class="flex gap-2 items-center">
         <span><b id="bulkcount">0</b> selected</span>
-        <button type="button" onclick="bulkClear()" class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1"><i class="fa-regular fa-square"></i> Clear Selection</button>
-        <button type="button" onclick="bulkSelectAll()" class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1"><i class="fa-regular fa-square-check"></i> Select All</button>
+        <button type="button" onclick="bulkClear()" class="rounded-full bg-surface-2 px-2.5 py-1 border border-edge hover:border-accent"><i class="fa-regular fa-square"></i> Clear Selection</button>
+        <button type="button" onclick="bulkSelectAll()" class="rounded-full bg-surface-2 px-2.5 py-1 border border-edge hover:border-accent"><i class="fa-regular fa-square-check"></i> Select All</button>
       </div>
 
       <!-- Right side buttons -->
       <div class="flex gap-2 items-center">
-        <input name="tag" placeholder="tag" class="rounded-full bg-surface-2 px-2 py-1 w-28 action-scope-collection" />
-        <button type="button" onclick="bulkSubmit('tag')"
-          class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 action-scope-collection">Add tag</button>
+        <input name="tag" placeholder="tag" class="rounded-full bg-surface px-2 py-1 w-28 border border-edge hover:border-accent" :class="scope=='all' ? 'hidden' : ''" />
+        <button type="button" onclick="bulkSubmit('tag')" :class="scope=='all' ? 'hidden' : ''"
+          class="rounded-full bg-surface-2 px-2.5 py-1 border border-edge hover:border-accent">Add tag</button>
         {% if grouped_locations %}
-        {{ locations_select(grouped_locations, name="bulk_location_id", label="Move To", class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-sm font-medium ", onchange="bulkSubmit('location')") }}
+        {{ locations_select.render(
+          grouped_locations,
+          name="bulk_location_id",
+          label="Move To",
+          class="rounded-full bg-surface-2 px-2.5 py-1 text-sm font-medium border border-edge hover:border-accent",
+          x_class="scope=='all' ? 'hidden' : ''",
+          onchange="bulkSubmit('location')"
+        ) }}
         {% endif %}
-        <button type="button" id="bulk-add-btn" onclick="bulkSubmit('add')"
-          class="rounded-full bg-accent text-accent-fg px-2.5 py-1 action-scope-all">+1 to collection</button>
+        <button type="button" id="bulk-wishlist-btn" onclick="bulkSubmit('wishlist')" :class="scope=='all' ? '' : 'hidden'"
+          class="rounded-full bg-surface-2 text-accent-fg px-2.5 py-1 border border-edge hover:border-accent"><i class="fa-regular fa-heart"></i> +1 Wishlist</button>
+        <button type="button" id="bulk-add-btn" onclick="bulkSubmit('add')" :class="scope=='all' ? '' : 'hidden'"
+          class="rounded-full bg-accent text-accent-fg px-2.5 py-1">+1 to collection</button>
         {% if trade_pools %}
         {# Staging needs a side as well as a pool (#331), so the pool is a picker and the two
           buttons say which way the cards are moving. #}
@@ -206,14 +212,13 @@
           {% for tp in trade_pools %}<option value="{{ tp.id }}">{{ tp.name }}</option>{% endfor %}
         </select>
         <button type="button" onclick="bulkSubmit('trade_out')"
-          class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Give</button>
+          class="rounded-full bg-surface-2 px-2.5 py-1 border border-edge hover:border-accent">Give</button>
         <button type="button" onclick="bulkSubmit('trade_in')"
-          class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1">Get</button>
+          class="rounded-full bg-surface-2 px-2.5 py-1 border border-edge hover:border-accent">Get</button>
         {% endif %}
       </div>
     </div>
-    <div class="hidden sticky top-2 z-30 mb-3 flex flex-wrap items-center gap-2
-                ">
+    <div class="hidden sticky top-2 z-30 mb-3 flex flex-wrap items-center gap-2">
       
       
     </div>
@@ -267,22 +272,6 @@
     f.querySelector('[name=dir]').value = p.get('dir') || 'asc';
     f.querySelector('[name=bulk_action]').value = action;
     f.submit();
-  }
-  
-  // Update button visibility based on scope
-  function updateScopeButtonVisibility() {
-    // Get the currently selected scope (either 'all' or 'collection')
-    var scopeAll = document.querySelector('input[name="scope"][value="all"]');
-    var scopeCollection = document.querySelector('input[name="scope"][value="collection"]');
-
-
-    if (scopeAll && scopeAll.checked) {
-      document.querySelectorAll('.action-scope-all').forEach(element => {element.classList.remove('hidden');});
-      document.querySelectorAll('.action-scope-collection').forEach(element => {element.classList.add('hidden');});
-    } else {
-      document.querySelectorAll('.action-scope-all').forEach(element => {element.classList.add('hidden');});
-      document.querySelectorAll('.action-scope-collection').forEach(element => {element.classList.remove('hidden');});
-    }
   }
   
   // Update visibility when scope changes

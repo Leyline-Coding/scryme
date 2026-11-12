@@ -4,19 +4,21 @@
   <h1>Scryme</h1>
   <p><strong>A self-hosted Scryfall-like search for your MTG collection.</strong></p>
 
-  [![GitHub Release](https://img.shields.io/github/v/release/Leyline-Coding/scryme)](https://github.com/Leyline-Coding/scryme/releases)
-  [![License](https://img.shields.io/github/license/Leyline-Coding/scryme)](https://github.com/Leyline-Coding/scryme/blob/main/LICENSE)
-  [![GitHub Stars](https://img.shields.io/github/stars/Leyline-Coding/scryme)](https://github.com/Leyline-Coding/scryme/stargazers)
-  [![GitHub Issues](https://img.shields.io/github/issues/Leyline-Coding/scryme)](https://github.com/Leyline-Coding/scryme/issues)
+  <p><strong>NOTE: This is an unoficial patch of https://github.com/Leyline-Coding/scryme as that project is no longer maintained.</strong></p>
+
+  [![GitHub Release](https://img.shields.io/github/v/release/pstaubs/scryme)](https://github.com/pstaubs/scryme/releases)
+  [![License](https://img.shields.io/github/license/pstaubs/scryme)](https://github.com/pstaubs/scryme/blob/main/LICENSE)
+  [![GitHub Stars](https://img.shields.io/github/stars/pstaubs/scryme)](https://github.com/pstaubs/scryme/stargazers)
+  [![GitHub Issues](https://img.shields.io/github/issues/pstaubs/scryme)](https://github.com/pstaubs/scryme/issues)
 <br>
-  [![Tests](https://img.shields.io/github/actions/workflow/status/Leyline-Coding/scryme/test.yml?branch=main&label=tests)](https://github.com/Leyline-Coding/scryme/actions/workflows/test.yml)
-  [![CodeQL](https://img.shields.io/github/actions/workflow/status/Leyline-Coding/scryme/codeql.yml?branch=main&label=CodeQL)](https://github.com/Leyline-Coding/scryme/actions/workflows/codeql.yml)
-  [![Image](https://img.shields.io/github/actions/workflow/status/Leyline-Coding/scryme/publish-image.yml?label=image)](https://github.com/Leyline-Coding/scryme/pkgs/container/scryme)
+  [![Tests](https://img.shields.io/github/actions/workflow/status/pstaubs/scryme/test.yml?branch=main&label=tests)](https://github.com/pstaubs/scryme/actions/workflows/test.yml)
+  [![CodeQL](https://img.shields.io/github/actions/workflow/status/pstaubs/scryme/codeql.yml?branch=main&label=CodeQL)](https://github.com/pstaubs/scryme/actions/workflows/codeql.yml)
+  [![Image](https://img.shields.io/github/actions/workflow/status/pstaubs/scryme/publish-image.yml?label=image)](https://github.com/pstaubs/scryme/pkgs/container/scryme)
   [![Dependabot](https://img.shields.io/badge/Dependabot-enabled-025E8C?logo=dependabot&logoColor=white)](https://docs.scryme.app/development/quality-and-security/)
   [![Trivy](https://img.shields.io/badge/Trivy-image%20scanned-1904DA?logo=aquasecurity&logoColor=white)](https://docs.scryme.app/development/quality-and-security/)
   [![Secret scanning](https://img.shields.io/badge/secret%20scanning-enabled-2088FF?logo=github&logoColor=white)](https://docs.scryme.app/development/quality-and-security/)
   [![SonarQube](https://img.shields.io/badge/SonarQube-quality%20gate-4E9BCD?logo=sonarqube&logoColor=white)](https://docs.scryme.app/development/quality-and-security/)
-<br>  [Public Demo](https://demo.scryme.app) · [Documentation](https://docs.scryme.app) · [Report Bug](https://github.com/Leyline-Coding/scryme/issues)
+<br>[OLD Public Demo](https://demo.scryme.app) · [Documentation](https://docs.scryme.app) · [Report Bug](https://github.com/pstaubs/scryme/issues)
 </div>
 
 A localized, self-hostable implementation of [Scryfall](https://scryfall.com) for indexing and
@@ -55,10 +57,22 @@ interface that understands [Scryfall search syntax](https://scryfall.com/docs/sy
 
 ## Quick start (self-host)
 
+Build and deploy a full stack with
+
 ```bash
 docker compose up -d
-# open http://localhost:8080
 ```
+
+or deploy a pre-built image, e.g.
+
+```bash
+ghcr.io/pstaubs/scryme:latest
+```
+
+See [self-hosting docs](docs/docs/getting-started/self-hosting.md) for more details about self-hosting.
+
+Open http://localhost:8080.
+
 
 On first run the collection is empty, so the home page shows an upload prompt. After importing a
 collection it becomes a Scryfall-style search bar.

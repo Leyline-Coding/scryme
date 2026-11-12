@@ -1,6 +1,6 @@
 """Custom binders (#206): a binder's card view + create/rename/delete + card-page add/remove.
 
-The binder *index* lives on the collection page's Binders tab (``/collection?tab=binders``); the
+The binder *index* lives on the collection page's Binders tab (/collection/binders); the
 legacy import-``binder_name`` browse (``/binders/cards``) is kept for cards imported with a binder
 column.
 """
@@ -11,33 +11,28 @@ from dataclasses import dataclass
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import func, select
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.binder_service import (
-    add_card,
-    all_binders,
-    binder_cards,
-    binders_for_card,
+    get_all_binder_cards,
     create_binder,
     delete_binder,
-    remove_card,
     rename_binder,
 )
-from src.collection_edit import delete_binder_stacks, move_binder_stacks
+from src.collection_edit import move_stack_location, _STACK_NOT_FOUND
 from src.config import get_settings
 from src.db import get_session
-from src.models import Binder, Card, CollectionCard
+from src.models import Binder, Card
 from src.routes._safe import local_redirect
 from src.scryfall.images import ImageCache
-from src.scryfall.mapping import image_url as cdn_image_url
 from src.share import BINDER, links_for, revoke_links_for
 from src.templating import templates
 
 router = APIRouter(tags=["binders"])
 
-_BINDERS_URL = "/collection?tab=binders"
+_BINDER_NOT_FOUND = "Binder not found."
+_BINDERS_URL = "/collection/binders"
 _cache = ImageCache()
 
 NONE_SENTINEL = "__none__"
@@ -46,11 +41,6 @@ NONE_SENTINEL = "__none__"
 def _guard_writable() -> None:
     if get_settings().read_only:
         raise HTTPException(status_code=403, detail="This instance is read-only.")
-
-
-def _image(card: Card) -> str:
-    sid = str(card.scryfall_id)
-    return _cache.url_path(sid) if _cache.is_cached(sid) else (cdn_image_url(card.raw) or "")
 
 
 @dataclass
@@ -76,11 +66,12 @@ async def binder_view(
     """``shared`` is a token just minted for this binder, shown once so it can be copied (#80)."""
     binder = await session.get(Binder, binder_id)
     if binder is None:
-        raise HTTPException(status_code=404, detail="Binder not found.")
-    cards = await binder_cards(session, binder_id)
+        raise HTTPException(status_code=404, detail=_BINDER_NOT_FOUND)
+    cards = await get_all_binder_cards(session, binder_id)
     return templates.TemplateResponse(
         request, "binder_view.html",
-        {"binder": binder, "views": [(c, _image(c)) for c in cards],
+        {"binder": binder, 
+         "cards": cards,
          "read_only": get_settings().read_only,
          "share_kind": BINDER, "share_target": binder.id,
          "share_links": await links_for(session, BINDER, binder.id),
@@ -100,10 +91,12 @@ async def new_binder(
 @router.post("/binders/{binder_id}/rename")
 async def rename_binder_route(
     binder_id: int, name: str = Form(""), session: AsyncSession = Depends(get_session)
-) -> RedirectResponse:
+) -> PlainTextResponse:
     _guard_writable()
-    await rename_binder(session, binder_id, name)
-    return local_redirect(f"/binders/view/{binder_id}")
+    binder = await session.get(Binder, binder_id)
+    if binder is None: raise HTTPException(status_code=404, detail=_BINDER_NOT_FOUND)
+    new_binder_name = await rename_binder(session, binder, name)
+    return PlainTextResponse(new_binder_name)
 
 
 @router.post("/binders/{binder_id}/delete")
@@ -118,101 +111,15 @@ async def delete_binder_route(
     return RedirectResponse(url=_BINDERS_URL, status_code=303)
 
 
-@router.post("/binders/{binder_id}/remove-card")
-async def remove_card_route(
-    binder_id: int, scryfall_id: str = Form(""), session: AsyncSession = Depends(get_session)
+@router.post("/binders/{binder_id}/stack/{stack_id}/locate")
+async def locate_binder_stack(
+    binder_id: int, 
+    stack_id: int,
+    location_id: int = Form(None),
+    session: AsyncSession = Depends(get_session),
 ) -> RedirectResponse:
     _guard_writable()
-    await remove_card(session, binder_id, scryfall_id)
+    sid = await move_stack_location(session, stack_id, location_id)
+    if(not sid): raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     return local_redirect(f"/binders/view/{binder_id}")
 
-
-# Add/remove a card to/from a binder from the card detail page (HTMX-swaps the control).
-
-async def _card_binders_partial(
-    request: Request, session: AsyncSession, scryfall_id: str
-) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request, "_card_binders.html",
-        {"card_id": scryfall_id, "binders": await all_binders(session),
-         "in_ids": await binders_for_card(session, scryfall_id),
-         "read_only": get_settings().read_only},
-    )
-
-
-@router.post("/card/{scryfall_id}/binder-add", response_class=HTMLResponse)
-async def card_binder_add(
-    request: Request, scryfall_id: str, binder_id: str = Form(""),
-    session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
-    _guard_writable()
-    if binder_id.strip():
-        await add_card(session, int(binder_id), scryfall_id)
-    return await _card_binders_partial(request, session, scryfall_id)
-
-
-@router.post("/card/{scryfall_id}/binder-remove", response_class=HTMLResponse)
-async def card_binder_remove(
-    request: Request, scryfall_id: str, binder_id: str = Form(""),
-    session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
-    _guard_writable()
-    if binder_id.strip():
-        await remove_card(session, int(binder_id), scryfall_id)
-    return await _card_binders_partial(request, session, scryfall_id)
-
-
-@router.get("/binders/cards", response_class=HTMLResponse)
-async def binder_cards_browse(
-    request: Request, name: str = "", session: AsyncSession = Depends(get_session)
-) -> HTMLResponse:
-    is_none = name == NONE_SENTINEL or name == ""
-    condition = CollectionCard.binder_name.is_(None) if is_none else (
-        CollectionCard.binder_name == name
-    )
-    rows = (
-        await session.execute(
-            select(Card, func.sum(CollectionCard.quantity))
-            .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
-            .where(condition)
-            .group_by(Card)
-            .order_by(Card.name)
-        )
-    ).all()
-    views = [CardView(card=c, quantity=int(q), image=_image(c)) for c, q in rows]
-    other_binders = [
-        n for (n,) in (await session.execute(
-            select(CollectionCard.binder_name)
-            .where(CollectionCard.binder_name.is_not(None)).distinct()
-            .order_by(CollectionCard.binder_name)
-        )).all() if n and n != name
-    ]
-    return templates.TemplateResponse(
-        request,
-        "binder_detail.html",
-        {"views": views, "label": "Unsorted" if is_none else name,
-         "binder_name": "" if is_none else name, "other_binders": other_binders,
-         "read_only": get_settings().read_only},
-    )
-
-
-@router.post("/binders/cards/remove-from-collection")
-async def binder_remove_from_collection(
-    binder: str = Form(""), scryfall_id: str = Form(""),
-    session: AsyncSession = Depends(get_session),
-) -> RedirectResponse:
-    """#14: delete a card's stacks in a physical binder (the 'remove from collection' choice)."""
-    _guard_writable()
-    await delete_binder_stacks(session, scryfall_id, binder or None)
-    return local_redirect(f"/binders/cards?name={quote(binder)}")
-
-
-@router.post("/binders/cards/relocate")
-async def binder_relocate(
-    binder: str = Form(""), scryfall_id: str = Form(""), new_binder: str = Form(""),
-    session: AsyncSession = Depends(get_session),
-) -> RedirectResponse:
-    """#14: move a card's stacks between physical binders (the 'change location' choice)."""
-    _guard_writable()
-    await move_binder_stacks(session, scryfall_id, binder or None, new_binder)
-    return local_redirect(f"/binders/cards?name={quote(new_binder)}")

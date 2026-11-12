@@ -1,38 +1,85 @@
 {# Storage-location hub (#160) as a collection tab: boxes (physical) + binders + decks. #}
-<p class="text-sm text-muted mb-6">
-  Where your cards physically live. A card sits in one place — a <b>box</b>, a <b>binder</b>, or a
-  <b>deck</b> — set from the card's page. For flexible, overlapping labels use
-  <a href="/collection?tab=tags" class="underline hover:text-fg">tags</a>.
-</p>
+<summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none">
+  <p class="text-sm text-muted mb-6">
+    <span>
+      Where your cards physically live. A card sits in one place - a <b>box</b>, a <b>binder</b>, or a
+      <b>deck</b> - set from the card's page. For flexible, overlapping labels use
+      <a href="/collection/tags" class="underline hover:text-fg">tags</a>. What's the functional 
+      difference between a box and a binder?
+    </span>
+    <a id="summary_short" href="#" onclick="toggleSummaryText('summary_short', 'summary_full'); return false;" class="text-accent hover:underline">Read more</a>
+    <span id="summary_full" style="display:none;">
+      A box is a basic, bulk storage option where cards are managed in bulk via scryfall syntax and stacks-
+      identical copies of cards with the same name from the same set, same printing, condition, and language etc.
+      A binder is a special kind of storage meant to display individual cards, and can be shared publicly with share links.
+      <a href="#" onclick="toggleSummaryText('summary_short', 'summary_full'); return false;" class="text-accent hover:underline">Read less</a>
+    </span>
+  </p>
+</summary>
+
 
 {# Boxes — the physical bulk-storage containers you create here. #}
 <section class="mb-8">
-  <h2 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">Boxes</h2>
-  {% if not read_only %}
-  <form method="post" action="/collection/boxes/new" class="flex gap-2 mb-3 max-w-md">
-    <input type="text" name="name" required placeholder="New box name"
-           class="flex-1 min-w-0 rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
-    <button class="rounded-lg bg-accent text-accent-fg px-3 py-2 text-sm font-medium">Add box</button>
-  </form>
+  {% if unfiled and unfiled_card_count > 0 %}
+  <div class="mt-1 mb-3 p-2 pl-4 pr-4 rounded border border-amber-800/50 bg-amber-950/90 text-xs">
+    <span>{{ unfiled_card_count }} card{{ 's' if unfiled_card_count != 1 else '' }} ({{ unfiled_stack_count }} distinct) are currently unfiled.</span>
+    <a href="/search?q=loc%3A%22unfiled%22&scope=collection" class="underline text-accent hover:text-fg">View them</a>.
+    <form name="unfiled_location_select" hx-post="/collection/bulk" hx-trigger="hiddenChange" class="w-max inline-block ml-2 text-inherit">
+      <input type="hidden" name="bulk_action" value="location"/>
+      <input type="hidden" name="refresh" value="True"/>
+      {% for u in unfiled %}
+      <input type="hidden" name="stack_ids" value="{{u.id}}"/>
+      {%endfor%}
+      {{ locations_select.render(grouped_locations, name="bulk_location_id", label="Move to ...", onchange="document.querySelector('form[name=\"unfiled_location_select\"]').dispatchEvent(new Event('hiddenChange'))", class="rounded-full bg-accent border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem] overflow_hidden whitespace-nowrap") }}
+    </form>
+  </div>
   {% endif %}
+  
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {{ list_sorting.controls("/collection/locations", sort_by, sort_dir, sort_by_quantity=True) }}
+    {% if not read_only %}
+    <div class="flex justify-start md:justify-end gap-2 md:mb-4">
+      <form method="post" action="/collection/boxes/new" class="flex gap-2">
+        <input type="text" name="name" required placeholder="New box name"
+              class="flex-1 min-w-0 rounded-full bg-bg border border-edge px-3 py-2 text-sm hover:border-accent " />
+        <button class="rounded-full bg-accent text-accent-fg px-3 py-2 text-sm font-medium"><i class="fa-solid fa-plus"></i> Add box</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
   {% if boxes %}
-  <ul class="divide-y divide-edge rounded-xl border border-edge bg-surface">
+  <ul class="space-y-2">
     {% for b in boxes %}
-    <li class="flex items-center gap-3 px-3 py-2 text-sm">
-      <a href="/search?q={{ ('loc:\"' ~ b.name ~ '\"') | urlencode }}&scope=collection"
-         class="font-medium hover:text-accent">📦 {{ b.name }}</a>
-      <span class="text-muted tabular-nums shrink-0 ml-auto">{{ '{:,}'.format(b.quantity) }} cards</span>
-      {% if not read_only %}
-      <form method="post" action="/collection/boxes/{{ b.id }}/rename" class="flex gap-1 shrink-0">
-        <input type="text" name="name" value="{{ b.name }}"
-               class="w-24 rounded bg-surface-2 border border-edge px-1.5 py-0.5 text-xs" />
-        <button class="text-xs text-muted hover:text-fg tap" title="Rename">✎</button>
-      </form>
-      <form method="post" action="/collection/boxes/{{ b.id }}/delete" class="shrink-0"
-            onsubmit="return confirm('Delete box {{ b.name }}? Its cards become unfiled.')">
-        <button class="text-xs text-muted hover:text-rose-500 tap" title="Delete">✕</button>
-      </form>
-      {% endif %}
+    <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3 cursor-pointer" 
+      onclick='window.location.href="/search?q={{ ('loc:\"box:' ~ b.name ~ '\"') | urlencode }}&scope=collection"'>
+      <div class="flex-1">
+        <div class="font-medium truncate">
+          <i class="fa-solid fa-box"></i> <span id="box-name"
+                  onclick="event.stopPropagation();">{{ b.name }}</span>
+          {% if not read_only %}
+          <button type="button" 
+                  hx-post="/edit-name"
+                  hx-vals='{"placeholder": "{{b.name}}", "action": "/box/{{ b.id }}/rename", "target": "#box-name"}'
+                  hx-target="#box-name"
+                  hx-swap="innerHTML"
+                  hx-trigger="click"
+                  class="ml-2 text-muted hover:text-accent"
+                  onclick="event.stopPropagation();">
+            <i class="fa-solid fa-pen"></i>
+          </button>
+          {% endif %}
+        </div>
+        <div class="text-xs text-muted">{{ '{:,}'.format(locations.get('box', {}).get(b.id, {}) | attr('quantity') | default(0)) }} cards • {{ '{:,}'.format(locations.get('box', {}).get(b.id, {}) | attr('stacks') | default(0)) }} printings</div>
+      </div>
+      <div>
+        {% if not read_only %}
+        <form method="post" action="/collection/boxes/{{ b.id }}/delete" class="shrink-0" onclick="event.stopPropagation();"
+              onsubmit="return confirm('Delete box {{ b.name }}? Its cards become unfiled.')">
+          <button class="text-muted hover:text-rose-500 tap" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        </form>
+        {% endif %}
+      </div>
     </li>
     {% endfor %}
   </ul>
@@ -40,33 +87,20 @@
   <p class="text-sm text-muted">No boxes yet.{% if not read_only %} Create one above.{% endif %}</p>
   {% endif %}
 
-  {% if others %}
-  <p class="text-xs text-muted mt-3 mb-1">Other locations (not a managed box):</p>
-  <ul class="flex flex-wrap gap-2">
-    {% for o in others %}
-    <li>
-      <a href="/search?q={{ ('loc:\"' ~ o.name ~ '\"') | urlencode }}&scope=collection"
-         class="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-xs hover:text-accent">
-        📍 {{ o.name }} <span class="text-muted">{{ o.quantity }}</span>
-      </a>
-    </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
 </section>
 
 {# Binders and decks are the other two location kinds; they live in their own tabs. #}
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
   <section>
     <h2 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">
-      Binders <a href="/collection?tab=binders" class="ml-1 text-xs normal-case font-normal hover:text-fg">manage →</a>
+      Binders <a href="/collection/binders" class="ml-1 text-xs normal-case font-normal hover:text-fg">manage →</a>
     </h2>
-    {% if loc_binders %}
+    {% if binders %}
     <ul class="divide-y divide-edge rounded-xl border border-edge bg-surface">
-      {% for b in loc_binders %}
-      <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-        <a href="/binders/view/{{ b.id }}" class="font-medium truncate hover:text-accent">📕 {{ b.name }}</a>
-        <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(b.count) }}</span>
+      {% for b in binders %}
+      <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm" >
+        <a href="/binders/view/{{ b.id }}" class="font-medium truncate hover:text-accent flex-1 min-w-0"><i class="fa-solid fa-book-open"></i> {{ b.name }}</a>
+         <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(locations.get('binder', {}).get(b.id, {}) | attr('quantity') | default(0)) }} cards • {{ '{:,}'.format(locations.get('binder', {}).get(b.id, {}) | attr('stacks') | default(0)) }} printings</span>
       </li>
       {% endfor %}
     </ul>
@@ -77,14 +111,17 @@
 
   <section>
     <h2 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">
-      Decks <a href="/collection?tab=decks" class="ml-1 text-xs normal-case font-normal hover:text-fg">manage →</a>
+      Decks <a href="/collection/decks" class="ml-1 text-xs normal-case font-normal hover:text-fg">manage →</a>
     </h2>
-    {% if loc_decks %}
+    {% if decks %}
     <ul class="divide-y divide-edge rounded-xl border border-edge bg-surface">
-      {% for d, n in loc_decks %}
+      {% for d in decks %}
       <li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-        <a href="/decks/{{ d.id }}" class="font-medium truncate hover:text-accent">🃏 {{ d.name }}</a>
-        <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(n) }}</span>
+        <a href="/decks/{{ d.id }}" class="font-medium truncate hover:text-accent flex-1 min-w-0"><i class="fa-solid fa-layer-group"></i> {{ d.name }}</a>
+        <span class="text-muted tabular-nums shrink-0">
+          <span class="text-muted tabular-nums shrink-0">{{ '{:,}'.format(locations.get('deck', {}).get(d.id, {}) | attr('quantity') | default(0)) }} of {{deck_sizes[d.id]['main'] + deck_sizes[d.id]['side']}} cards</span>
+          <span class="text-muted tabular-nums shrink-0 inline-block w-10 text-right" title="Mainboard deck size">({{deck_sizes[d.id]['main']}})</span>
+        </span>
       </li>
       {% endfor %}
     </ul>

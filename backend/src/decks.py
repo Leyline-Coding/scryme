@@ -11,15 +11,20 @@ from __future__ import annotations
 import datetime
 import re
 import uuid
+import copy
 from dataclasses import dataclass, field
 
 from sqlalchemy import func, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from collections import OrderedDict
+
+from src.collection_edit import move_stack_location, move_qty_from_existing_stack
 from src.currency import unit_price
-from src.models import Card, CollectionCard, Deck, DeckCard
+from src.deck_card import find_swappable_deck_card_in_collection_card
+from src.models import Card, CollectionCard, Deck, DeckCard, Location
 from src.pricing import resolve_prices
-from src.stats import Bar, _bars, _color_bucket
+from src.stats import Bar, _bars, _color_bucket, _primary_type
 
 # These patterns are written so each has exactly one way to match, which is what keeps them
 # linear: no `$` anchor (in Python `$` also matches *before* a trailing newline, so a `\s*$` tail
@@ -47,6 +52,17 @@ class ParsedLine:
     set_code: str = ""
     collector_number: str = ""
     finish: str = "normal"  # normal | foil | etched
+
+
+async def all_decks(session: AsyncSession) -> list[Deck]:
+    return list((await session.execute(select(Deck).order_by(Deck.name))).scalars().all())
+
+
+async def rename_deck(session: AsyncSession, deck: Deck, name: str = '') -> str:
+    if deck and name.strip():
+        deck.name = name.strip()[:128]
+        await session.commit()
+    return deck.name
 
 
 def _peel_marker(text: str) -> tuple[str, str] | None:
@@ -97,10 +113,12 @@ def parse_decklist(text: str | None) -> list[ParsedLine]:
     board = "main"
     for raw in (text or "").splitlines():
         s = raw.strip()
-        if not s or s.startswith(("#", "//")):
+        if not s:
             continue
-        if s.lower().startswith("sideboard"):
+        if re.search(r"^.{0,20}sideboard", s, re.IGNORECASE):
             board = "side"
+            continue
+        if s.startswith(("#", "//")):
             continue
         line = _parse_deck_line(s, board)
         if line:
@@ -313,14 +331,20 @@ async def resolve_ownership_rows(session: AsyncSession, decklist_text: str) -> l
     return rows
 
 
-async def create_deck(session: AsyncSession, name: str, decklist_text: str,
-                      source_url: str = "") -> Deck:
+async def create_deck(
+    session: AsyncSession, 
+    name: str, 
+    decklist_text: str,
+    source_url: str = "",
+    description: str = ""
+) -> Deck:
     parsed = _merge_lines(parse_decklist(decklist_text))
     owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
     resolved = await _resolve_names(session, [p.name for p in parsed], owned_sids)
     exact = await _resolve_exact(session, {(p.set_code, p.collector_number) for p in parsed})
 
     deck = Deck(name=(name or "").strip()[:256] or "Untitled deck",
+                description=(description or None),
                 source_url=(source_url or None))
     for p in parsed:
         oracle, sid = _printing_for(p, exact, resolved)
@@ -360,21 +384,19 @@ def normalize_language(code: str | None) -> str:
 
 @dataclass
 class CardRow:
-    name: str
-    quantity: int
+    name: str                       # Although scryfall cards have names, they are not guaranteed. A user could submit any name... so we track DeckCard.name independantly
+    scryfall_card: Card | None      # Inherit the attributes of a scryfall card
     board: str
-    owned: int
+    quantity: int
+    stack_coverage: StackCoverage
     matched: bool
-    scryfall_id: str | None
     legality: str | None = None     # status in the selected format, or None when no format chosen
     card_id: int = 0                # deck_card row id (for editing the printing)
-    set_code: str | None = None     # representative printing shown for this line
-    set_name: str | None = None
-    collector_number: str | None = None
     proxy: bool = False             # printed proxy
     special: bool = False           # art card / alter / other genuine non-standard copy
     language: str = "en"            # language the copy is played in (Scryfall code)
     finish: str = "normal"          # normal | foil | etched — drives this line's price
+    sibling_scryfall_cards: list[Card] | None = None  # List of all sibling scryfall cards in a combined stack (for combined coverage olny)
 
 
 async def _legalities_by_oracle(session: AsyncSession, oracles: set) -> dict:
@@ -408,6 +430,7 @@ async def apply_deck_card_edit(
     language: str | None = None,
     proxy: bool | None = None,
     special: bool | None = None,
+    finish: str | None = None,
 ) -> DeckCard:
     """Apply a printing / language / proxy / special change to a deck card.
 
@@ -428,6 +451,10 @@ async def apply_deck_card_edit(
         dc.proxy = bool(proxy)
     if special is not None:
         dc.special = bool(special)
+    if finish is not None:
+        # Validate that the finish is one of the allowed values
+        if finish in ("normal", "foil", "etched"):
+            dc.finish = finish
     await session.commit()
     return dc
 
@@ -453,11 +480,57 @@ async def deck_printings(session: AsyncSession, oracle_id) -> list[dict]:
     return out
 
 
+
+
+@dataclass
+class StackCoverage:
+    """Detailed coverage information for a single stack in a deck."""
+    scryfall_id: uuid.UUID
+    quantity: int  # The quantity of this stack in the deck
+    in_deck: int   # Quantity in the deck (already in this deck)
+    owned: int     # Quantity owned but not in this deck (perfect match)
+    swappable: int # Quantity eligible for substitution by name match
+    
+    def __init__(self, scryfall_id: uuid.UUID, quantity: int):
+        self.scryfall_id = scryfall_id
+        self.quantity = quantity
+        self.in_deck = 0
+        self.owned = 0
+        self.swappable = 0
+
+    @property
+    def total_available(self) -> int:
+        """Total quantity available to build this stack."""
+        return self.in_deck + self.owned + self.swappable
+
+    @property
+    def is_complete(self) -> bool:
+        """True if all quantity of this stack is available."""
+        return self.quantity <= self.total_available
+
+    def __str__(self) -> str:
+        """String representation for display."""
+        if self.in_deck > 0:
+            return f"✓ {self.in_deck} in deck, {self.owned} owned, {self.swappable} swappable"
+        elif self.owned > 0:
+            return f"✓ {self.owned} owned, {self.swappable} swappable"
+        else:
+            return f"{self.swappable} swappable"
+
+
+
 @dataclass
 class DeckCoverage:
     deck: Deck
     main: list[CardRow] = field(default_factory=list)
     side: list[CardRow] = field(default_factory=list)
+    main_combined: list[CardRow] = field(default_factory=list)
+    side_combined: list[CardRow] = field(default_factory=list)
+    # Statistics for deck coverage
+    total_owned: int = 0
+    pct_own: float = 0.0
+    total_in_deck: int = 0          # total quantity of cards located in this deck
+    pct_in_deck: float = 0.0        # percentage of cards located in this deck
     total_needed: int = 0
     missing_count: int = 0          # total physical cards still needed
     unique_missing: int = 0         # distinct cards (oracle / unmatched line) not fully owned
@@ -465,14 +538,14 @@ class DeckCoverage:
     unmatched: int = 0              # lines whose name didn't resolve to a card
     fmt: str | None = None          # selected legality format, if any
     illegal_count: int = 0          # distinct cards not legal in the selected format
-
-    @property
-    def owned_count(self) -> int:
-        return self.total_needed - self.missing_count
-
-    @property
-    def pct_complete(self) -> int:
-        return round(100 * self.owned_count / self.total_needed) if self.total_needed else 0
+    # Legalities for all formats (pre-calculated for display)
+    all_legalities: dict[str, bool] = field(default_factory=dict)
+    # Detailed breakdown of why a deck is illegal or incomplete for each format
+    # Maps format -> {"illegal_cards": [names], "unmatched": [names]}
+    legality_details: dict[str, dict[str, list[str]]] = field(default_factory=dict)
+    # Stack coverage
+    stack_coverage = dict[uuid.UUID, StackCoverage]
+    combined_stack_coverage = dict[uuid.UUID, StackCoverage]
 
     @property
     def is_legal(self) -> bool:
@@ -517,28 +590,6 @@ def proxy_cards(cov: DeckCoverage, source: str = "proxy",
     return out
 
 
-async def _load_deck_printings(session: AsyncSession, sids: list, source: str):
-    """Per-sid price map, printing tuple, and oracle→sid map for the deck's resolved cards."""
-    price_by_sid: dict[str, dict] = {}
-    print_by_sid: dict[str, tuple] = {}   # sid -> (set_code, set_name, collector_number)
-    oracle_sid: dict = {}
-    if not sids:
-        return price_by_sid, print_by_sid, oracle_sid
-    rows = (
-        await session.execute(
-            select(
-                Card.scryfall_id, Card.oracle_id, Card.prices, Card.market_prices,
-                Card.set_code, Card.set_name, Card.collector_number,
-            ).where(Card.scryfall_id.in_(sids))
-        )
-    ).all()
-    for sid, oracle, prices, market_prices, set_code, set_name, collector in rows:
-        price_by_sid[str(sid)] = resolve_prices(prices, market_prices, source) or {}
-        print_by_sid[str(sid)] = (set_code, set_name, collector)
-        oracle_sid[oracle] = str(sid)
-    return price_by_sid, print_by_sid, oracle_sid
-
-
 def _card_legality(c, fmt: str | None, legal_by_oracle: dict, illegal_oracles: set) -> str | None:
     """Format legality for a card's oracle; records illegal oracles as a side effect."""
     if not (fmt and c.oracle_id):
@@ -575,11 +626,30 @@ async def deck_coverage(
     session: AsyncSession, deck: Deck, fmt: str | None = None, currency: str = "usd",
     source: str = "tcgplayer",
 ) -> DeckCoverage:
+    
     owned = await _owned_by_oracle(session)
     fmt = fmt if fmt in LEGALITY_FORMATS else None
 
-    sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
-    price_by_sid, print_by_sid, oracle_sid = await _load_deck_printings(session, sids, source)
+    cov = DeckCoverage(deck=deck, fmt=fmt)
+
+    # Load card data
+    cards = (
+            await session.execute(
+                select(Card).where(Card.scryfall_id.in_([c.scryfall_id for c in deck.cards if c.scryfall_id]))
+            )
+        ).all()
+    cards = {card[0].scryfall_id: card[0] for card in cards}
+    
+    price_by_sid: dict[str, dict] = {}
+    oracle_sid: dict = {}
+
+    for scryfall_id, card in cards.items():
+        price_by_sid[str(scryfall_id)] = resolve_prices(
+            card.prices, card.market_prices, source
+        ) or {}
+
+        oracle_sid[card.oracle_id] = str(scryfall_id)
+
     # Legality is judged per oracle from a playable printing, independent of the line's printing.
     legal_by_oracle = await _legalities_by_oracle(
         session, {c.oracle_id for c in deck.cards if c.oracle_id}
@@ -591,27 +661,96 @@ async def deck_coverage(
         if c.oracle_id:
             needed_by_oracle[c.oracle_id] = needed_by_oracle.get(c.oracle_id, 0) + c.quantity
 
-    cov = DeckCoverage(deck=deck, fmt=fmt)
-    illegal_oracles: set = set()
+    # Calculate deck legality
+    all_legalities,legality_details,illegal_oracles  = await deck_legality(session, deck)
+    cov.all_legalities = all_legalities
+    cov.legality_details = legality_details
+    cov.illegal_count = len(illegal_oracles)
+
+
+    # Calculate stack coverage
+    stack_coverages = await deck_stack_coverages(session, deck)
+
+    
+    ## Generate details for each deck card
     for c in deck.cards:
-        legality = _card_legality(c, fmt, legal_by_oracle, illegal_oracles)
-        set_code, set_name, collector = print_by_sid.get(str(c.scryfall_id), (None, None, None))
         row = CardRow(
-            name=c.name, quantity=c.quantity, board=c.board,
-            owned=owned.get(c.oracle_id, 0) if c.oracle_id else 0,
-            matched=c.oracle_id is not None,
-            scryfall_id=str(c.scryfall_id) if c.scryfall_id else None,
-            legality=legality,
+            name=c.name,
             card_id=c.id,
-            set_code=set_code, set_name=set_name, collector_number=collector,
-            proxy=c.proxy, special=c.special, language=c.language, finish=c.finish,
+            scryfall_card=cards[c.scryfall_id] if c.scryfall_id else None,
+            board=c.board,
+            quantity=c.quantity,
+            stack_coverage=stack_coverages[c.id],
+            matched=c.oracle_id is not None,
+            legality=_card_legality(c, fmt, legal_by_oracle, illegal_oracles),
+            proxy=c.proxy,
+            special=c.special,
+            language=c.language,
+            finish=c.finish,
         )
         (cov.main if c.board == "main" else cov.side).append(row)
         cov.total_needed += c.quantity
-    cov.illegal_count = len(illegal_oracles)
+
+    # Add a second coverage by combining CardRow by name
+    cov.main_combined = []
+    cov.side_combined = []
+    for result_store, source_board in [[cov.main_combined, cov.main], [cov.side_combined, cov.side]]:
+        # Group cards by name to combine duplicates
+        name_groups = {}
+        for row in source_board:
+            if row.name not in name_groups:
+                name_groups[row.name] = []
+            name_groups[row.name].append(row)
+        
+        # Process each group of cards with the same name
+        for name, rows_to_be_combined in name_groups.items():
+            # Create a combined card row from the first card in the group
+            result_store.append(copy.deepcopy(rows_to_be_combined[0]))
+            # Initialize stack coverage values for this combined card
+            result_store[-1].stack_coverage.in_deck = 0
+            result_store[-1].stack_coverage.owned = 0
+            result_store[-1].stack_coverage.swappable = 0
+            
+            # Store all individual scryfall cards for comparison in UI
+            result_store[-1].sibling_scryfall_cards = [row.scryfall_card for row in rows_to_be_combined if row.scryfall_card]
+            
+            # Calculate total quantity by summing all copies
+            combined_quantity = 0
+            for row_to_be_combined in rows_to_be_combined:
+                combined_quantity += row_to_be_combined.quantity
+                result_store[-1].stack_coverage.in_deck += row_to_be_combined.stack_coverage.in_deck
+            
+            # For owned, we sum all owned quantities across copies (since they are different printings)
+            owned_sum = 0
+            for row_to_be_combined in rows_to_be_combined:
+                owned_sum += row_to_be_combined.stack_coverage.owned
+            
+            result_store[-1].stack_coverage.owned = owned_sum
+            
+            # For swappable, we sum the owned + swappable of each stack and then take the maximum
+            # This gives us the total potential substitute cards available for this card name
+            max_total_potential = 0
+            for row_to_be_combined in rows_to_be_combined:
+                total_potential = row_to_be_combined.stack_coverage.owned + row_to_be_combined.stack_coverage.swappable
+                if total_potential > max_total_potential:
+                    max_total_potential = total_potential
+            
+            result_store[-1].stack_coverage.swappable = max_total_potential
+            # Set the final quantity for this combined card
+            result_store[-1].quantity = combined_quantity
+
+    # Count total cards in deck location (those that are not in a deck location or are in this deck)
+    cov.total_owned = 0
+    cov.total_in_deck = 0
+    for card_row in cov.main_combined+cov.side_combined: 
+        cov.total_in_deck += min(card_row.quantity, card_row.stack_coverage.in_deck)
+        cov.total_owned += min(card_row.quantity, card_row.stack_coverage.in_deck+card_row.stack_coverage.owned+card_row.stack_coverage.swappable)
+    cov.pct_own = round(100 * cov.total_owned / cov.total_needed) if cov.total_needed else 0
+    cov.pct_in_deck = round(100 * cov.total_in_deck / cov.total_needed) if cov.total_needed else 0
 
     # Missing math, counted once per oracle (and per unmatched line).
     _tally_missing(cov, deck, needed_by_oracle, owned, price_by_sid, oracle_sid, currency)
+    
     return cov
 
 
@@ -657,11 +796,14 @@ _CURVE_ORDER = [str(i) for i in range(_MAX_MV_BUCKET)] + [f"{_MAX_MV_BUCKET}+"]
 class DeckStats:
     mana_curve: list[Bar] = field(default_factory=list)   # nonland spells by mana value (mainboard)
     by_color: list[Bar] = field(default_factory=list)     # mainboard cards by color identity
+    by_type: list[Bar] = field(default_factory=list)        # mainboard cards by type
+    type_counts: dict[str, int] = field(default_factory=dict) # mainboard cards by type (raw)
     total_value: float = 0.0                              # qty * USD across the whole deck
 
     @property
     def has_data(self) -> bool:
         return bool(self.mana_curve or self.by_color or self.total_value)
+
 
 
 async def deck_stats(
@@ -684,19 +826,282 @@ async def deck_stats(
 
     curve: dict[str, int] = {}
     colors: dict[str, int] = {}
+    types: dict[str, int] = {}
     total = 0.0
     for c in deck.cards:
         cmc, ci, type_line, prices = info.get(c.scryfall_id, (None, None, None, None))
         total += c.quantity * unit_price(prices, c.finish, currency)
-        # Curve + color pie cover mainboard nonland spells, so basics don't dominate.
-        if not c.scryfall_id or c.board != "main" or (type_line and "Land" in type_line):
-            continue
-        colors[_color_bucket(ci)] = colors.get(_color_bucket(ci), 0) + c.quantity
-        bucket = f"{_MAX_MV_BUCKET}+" if (cmc or 0) >= _MAX_MV_BUCKET else str(int(cmc or 0))
-        curve[bucket] = curve.get(bucket, 0) + c.quantity
+        
+        # Types are counted for all mainboard cards
+        if c.board == "main" and c.scryfall_id:
+            types[_primary_type(type_line)] = types.get(_primary_type(type_line), 0) + c.quantity
+        
+        # Curve and colors only cover mainboard nonland spells
+        if c.board == "main" and c.scryfall_id and not (type_line and "Land" in type_line):
+            colors[_color_bucket(ci)] = colors.get(_color_bucket(ci), 0) + c.quantity
+            bucket = f"{_MAX_MV_BUCKET}+" if (cmc or 0) >= _MAX_MV_BUCKET else str(int(cmc or 0))
+            curve[bucket] = curve.get(bucket, 0) + c.quantity
 
+        
     return DeckStats(
         mana_curve=_bars(curve, order=_CURVE_ORDER),
         by_color=_bars(colors),
+        by_type=_bars(types),
+        type_counts=types,
         total_value=round(total, 2),
     )
+
+
+async def deck_legality(
+    session: AsyncSession, deck: Deck) -> dict[uuid.UUID, StackCoverage]:
+    """Calculate legality of deck."""
+    
+    illegal_oracles: set = set()
+    
+    # Pre-calculate legality for all formats
+    all_legalities: dict[str, bool] = {}
+    legality_details: dict[str, dict[str, list[str]]] = {}
+    
+    if {c.oracle_id for c in deck.cards if c.oracle_id}:
+        # First we get the legalities for all oracle IDs for all formats
+        legal_by_oracle_all = await _legalities_by_oracle(
+            session, {c.oracle_id for c in deck.cards if c.oracle_id}
+        )
+        
+        # For each format, determine if the deck is legal
+        for f in LEGALITY_FORMATS:
+            illegal_oracles_for_format: set = set()
+            
+            # Check each card in the deck
+            for c in deck.cards:
+                _card_legality(c, f, legal_by_oracle_all, illegal_oracles_for_format)
+            
+            # Format-specific validation rules
+            is_legal_for_format = (len(illegal_oracles_for_format) == 0 
+                                  and sum(1 for c in deck.cards if not c.oracle_id) == 0)
+            
+            # Validate deck size requirements by format - only mainboard cards count toward minimum requirements
+            total_mainboard_cards = sum(c.quantity for c in deck.cards if c.board == "main")
+            
+            # Track format-specific violations separately
+            format_violations = []
+            
+            # Check deck size is greater or equal to the format's minimum decksize (only mainboard)
+            if total_mainboard_cards < (100 if f == "commander" else 60):
+                is_legal_for_format = False
+                format_violations.append(f"{f.title()} format requires at least {(100 if f == "commander" else 60)} mainboard cards ({total_mainboard_cards} found)")
+            
+            # Other formats: maximum 4 copies of each card name 
+            regular_card_counts = {}
+            for c in deck.cards:
+                if c.board == "main":  # Only check mainboard
+                    regular_card_counts[c.name] = regular_card_counts.get(c.name, 0) + c.quantity
+            
+            # Check for any non-basic land card with more than specified number of copies copies
+            for name, count in regular_card_counts.items():
+                # Basic lands are allowed to have multiple copies
+                if name not in BASIC_LAND_NAMES and count > (1 if f == "commander" else 4):
+                    is_legal_for_format = False
+                    format_violations.append(f"{f.title()} format allows at most {('1 copy' if f == "commander" else '4 copies')} of each non-basic land card ({name} has {count})")
+            
+            all_legalities[f] = is_legal_for_format
+            
+            # Build the details for each format - separate card-specific violations from format violations
+            illegal_cards = []
+            unmatched_cards = []
+            for c in deck.cards:
+                if not c.oracle_id:
+                    unmatched_cards.append(c.name)
+                elif c.oracle_id in illegal_oracles_for_format:
+                    illegal_cards.append(c.name)
+            
+            legality_details[f] = {
+                "illegal_cards": list(set(illegal_cards)),
+                "unmatched": list(set(unmatched_cards)),
+                "format_violations": format_violations  # Separate field for format-specific issues
+            }
+
+    return all_legalities, legality_details,illegal_oracles
+
+
+
+
+async def deck_stack_coverages(
+    session: AsyncSession, deck: Deck) -> dict[int, StackCoverage]:
+    """Calculate detailed coverage for each stack in the deck."""
+    await session.refresh(deck, ["location"])
+    # Get all collection cards that are located in this deck (already in the deck)
+    deck_collection_cards = {}
+    if deck.location.id is not None:
+        result = (await session.execute(
+            select(CollectionCard.scryfall_id, CollectionCard.finish, CollectionCard.language, func.sum(CollectionCard.quantity).label('quantity'))
+            .where(CollectionCard.location == deck.location.id)
+            .group_by(*CollectionCard.get_group_by_unique_columns())
+        )).all()
+        deck_collection_cards = {CollectionCard._get_unique_stack_key(*row[:3]): row.quantity for row in result}
+    # Get all collection cards that might match which are not in any deck location (available for building the deck)
+    unreserved_collection_cards = {}
+    result = (await session.execute(
+        select(CollectionCard.scryfall_id, CollectionCard.finish, CollectionCard.language, func.sum(CollectionCard.quantity).label('quantity'))
+        .outerjoin(Location, CollectionCard.location == Location.id)
+        .where((Location.type != "deck") | (Location.id.is_(None)))
+        .group_by(*CollectionCard.get_group_by_unique_columns())
+    )).all()
+    unreserved_collection_cards = {CollectionCard._get_unique_stack_key(*row[:3]): row.quantity for row in result}
+    # Calculate coverage for each deck card stack
+    stack_coverage = {}
+    for dc in deck.cards:
+        if dc.scryfall_id is None:
+            continue
+        # Create StackCoverage object
+        sc = StackCoverage(scryfall_id=dc.scryfall_id, quantity=dc.quantity)
+        match_id = dc.get_unique_stack_key()
+        
+        # Count cards already in this deck (matching the exact same scryfall_id, finish, and location)
+        if match_id in deck_collection_cards:
+            sc.in_deck = deck_collection_cards[match_id]
+            
+        # Count cards available but not in any deck location (matching by scryfall_id, with exact match)
+        if match_id in unreserved_collection_cards:
+            sc.owned = unreserved_collection_cards[match_id]
+        
+        # For swappable cards, we simply find all other cards in collection (outside of decks) with the same oracle ID
+        result = await find_swappable_deck_card_in_collection_card(session, dc.oracle_id)
+        if(result): sc.swappable = max(0, sum([x.quantity for x in result])-sc.owned)
+        
+        stack_coverage[dc.id] = sc ## We use dc.id and not dc.scryfall_id because a deck could specify multiple different stacks with the same scryfall_id, for example one normal copy and one foil copy
+        
+    return stack_coverage
+
+
+
+
+async def match_deck_cards_in_deck_collection_cards(session: AsyncSession, source_cards: list[DeckCard], source_location: int | None) -> dict[str, list[CollectionCard]]:
+    """Find CollectionCards matching DeckCards, in source_location. (Custom wrapper for match_deck_cards_in_collection_cards)
+    
+    Returns a dict mapping each DeckCard's scryfall_id to a list of matching CollectionCards.
+    """
+
+    # Get all the unique scryfall_ids we're looking for
+    scryfall_ids = [card.scryfall_id for card in source_cards if card.scryfall_id]
+    # Get all CollectionCards with matching scryfall_ids and not in a deck location
+    custom_collection_cards = list((await session.execute(select(CollectionCard).where(CollectionCard.scryfall_id.in_(scryfall_ids), (CollectionCard.location == source_location)))).scalars().all())
+    
+    return await match_deck_cards_in_collection_cards(session, source_cards=source_cards, custom_collection_cards=custom_collection_cards)
+
+
+
+async def match_deck_cards_in_unreserved_collection_cards(session: AsyncSession, source_cards: list[DeckCard]) -> dict[str, list[CollectionCard]]:
+    """Find CollectionCards matching DeckCards, excluding those in deck locations. (Custom wrapper for match_deck_cards_in_collection_cards)
+    
+    Returns a dict mapping each DeckCard's scryfall_id to a list of matching CollectionCards.
+    """
+
+    # Get all the unique scryfall_ids we're looking for
+    scryfall_ids = [card.scryfall_id for card in source_cards if card.scryfall_id]
+    # Get all CollectionCards with matching scryfall_ids and not in a deck location
+    custom_collection_cards = list((await session.execute(select(CollectionCard).outerjoin(Location, CollectionCard.location == Location.id).where(CollectionCard.scryfall_id.in_(scryfall_ids), (Location.type != "deck") | (Location.id.is_(None))))).scalars().all())
+    
+    return await match_deck_cards_in_collection_cards(session, source_cards=source_cards, custom_collection_cards=custom_collection_cards)
+
+
+async def match_deck_cards_in_collection_cards(session: AsyncSession, source_cards: list[DeckCard], custom_collection_cards: list[CollectionCard] | None = None) -> dict[str, list[CollectionCard]]:
+    """Find CollectionCards matching DeckCards.
+    
+    Returns a dict mapping each DeckCard's scryfall_id to a list of matching CollectionCards.
+    """
+    
+    # Construct base output
+    matching_cards = {unique_stack_key: [] for unique_stack_key in [card.get_unique_stack_key() for card in source_cards if card.scryfall_id]}
+    
+    # Get all CollectionCards with matching scryfall_ids and not in a deck location
+    if(custom_collection_cards is not None):
+        collection_cards = custom_collection_cards
+    else:
+        collection_cards = (await session.execute(select(CollectionCard).where(CollectionCard.scryfall_id.in_([card.scryfall_id for card in source_cards if card.scryfall_id])))).scalars().all()
+
+    # Filter cards based on exact matching properties
+    for source_card in source_cards:
+        for collection_card in (obj for obj in collection_cards if obj.scryfall_id == source_card.scryfall_id):
+        
+            if(source_card.language!=collection_card.language): continue
+            if(source_card.finish!=collection_card.finish): continue
+
+            # Add to the result list for this scryfall_id
+            if source_card.scryfall_id is not None:
+                matching_cards[source_card.get_unique_stack_key()].append(collection_card)
+    
+    return matching_cards
+
+
+async def checkout_deck(session: AsyncSession, deck: Deck, mainboard: bool = True, sideboard: bool = False) -> bool:
+    """ Move cards in the collection (other than decks) to this deck's location. 
+   
+    For each card in the deck:
+    1. If there is no matching unreserved cards in collection, do nothing
+    2. If there are more than 0 but insufficient cards (quantity), move existing cards to the deck
+    3. If there are matching card stack quanities in collection simply move them
+    4. If there are more cards than needed (quantity), handle properly via splitting and quantity adjustment
+    """
+    await session.refresh(deck, ["location"])
+
+    # Get cards to checkout based on parameters 
+    deck_cards = []
+    if mainboard: deck_cards += [c for c in deck.cards if c.board == "main"]
+    if sideboard: deck_cards += [c for c in deck.cards if c.board == "side"]
+
+    unreserved_matching_stacks = await match_deck_cards_in_unreserved_collection_cards(session, deck_cards)
+    deck_matching_stacks = await match_deck_cards_in_deck_collection_cards(session, deck_cards, source_location=deck.location.id)
+
+    # For each card to checkout:
+    for deck_card in deck_cards:
+
+        unique_stack_key = deck_card.get_unique_stack_key()
+        available_cards = sum([c.quantity for c in unreserved_matching_stacks[unique_stack_key]])
+        existing_cards = sum([c.quantity for c in deck_matching_stacks[unique_stack_key]])
+        quantity_to_checkout = deck_card.quantity-existing_cards
+
+
+        # Look through available stacks as long as not all cards are checked out and there are still cards to checkout
+        while quantity_to_checkout > 0 and available_cards > 0:
+            
+            # Find largest matching stack
+            stack_to_move_ix = max(range(len(unreserved_matching_stacks[unique_stack_key])), key=lambda i: unreserved_matching_stacks[unique_stack_key][i].quantity)
+
+            moved_cards_count = await move_qty_from_existing_stack(session, collection_card=unreserved_matching_stacks[unique_stack_key][stack_to_move_ix], quantity=quantity_to_checkout, new_location_id=deck.location.id)
+            quantity_to_checkout -= moved_cards_count
+            available_cards -= moved_cards_count
+
+            # If the stack was insufficient to fill the need, and more stacks exist, we will pop this stack out of the canddidates sos that we can move to the next biggest stack.
+            if(quantity_to_checkout > 0 and available_cards > 0):
+                unreserved_matching_stacks[unique_stack_key].pop(stack_to_move_ix)
+
+
+    await session.commit()
+    return True
+
+
+
+
+
+
+async def deconstruct_deck(session: AsyncSession, deck: Deck, location: int | None = None) -> bool:
+    """ Move cards in a deck to the specified location. """
+
+    # For each deck card, find all matching collection cards and move them to the location
+    for deck_card in deck.cards:
+        if deck_card.scryfall_id is not None:
+            # Find all collection cards that match this scryfall_id (regardless of their current location)
+            result = await session.execute(
+                select(CollectionCard).where(
+                    CollectionCard.scryfall_id == deck_card.scryfall_id
+                )
+            )
+            collection_cards = result.scalars().all()
+
+            # Move each matching collection card to the specified location
+            for collection_card in collection_cards:
+                await move_stack_location(session, collection_card.id, location_id=location)
+
+    await session.commit()
+    return True

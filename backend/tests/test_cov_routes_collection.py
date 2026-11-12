@@ -305,12 +305,6 @@ async def test_bulk_no_ids(client):
 
 # --- locations redirect + boxes -----------------------------------------------------------------
 
-@pytest.mark.asyncio
-async def test_locations_redirect(client):
-    resp = await client.get("/collection/locations", follow_redirects=False)
-    assert resp.status_code == 307
-    assert resp.headers["location"] == "/collection?tab=locations"
-
 
 @pytest.mark.asyncio
 async def test_box_new_rename_delete(client, session):

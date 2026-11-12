@@ -24,7 +24,7 @@ def _request(path="/"):
                     "app": R.router})
 
 
-async def _own(session, name="Sol Ring", owned=True, binder_name=None):
+async def _own(session, name="Sol Ring", owned=True, source_location_name=None):
     c = Card(**card_to_columns(
         {"id": str(uuid.uuid4()), "oracle_id": str(uuid.uuid4()), "name": name,
          "set": "cmr", "collector_number": str(abs(hash(name)) % 9999)}
@@ -32,7 +32,7 @@ async def _own(session, name="Sol Ring", owned=True, binder_name=None):
     session.add(c)
     await session.flush()
     if owned:
-        session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, binder_name=binder_name))
+        session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, source_location_name=source_location_name))
     await session.commit()
     return c
 
@@ -109,8 +109,8 @@ async def test_remove_card_route(session):
 
 @pytest.mark.asyncio
 async def test_binder_cards_browse_named_and_unsorted(session):
-    await _own(session, "Alpha", binder_name="Reds")
-    await _own(session, "Gamma", binder_name=None)
+    await _own(session, "Alpha", source_location_name="Reds")
+    await _own(session, "Gamma", source_location_name=None)
 
     named = await R.binder_cards_browse(_request("/binders/cards"), name="Reds", session=session)
     assert b"Alpha" in named.body and b"Gamma" not in named.body
@@ -123,8 +123,8 @@ async def test_binder_cards_browse_named_and_unsorted(session):
 @pytest.mark.asyncio
 async def test_binder_remove_from_collection_and_relocate(session):
     from sqlalchemy import func, select
-    a = await _own(session, "Alpha", binder_name="Reds")   # 1 stack in Reds
-    b = await _own(session, "Beta", binder_name="Reds")
+    a = await _own(session, "Alpha", source_location_name="Reds")   # 1 stack in Reds
+    b = await _own(session, "Beta", source_location_name="Reds")
     # "Remove from collection": delete Alpha's stacks filed in Reds.
     await R.binder_remove_from_collection(binder="Reds", scryfall_id=str(a.scryfall_id),
                                           session=session)
@@ -135,14 +135,14 @@ async def test_binder_remove_from_collection_and_relocate(session):
     await R.binder_relocate(binder="Reds", scryfall_id=str(b.scryfall_id), new_binder="Blues",
                             session=session)
     moved = await session.scalar(
-        select(CollectionCard.binder_name).where(CollectionCard.scryfall_id == b.scryfall_id))
+        select(CollectionCard.source_location_name).where(CollectionCard.scryfall_id == b.scryfall_id))
     assert moved == "Blues"
 
 
 @pytest.mark.asyncio
 async def test_binder_browse_offers_other_binders(session):
-    await _own(session, "Alpha", binder_name="Reds")
-    await _own(session, "Gamma", binder_name="Blues")
+    await _own(session, "Alpha", source_location_name="Reds")
+    await _own(session, "Gamma", source_location_name="Blues")
     page = await R.binder_cards_browse(_request("/binders/cards"), name="Reds", session=session)
     assert b"Blues" in page.body  # the relocate datalist lists other binders
 

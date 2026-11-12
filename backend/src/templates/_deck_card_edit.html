@@ -1,30 +1,43 @@
 {# Inline editor for a deck line: choose the printing + mark it proxy/special.
-   Loaded via HTMX into #ed-<card_id>; saving refreshes the whole deck page (HX-Redirect). #}
+    Loaded via HTMX into #ed-<card_id>; saving refreshes the whole deck page (HX-Redirect). #}
 <form hx-post="/decks/{{ deck_id }}/card/{{ card_id }}" hx-swap="none"
-      class="flex flex-wrap items-center gap-2 rounded-lg bg-surface-2 p-2 text-xs">
-  <input type="hidden" name="format" value="{{ fmt }}">
-  <label class="text-muted" for="ed-print-{{ card_id }}">Printing</label>
-  <select name="scryfall_id" id="ed-print-{{ card_id }}"
-          class="max-w-[18rem] truncate rounded border border-edge bg-surface px-2 py-1">
-    {% for p in printings %}
-    <option value="{{ p.scryfall_id }}" {% if current_sid == p.scryfall_id %}selected{% endif %}>
-      {{ (p.set_code or '')|upper }} · {{ p.collector_number }} — {{ p.set_name or 'Unknown set' }}{% if not p.playable %} · non-standard{% endif %}
-    </option>
-    {% endfor %}
-  </select>
-  <label class="text-muted" for="ed-lang-{{ card_id }}">Language</label>
-  <select name="language" id="ed-lang-{{ card_id }}" class="rounded border border-edge bg-surface px-2 py-1 uppercase">
-    {% for code, name in languages %}
-    <option value="{{ code }}" {% if current_lang == code %}selected{% endif %}>{{ code|upper }} — {{ name }}</option>
-    {% endfor %}
-  </select>
-  <label class="flex items-center gap-1" title="A printed proxy copy">
-    <input type="checkbox" name="proxy" value="1" {% if proxy %}checked{% endif %}> Proxy
-  </label>
-  <label class="flex items-center gap-1" title="Art card, alter, misprint, or other genuine non-standard copy">
-    <input type="checkbox" name="special" value="1" {% if special %}checked{% endif %}> Special
-  </label>
-  <button type="submit" class="rounded bg-accent px-2 py-1 font-medium text-white">Save</button>
-  <button type="button" class="rounded bg-surface px-2 py-1 text-muted hover:text-fg"
-          @click="editing = false">Cancel</button>
+      class="rounded-xl bg-surface-2 mx-2 my-1.5 p-3 text-sm relative">
+  <button type="button" class="text-muted hover:text-fg absolute top-1.5 right-2" @click="editing = false"><i class="fa-solid fa-circle-xmark"></i></button>
+  <div class="flex flex-wrap items-center">
+    <input type="hidden" name="format" value="{{ fmt }}">
+    <div class="flex flex-col">
+      <label class="text-muted text-xs" for="ed-print-{{ card_id }}">Printing</label>
+      <select name="scryfall_id" id="ed-print-{{ card_id }}"
+              class="max-w-[18rem] truncate rounded-full border border-edge bg-surface px-2 py-1">
+        {% for p in printings %}
+        <option value="{{ p.scryfall_id }}" {% if current_sid == p.scryfall_id %}selected{% endif %}>
+          {{ (p.set_code or '')|upper }} · {{ p.collector_number }} — {{ p.set_name or 'Unknown set' }}{% if not p.playable %} · non-standard{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex flex-col">
+      <label class="text-muted text-xs" for="ed-lang-{{ card_id }}">Language</label>
+      <select name="language" id="ed-lang-{{ card_id }}" class="rounded-full border border-edge bg-surface px-2 py-1 uppercase">
+        {% for code, name in languages %}
+        <option value="{{ code }}" {% if current_lang == code %}selected{% endif %}>{{ code|upper }} — {{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex flex-col">
+      <label class="text-muted text-xs" for="ed-finish-{{ card_id }}">Finish</label>
+      <select name="finish" id="ed-finish-{{ card_id }}" class="rounded-full border border-edge bg-surface px-2 py-1">
+        <option value="normal" {% if current_finish == 'normal' %}selected{% endif %}>Normal</option>
+        <option value="foil" {% if current_finish == 'foil' %}selected{% endif %}>Foil</option>
+        <option value="etched" {% if current_finish == 'etched' %}selected{% endif %}>Etched</option>
+      </select>
+    </div>
+    <label class="flex items-center gap-1 ml-2" title="A printed proxy copy">
+      <input type="checkbox" name="proxy" value="1" {% if proxy %}checked{% endif %}> Proxy
+    </label>
+    <label class="flex items-center gap-1 ml-2" title="Art card, alter, misprint, or other genuine non-standard copy">
+      <input type="checkbox" name="special" value="1" {% if special %}checked{% endif %}> Special
+    </label>
+    <button type="submit" class="rounded-full bg-accent px-2 py-1 font-medium text-white"><i class="fa-solid fa-check"></i> Save</button>
+  </div>
 </form>

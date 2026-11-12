@@ -11,7 +11,7 @@ from sqlalchemy import select
 from src.client_tokens import hash_token
 from src.config import get_settings
 from src.decks import create_deck
-from src.models import Binder, BinderCard, Card, ShareLink
+from src.models import Binder, Card, ShareLink
 from src.scryfall.mapping import card_to_columns
 from src.share import (
     BINDER,
@@ -44,7 +44,6 @@ async def _binder(session, name="Trades"):
     binder = Binder(name=name)
     session.add(binder)
     await session.flush()
-    session.add(BinderCard(binder_id=binder.id, scryfall_id=card.scryfall_id))
     await session.commit()
     await session.refresh(binder)
     return binder

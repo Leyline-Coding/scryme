@@ -11,10 +11,11 @@ import datetime
 import operator
 from collections.abc import Callable
 
-from sqlalchemy import Float, and_, cast, func, not_, or_, select
+from sqlalchemy import Float, and_, cast, func, not_, or_, select, exists, union_all
 from sqlalchemy.sql.elements import ColumnElement
 
-from src.models import Card, CollectionCard
+from src.locations import _find_location, LOCATION_TYPES
+from src.models import Card, CollectionCard, Location
 from src.search.ast import And, Node, Not, Or, Term
 from src.search.colors import ColorParseError, parse_colors
 from src.search.errors import SearchError
@@ -204,7 +205,15 @@ def _cn(term: Term) -> ColumnElement:
 
 
 def _lang(term: Term) -> ColumnElement:
-    return Card.lang == term.value.lower()
+    return or_(
+        Card.lang == term.value.lower(),
+        exists().where(
+            and_(
+                CollectionCard.scryfall_id == Card.scryfall_id,
+                CollectionCard.language == term.value.lower()
+            )
+        )
+    )
 
 
 def _layout(term: Term) -> ColumnElement:
@@ -226,10 +235,34 @@ def _tag(term: Term) -> ColumnElement:
 
 def _location(term: Term) -> ColumnElement:
     # Physical storage location lives on collection_card; match printings with a stack there
-    # (case-insensitive substring, so `loc:box` matches "Box A").
-    located = select(CollectionCard.scryfall_id).where(
-        CollectionCard.location.ilike(f"%{term.value}%")
-    )
+    # Handle explicit type prefixed searches like "box:Library" that filter by exact label
+    location_value = term.value.lower()
+
+    # Special case for "unfiled" - cards where CollectionCard.location is NULL
+    if location_value == "unfiled":
+        return Card.scryfall_id.in_(
+            select(CollectionCard.scryfall_id).where(CollectionCard.location.is_(None))
+        )
+
+    if ":" in location_value:
+        # Extract type from format like "box:Library"
+        loc_type, loc_name = location_value.split(":", 1)
+        loc_name = loc_name.strip('"\'')
+        # Join Location Search Statement
+        located = select(CollectionCard.scryfall_id).where(
+            CollectionCard.location == _find_location(loc_type, loc_name)
+        )
+    else:
+        # Backwards compatibility with old style "Library" (string matching)
+        # This approach is here for legacy reasons but creates ambiguous results!
+        loc_name = location_value.strip('"\'')
+        # Join Location Search Statement
+        located = select(CollectionCard.scryfall_id).where(
+            CollectionCard.location.in_(union_all(
+                *(_find_location(type_name, loc_name) for type_name in LOCATION_TYPES.keys())
+            ))
+        )
+
     return Card.scryfall_id.in_(located)
 
 
@@ -241,9 +274,11 @@ _IS_FLAG_ALIASES = {
 }
 
 _IS_LAYOUTS = {
+    "doublesided": ["transform", "modal_dfc"],
     "split": ["split"],
     "flip": ["flip"],
     "transform": ["transform"],
+    "modal_dfc": ["modal_dfc"],
     "mdfc": ["modal_dfc"],
     "dfc": ["transform", "modal_dfc"],
     "meld": ["meld"],

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+
 {% block content %}
 <section class="flex flex-col items-center justify-center px-4 py-24">
   <a href="/" class="mb-8 flex items-center gap-3">
@@ -87,26 +88,31 @@
     }
   </script>
   {% elif has_collection %}
-  {# Collection present: Scryfall-style search bar (wired up in Phase 2). #}
-  <form action="/search" method="get" class="w-full max-w-2xl">
-    <input
-      type="search"
-      name="q"
-      autofocus
-      placeholder="Search your collection — e.g. c:r t:instant mv<=2"
-      class="w-full rounded-full bg-surface border border-edge px-6 py-4 text-lg
-             focus:outline-none focus:ring-2 focus:ring-accent"
-    />
+  <form action="/search" method="get" class="mt-16 mb-16 max-w-2xl w-full" x-data="{ ai: {{ 'true' if nl else 'false' }} }">
+    {% include "_search_bar.html" %}
+    <button type="submit" style="display: none;"></button>
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-2 text-sm whitespace-nowrap">
+      <div class="inline-flex rounded-full ring-1 ring-edge overflow-hidden shrink-0 text-start w-max" title="Search scope">
+        <label class="cursor-pointer">
+          <input type="radio" name="scope" value="collection" class="peer sr-only" {% if scope != 'all' %}checked{% endif %} />
+          <span class="block px-4 py-1 text-muted peer-checked:bg-surface peer-checked:text-fg" 
+                onclick="if(this.previousElementSibling.checked) { window.location.href = '/search?scope=collection'; }">Mine</span>
+        </label>
+        <label class="cursor-pointer border-l border-edge">
+          <input type="radio" name="scope" value="all" class="peer sr-only" {% if scope == 'all' %}checked{% endif %} />
+          <span class="block px-4 py-1 text-muted peer-checked:bg-surface peer-checked:text-fg" 
+                onclick="if(this.previousElementSibling.checked) { window.location.href = '/search?scope=all'; }">All cards</span>
+        </label>
+      </div>
+      <div class="text-muted flex items-center justify-end md:justify-center overflow-hidden">
+        Supports <a class="pl-1 underline" href="https://scryfall.com/docs/syntax" target="_blank" rel="noopener">Scryfall syntax</a>.
+      </div>
+      <div class="md:text-end overflow-hidden">
+        <a href="/collection" class="inline-flex items-center rounded-full bg-surface border border-edge px-4 py-1 font-medium hover:border-accent"> My Collection</a>
+      </div>
+    </div>
   </form>
-  <p class="mt-4 text-sm text-muted">
-    Supports <a class="underline" href="https://scryfall.com/docs/syntax" target="_blank"
-      rel="noopener">Scryfall syntax</a>, or use
-    <a class="underline" href="/advanced">advanced search</a>
-    · <a class="underline" href="/search">all cards</a>
-    · <a class="underline" href="/collection">my collection</a>
-    · <a class="underline" href="/prices">prices</a>.
-  </p>
-
+  
   {% if alerts %}
   <div class="mt-8 w-full max-w-2xl rounded-xl border border-edge bg-surface p-4">
     <p class="text-sm font-semibold text-accent mb-2">✨ What's new since the last update</p>
@@ -148,32 +154,37 @@
   {% if digest and digest.available and (digest.delta != 0 or digest.gainers or digest.losers) %}
   <div class="mt-4 w-full max-w-2xl rounded-xl border border-edge bg-surface p-4">
     <div class="flex items-baseline justify-between gap-3 mb-2">
-      <p class="text-sm font-semibold text-accent">📈 Collection movers</p>
+      <h2 class="text-sm font-semibold text-muted uppercase tracking-wide"><i class="fa-solid fa-chart-line"></i> Prices <a href="prices" class="ml-1 text-xs normal-case font-normal hover:text-fg">details →</a></h2>
       <p class="text-sm">
-        {% if digest.delta >= 0 %}<span class="text-emerald-500 font-semibold">▲ +${{ '{:,.2f}'.format(digest.delta) }}</span>
-        {% else %}<span class="text-rose-500 font-semibold">▼ -${{ '{:,.2f}'.format(-digest.delta) }}</span>{% endif %}
+        {% if digest.delta >= 0 %}<span class="text-emerald-500 font-semibold">▲ + {{ currency.format_and_decorate(digest.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>
+        {% else %}<span class="text-rose-500 font-semibold">▼ - {{ currency.format_and_decorate(-digest.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>{% endif %}
         <span class="text-muted">({{ '{:+.1f}'.format(digest.pct) }}%)</span>
       </p>
     </div>
-    <p class="text-xs text-muted mb-2">Since {{ digest.baseline_at.strftime('%b %-d') }}
-      · now ${{ '{:,.2f}'.format(digest.end_value) }}</p>
+    <p class="text-xs text-muted mb-2">Since {{ digest.baseline_at.strftime('%b %d').replace(' 0', ' ') }}
+      · now {{ currency.format_and_decorate(digest.end_value*cur.usd_to_cur_rate, cur.symbol) }}</p>
     {% if digest.gainers or digest.losers %}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
-      {% for m in digest.gainers[:5] %}
-      <a href="/card/{{ m.scryfall_id }}" class="flex items-center justify-between gap-2 hover:text-accent">
-        <span class="truncate">{{ m.name }} <span class="text-[10px] text-muted uppercase">{{ m.set_code }}</span></span>
-        <span class="text-emerald-500 shrink-0 tabular-nums">+${{ '{:,.2f}'.format(m.delta) }}</span>
-      </a>
-      {% endfor %}
-      {% for m in digest.losers[:5] %}
-      <a href="/card/{{ m.scryfall_id }}" class="flex items-center justify-between gap-2 hover:text-accent">
-        <span class="truncate">{{ m.name }} <span class="text-[10px] text-muted uppercase">{{ m.set_code }}</span></span>
-        <span class="text-rose-500 shrink-0 tabular-nums">${{ '{:,.2f}'.format(m.delta) }}</span>
-      </a>
-      {% endfor %}
+      <div>
+        <h3 class="text-xs font-semibold text-emerald-500 mb-1">▲ Gainers</h3>
+        {% for m in digest.gainers[:5] %}
+        <a href="/card/{{ m.scryfall_id }}" class="flex items-center justify-between gap-2 hover:text-accent">
+          <span class="truncate">{{ m.name }} <span class="text-[10px] text-muted uppercase">{{ m.set_code }}</span></span>
+          <span class="text-emerald-500 shrink-0 tabular-nums">+ {{ currency.format_and_decorate(m.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>
+        </a>
+        {% endfor %}
+      </div>
+      <div>
+        <h3 class="text-xs font-semibold text-rose-500 mb-1">▼ Losers</h3>
+        {% for m in digest.losers[:5] %}
+        <a href="/card/{{ m.scryfall_id }}" class="flex items-center justify-between gap-2 hover:text-accent">
+          <span class="truncate">{{ m.name }} <span class="text-[10px] text-muted uppercase">{{ m.set_code }}</span></span>
+          <span class="text-rose-500 shrink-0 tabular-nums">- {{ currency.format_and_decorate(-m.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>
+        </a>
+        {% endfor %}
+      </div>
     </div>
     {% endif %}
-    <p class="mt-2 text-xs text-muted"><a href="/prices" class="underline">Price history</a></p>
   </div>
   {% endif %}
   {% else %}

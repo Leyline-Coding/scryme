@@ -198,7 +198,7 @@ async def test_import_profile_confirm_bulk_imports(client, session, monkeypatch)
         data={"urls": ["https://moxfield.com/decks/1", "https://moxfield.com/decks/bad",
                        "https://moxfield.com/decks/2"], "ownership": "unowned"},
         follow_redirects=False)
-    assert resp.status_code == 303 and resp.headers["location"] == "/collection?tab=decks"
+    assert resp.status_code == 303 and resp.headers["location"] == "/collection/decks"
     # The two good decks imported; the failing one was skipped, not fatal.
     assert await session.scalar(select(func.count()).select_from(Deck)) == 2
 

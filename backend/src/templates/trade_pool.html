@@ -101,7 +101,7 @@
             </span>
             {% if not read_only and pool.status != 'closed' %}
             <button type="button" @click="editing = !editing" title="Adjust this card"
-                    class="shrink-0 text-xs text-muted hover:text-accent tap">✎</button>
+                    class="shrink-0 text-xs text-muted hover:text-accent tap"><i class="fa-solid fa-pen"></i></button>
             <form method="post" action="/trade/pool/{{ pool.id }}/items/{{ r.item_id }}/delete"
                   class="shrink-0">
               <button type="submit" title="Unstage" class="text-xs text-muted hover:text-rose-500 tap">✕</button>

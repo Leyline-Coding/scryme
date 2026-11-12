@@ -62,8 +62,13 @@
       <button type="submit" {% if read_only %}disabled{% endif %}
               class="rounded-lg bg-accent text-white px-4 py-2 text-sm font-medium disabled:opacity-50">Save</button>
       <button type="button" hx-post="/ai/test" hx-target="#ai-test-result" hx-swap="innerHTML"
-              class="rounded-lg border border-edge hover:border-accent px-4 py-2 text-sm">Test connection</button>
+              hx-indicator="#test-spinner"
+              class="rounded-lg border border-edge hover:border-accent px-4 py-2 text-sm text-nowrap">
+        <span id="test-spinner" class="htmx-indicator">
+          <span class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-accent"></span>
+        </span> Test connection</button>
       <span id="ai-test-result" class="text-sm"></span>
+      
     </div>
   </form>
 </div>

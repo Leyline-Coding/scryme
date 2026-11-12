@@ -124,6 +124,33 @@
             <input type="number" x-model="yearMax"
               class="mt-1 w-full rounded-lg bg-bg border border-edge px-2 py-2 text-sm" /></label>
         </div>
+        <div class="flex items-end gap-2">
+<label class="block"><span class="text-sm">Language</span>
+  <select x-model="lang" class="mt-1 w-full rounded-lg bg-bg border border-edge px-3 py-2 text-sm">
+    <option value="">Default</option>
+    <option value="any">Any</option>
+    <option value="en">English</option>
+    <option value="es">Spanish</option>
+    <option value="fr">French</option>
+    <option value="de">German</option>
+    <option value="it">Italian</option>
+    <option value="pt">Portuguese</option>
+    <option value="ja">Japanese</option>
+    <option value="ko">Korean</option>
+    <option value="ru">Russian</option>
+    <option value="zhs">Simplified Chinese</option>
+    <option value="zht">Traditional Chinese</option>
+    <option value="he">Hebrew</option>
+    <option value="la">Latin</option>
+    <option value="grc">Ancient Greek</option>
+    <option value="ar">Arabic</option>
+    <option value="sa">Sanskrit</option>
+    <option value="ph">Phyrexian</option>
+    <option value="qya">Quenya</option>
+    <option value="dw">Dwarvish</option>
+    <option value="tlh">Klingon</option>
+  </select></label>
+        </div>
       </div>
     </fieldset>
 
@@ -146,6 +173,23 @@
         <select x-model="dir" class="rounded-lg bg-bg border border-edge px-3 py-2 text-sm">
           <option value="asc">Asc ↑</option>
           <option value="desc">Desc ↓</option>
+        </select>
+      </div>
+    </fieldset>
+
+    {# Location helper #}
+    <fieldset class="rounded-xl bg-surface ring-1 ring-edge p-4" x-show="scope === 'collection'">
+      <legend class="px-1 text-sm font-semibold text-muted">Location</legend>
+      <p class="text-xs text-muted mb-2">Add location filters to the search query</p>
+      <div class="flex flex-wrap gap-3 items-center">
+        <select x-model="selectedLocation" class="rounded-lg bg-bg border border-edge px-3 py-2 text-sm">
+          <option value="">Select a location...</option>
+          <option value="unfiled">Unfiled</option>
+          {% for type, locations in grouped_locations.items() %}
+            {% for location in locations %}
+              <option value="{{ type }}:{{ location.label }}">{{ type }}: {{ location.label }}</option>
+            {% endfor %}
+          {% endfor %}
         </select>
       </div>
     </fieldset>
@@ -173,7 +217,7 @@
       colors: { W: false, U: false, B: false, R: false, G: false, C: false }, colorMode: ">=",
       identity: { W: false, U: false, B: false, R: false, G: false, C: false }, idMode: ">=",
       rarity: { common: false, uncommon: false, rare: false, mythic: false },
-      set: "", format: "", keywords: "", usdMin: "", usdMax: "", yearMin: "", yearMax: "",
+      set: "", format: "", keywords: "", lang: "", usdMin: "", usdMax: "", yearMin: "", yearMax: "",
       scope: "collection", sort: "name", dir: "asc",
       formats: ["standard", "pioneer", "modern", "legacy", "vintage", "commander", "pauper",
                 "brawl", "historic", "oathbreaker"],
@@ -183,6 +227,7 @@
         { key: "tou", label: "Toughness", token: "tou", min: "", max: "" },
         { key: "loy", label: "Loyalty", token: "loy", min: "", max: "" },
       ],
+      selectedLocation: "",
       _term(v) { return /\s/.test(v.trim()) ? '"' + v.trim() + '"' : v.trim(); },
       _colorTerm(map, mode, key) {
         var letters = ["W", "U", "B", "R", "G"].filter((c) => map[c]).join("").toLowerCase();
@@ -205,13 +250,35 @@
         else if (rs.length > 1) p.push("(" + rs.map((r) => "r:" + r).join(" OR ") + ")");
         if (this.set.trim()) p.push("s:" + this._term(this.set));
         if (this.format) p.push("f:" + this.format);
+        if (this.lang && this.lang !== 'any' && this.lang !== '') p.push("lang:" + this._term(this.lang));
         this.keywords.split(",").map((k) => k.trim()).filter(Boolean)
           .forEach((k) => p.push("kw:" + this._term(k)));
         if (String(this.usdMin).trim() !== "") p.push("usd>=" + this.usdMin);
         if (String(this.usdMax).trim() !== "") p.push("usd<=" + this.usdMax);
         if (String(this.yearMin).trim() !== "") p.push("year>=" + this.yearMin);
         if (String(this.yearMax).trim() !== "") p.push("year<=" + this.yearMax);
+        
+        // Add location filter only when scope is collection
+        if (this.scope === "collection" && this.selectedLocation) {
+          p.push('loc:"' + this.selectedLocation + '"');
+        }
+        
         return p.join(" ");
+      },
+      addLocationFilter() {
+        if (this.selectedLocation) {
+          // Add the location filter to the query by modifying the current query
+          const currentQuery = this.query();
+          const newQuery = currentQuery ? `${currentQuery} loc:"${this.selectedLocation}"` : `loc:"${this.selectedLocation}"`;
+          
+          // We can't easily update the query in place, so we need to redirect with the new query
+          var p = new URLSearchParams();
+          p.set("q", newQuery);
+          p.set("scope", this.scope);
+          p.set("sort", this.sort);
+          p.set("dir", this.dir);
+          globalThis.location = "/search?" + p.toString();
+        }
       },
       go() {
         var p = new URLSearchParams();

@@ -1,0 +1,38 @@
+{% macro render(grouped_locations, selected_location=None, name='location', label='Move To', selectedAsLabel=False, class='', x_class='', onchange='', open_right=True) %}
+<div x-data="{ {{name}}: false }" class="sm:relative action-scope-collection">
+  <button @click="{{name}} = !{{name}}" type="button"
+    class="{{class}}" :class="{{x_class}}">
+    {% if selectedAsLabel and selected_location!=False %}
+      {% if selected_location==None %}
+        <i class="fa-solid fa-bars-staggered"></i> Unfiled
+      {% else %}
+        {% for type, locations in grouped_locations.items() %}
+          {% for location in locations %}
+            {% if location.id == selected_location %}
+              {% if location.type=='box' %}<i class="fa-solid fa-box"></i>
+              {% elif location.type=='binder' %}<i class="fa-solid fa-book-open"></i>
+              {% else %}<i class="fa-solid fa-layer-group"></i>{% endif %}
+              {{ location.label }}
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+      {% endif %}
+    {% else %}
+      {{label}}
+    {% endif %} ▾
+  </button>
+  <input type="hidden" name="{{name}}" id="{{name}}"/>
+  <div x-show="{{name}}" @click.outside="{{name}} = false" x-transition style="display: none"
+    class="absolute {% if open_right %}right-0{% else %}left-0{% endif %} mt-2 w-64 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
+    <button type="button" @click="{{name}} = false; document.getElementById('{{name}}').value = ''; {{onchange}}"
+      class="block w-full text-left px-3 py-1.5 hover:bg-surface-2"><i class="fa-solid fa-bars-staggered"></i> Unfiled</button>
+    {% for type, locations in grouped_locations.items() %}
+    <div class="px-3 py-1.5 text-xs font-medium text-muted border-t border-edge mt-1 pt-1 capitalize">{{type}}</div>
+    {% for location in locations %}
+    <button type="button" @click="{{name}} = false; document.getElementById('{{name}}').value = {{location.id}}; {{onchange}}" class="block w-full text-left px-3 py-1.5 hover:bg-surface-2 {% if selected_location == location.id %}selected{% endif %}">{% if type=='box' %}<i class="fa-solid fa-box"></i>{% elif type=='binder' %}<i class="fa-solid fa-book-open"></i>{% else %}<i class="fa-solid fa-layer-group"></i>{% endif %} {{ location.label }}</button>
+    {% endfor %}
+    {% endfor %}
+  </div>
+</div>
+
+{% endmacro %}

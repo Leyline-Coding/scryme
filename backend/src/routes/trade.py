@@ -38,7 +38,7 @@ from src.trade_pool import (
 
 router = APIRouter(tags=["trade"])
 
-_TRADE_TAB = "/collection?tab=trade"
+_TRADE_TAB = "/collection/trade"
 _POOL_NOT_FOUND = "Trade pool not found."
 
 

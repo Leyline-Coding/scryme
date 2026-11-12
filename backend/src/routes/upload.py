@@ -7,14 +7,19 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
+from src.binder_service import all_binders
+from src.box_service import all_boxes
 from src.config import get_settings
 from src.db import get_session
 from src.importers.base import UnknownFormatError
 from src.importers.mapping import MAP_FIELDS, csv_headers, guess_mapping
 from src.importers.merge import MergeStrategy
 from src.importers.service import confirm_upload, stage_mapped_upload, stage_upload
+from src.models import Binder, Box, Location
 from src.templating import templates
 
 router = APIRouter(tags=["upload"])
@@ -47,7 +52,7 @@ async def upload_undo(session: AsyncSession = Depends(get_session)):
     from src.import_undo import undo_last
 
     await undo_last(session)
-    return RedirectResponse(url="/collection?tab=stats", status_code=303)
+    return RedirectResponse(url="/upload", status_code=303)
 
 
 @router.post("/upload", response_class=HTMLResponse)
@@ -77,7 +82,47 @@ async def upload_preview(
             )
         return templates.TemplateResponse(request, _UPLOAD_TMPL, {"error": str(exc)})
 
-    return templates.TemplateResponse(request, "upload_preview.html", {"preview": preview})
+    boxes = await all_boxes(session)
+    binders = await all_binders(session)
+
+    # Get the corresponding Location IDs for each box and binder
+    box_locations = {}
+    binder_locations = {}
+    
+    if boxes:
+        box_results = await session.execute(
+            select(Location.id, Location.foreign_id)
+            .where(
+                Location.type == "box",
+                Location.foreign_id.in_([b.id for b in boxes])
+            )
+        )
+        for loc_id, foreign_id in box_results:
+            box_locations[foreign_id] = loc_id
+    
+    if binders:
+        binder_results = await session.execute(
+            select(Location.id, Location.foreign_id)
+            .where(
+                Location.type == "binder",
+                Location.foreign_id.in_([b.id for b in binders])
+            )
+        )
+        for loc_id, foreign_id in binder_results:
+            binder_locations[foreign_id] = loc_id
+
+    return templates.TemplateResponse(
+        request, 
+        "upload_preview.html", 
+        {
+            "preview": preview,
+            "boxes": boxes,
+            "binders": binders,
+            "box_locations": box_locations,
+            "binder_locations": binder_locations,
+            # "decks": decks
+        }
+    )
 
 
 @router.post("/upload/mapped", response_class=HTMLResponse)
@@ -110,6 +155,7 @@ async def upload_confirm(
     request: Request,
     token: str = Form(...),
     strategy: str = Form(...),
+    location_choice: str | None = Form(None),
     session: AsyncSession = Depends(get_session),
 ):
     _guard_writable()
@@ -125,9 +171,19 @@ async def upload_confirm(
         for k, v in form.items()
         if k.startswith("decision_")
     }
+    
+    # Parse the location choice and prepare it for merging
+    selected_location = None
+    if location_choice is not None and location_choice != "":
+        # The location_choice now contains the actual Location ID (integer) 
+        # from the dropdown, so we can use it directly
+        try:
+            selected_location = int(location_choice)
+        except (ValueError, TypeError):
+            selected_location = None
 
     try:
-        await confirm_upload(session, token, strat, decisions)
+        await confirm_upload(session, token, strat, decisions, location=selected_location)
     except UnknownFormatError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

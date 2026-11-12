@@ -68,9 +68,10 @@ class ManaBoxImporter:
                     scryfall_id=_clean(raw, "Scryfall ID"),
                     finish=_finish(raw.get("Foil")),
                     condition=_clean(raw, "Condition"),
-                    language=_clean(raw, "Language", "en"),
+                    language=_clean(raw, "Language", "en") or "en",
                     purchase_price=_to_float(raw.get("Purchase price")),
-                    binder_name=_clean(raw, "Binder Name"),
+                    source_location_name=_clean(raw, "Binder Name"),
+                    location=None,
                 )
             )
         return rows

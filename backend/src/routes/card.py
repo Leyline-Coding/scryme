@@ -15,14 +15,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import currency, fx
-from src.binder_service import all_binders, binders_for_card
-from src.box_service import all_boxes
+from src.card import _image
 from src.config import get_settings
-from src.currency import get_currency
+from src.currency import CURRENCIES, get_currency
 from src.db import get_session
 from src.embeddings import similar_to_oracle
 from src.llm import get_config
-from src.models import Card, CardEmbedding, CardPricePoint, CollectionCard, Deck
+from src.models import Card, CardEmbedding, CardPricePoint
 from src.price_watch import target_for
 from src.prices import (
     CHART_RANGES,
@@ -33,13 +32,11 @@ from src.prices import (
     range_days,
 )
 from src.pricing import SOURCES, effective_prices, get_price_source
-from src.routes.collection import printing_options
+from src.routes.collection import _collection_partial_generator
 from src.scryfall.client import ScryfallClient, ScryfallError
 from src.scryfall.images import ImageCache
-from src.scryfall.mapping import image_url as cdn_image_url
-from src.tags import add_card_tag, card_tags, remove_card_tag
+from src.tags import modify_stack_tag
 from src.templating import templates
-from src.trade_pool import open_pools
 from src.wishlist import is_wishlisted
 
 router = APIRouter(tags=["card"])
@@ -55,43 +52,9 @@ LEGALITY_FORMATS = [
 _rulings_cache: dict[str, list[dict]] = {}
 
 
-def _image(card: Card, size: str = "normal") -> str:
-    sid = str(card.scryfall_id)
-    if size == "normal" and _cache.is_cached(sid):
-        return _cache.url_path(sid)
-    return cdn_image_url(card.raw, size) or cdn_image_url(card.raw) or ""
-
-
-async def _load_card(session: AsyncSession, scryfall_id: str) -> Card:
-    try:
-        sid = uuid.UUID(scryfall_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail="Card not found.") from exc
-    card = await session.get(Card, sid)
-    if card is None:
-        raise HTTPException(status_code=404, detail="Card not found.")
-    return card
-
-
-def _flip_rotate(card: Card) -> tuple[bool, str | None, bool]:
-    """(can_flip, flip_image, can_rotate) for a card's page controls, from its faces/layout."""
-    raw_faces = card.raw.get("card_faces") or []
-    face_images = [
-        (f.get("image_uris") or {}).get("normal") or (f.get("image_uris") or {}).get("png")
-        for f in raw_faces
-    ]
-    can_flip = sum(1 for u in face_images if u) >= 2
-    flip_image = face_images[1] if can_flip else None
-    keywords = [k.lower() for k in (card.keywords or [])]
-    # Sideways-read cards get a rotate button. Battles are stored with layout "transform" (so they
-    # also get the flip button — front battle ⇄ back permanent), so detect them by type line;
-    # planes use the "planar" layout; aftermath is a keyword.
-    can_rotate = (
-        "battle" in (card.type_line or "").lower()
-        or card.layout == "planar"
-        or "aftermath" in keywords
-    )
-    return can_flip, flip_image, can_rotate
+def _guard_writable() -> None:
+    if get_settings().read_only:
+        raise HTTPException(status_code=403, detail="This instance is read-only.")
 
 
 def _hist_currency(request: Request) -> str:
@@ -114,18 +77,41 @@ def _hist_currencies() -> list[dict]:
     ]
 
 
-def _price_rows(request: Request, card: Card) -> list[tuple[str, float]]:
+def _price_rows(request: Request, card: Card) -> dict[str, dict[str, dict[str, float]]]:
     """Non-empty (label, price) rows, led by the visitor's chosen currency and price source."""
-    source = get_price_source(request)
-    prices = effective_prices(card, source) or {}
-    src = SOURCES.get(source, SOURCES["tcgplayer"])
-    usd_label = f"{src['label']}" if source != "tcgplayer" else "USD"
-    usd_rows = [(usd_label, "usd"), (f"{usd_label} foil", "usd_foil")]
-    eur_rows = [("EUR", "eur"), ("EUR foil", "eur_foil")]
-    ordered = eur_rows + usd_rows if get_currency(request) == "eur" else usd_rows + eur_rows
-    return [
-        (label, prices.get(key)) for label, key in [*ordered, ("TIX", "tix")] if prices.get(key)
-    ]
+    # Use market_prices directly instead of effective_prices
+    market_prices = getattr(card, "market_prices", None) or {}
+    currency = get_currency(request) ## User's chosen currency
+    currency_symbol = CURRENCIES[currency]['symbol']
+    default_currency_symbol = CURRENCIES['usd']['symbol']
+
+    # Convert each source's prices to user's currency and relabel
+    for source, prices in market_prices.items():
+        for key in list(prices.keys()):
+            price_value = float(market_prices[source][key])
+            del market_prices[source][key]
+            new_key = '❖ etched' if 'etched' in key else '✦ foil' if 'foil' in key else 'normal'
+            ## Check collision on new key
+            if(new_key in prices.keys()): new_key+='_'+key
+            try:
+                # Convert to user's currency if not already in USD/EUR (which are native)
+                if currency != "usd":
+                    fx_rate = fx.rate(currency)
+                    if fx_rate:
+                        market_prices[source][new_key] = {'amount': price_value * fx_rate, 'currency_symbol': currency_symbol}
+                    else:
+                        market_prices[source][new_key] = {'amount': float(price_value), 'currency_symbol': default_currency_symbol}
+                else:
+                    market_prices[source][new_key] = {'amount': float(price_value), 'currency_symbol': default_currency_symbol}
+                    
+            except (ValueError, TypeError):
+                market_prices[source][new_key] = {'amount': float(price_value), 'currency_symbol': default_currency_symbol}
+            
+
+    # Get TIX prices from the card's raw prices (not market_prices) since TIX is a native Scryfall field
+    tix_amount = (getattr(card, "prices", None) or {}).get("tix", None)
+    market_prices['TIX'] = {'': {'amount': None if tix_amount is None else float(tix_amount), 'currency_symbol': ''}}
+    return market_prices
 
 
 async def _price_history_ctx(request: Request, session: AsyncSession, card: Card,
@@ -163,44 +149,10 @@ async def card_detail(
     chart_range: str = Query(DEFAULT_RANGE, alias="range"),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
-    card = await _load_card(session, scryfall_id)
-
-    owned = list(
-        (
-            await session.execute(
-                select(CollectionCard)
-                .where(CollectionCard.scryfall_id == card.scryfall_id)
-                .order_by(CollectionCard.finish, CollectionCard.language)
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    printings: list[Card] = []
-    if card.oracle_id is not None:
-        printings = list(
-            (
-                await session.execute(
-                    select(Card)
-                    .where(Card.oracle_id == card.oracle_id)
-                    .where(Card.scryfall_id != card.scryfall_id)
-                    .order_by(Card.released_at.desc().nulls_last())
-                    .limit(24)
-                )
-            )
-            .scalars()
-            .all()
-        )
-
-    # Double-faced cards (transform / modal DFC / battles / reversible) carry a separate image per
-    # face — offer a Scryfall-style flip button. Battles, Planes/Phenomena, and Aftermath cards read
-    # sideways, so offer a rotate button. Both get playful animations on the card page.
-    can_flip, flip_image, can_rotate = _flip_rotate(card)
-    # Battles read by turning the card clockwise; planes/aftermath turn counter-clockwise (#11).
-    rotate_cw = "battle" in (card.type_line or "").lower()
-    price_rows = _price_rows(request, card)
-    chart_ctx = await _price_history_ctx(request, session, card, chart_range)
+    
+    collection_partial_data = await _collection_partial_generator(request, session, uuid.UUID(scryfall_id))
+    card = collection_partial_data['card']
+    
     legalities = card.legalities or {}
     legality_rows = [(fmt, legalities.get(fmt, "not_legal")) for fmt in LEGALITY_FORMATS]
 
@@ -218,46 +170,26 @@ async def card_detail(
         and await session.get(CardEmbedding, card.oracle_id) is not None
     )
 
+
     return templates.TemplateResponse(
         request,
         "card_detail.html",
         {
-            "card": card,
             "faces": card.raw.get("card_faces") or [],
             "image": _image(card),
             "scryfall_uri": card.raw.get("scryfall_uri", "#"),
             "artist": card.raw.get("artist"),
-            "owned": owned,
-            "owned_total": sum(s.quantity for s in owned),
-            "owned_foil": any((s.finish or "").lower() == "foil" for s in owned),
-            "owned_etched": any((s.finish or "").lower() == "etched" for s in owned),
             "anim_foil": anim_foil,
             "anim_etched": anim_etched,
-            "can_flip": can_flip,
-            "flip_image": flip_image,
-            "can_rotate": can_rotate,
-            "rotate_cw": rotate_cw,
-            "printings": [(p, _image(p, "small")) for p in printings],
-            "price_rows": price_rows,
             "legality_rows": legality_rows,
-            **chart_ctx,
-            "tags": await card_tags(session, card.scryfall_id),
             "wishlisted": await is_wishlisted(session, card.scryfall_id),
             "price_target": await target_for(session, str(card.scryfall_id)),
             "card_usd": float((card.prices or {}).get("usd") or 0.0),
-            "read_only": get_settings().read_only,
             "show_similar": show_similar,
             "ai_ready": (await get_config(session)).ready,
-            "binders": await all_binders(session),
-            "in_ids": await binders_for_card(session, str(card.scryfall_id)),
-            "boxes": await all_boxes(session),
-            "picker_binders": await all_binders(session),
-            "decks": [
-                (d.id, d.name) for d in
-                (await session.execute(select(Deck).order_by(Deck.name))).scalars().all()
-            ],
-            "printing_opts": await printing_options(session, card.scryfall_id),
-            "trade_pools": await open_pools(session),
+            "price_rows": _price_rows(request, card),
+            **(await _price_history_ctx(request, session, card, chart_range)),
+            **collection_partial_data
         },
     )
 
@@ -293,7 +225,8 @@ async def card_image(
     Used by the hover-preview on card-name links (#143 follow-on). A redirect keeps it cheap and
     lets the browser cache the image.
     """
-    card = await _load_card(session, scryfall_id)
+    card = await session.get(Card, scryfall_id)
+    if(card is None): raise HTTPException(status_code=404, detail="Card not found.")
     target = _image(card, "normal")
     if not target:
         raise HTTPException(status_code=404, detail="No image.")
@@ -307,7 +240,8 @@ async def card_similar(
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     """Lazily-loaded 'Similar cards' grid: nearest owned cards by oracle-text embedding (#176)."""
-    card = await _load_card(session, scryfall_id)
+    card = await session.get(Card, scryfall_id)
+    if(card is None): raise HTTPException(status_code=404, detail="Card not found.")
     items: list[tuple[Card, str]] = []
     if card.oracle_id is not None:
         scored = await similar_to_oracle(session, card.oracle_id, limit=8, scope="owned")
@@ -325,40 +259,12 @@ async def card_similar(
     return templates.TemplateResponse(request, "_similar_cards.html", {"items": items})
 
 
-def _tags_response(request: Request, card_id: uuid.UUID, tags: list[str]) -> HTMLResponse:
+def _tags_response(request: Request, card_id: str, tags: list[str]) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "_card_tags.html",
         {"card_id": card_id, "tags": tags, "read_only": get_settings().read_only},
     )
-
-
-@router.post("/card/{scryfall_id}/tags", response_class=HTMLResponse)
-async def add_tag(
-    request: Request,
-    scryfall_id: str,
-    tag: str = Form(""),
-    session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
-    if get_settings().read_only:
-        raise HTTPException(status_code=403, detail="This demo is read-only.")
-    card = await _load_card(session, scryfall_id)
-    tags = await add_card_tag(session, card.scryfall_id, tag)
-    return _tags_response(request, card.scryfall_id, tags)
-
-
-@router.post("/card/{scryfall_id}/tags/delete", response_class=HTMLResponse)
-async def delete_tag(
-    request: Request,
-    scryfall_id: str,
-    tag: str = Form(""),
-    session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
-    if get_settings().read_only:
-        raise HTTPException(status_code=403, detail="This demo is read-only.")
-    card = await _load_card(session, scryfall_id)
-    tags = await remove_card_tag(session, card.scryfall_id, tag)
-    return _tags_response(request, card.scryfall_id, tags)
 
 
 async def fetch_rulings(scryfall_id: str, card: Card) -> list[dict] | None:
@@ -384,7 +290,8 @@ async def card_rulings(
     scryfall_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
-    card = await _load_card(session, scryfall_id)
+    card = await session.get(Card, scryfall_id)
+    if(card is None): raise HTTPException(status_code=404, detail="Card not found.")
     rulings = await fetch_rulings(scryfall_id, card)
     return templates.TemplateResponse(
         request, "_card_rulings.html", {"rulings": rulings}

@@ -8,7 +8,7 @@ from src.models import Card, CollectionCard
 from src.scryfall.mapping import card_to_columns
 from src.search import SearchScope
 from src.search.engine import run_search
-from src.tags import add_card_tag, card_tags, normalize_tag, remove_card_tag
+from src.tags import modify_stack_tag, card_tags, normalize_tag
 
 
 def _card(name, n):
@@ -44,7 +44,7 @@ async def test_add_and_remove_tag_spans_all_stacks(session):
     session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish="foil"))
     await session.commit()
 
-    tags = await add_card_tag(session, c.scryfall_id, "For Trade")
+    tags = await modify_stack_tag(session, c.scryfall_id, "For Trade")
     assert tags == ["for trade"]
     # Applied to every stack.
     stored = (await session.execute(
@@ -52,17 +52,17 @@ async def test_add_and_remove_tag_spans_all_stacks(session):
     )).all()
     assert all(row[0] == ["for trade"] for row in stored)
 
-    await add_card_tag(session, c.scryfall_id, "for trade")  # idempotent
+    await modify_stack_tag(session, c.scryfall_id, "for trade")  # idempotent
     assert await card_tags(session, c.scryfall_id) == ["for trade"]
 
-    assert await remove_card_tag(session, c.scryfall_id, "for trade") == []
+    assert await modify_stack_tag(session, c.scryfall_id, "for trade", remove=True) == []
 
 
 @pytest.mark.asyncio
 async def test_tag_search_finds_and_excludes(session):
     a = await _own(session, _card("Aaa", 1), finish="normal")
     await _own(session, _card("Bbb", 2), finish="normal")
-    await add_card_tag(session, a.scryfall_id, "trade")
+    await modify_stack_tag(session, a.scryfall_id, "trade")
 
     hit = await run_search(session, "tag:trade", scope=SearchScope.COLLECTION)
     assert [c.name for c in hit.cards] == ["Aaa"]

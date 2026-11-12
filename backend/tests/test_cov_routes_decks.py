@@ -49,7 +49,7 @@ async def _add(session, raw, owned=0):
 @pytest.mark.asyncio
 async def test_list_decks_redirect(client):
     resp = await client.get("/decks", follow_redirects=False)
-    assert resp.status_code == 307 and resp.headers["location"] == "/collection?tab=decks"
+    assert resp.status_code == 307 and resp.headers["location"] == "/collection/decks"
 
 
 @pytest.mark.asyncio

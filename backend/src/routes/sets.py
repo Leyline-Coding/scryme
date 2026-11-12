@@ -19,7 +19,7 @@ router = APIRouter(tags=["sets"])
 @router.get("/sets")
 async def list_sets() -> RedirectResponse:
     # The set-completion index is now the Sets view of the /collection Stats tab.
-    return RedirectResponse(url="/collection?tab=stats&view=sets", status_code=307)
+    return RedirectResponse(url="/collection/stats?view=sets", status_code=307)
 
 
 @router.get("/calendar", response_class=HTMLResponse)

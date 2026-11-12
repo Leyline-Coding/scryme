@@ -11,7 +11,7 @@
   <div class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
     <div class="flex items-end justify-between gap-3 mb-2">
       <div>
-        <div class="text-2xl font-bold">{{ cov.pct_complete }}% complete</div>
+        <div class="text-2xl font-bold">{{ cov.pct_own }}% complete</div>
         <div class="text-sm text-muted">{{ cov.owned_count }} of {{ cov.total }} owned</div>
       </div>
       {% if not read_only and cov.missing_matched %}
@@ -23,7 +23,7 @@
       {% endif %}
     </div>
     <div class="bg-surface-2 rounded h-2 overflow-hidden">
-      <div class="h-full bg-accent" style="width: {{ cov.pct_complete }}%"></div>
+      <div class="h-full bg-accent" style="width: {{ cov.pct_own }}%"></div>
     </div>
     {% if cov.unmatched %}
     <p class="mt-2 text-xs text-amber-500">{{ cov.unmatched }} line(s) didn't match a known card.</p>
@@ -47,7 +47,7 @@
         {% elif not r.owned %}<span class="text-xs text-muted shrink-0">missing</span>{% endif %}
         {% if not read_only %}
         <button type="button" title="Rename / change card" @click="editing = !editing"
-                class="shrink-0 text-xs text-muted hover:text-accent tap">✎</button>
+                class="shrink-0 text-xs text-muted hover:text-accent tap"><i class="fa-solid fa-pen"></i></button>
         <form method="post" action="/checklists/{{ cov.checklist.id }}/items/{{ r.item_id }}/delete"
               class="shrink-0">
           <button type="submit" title="Remove from checklist" class="text-xs text-muted hover:text-rose-500 tap">✕</button>

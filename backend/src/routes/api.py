@@ -35,6 +35,7 @@ from src.collection_edit import (
     StaleStackError,
     add_or_increment,
     delete_stack,
+    scryfall_ids_to_stack_ids,
     update_stack,
 )
 from src.config import get_settings
@@ -66,7 +67,7 @@ from src.search import SearchError, SearchScope
 from src.search.engine import DEFAULT_SORT, SORT_KEYS, run_search
 from src.sets import set_detail, set_progress
 from src.stats import collection_stats
-from src.tags import add_card_tag, card_tags, remove_card_tag
+from src.tags import modify_stack_tag, card_tags
 from src.wishlist import add_to_wishlist, list_wishlist, remove_from_wishlist
 
 
@@ -190,7 +191,7 @@ class DeckCardOut(BaseModel):
 class DeckDetailOut(BaseModel):
     id: int
     name: str
-    pct_complete: int
+    pct_own: int
     total_needed: int
     owned_count: int
     missing_count: int
@@ -465,7 +466,7 @@ def _deck_card_out(r) -> DeckCardOut:
 async def _deck_detail(session: AsyncSession, deck: Deck, fmt: str | None) -> DeckDetailOut:
     cov = await deck_coverage(session, deck, fmt=fmt or None)
     return DeckDetailOut(
-        id=deck.id, name=deck.name, pct_complete=cov.pct_complete,
+        id=deck.id, name=deck.name, pct_own=cov.pct_own,
         total_needed=cov.total_needed, owned_count=cov.owned_count,
         missing_count=cov.missing_count, missing_cost=round(cov.missing_cost, 2),
         fmt=cov.fmt, is_legal=cov.is_legal if cov.fmt else None, illegal_count=cov.illegal_count,
@@ -681,22 +682,24 @@ class TagIn(BaseModel):
     tag: str
 
 
-@router.post("/cards/{scryfall_id}/tags", response_model=OkOut)
+@router.post("/collection/{scryfall_id}/tags", response_model=OkOut)
 async def api_add_tag(
     scryfall_id: str, body: TagIn, session: AsyncSession = Depends(get_session)
 ) -> OkOut:
     _guard_writable()
-    card = await _get_card(session, scryfall_id)
-    return OkOut(tags=await add_card_tag(session, card.scryfall_id, body.tag))
+    stack_id = (await scryfall_ids_to_stack_ids(session, [scryfall_id]))[0]
+    await modify_stack_tag(session, stack_id, tag=body.tag)
+    return OkOut(tags=(await session.get(CollectionCard, stack_id)).tags)
 
 
-@router.delete("/cards/{scryfall_id}/tags", response_model=OkOut)
+@router.delete("/collection/{scryfall_id}/tags", response_model=OkOut)
 async def api_remove_tag(
     scryfall_id: str, tag: str = Query(...), session: AsyncSession = Depends(get_session)
 ) -> OkOut:
     _guard_writable()
-    card = await _get_card(session, scryfall_id)
-    return OkOut(tags=await remove_card_tag(session, card.scryfall_id, tag))
+    stack_id = (await scryfall_ids_to_stack_ids(session, [scryfall_id]))[0]
+    await modify_stack_tag(session, stack_id, tag=tag, remove=True)
+    return OkOut(tags=(await session.get(CollectionCard, stack_id)).tags)
 
 
 class WishlistAddIn(BaseModel):
@@ -921,7 +924,7 @@ class ChecklistDetailOut(BaseModel):
     total: int
     owned_count: int
     unmatched: int
-    pct_complete: int
+    pct_own: int
     rows: list[ChecklistRowOut]
 
 
@@ -959,7 +962,7 @@ async def _checklist_out(session: AsyncSession, cl: Checklist) -> ChecklistDetai
     cov = await checklist_coverage(session, cl)
     return ChecklistDetailOut(
         id=cl.id, name=cl.name, total=cov.total, owned_count=cov.owned_count,
-        unmatched=cov.unmatched, pct_complete=cov.pct_complete,
+        unmatched=cov.unmatched, pct_own=cov.pct_own,
         rows=[ChecklistRowOut(item_id=r.item_id, name=r.name, scryfall_id=r.scryfall_id,
                               matched=r.matched, owned=r.owned) for r in cov.rows],
     )

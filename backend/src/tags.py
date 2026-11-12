@@ -47,18 +47,6 @@ async def tag_summaries(session: AsyncSession) -> list[TagSummary]:
     return [TagSummary(name=t, quantity=q, stacks=s) for t, (q, s) in sorted(agg.items())]
 
 
-async def _stacks(session: AsyncSession, scryfall_id: uuid.UUID) -> list[CollectionCard]:
-    return list(
-        (
-            await session.execute(
-                select(CollectionCard).where(CollectionCard.scryfall_id == scryfall_id)
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-
 async def card_tags(session: AsyncSession, scryfall_id: uuid.UUID) -> list[str]:
     """The sorted union of tags across every owned stack of this printing."""
     rows = await session.execute(
@@ -71,24 +59,24 @@ async def card_tags(session: AsyncSession, scryfall_id: uuid.UUID) -> list[str]:
     return sorted(out)
 
 
-async def add_card_tag(session: AsyncSession, scryfall_id: uuid.UUID, raw: str) -> list[str]:
+async def modify_stacks_tag(session: AsyncSession, stack_ids: list[int], tag: str, remove: bool = False) -> int:
+    """Add a tag to every owned stack. Returns how many printings were tagged."""
+    tag = normalize_tag(tag)
+    tagged = 0
+    if tag:
+        stacks = (await session.execute(select(CollectionCard).where(CollectionCard.id.in_(stack_ids)))).scalars().all()
+        for stack in stacks:
+            current_tags = list(stack.tags or [])
+            if tag not in current_tags:
+                stack.tags = sorted(current_tags + [tag])
+            if(remove and tag in current_tags and stack.tags):
+                stack.tags = sorted([t for t in (stack.tags or []) if t != tag])
+            tagged += 1
+        await session.commit()
+    return tagged
+
+
+async def modify_stack_tag(session: AsyncSession, stack_id: int, tag: str, remove: bool = False) -> int:
     """Add a normalized tag to every owned stack of this printing. Returns the new tag set."""
-    tag = normalize_tag(raw)
-    if tag:
-        for stack in await _stacks(session, scryfall_id):
-            current = list(stack.tags or [])
-            if tag not in current:
-                stack.tags = sorted(current + [tag])
-        await session.commit()
-    return await card_tags(session, scryfall_id)
+    return await modify_stacks_tag(session, [stack_id], tag=tag, remove=remove)
 
-
-async def remove_card_tag(session: AsyncSession, scryfall_id: uuid.UUID, raw: str) -> list[str]:
-    """Remove a tag from every owned stack of this printing. Returns the new tag set."""
-    tag = normalize_tag(raw)
-    if tag:
-        for stack in await _stacks(session, scryfall_id):
-            if stack.tags and tag in stack.tags:
-                stack.tags = [t for t in stack.tags if t != tag]
-        await session.commit()
-    return await card_tags(session, scryfall_id)

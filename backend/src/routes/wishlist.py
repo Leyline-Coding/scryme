@@ -11,7 +11,7 @@ from src.db import get_session
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
 from src.templating import templates
-from src.wishlist import add_to_wishlist, remove_from_wishlist
+from src.wishlist import add_to_wishlist, remove_from_wishlist, adjust_wishlist_quantity
 
 router = APIRouter(tags=["wishlist"])
 _cache = ImageCache()
@@ -30,7 +30,7 @@ def _image(card) -> str:
 @router.get("/wishlist")
 async def wishlist_page() -> RedirectResponse:
     # The wishlist is now the Wishlist tab of /collection.
-    return RedirectResponse(url="/collection?tab=wishlist", status_code=307)
+    return RedirectResponse(url="/collection/wishlist", status_code=307)
 
 
 def _button(request: Request, scryfall_id: str, wishlisted: bool) -> HTMLResponse:
@@ -56,6 +56,19 @@ async def add(
     _guard_writable()
     await add_to_wishlist(session, scryfall_id, quantity, note or None)
     return _button(request, scryfall_id, wishlisted=True)
+
+
+@router.post("/wishlist/adjust", response_class=HTMLResponse)
+async def adjust(
+    request: Request,
+    scryfall_id: str = Form(...),
+    delta: int = Form(...),
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    _guard_writable()
+    await adjust_wishlist_quantity(session, scryfall_id, delta)
+    # Return a redirect to reload the entire wishlist page 
+    return RedirectResponse(url="/collection/wishlist", status_code=303)
 
 
 @router.post("/wishlist/remove")

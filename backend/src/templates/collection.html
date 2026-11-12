@@ -1,27 +1,29 @@
 {% extends "base.html" %}
 {% block title %}My Collection · scryme{% endblock %}
 {% block content %}
-<div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
+<div id="collection-container" class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
   <header class="page-header flex flex-wrap items-center gap-3 mb-4">
     {% include "_brand.html" %}
     <h1 class="text-lg font-semibold">My Collection</h1>
     <a href="/search" class="ml-auto text-sm text-muted hover:text-fg">All Cards →</a>
   </header>
 
-  <nav class="flex gap-1 border-b border-edge mb-6 overflow-x-auto -mx-4 px-4">
-    {% for key, label in tabs %}
-    <a href="/collection?tab={{ key }}"
+
+  <nav class="flex flex-wrap gap-1 border-b border-edge mb-6 scrollbar-none w-full min-w-0">
+    {% for key, label, icon in tabs %}
+    <a href="/collection/{{ key }}"
        class="shrink-0 whitespace-nowrap px-3 py-2 text-sm -mb-px border-b-2 transition
               {% if tab == key %}border-accent text-fg font-medium{% else %}border-transparent text-muted hover:text-fg{% endif %}">
-      {{ label }}
+      <i class="{{icon}}"></i> {{ label }}
     </a>
     {% endfor %}
   </nav>
 
   {% if tab == 'stats' %}{% include "_col_stats.html" %}
   {% elif tab == 'locations' %}{% include "_col_locations.html" %}
-  {% elif tab == 'decks' %}{% include "_col_decks.html" %}
   {% elif tab == 'binders' %}{% include "_col_binders.html" %}
+  {% elif tab == 'decks' %}{% include "_col_decks.html" %}
+  {% elif tab == 'sleeves' %}{% include "_col_sleeves.html" %}
   {% elif tab == 'tags' %}{% include "_col_tags.html" %}
   {% elif tab == 'wishlist' %}{% include "_col_wishlist.html" %}
   {% elif tab == 'checklists' %}{% include "_col_checklists.html" %}

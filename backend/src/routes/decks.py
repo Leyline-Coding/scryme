@@ -6,6 +6,8 @@ Mutations are blocked in read-only (demo) mode, mirroring uploads.
 from __future__ import annotations
 
 import uuid
+import datetime
+import html
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
@@ -18,6 +20,7 @@ from src.config import get_settings
 from src.currency import get_currency, info
 from src.db import get_session
 from src.deck_builder import BuildError, build_commander_deck, owned_commanders
+from src.deck_card import find_swappable_deck_card_in_collection_card, quickswap_deck_card
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
 from src.deck_import import (
     PROFILE_PROVIDERS,
@@ -36,28 +39,40 @@ from src.decks import (
     PROXY_SOURCES,
     add_card_to_deck,
     apply_deck_card_edit,
+    checkout_deck,
     create_deck,
     deck_coverage,
     deck_printings,
     deck_stats,
+    deconstruct_deck,
+    match_deck_cards_in_deck_collection_cards,
+    move_qty_from_existing_stack,
     proxy_cards,
+    rename_deck,
     resolve_ownership_rows,
     resync_printings,
 )
 from src.llm import get_config
-from src.models import Card, Deck, DeckCard, DeckVersion
-from src.pricing import get_price_source
+from src.locations import find_or_create_locations, find_or_create_grouped_locations
+from src.models import Card, CollectionCard, Deck, DeckCard, DeckVersion, Location, Sleeve
+from src.pricing import get_price_source, resolve_prices
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
 from src.share import DECK, links_for, revoke_links_for
 from src.templating import templates
 from src.wishlist import add_deck_missing
+from src.currency import unit_price
 
 router = APIRouter(tags=["decks"])
 
 _DECK_NOT_FOUND = "Deck not found."
 _DECK_NEW_TMPL = "deck_new.html"
 _img_cache = ImageCache()
+
+
+def _guard_writable() -> None:
+    if get_settings().read_only:
+        raise HTTPException(status_code=403, detail="This instance is read-only.")
 
 
 async def _deck_images(session: AsyncSession, deck: Deck) -> dict[str, str]:
@@ -77,15 +92,10 @@ async def _deck_images(session: AsyncSession, deck: Deck) -> dict[str, str]:
 _CURRENT = "current"  # diff source referring to the deck's live state (vs a saved version)
 
 
-def _guard_writable() -> None:
-    if get_settings().read_only:
-        raise HTTPException(status_code=403, detail="This instance is read-only.")
-
-
 @router.get("/decks")
 async def list_decks() -> RedirectResponse:
     # The deck index is now the Decks tab of /collection.
-    return RedirectResponse(url="/collection?tab=decks", status_code=307)
+    return RedirectResponse(url="/collection/decks", status_code=307)
 
 
 @router.get("/decks/new", response_class=HTMLResponse)
@@ -190,7 +200,7 @@ async def import_profile_confirm(
         await create_deck(session, name, decklist)
         if ownership == "full":
             await _mark_all_owned(session, decklist)
-    return RedirectResponse(url="/collection?tab=decks", status_code=303)
+    return RedirectResponse(url="/collection/decks", status_code=303)
 
 
 @router.post("/decks")
@@ -265,6 +275,8 @@ async def view_deck(
     request: Request,
     deck_id: int,
     format: str = "",
+    sort_by: str = "name",
+    sort_dir: str = "asc",
     session: AsyncSession = Depends(get_session),
     shared: str = "",
 ) -> HTMLResponse:
@@ -275,7 +287,55 @@ async def view_deck(
     currency = get_currency(request)
     source = get_price_source(request)
     coverage = await deck_coverage(session, deck, fmt=format or None, currency=currency,
-                                   source=source)
+                                    source=source)
+    
+    # Get locations for the location picker
+    locations = await find_or_create_locations(session, binders=True, boxes=True, decks=True)
+    
+    # Normalize sort parameters
+    sort_by = sort_by.lower() if sort_by else "name"
+    sort_dir = sort_dir.lower() if sort_dir else "asc"
+    
+    # Apply sorting to the deck cards
+    if sort_by == "quantity":
+        # Sort by quantity (descending by default)
+        coverage.main.sort(key=lambda x: x.quantity, reverse=(sort_dir == "desc"))
+        coverage.side.sort(key=lambda x: x.quantity, reverse=(sort_dir == "desc"))
+        coverage.main_combined.sort(key=lambda x: x.quantity, reverse=(sort_dir == "desc"))
+        coverage.side_combined.sort(key=lambda x: x.quantity, reverse=(sort_dir == "desc"))
+    elif sort_by == "price":
+        # Sort by price (descending by default)
+        def _get_card_price(card_row):
+            if card_row.scryfall_card and card_row.scryfall_card.prices:
+                return unit_price(resolve_prices(card_row.scryfall_card.prices, card_row.scryfall_card.market_prices, source), card_row.finish, currency)
+            return 0.0
+        
+        coverage.main.sort(key=lambda x: _get_card_price(x), reverse=(sort_dir == "desc"))
+        coverage.side.sort(key=lambda x: _get_card_price(x), reverse=(sort_dir == "desc"))
+        coverage.main_combined.sort(key=lambda x: _get_card_price(x), reverse=(sort_dir == "desc"))
+        coverage.side_combined.sort(key=lambda x: _get_card_price(x), reverse=(sort_dir == "desc"))
+    else:  # default to name
+        # Sort by name (ascending by default)
+        coverage.main.sort(key=lambda x: x.name.lower(), reverse=(sort_dir == "desc"))
+        coverage.side.sort(key=lambda x: x.name.lower(), reverse=(sort_dir == "desc"))
+        coverage.main_combined.sort(key=lambda x: x.name.lower(), reverse=(sort_dir == "desc"))
+        coverage.side_combined.sort(key=lambda x: x.name.lower(), reverse=(sort_dir == "desc"))
+    
+    # Check if this is an HTMX request for just the deck boards partial
+    is_htmx = request.headers.get("HX-Request") == "true"
+    if is_htmx:
+        return templates.TemplateResponse(
+            request,
+            "_deck_boards.html",
+            {
+                "cov": coverage,
+                "deck": deck,
+                "sort_by": sort_by,
+                "sort_dir": sort_dir,
+                "read_only": get_settings().read_only,
+            },
+        )
+    
     return templates.TemplateResponse(
         request,
         "deck_detail.html",
@@ -296,6 +356,9 @@ async def view_deck(
             "share_links": await links_for(session, DECK, deck.id),
             "share_new": shared,
             "ai_ready": (await get_config(session)).ready,
+            "locations": locations,
+            "sort_by": sort_by,
+            "sort_dir": sort_dir,
         },
     )
 
@@ -349,6 +412,7 @@ async def edit_deck_card(
             "current_sid": str(dc.scryfall_id) if dc.scryfall_id else "",
             "languages": DECK_LANGUAGES,
             "current_lang": dc.language,
+            "current_finish": dc.finish,
             "proxy": dc.proxy,
             "special": dc.special,
             "fmt": format if format in LEGALITY_FORMATS else "",
@@ -362,6 +426,7 @@ async def update_deck_card(
     card_id: int,
     scryfall_id: str = Form(""),
     language: str = Form("en"),
+    finish: str = Form("normal"),
     proxy: str | None = Form(None),
     special: str | None = Form(None),
     format: str = Form(""),
@@ -377,6 +442,7 @@ async def update_deck_card(
         language=language,
         proxy=proxy is not None,
         special=special is not None,
+        finish=finish,
     )
     # Mirror a printing change into the collection for an owned deck card (#298).
     deck = await session.get(Deck, deck_id)
@@ -386,22 +452,51 @@ async def update_deck_card(
     return Response(status_code=204, headers={"HX-Redirect": url})
 
 
+@router.post("/decks/{deck_id}/card/{card_id}/quickswap")
+async def update_deck_card(
+    deck_id: int,
+    card_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """If there is no coverage in the collection for the exact printing of card (card_id),
+    the quick swap function will modify the card to match the first swappable copy, by oracle id."""
+    _guard_writable()
+    dc = await _get_deck_card(session, deck_id, card_id)
+    await quickswap_deck_card(session, dc)
+    return Response(status_code=200, headers={"HX-Refresh": "true"})
+
+
 @router.post("/decks/{deck_id}/card/{card_id}/qty")
 async def change_deck_card_qty(
     deck_id: int, card_id: int, delta: int = Form(0),
     session: AsyncSession = Depends(get_session),
 ) -> Response:
-    """Nudge a deck line's quantity by ±1 (#298); mirror it to the collection for an owned card."""
+    """Nudge a deck line's quantity by ±1 (#298); mirror it to the collection for an owned card.
+    
+    If all quanitites of this card are located in the deck, delta of these cards will be moved to unfiled.
+    """
     _guard_writable()
+    ## Modify deck_card
     dc = await _get_deck_card(session, deck_id, card_id)
     delta = 1 if delta > 0 else -1
     new_qty = max(1, dc.quantity + delta)
     applied = new_qty - dc.quantity  # 0 when already at the floor of 1
     dc.quantity = new_qty
+    
+    ## Modify collection_card if as many a qty is located in this deck and the new quantity has decreased
+    if(delta < 0 and dc.scryfall_id):
+      location = (await session.scalars(select(Location).where(Location.type == 'deck', Location.foreign_id==deck_id))).first()
+      matches = await match_deck_cards_in_deck_collection_cards(session, source_cards=[dc], source_location=location.id if location else None)
+      matching_collection_cards = matches[dc.scryfall_id]
+      if(sum([c.quantity for c in matching_collection_cards]) > 0):
+          collection_card_to_move = matching_collection_cards[max(range(len(matching_collection_cards)), key=lambda i: matching_collection_cards[i].quantity)]
+          moved_cards = await move_qty_from_existing_stack(session, collection_card=collection_card_to_move, quantity=abs(delta), new_location_id=None)
+
     await session.commit()
     if applied:
         deck = await session.get(Deck, deck_id)
-        await sync_quantity(session, deck, dc, applied)
+        if deck is not None:
+            await sync_quantity(session, deck, dc, applied)
     return Response(status_code=204, headers={"HX-Redirect": f"/decks/{deck_id}"})
 
 
@@ -491,6 +586,55 @@ async def resync_deck_printings(
     return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
 
 
+@router.post("/decks/{deck_id}/replace-list")
+async def replace_deck_list(
+    deck_id: int, decklist_text: str = Form(""), backup_before_import: bool = Form(False), session: AsyncSession = Depends(get_session)
+) -> RedirectResponse:
+    """Replace the entire deck content with a new list from a textarea. """
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if decklist_text == '':
+        raise HTTPException(status_code=400, detail='Empty replace list.')
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    
+    from src.decks import _merge_lines, parse_decklist, _resolve_names, _resolve_exact, _printing_for
+
+    parsed = _merge_lines(parse_decklist(decklist_text))
+    owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
+    resolved = await _resolve_names(session, [p.name for p in parsed], owned_sids)
+    exact = await _resolve_exact(session, {(p.set_code, p.collector_number) for p in parsed})
+
+    if len(parsed) == 0:
+        raise HTTPException(status_code=400, detail='Empty replace list.')
+
+    # Backup cards (if enabled)
+    if(backup_before_import):
+        await save_version(session, deck, "Pre-import backup "+datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"))
+
+    # Clear existing cards
+    for card in deck.cards:
+        await session.delete(card)
+    await session.flush()
+
+    ## Add new cards
+    for p in parsed:
+        oracle, sid = _printing_for(p, exact, resolved)
+        deck.cards.append(
+            DeckCard(name=p.name, quantity=p.quantity, board=p.board,
+                     oracle_id=oracle, scryfall_id=sid, finish=p.finish)
+        )
+
+    # Manually update the updated_at timestamp
+    
+    deck.updated_at = datetime.datetime.now(datetime.timezone.utc)
+    
+    await session.commit()
+    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+
+
+
+
 @router.post("/decks/{deck_id}/delete")
 async def delete_deck(deck_id: int, session: AsyncSession = Depends(get_session)):
     _guard_writable()
@@ -502,6 +646,42 @@ async def delete_deck(deck_id: int, session: AsyncSession = Depends(get_session)
         await session.delete(deck)
         await session.commit()
     return RedirectResponse(url="/decks", status_code=303)
+
+
+@router.post("/decks/{deck_id}/sleeve", response_class=HTMLResponse)
+async def set_deck_sleeve(
+    deck_id: int,
+    sleeve_id: int = Form(None),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Associate a sleeve with a deck."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    
+    # Clear existing sleeves for this deck
+    stmt = select(Sleeve).where(Sleeve.deck_id == deck_id)
+    result = await session.execute(stmt)
+    existing_sleeves = result.scalars().all()
+    for sleeve in existing_sleeves:
+        sleeve.deck_id = None
+    
+    # If sleeve_id is provided, associate it with the deck
+    if sleeve_id:
+        # Ensure the sleeve exists and belongs to this deck (or has no deck association)
+        sleeve = await session.get(Sleeve, sleeve_id)
+        if sleeve is None:
+            raise HTTPException(status_code=404, detail="Sleeve not found.")
+        
+        # Set the sleeve for this deck
+        sleeve.deck_id = deck_id
+            
+    await session.commit()
+    
+    # Redirect back to the deck detail page
+    return Response(status_code=200, headers={})
+
 
 
 @router.post("/decks/{deck_id}/wishlist")
@@ -597,8 +777,7 @@ async def deck_suggest_owned(
 ) -> HTMLResponse:
     """Heuristic owned-card upgrade suggestions by thin role (#181) — no LLM, read-only safe."""
     deck = await session.get(Deck, deck_id)
-    if deck is None:
-        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     return await _render_owned_upgrades(request, deck, session)
 
 
@@ -610,8 +789,7 @@ async def deck_add_owned(
     """Add one owned suggestion to the deck and re-render the panel so the pick drops off."""
     _guard_writable()
     deck = await session.get(Deck, deck_id)
-    if deck is None:
-        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     added = None
     try:
         sid = uuid.UUID(scryfall_id)
@@ -623,3 +801,87 @@ async def deck_add_owned(
         await session.refresh(deck)
         added = card.name
     return await _render_owned_upgrades(request, deck, session, added=added)
+
+
+@router.post("/decks/{deck_id}/rename")
+async def update_deck_name(
+    request: Request, deck_id: int, name: str = Form(""), session: AsyncSession = Depends(get_session)
+) -> PlainTextResponse:
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    new_deck_name = await rename_deck(session, deck, name)
+    return PlainTextResponse(new_deck_name)
+
+
+@router.post("/decks/{deck_id}/checkout")
+async def deck_checkout(
+    request: Request,
+    deck_id: int,
+    mainboard: bool = Form(False),
+    sideboard: bool = Form(False),
+    session: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    """Checkout cards from a deck to the collection."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    await checkout_deck(session, deck, mainboard=mainboard, sideboard=sideboard)
+    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+
+
+@router.post("/decks/{deck_id}/deconstruct")
+async def deck_deconstruct(
+    request: Request,
+    deck_id: int,
+    location_id: int = Form(None),
+    session: AsyncSession = Depends(get_session),
+) -> RedirectResponse:
+    """Deconstruct a deck by moving its cards to a specific location."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    
+    # Call the deconstruct function with the specified location
+    await deconstruct_deck(session, deck, location=location_id)
+    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+
+
+@router.get("/decks/{deck_id}/deconstruct", response_class=HTMLResponse)
+async def deconstruct_form(
+    request: Request,
+    deck_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Show the deconstruction form for a deck."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    
+    # Get locations for the location picker
+    grouped_locations = await find_or_create_grouped_locations(session, binders=True, boxes=True, decks=False)
+    
+    return templates.TemplateResponse(
+        request,
+        "deck_deconstruct.html",
+        {
+            "deck": deck,
+            "grouped_locations": grouped_locations,
+        },
+    )
+
+
+@router.post("/decks/{deck_id}/update-description", response_class=HTMLResponse)
+async def update_deck_description(
+    deck_id: int, 
+    description: str = Form(""), 
+    session: AsyncSession = Depends(get_session)
+) -> str | None:
+    """Update the description for a deck."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None: 
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    deck.description = html.escape(description) if description else None
+    await session.commit()
+    return deck.description

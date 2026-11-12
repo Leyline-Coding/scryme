@@ -7,7 +7,7 @@
       {{ m.name }} <span class="text-muted uppercase text-xs">{{ m.set_code }}</span>
     </a>
     <span class="shrink-0 tabular-nums font-medium {% if up %}text-emerald-500{% else %}text-rose-500{% endif %}">
-      {{ '+' if m.delta > 0 else '' }}{{ '{:,.2f}'.format(m.delta) }} ({{ m.pct }}%)
+      {{ '+' if m.delta > 0 else '-' }} {{ currency.format_and_decorate(((m.delta| abs)*cur.usd_to_cur_rate), cur.symbol) }} ({{ m.pct }}%)
     </span>
   </li>
   {% else %}

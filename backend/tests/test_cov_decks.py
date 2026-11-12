@@ -6,7 +6,6 @@ import pytest
 from src.decks import (
     _is_playable,
     _legalities_by_oracle,
-    _load_deck_printings,
     _merge_lines,
     _parse_deck_line,
     _resolve_names,
@@ -55,6 +54,24 @@ def test_parse_decklist_skips_comments_and_headers():
     assert (rows[0].name, rows[0].board) == ("Forest", "main")
     assert (rows[1].name, rows[1].board) == ("Duress", "side")
     assert len(rows) == 2
+
+
+def test_parse_decklist_handles_sideboard_comments():
+    # Test that // Sideboard marks sideboard section and other // comments are ignored
+    rows = parse_decklist("// Mainboard cards\n2 Forest\n// Sideboard\n1 Duress\n// Maybeboard\n3 Island")
+    assert (rows[0].name, rows[0].board) == ("Forest", "main")
+    assert (rows[1].name, rows[1].board) == ("Duress", "side")
+    assert (rows[2].name, rows[2].board) == ("Island", "side")
+    assert len(rows) == 3
+
+
+def test_parse_decklist_handles_case_insensitive_sideboard():
+    # Test case insensitive // Sideboard
+    rows = parse_decklist("// MAINBOARD\n2 Forest\n1 Duress\n// SiDeBoArD\n3 Island\n// comment")
+    assert (rows[0].name, rows[0].board) == ("Forest", "main")
+    assert (rows[1].name, rows[1].board) == ("Duress", "main")
+    assert (rows[2].name, rows[2].board) == ("Island", "side")
+    assert len(rows) == 3
 
 
 def test_parse_deck_line_sb_prefix():
@@ -146,11 +163,6 @@ async def test_legalities_by_oracle_empty(session):
     assert await _legalities_by_oracle(session, {None}) == {}
 
 
-@pytest.mark.asyncio
-async def test_load_deck_printings_empty(session):
-    price, prints, oracle_sid = await _load_deck_printings(session, [], "tcgplayer")
-    assert price == {} and prints == {} and oracle_sid == {}
-
 
 @pytest.mark.asyncio
 async def test_deck_coverage_and_stats_and_missing(session):
@@ -208,12 +220,12 @@ async def test_deck_printings_orders_playable_first(session):
 
 @pytest.mark.asyncio
 async def test_coverage_properties_and_illegal_card(session):
-    # Bolt legal in modern but not standard; covers pct_complete, is_legal, illegal legality branch.
+    # Bolt legal in modern but not standard; covers pct_own, is_legal, illegal legality branch.
     await _add(session, _raw("Lightning Bolt", cn="1",
                              legal={"modern": "legal", "standard": "not_legal"}), owned=0)
     deck = await create_deck(session, "D", "2 Lightning Bolt")
     legal = await deck_coverage(session, deck, fmt="modern")
-    assert legal.pct_complete == 0  # own none
+    assert legal.pct_own == 0  # own none
     illegal = await deck_coverage(session, deck, fmt="standard")
     assert illegal.illegal_count == 1 and illegal.is_legal is False
 

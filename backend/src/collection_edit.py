@@ -22,15 +22,23 @@ Every mutation bumps ``version``, so an absolute edit notices a relative one tha
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Card, CollectionCard
-from src.tags import add_card_tag
 
+
+_STACK_NOT_FOUND = "Stack not found."
+_CONDITION_CODES = [
+    ('nm', 'near_mint'),
+    ('lp', 'lightly_played'),
+    ('mp', 'moderatly_played'),
+    ('hp', 'heavily_played')
+]
 
 def _as_uuid(value) -> uuid.UUID:
     return value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))
@@ -46,6 +54,14 @@ def _eq_or_null(col, value):
     return col.is_(None) if value is None else col == value
 
 
+async def scryfall_ids_to_stack_ids(session, scryfall_ids: Sequence[str | uuid.UUID]):
+    return (await session.execute(
+                select(CollectionCard.id)
+                .where(CollectionCard.scryfall_id.in_(scryfall_ids))
+            )).scalars().all()
+
+
+
 async def add_or_increment(
     session: AsyncSession,
     scryfall_id,
@@ -54,8 +70,7 @@ async def add_or_increment(
     finish: str = "normal",
     condition: str | None = None,
     language: str = "en",
-    binder: str | None = None,
-    location: str | None = None,
+    location: int | None = None,
     purchase_price: float | None = None,
     commit: bool = True,
 ) -> CollectionCard | None:
@@ -70,7 +85,7 @@ async def add_or_increment(
         return None
     quantity = max(1, quantity)
     finish = finish if finish in ("normal", "foil", "etched") else "normal"
-    condition, binder, location = _clean(condition), _clean(binder), _clean(location)
+    condition, location = _clean(condition), _clean(location)
     language = (language or "en").strip().lower() or "en"
 
     stack = (
@@ -80,7 +95,6 @@ async def add_or_increment(
                 CollectionCard.finish == finish,
                 CollectionCard.language == language,
                 _eq_or_null(CollectionCard.condition, condition),
-                _eq_or_null(CollectionCard.binder_name, binder),
                 _eq_or_null(CollectionCard.location, location),
             )
         )
@@ -89,7 +103,7 @@ async def add_or_increment(
     if stack is None:
         stack = CollectionCard(
             scryfall_id=sid, quantity=quantity, finish=finish, condition=condition,
-            language=language, binder_name=binder, location=location,
+            language=language, location=location,
             purchase_price=purchase_price, source_format="manual",
         )
         session.add(stack)
@@ -147,7 +161,6 @@ async def update_stack(
     finish: str | None = None,
     condition=_UNSET,
     language: str | None = None,
-    binder=_UNSET,
     location=_UNSET,
     tags=_UNSET,
     expected_version: int | None = None,
@@ -173,8 +186,6 @@ async def update_stack(
         stack.language = language or "en"
     if condition is not _UNSET:
         stack.condition = _clean(condition)
-    if binder is not _UNSET:
-        stack.binder_name = _clean(binder)
     if location is not _UNSET:
         stack.location = _clean(location)
     if tags is not _UNSET:
@@ -191,13 +202,62 @@ async def delete_stack(session: AsyncSession, stack_id: int, expected_version: i
     destructive way to lose their edit.
     """
     stack = await session.get(CollectionCard, stack_id)
-    if stack is None:
-        return None
+    if stack is None: return None
     _guard_version(stack, expected_version)
     sid = stack.scryfall_id
     await session.delete(stack)
     await session.commit()
     return sid
+
+
+
+async def move_stacks_location(session: AsyncSession, stack_ids: list[int], location_id: int | None = None) -> list[int]:
+    """Move stacks to a new location. Returns a list of scryfall_ids (or None if it didn't exist).
+    
+    If a target location already has an identical collection card, the source card's quantity
+    will be added to the existing card and the source card will be deleted.
+    """
+    stacks_to_move = (await session.scalars(select(CollectionCard).where(CollectionCard.id.in_(stack_ids)))).all()
+    
+    # Preload any OTHER CollectionCard witch both a matching target location and with a matching scryfall_id. _cards_are_identical will perform the fine-grained match
+    existing_stacks_preloaded = (await session.scalars(
+        select(CollectionCard).where(
+            CollectionCard.id.not_in([card.id for card in stacks_to_move]),
+            CollectionCard.location == location_id,
+            CollectionCard.scryfall_id.in_([card.scryfall_id for card in stacks_to_move])
+        )
+    )).all()
+
+    sids = []
+    # Process each stack one by one
+    for stack_to_move in stacks_to_move:
+          
+          # Finely check the coarsely preload CollectionCard matches using _cards_are_identical()
+          identical_existing = next(
+              (existing_stack for existing_stack in existing_stacks_preloaded if stack_to_move.is_identical_to_stack(existing_stack)),
+              None
+          )
+
+          if identical_existing:
+              # Merge the stacks: increment the quantity of the existing card and delete source
+              identical_existing.quantity += stack_to_move.quantity
+              await session.delete(stack_to_move)
+              sids += [identical_existing.id]
+          else:
+              # No identical card at target location, just update location of the existing stack
+              stack_to_move.location = location_id
+              sids += [stack_to_move.id]
+    
+    await session.commit()
+    return sids
+
+
+
+async def move_stack_location(session: AsyncSession, stack_id: int, location_id: int | None = None) -> int | None:
+    """Move a single stack to a new location. Returns its scryfall_id (or None if it didn't exist).
+    """
+    result = await move_stacks_location(session, [stack_id], location_id)
+    return result[0] if result else None
 
 
 async def adjust_owned(session: AsyncSession, scryfall_id, delta: int) -> None:
@@ -216,7 +276,6 @@ async def adjust_owned(session: AsyncSession, scryfall_id, delta: int) -> None:
             CollectionCard.scryfall_id == _as_uuid(scryfall_id),
             func.lower(CollectionCard.finish) == "normal",
             CollectionCard.language == "en",
-            CollectionCard.binder_name.is_(None),
             CollectionCard.location.is_(None),
         ).order_by(CollectionCard.id)
     )).scalars().first()
@@ -227,40 +286,6 @@ async def adjust_owned(session: AsyncSession, scryfall_id, delta: int) -> None:
         await session.delete(stack)
     await session.commit()
 
-
-def _binder_filter(binder_name: str | None):
-    """Match stacks filed under a physical binder (empty/None = unfiled)."""
-    return CollectionCard.binder_name.is_(None) if not binder_name \
-        else CollectionCard.binder_name == binder_name
-
-
-async def _binder_stacks(session: AsyncSession, scryfall_id, binder_name: str | None):
-    return list((await session.execute(
-        select(CollectionCard).where(
-            CollectionCard.scryfall_id == _as_uuid(scryfall_id), _binder_filter(binder_name)
-        )
-    )).scalars().all())
-
-
-async def delete_binder_stacks(session: AsyncSession, scryfall_id, binder_name: str | None) -> int:
-    """Delete every owned stack of a printing filed under a physical binder (#14)."""
-    stacks = await _binder_stacks(session, scryfall_id, binder_name)
-    for stack in stacks:
-        await session.delete(stack)
-    await session.commit()
-    return len(stacks)
-
-
-async def move_binder_stacks(
-    session: AsyncSession, scryfall_id, binder_name: str | None, new_binder: str | None
-) -> int:
-    """Move a printing's stacks from one physical binder to another (or unfiled) (#14)."""
-    stacks = await _binder_stacks(session, scryfall_id, binder_name)
-    cleaned = _clean(new_binder)
-    for stack in stacks:
-        stack.binder_name = cleaned
-    await session.commit()
-    return len(stacks)
 
 
 async def edit_stack(
@@ -291,7 +316,6 @@ async def edit_stack(
             CollectionCard.finish == target_finish,
             CollectionCard.language == stack.language,
             _eq_or_null(CollectionCard.condition, stack.condition),
-            _eq_or_null(CollectionCard.binder_name, stack.binder_name),
             _eq_or_null(CollectionCard.location, stack.location),
         )
     )).scalar_one_or_none()
@@ -357,15 +381,6 @@ async def bulk_add_to_collection(
     return added
 
 
-async def bulk_add_tag(session: AsyncSession, scryfall_ids: list, tag: str) -> int:
-    """Add a tag to every owned stack of each printing. Returns how many printings were tagged."""
-    tagged = 0
-    for sid in scryfall_ids:
-        result = await add_card_tag(session, _as_uuid(sid), tag)
-        if result:
-            tagged += 1
-    return tagged
-
 
 # --- organize by color identity (#160) ----------------------------------------------------------
 
@@ -424,8 +439,68 @@ async def location_summary(session: AsyncSession) -> list[LocationSummary]:
     """Card counts per physical location (None = unfiled), for the locations page."""
     rows = (await session.execute(
         select(CollectionCard.location, func.count(),
-               func.sum(CollectionCard.quantity))
+                func.sum(CollectionCard.quantity))
         .group_by(CollectionCard.location)
         .order_by(CollectionCard.location.nulls_last())
     )).all()
     return [LocationSummary(loc, int(n), int(q or 0)) for loc, n, q in rows]
+
+
+
+async def pull_stack_from_existing_stack(session: AsyncSession, stack_id: int, num_cards: int = 1, new_location_id: int | None = None, expected_version: int | None = None) -> uuid.UUID | None:
+    """Pull num_cards card(s) from an existing stack into a new stack with all the same attributes.
+    
+    Returns the scryfall_id of the card that was pulled, or None if the operation failed.
+    """
+    original_stack = await session.get(CollectionCard, stack_id)
+    if original_stack is None:
+        return None
+    
+    _guard_version(original_stack, expected_version)
+    
+    # If we can't reduce quantity, or the old stack will be 0, nothing to do
+    if original_stack.quantity <= num_cards: return None
+        
+    # Create a new stack with all the same attributes but quantity of num_cards
+    new_stack = CollectionCard(
+        scryfall_id=original_stack.scryfall_id,
+        quantity=num_cards,
+        finish=original_stack.finish,
+        condition=original_stack.condition,
+        language=original_stack.language,
+        location=new_location_id,
+        purchase_price=original_stack.purchase_price,
+        source_format="manual",
+        added_at=original_stack.added_at,
+        tags=original_stack.tags
+    )
+    
+    session.add(new_stack)
+    await session.flush()  # Get the ID for version update
+    
+    # Update original stack quantity
+    original_stack.quantity -= num_cards
+    original_stack.version += 1
+    
+    await session.commit()
+    await session.refresh(new_stack)
+    
+    return new_stack.scryfall_id
+
+
+
+
+async def move_qty_from_existing_stack(session: AsyncSession, collection_card: CollectionCard, quantity: int, new_location_id: int | None) -> int:
+    """ Move arbitrary qty of cards in CollectionCard to the specified location. 
+    
+    Will attempt to move up to but no more than collection_card.quantity. Returns the number of cards in the new location, thus the number of cards actualyl moved.
+    """
+    # If the stack has more cards than we need, split it into the new location
+    if(collection_card.quantity > quantity):
+        await pull_stack_from_existing_stack(session, stack_id=collection_card.id, num_cards=quantity, new_location_id=new_location_id)
+        return quantity
+    # If the stack has as many or fewer cards than we need, move the whole stack
+    else:
+        remainder = collection_card.quantity - quantity
+        await move_stack_location(session, collection_card.id, location_id=new_location_id)
+        return collection_card.quantity

@@ -21,6 +21,7 @@ from src.routes import (
     api,
     backup,
     binders,
+    boxes,
     card,
     checklists,
     collection,
@@ -32,12 +33,14 @@ from src.routes import (
     mycollection,
     preferences,
     prices,
+    reusables,
     saved,
     search,
     sell,
     sets,
     share,
     stats,
+    sleeves,
     trade,
     upload,
     watch,
@@ -191,6 +194,9 @@ def create_app() -> FastAPI:
     app.include_router(lan.router)
     app.include_router(watch.router)
     app.include_router(ai.router)
+    app.include_router(sleeves.router)
+    app.include_router(reusables.router)
+    app.include_router(boxes.router)
 
     # Cached card images are served from the data volume.
     settings.image_cache_dir.mkdir(parents=True, exist_ok=True)

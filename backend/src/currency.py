@@ -26,7 +26,7 @@ CURRENCIES: dict[str, dict] = {
     "eur": {"code": "eur", "symbol": "€", "label": "EUR", "key": "eur", "foil": "eur_foil"},
     "gbp": {"code": "gbp", "symbol": "£", "label": "GBP",
             "key": "usd", "foil": "usd_foil", "convert": True},
-    "cad": {"code": "cad", "symbol": "CA$", "label": "CAD",
+    "cad": {"code": "cad", "symbol": "C$", "label": "CAD",
             "key": "usd", "foil": "usd_foil", "convert": True},
     "aud": {"code": "aud", "symbol": "A$", "label": "AUD",
             "key": "usd", "foil": "usd_foil", "convert": True},
@@ -41,7 +41,7 @@ def normalize(value: str | None) -> str | None:
 
 
 def info(currency: str | None) -> dict:
-    return CURRENCIES[normalize(currency) or DEFAULT]
+    return {**CURRENCIES[normalize(currency) or DEFAULT], 'usd_to_cur_rate': fx.rate(currency) or 1.0}
 
 
 def unit_price(prices: dict | None, finish: str, currency: str) -> float:

@@ -8,40 +8,23 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import Binder, BinderCard, Card, CollectionCard
+from src.collection_edit import move_stacks_location
+from src.models import Binder, CollectionCard, Location
+
+
 
 
 def _as_uuid(value) -> uuid.UUID:
     return value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))
 
 
-@dataclass
-class BinderSummary:
-    id: int
-    name: str
-    count: int
-
-
-async def _counts(session: AsyncSession) -> dict[int, int]:
-    rows = (await session.execute(
-        select(BinderCard.binder_id, func.count()).group_by(BinderCard.binder_id)
-    )).all()
-    return {bid: int(n) for bid, n in rows}
-
-
 async def all_binders(session: AsyncSession) -> list[Binder]:
     return list((await session.execute(select(Binder).order_by(Binder.name))).scalars().all())
-
-
-async def binder_summaries(session: AsyncSession) -> list[BinderSummary]:
-    """Every binder with its card count, for the Binders tab."""
-    counts = await _counts(session)
-    binders = (await session.execute(select(Binder).order_by(Binder.name))).scalars().all()
-    return [BinderSummary(b.id, b.name, counts.get(b.id, 0)) for b in binders]
 
 
 async def create_binder(session: AsyncSession, name: str) -> Binder | None:
@@ -57,16 +40,19 @@ async def create_binder(session: AsyncSession, name: str) -> Binder | None:
     return binder
 
 
-async def rename_binder(session: AsyncSession, binder_id: int, name: str) -> None:
-    binder = await session.get(Binder, binder_id)
+async def rename_binder(session: AsyncSession, binder: Binder, name: str) -> str:
     if binder and name.strip():
         binder.name = name.strip()[:128]
         await session.commit()
+    return binder.name
 
 
 async def delete_binder(session: AsyncSession, binder_id: int) -> None:
+    ''' When a binder is deleted, all the cards that point to that location are moved to the parent object (unfiled is the root). '''
     binder = await session.get(Binder, binder_id)
+    collection_cards = await get_all_binder_cards(session, binder_id)
     if binder:
+        await move_stacks_location(session, [c.id for c in collection_cards], None)
         await session.delete(binder)
         await session.commit()
 
@@ -118,19 +104,14 @@ async def bulk_add_to_binder(session: AsyncSession, binder_id: int, scryfall_ids
     return added
 
 
-async def remove_card(session: AsyncSession, binder_id: int, scryfall_id) -> None:
-    await session.execute(
-        delete(BinderCard).where(
-            BinderCard.binder_id == binder_id, BinderCard.scryfall_id == _as_uuid(scryfall_id)
-        )
-    )
-    await session.commit()
-
-
-async def binder_cards(session: AsyncSession, binder_id: int) -> list[Card]:
+async def get_all_binder_cards(session: AsyncSession, binder_id: int) -> list[CollectionCard]:
     return list((await session.execute(
-        select(Card).join(BinderCard, BinderCard.scryfall_id == Card.scryfall_id)
-        .where(BinderCard.binder_id == binder_id).order_by(Card.name)
+        select(CollectionCard)
+        .join(Location, CollectionCard.location == Location.id)
+        .where(
+            Location.type == "binder",
+            Location.foreign_id == binder_id
+        )
     )).scalars().all())
 
 

@@ -1,0 +1,8 @@
+{# This is a reusable edit name form fragment to be swapped in #}
+<input type="text" name="name" value="{{ placeholder }}" 
+        class="m-1 flex-1 min-w-0 rounded-full bg-surface-2 border border-edge px-3 py-2 text-sm"
+        hx-post="{{action}}"
+        hx-target="{{target}}"
+        hx-swap="innerHTML"
+        hx-trigger="blur, keyup[key=='Enter']"
+        autofocus />

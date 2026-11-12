@@ -52,6 +52,21 @@ async def remove_from_wishlist(session: AsyncSession, scryfall_id) -> None:
     await session.commit()
 
 
+async def adjust_wishlist_quantity(session: AsyncSession, scryfall_id, delta: int) -> None:
+    """Adjust the quantity of a wishlist item by delta."""
+    sid = _as_uuid(scryfall_id)
+    item = (
+        await session.execute(select(WishlistItem).where(WishlistItem.scryfall_id == sid))
+    ).scalar_one_or_none()
+    
+    if item is not None:
+        item.quantity += delta
+        if item.quantity <= 0:
+            # Remove the item if quantity becomes 0 or less
+            await session.delete(item)
+        await session.commit()
+
+
 async def is_wishlisted(session: AsyncSession, scryfall_id) -> bool:
     sid = _as_uuid(scryfall_id)
     return (
@@ -74,25 +89,41 @@ async def add_deck_missing(session: AsyncSession, deck: Deck) -> int:
 @dataclass
 class WishlistView:
     items: list[WishlistItem]
+    card_prices: dict[int, float]
     total_cost: float
     total_cards: int
 
 
 async def list_wishlist(
-    session: AsyncSession, currency: str = "usd", source: str = "tcgplayer"
+    session: AsyncSession, currency: str = "usd", source: str = "tcgplayer", sort_by: str = "name", sort_dir: str = "asc"
 ) -> WishlistView:
-    items = list(
-        (
-            await session.execute(
-                select(WishlistItem).order_by(WishlistItem.added_at.desc())
-            )
-        )
-        .scalars()
-        .all()
-    )
+    
+    # Apply sorting based on parameters
+    if sort_by == "updated_at":
+        order_by = WishlistItem.added_at
+    elif sort_by == "quantity":
+        order_by = WishlistItem.quantity
+    elif sort_by == "price":
+        order_by = Card.prices
+    else:
+        order_by = Card.name
+
+    if sort_dir == "desc":
+        order_by = order_by.desc()
+    else:
+        order_by = order_by.asc()
+            
+    items = list((await session.execute(
+        select(WishlistItem).join(Card, Card.scryfall_id == WishlistItem.scryfall_id).order_by(order_by)
+    )).scalars().all())
+
     total_cost = sum(
         item.quantity * unit_price(effective_prices(item.card, source), "normal", currency)
         for item in items
     )
+    
+    # Calculate individual item costs using the same logic as the total cost
+    card_prices = {item.id:unit_price(effective_prices(item.card, source), "normal", currency) for item in items}
+    
     total_cards = sum(item.quantity for item in items)
-    return WishlistView(items=items, total_cost=round(total_cost, 2), total_cards=total_cards)
+    return WishlistView(items=items, card_prices=card_prices, total_cost=round(total_cost, 2), total_cards=total_cards)

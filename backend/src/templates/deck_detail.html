@@ -47,7 +47,7 @@
 
     {# Coverage summary #}
     <section class="md:col-span-3 rounded-xl bg-surface ring-1 ring-edge p-4">
-      <div class="flex flex-col md:flex-row items-end justify-between gap-3 mb-2">
+      <div class="flex flex-row items-end justify-between gap-3 mb-2">
         <div>
           <div class="text-2xl font-bold">
             {% if cov.pct_own == 0 %}
@@ -58,16 +58,21 @@
             {{ cov.pct_own }}% owned, {{ cov.pct_in_deck }}% constructed
             {% endif %}
           </div>
-          <div class="text-sm text-muted">{{ cov.total_owned }} of {{ cov.total_needed }} cards owned, {{ cov.total_in_deck }} in deck</div>
+          <div class="text-xs text-muted">{{ cov.total_owned }} of {{ cov.total_needed }} cards owned, {{ cov.total_in_deck }} in deck</div>
+          {% if cov.missing_count %}
+          <div class="text-amber-500 font-medium md:hidden text-xs">{{ cov.missing_count }} missing
+            <span class="text-muted">({{ cov.unique_missing }} distinct)</span>
+          </div>
+          {% endif %}
         </div>
-        <div class="text-center">
+        <div class="text-center hidden md:block">
           {% if cov.missing_count %}
           <div class="text-amber-500 font-medium">{{ cov.missing_count }} missing
             <span class="text-muted">({{ cov.unique_missing }} distinct)</span>
           </div>
           {% if not read_only and cov.unique_missing > cov.unmatched %}
           <form method="post" action="/decks/{{ cov.deck.id }}/wishlist" class="mt-1">
-            <button type="submit" class="text-xs rounded bg-surface-2 hover:bg-surface-3 px-2 py-1">
+            <button type="submit" class="text-xs rounded-full bg-surface-2 hover:bg-surface-3 px-2 py-1">
               ☆ Add missing to wishlist
             </button>
           </form>
@@ -80,7 +85,14 @@
           <div class="text-xs text-muted">Deck value ({{ cur.label }})</div>
           <div class="text-2xl font-bold">{{ currency.format_and_decorate(stats.total_value, cur.symbol) }}</div>
           {% if cov.missing_count %}
-          {% if cov.missing_cost %}<div class="text-muted">≈ {{ currency.format_and_decorate(cov.missing_cost, cur.symbol) }} to complete</div>{% endif %}
+          {% if cov.missing_cost %}<div class="text-muted text-xs">≈ {{ currency.format_and_decorate(cov.missing_cost, cur.symbol) }} to complete</div>{% endif %}
+          {% endif %}
+          {% if cov.missing_count and not read_only and cov.unique_missing > cov.unmatched %}
+          <form method="post" action="/decks/{{ cov.deck.id }}/wishlist" class="mt-1 md:hidden">
+            <button type="submit" class="text-xs rounded-full bg-surface-2 hover:bg-surface-3 px-2 py-1">
+              ☆ Add missing to wishlist
+            </button>
+          </form>
           {% endif %}
         </div>
       </div>

@@ -396,6 +396,7 @@ class CardRow:
     special: bool = False           # art card / alter / other genuine non-standard copy
     language: str = "en"            # language the copy is played in (Scryfall code)
     finish: str = "normal"          # normal | foil | etched — drives this line's price
+    sibling_scryfall_cards: list[Card] | None = None  # List of all sibling scryfall cards in a combined stack (for combined coverage olny)
 
 
 async def _legalities_by_oracle(session: AsyncSession, oracles: set) -> dict:
@@ -689,15 +690,49 @@ async def deck_coverage(
     cov.main_combined = []
     cov.side_combined = []
     for result_store, source_board in [[cov.main_combined, cov.main], [cov.side_combined, cov.side]]:
-        for name in list({obj.name for obj in source_board}):
+        # Group cards by name to combine duplicates
+        name_groups = {}
+        for row in source_board:
+            if row.name not in name_groups:
+                name_groups[row.name] = []
+            name_groups[row.name].append(row)
         
-            rows_to_be_combined = [row for row in source_board if row.name == name]
+        # Process each group of cards with the same name
+        for name, rows_to_be_combined in name_groups.items():
+            # Create a combined card row from the first card in the group
             result_store.append(copy.deepcopy(rows_to_be_combined[0]))
-            for row_to_be_combined in rows_to_be_combined[1:]:
-                result_store[-1].quantity += row_to_be_combined.quantity
+            # Initialize stack coverage values for this combined card
+            result_store[-1].stack_coverage.in_deck = 0
+            result_store[-1].stack_coverage.owned = 0
+            result_store[-1].stack_coverage.swappable = 0
+            
+            # Store all individual scryfall cards for comparison in UI
+            result_store[-1].sibling_scryfall_cards = [row.scryfall_card for row in rows_to_be_combined if row.scryfall_card]
+            
+            # Calculate total quantity by summing all copies
+            combined_quantity = 0
+            for row_to_be_combined in rows_to_be_combined:
+                combined_quantity += row_to_be_combined.quantity
                 result_store[-1].stack_coverage.in_deck += row_to_be_combined.stack_coverage.in_deck
-                result_store[-1].stack_coverage.owned=0
-                result_store[-1].stack_coverage.swappable += row_to_be_combined.stack_coverage.owned+row_to_be_combined.stack_coverage.swappable
+            
+            # For owned, we sum all owned quantities across copies (since they are different printings)
+            owned_sum = 0
+            for row_to_be_combined in rows_to_be_combined:
+                owned_sum += row_to_be_combined.stack_coverage.owned
+            
+            result_store[-1].stack_coverage.owned = owned_sum
+            
+            # For swappable, we sum the owned + swappable of each stack and then take the maximum
+            # This gives us the total potential substitute cards available for this card name
+            max_total_potential = 0
+            for row_to_be_combined in rows_to_be_combined:
+                total_potential = row_to_be_combined.stack_coverage.owned + row_to_be_combined.stack_coverage.swappable
+                if total_potential > max_total_potential:
+                    max_total_potential = total_potential
+            
+            result_store[-1].stack_coverage.swappable = max_total_potential
+            # Set the final quantity for this combined card
+            result_store[-1].quantity = combined_quantity
 
     # Count total cards in deck location (those that are not in a deck location or are in this deck)
     cov.total_owned = 0

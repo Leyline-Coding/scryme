@@ -46,7 +46,15 @@
           {% endif %}
           {% if r.scryfall_card.set_code %}
           <span class="truncate shrink-[2] text-[10px] uppercase tracking-wide text-muted"
-                title="{{ r.scryfall_card.set_name }} · #{{ r.scryfall_card.collector_number }} · {{ r.language|upper }}">{{ r.scryfall_card.set_code }} {{ set_symbol(r.scryfall_card.set_code, r.scryfall_card.rarity) }} {{ r.language|upper }}</span>
+                title="{{ r.scryfall_card.set_name }} · #{{ r.scryfall_card.collector_number }} · {{ r.language|upper }}">
+                {% if r.sibling_scryfall_cards %}
+                {% for sibling_scryfall_card in r.sibling_scryfall_cards %}
+                {{ set_symbol(sibling_scryfall_card.set_code, sibling_scryfall_card.rarity) }}
+                {% endfor %}
+                {% else %}
+                {{ r.scryfall_card.set_code }} {{ set_symbol(r.scryfall_card.set_code, r.scryfall_card.rarity) }} {{ r.language|upper }}
+                {% endif %}
+          </span>
           {% endif %}
           {% if r.finish and r.finish != 'normal' %}
           <span class="truncate shrink-[3] rounded px-1 text-[10px] font-medium {% if r.finish == 'etched' %}etched-chip{% else %}foil-chip{% endif %}"
@@ -74,17 +82,18 @@
         <span class="shrink-0 text-xs text-muted">
             {% if not r.legality or r.legality in ('legal', 'restricted') %}
             <span class="rounded bg-{% if r.quantity > r.stack_coverage.in_deck %}amber{%else%}emerald{%endif%}-500/80 text-white text-[9px] px-1 py-0.5" title="Constructed{% if r.stack_coverage.in_deck!=0 %}/required{%endif%}">{% if r.stack_coverage.in_deck==0 %}0{% elif r.quantity > r.stack_coverage.in_deck %}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%else%}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%endif%}</span>
-            <span class="rounded bg-{% if r.quantity > (r.stack_coverage.in_deck+r.stack_coverage.owned) %}amber{%else%}emerald{%endif%}-700/80 text-white text-[9px] px-1 py-0.5" title="Exact copies available in collection{% if r.quantity > r.stack_coverage.in_deck %}/required{%endif%}">{{ r.stack_coverage.owned }}{% if r.quantity > r.stack_coverage.in_deck %}/{{ r.quantity }}{%endif%}</span>
+            <span class="rounded bg-{% if r.quantity > (r.stack_coverage.in_deck+r.stack_coverage.owned) %}amber{%else%}emerald{%endif%}-700/80 text-white text-[9px] px-1 py-0.5" x-show="cardView === 'distinct'" title="Exact copies available in collection{% if r.quantity > r.stack_coverage.in_deck %}/required{%endif%}">{{ r.stack_coverage.owned }}{% if r.quantity > r.stack_coverage.in_deck %}/{{ r.quantity }}{%endif%}</span>
             {% endif %}
             <span class="rounded bg-emerald-900/90 text-white text-[9px] px-1 py-0.5" title="Other swappable copies available in collection">{{ r.stack_coverage.swappable }}</span>
         </span>
         {% endif %}
         {% if not read_only and r.matched %}
         {% if r.stack_coverage.in_deck==0 and r.stack_coverage.owned==0 and r.stack_coverage.swappable > 0 %}
-        <button type="button" hx-post="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/quickswap" hx-swap="none" class="shrink-0 text-xs text-muted hover:text-accent tap" title="Swap this card for the next available card in the colelction that functionaly substitutes it (by Oracle ID)."><i class="fa-solid fa-retweet"></i></button>
+        <button type="button" hx-post="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/quickswap" hx-swap="none" x-show="cardView === 'distinct'" class="shrink-0 text-xs text-muted hover:text-accent tap" title="Swap this card for the next available card in the colelction that functionaly substitutes it (by Oracle ID)."><i class="fa-solid fa-retweet"></i></button>
         {% endif %}
         <button type="button" title="Change printing / mark as proxy"
                 class="shrink-0 text-xs text-muted hover:text-accent tap"
+                x-show="cardView === 'distinct'"
                 @click="editing = !editing"
                 hx-get="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/edit?format={{ cov.fmt or '' }}"
                 hx-target="#ed-{{ r.card_id }}" hx-swap="innerHTML"><i class="fa-solid fa-pen"></i></button>
@@ -134,7 +143,7 @@
       {% elif r.matched and r.stack_coverage.owned+r.stack_coverage.swappable >= r.quantity %}
       <span class="absolute bottom-1 right-1 rounded bg-amber-600/90 text-white text-[9px] px-1 py-0.5" title="Cards available for construction"><i class="fa-solid fa-check"></i></span>
       {% else %}
-      <span class="absolute bottom-1 right-1 rounded bg-red-600/90 text-white text-[9px] px-1 py-0.5" title="Missing cards"><i class="fa-solid fa-exclamation"></i></span>
+      <span class="absolute bottom-1 right-1 rounded bg-red-600/90 text-white text-[9px] px-2 py-0.5" title="Missing cards"><i class="fa-solid fa-exclamation"></i></span>
       {% endif %}
     </div>
     {% endfor %}
@@ -497,17 +506,27 @@
   {% endif %}
 
   <div x-data="deckView()" :class="(layout === 'grid') ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 'flex flex-col gap-6'">
-    <div class="md:col-span-2 flex items-center justify-end gap-1 -mb-6 mt-4 pr-3">
-      <span class="text-xs text-muted mr-1">View:</span>
-      <button type="button" @click="setView('list')"
-              :class="view === 'list' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
-              class="rounded px-2 py-0.5 text-xs">List</button>
-      <button type="button" @click="setView('grid')"
-              :class="view === 'grid' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
-              class="rounded px-2 py-0.5 text-xs">Grid</button>
-      <button type="button" @click="setView('grid-combined')"
-              :class="view === 'grid-combined' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
-              class="rounded px-2 py-0.5 text-xs">Grid (Combined)</button>
+    <div class="md:col-span-2 flex items-center justify-end gap-4 -mb-6 mt-4 pr-3">
+      <div class="flex items-center gap-1">
+        <span class="text-xs text-muted mr-1">View:</span>
+        <button type="button" @click="setView('list')"
+                :class="view === 'list' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
+                class="rounded px-2 py-0.5 text-xs">List</button>
+        <button type="button" @click="setView('grid')"
+                :class="view === 'grid' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
+                class="rounded px-2 py-0.5 text-xs">Grid</button>
+      </div>
+      
+      <div class="flex items-center gap-1">
+        <span class="text-xs text-muted mr-1">Cards:</span>
+        <button type="button" @click="setCardView('distinct')"
+                :class="cardView === 'distinct' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
+                class="rounded px-2 py-0.5 text-xs">Distinct</button>
+        <button type="button" @click="setCardView('combined')"
+                :class="cardView === 'combined' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
+                class="rounded px-2 py-0.5 text-xs">Combined</button>
+      </div>
+      
       {% if cov.side %}
       <div class="hidden md:block">
         <span class="mx-1 text-muted">|</span>
@@ -572,18 +591,20 @@
       
       {# Full-width mainboard: flow the (often long) list into columns on wide screens so it doesn't
          become one endless narrow column. Beside a sideboard it stays single-column. #}
-      <div x-show="view === 'list'" :class="layout === 'rows' || {{ 'true' if not cov.side else 'false' }} ? 'lg:columns-2 xl:columns-3 [column-gap:2rem]' : ''">{{ rows(cov.main) }}</div>
-      <div x-show="view === 'grid'" x-cloak>{{ grid(cov.main) }}</div>
-      <div x-show="view === 'grid-combined'" x-cloak>{{ grid(cov.main_combined) }}</div>
+      <div x-show="view === 'list' && cardView === 'distinct'" :class="layout === 'rows' || {{ 'true' if not cov.side else 'false' }} ? 'lg:columns-2 xl:columns-3 [column-gap:2rem]' : ''">{{ rows(cov.main) }}</div>
+      <div x-show="view === 'grid' && cardView === 'distinct'" x-cloak>{{ grid(cov.main) }}</div>
+      <div x-show="view === 'list' && cardView === 'combined'" x-cloak :class="layout === 'rows' || {{ 'true' if not cov.side else 'false' }} ? 'lg:columns-2 xl:columns-3 [column-gap:2rem]' : ''">{{ rows(cov.main_combined) }}</div>
+      <div x-show="view === 'grid' && cardView === 'combined'" x-cloak>{{ grid(cov.main_combined) }}</div>
     </section>
     {% if cov.side %}
     <section class="rounded-xl bg-surface ring-1 ring-edge p-4">
       <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
         Sideboard ({{ cov.side | map(attribute='quantity') | sum }})
       </h2>
-      <div x-show="view === 'list'">{{ rows(cov.side) }}</div>
-      <div x-show="view === 'grid'" x-cloak>{{ grid(cov.side) }}</div>
-      <div x-show="view === 'grid-combined'" x-cloak>{{ grid(cov.side_combined) }}</div>
+      <div x-show="view === 'list' && cardView === 'distinct'">{{ rows(cov.side) }}</div>
+      <div x-show="view === 'grid' && cardView === 'distinct'" x-cloak>{{ grid(cov.side) }}</div>
+      <div x-show="view === 'list' && cardView === 'combined'" x-cloak>{{ rows(cov.side_combined) }}</div>
+      <div x-show="view === 'grid' && cardView === 'combined'" x-cloak>{{ grid(cov.side_combined) }}</div>
     </section>
     {% endif %}
   </div>
@@ -592,8 +613,10 @@
     function deckView() {
       return {
          view: localStorage.getItem("scryme_deck_view") || "list",
+         cardView: localStorage.getItem("scryme_deck_card_view") || "distinct",
          layout: localStorage.getItem("scryme_deck_layout") || "rows",
          setView(v) { this.view = v; localStorage.setItem("scryme_deck_view", v); },
+         setCardView(v) { this.cardView = v; localStorage.setItem("scryme_deck_card_view", v); },
          setLayout(l) { this.layout = l; localStorage.setItem("scryme_deck_layout", l); },
 
       };

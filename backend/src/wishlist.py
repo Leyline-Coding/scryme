@@ -52,6 +52,21 @@ async def remove_from_wishlist(session: AsyncSession, scryfall_id) -> None:
     await session.commit()
 
 
+async def adjust_wishlist_quantity(session: AsyncSession, scryfall_id, delta: int) -> None:
+    """Adjust the quantity of a wishlist item by delta."""
+    sid = _as_uuid(scryfall_id)
+    item = (
+        await session.execute(select(WishlistItem).where(WishlistItem.scryfall_id == sid))
+    ).scalar_one_or_none()
+    
+    if item is not None:
+        item.quantity += delta
+        if item.quantity <= 0:
+            # Remove the item if quantity becomes 0 or less
+            await session.delete(item)
+        await session.commit()
+
+
 async def is_wishlisted(session: AsyncSession, scryfall_id) -> bool:
     sid = _as_uuid(scryfall_id)
     return (

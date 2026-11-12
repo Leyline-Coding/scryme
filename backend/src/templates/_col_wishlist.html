@@ -42,7 +42,19 @@
 
       <div class="tabular-nums text-right text-sm text-muted shrink-0 flex flex-row items-center justify-end gap-4 ">
         {% if view_obj.card_prices[item.id] %}<span class="w-16 inline-block">{{ currency.format_and_decorate((view_obj.card_prices[item.id] | float), cur.symbol) }}</span>{% endif %}
-        <span class="w-16 inline-block">×{{ item.quantity }}</span>
+        <div class="inline-flex items-center rounded-full bg-surface-2 overflow-hidden">
+          <form method="post" action="/wishlist/adjust" class="inline">
+            <input type="hidden" name="scryfall_id" value="{{ item.scryfall_id }}" />
+            <input type="hidden" name="delta" value="-1" />
+            <button type="submit" title="Remove one" class="px-2 py-1.5 hover:bg-surface-3">−</button>
+          </form>
+          <span class="px-1.5 tabular-nums">{{ item.quantity }}</span>
+          <form method="post" action="/wishlist/adjust" class="inline">
+            <input type="hidden" name="scryfall_id" value="{{ item.scryfall_id }}" />
+            <input type="hidden" name="delta" value="1" />
+            <button type="submit" title="Add one" class="px-2 py-1.5 hover:bg-surface-3">+</button>
+          </form>
+        </div>
         {% if view_obj.card_prices[item.id] %}<span class="w-16 inline-block">{{ currency.format_and_decorate(item.quantity * (view_obj.card_prices[item.id] | float), cur.symbol) }}</span>{% endif %}
       </div>
       {% if not read_only %}

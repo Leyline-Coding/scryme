@@ -155,7 +155,7 @@
         {% for sleeve in deck.sleeves %}
           <div class="flex items-center gap-2 mb-2">
             {% if sleeve.image %}
-              <img src="/sleeves/{{ sleeve.image }}" alt="{{ sleeve.name or 'Sleeve' }}" 
+              <img src="/sleeves/{{ sleeve.id }}/image" alt="{{ sleeve.name or 'Sleeve' }}" 
                   loading="lazy" class="w-12 h-16 object-cover rounded border" />
             {% else %}
               <div style="background-color: {{ sleeve.color }}; width: 48px; height: 64px; 

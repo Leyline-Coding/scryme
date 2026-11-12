@@ -83,7 +83,7 @@ async def create_sleeve(
 async def remove_deck_sleeve(
     sleeve_id: int,
     session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
+) -> Response:
     """Remove sleeve association from a deck."""
     _guard_writable()
     sleeve = await session.get(Sleeve, sleeve_id)
@@ -101,7 +101,7 @@ async def delete_sleeve(
     request: Request,
     sleeve_id: int,
     session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
+) -> RedirectResponse:
     """Delete a sleeve."""
     _guard_writable()
     
@@ -121,11 +121,17 @@ async def delete_sleeve(
     return RedirectResponse(url="/collection/sleeves", status_code=303)
 
 
-@router.get("/sleeves/{filename}")
-async def serve_sleeve_image(filename: str) -> FileResponse:
+@router.get("/sleeves/{sleeve_id}/image")
+async def serve_sleeve_image(
+    sleeve_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> FileResponse:
     """Serve a sleeve image."""
-    path = _upload_path() / filename
+    base_path = _upload_path().resolve()
+    sleeve = await session.get(Sleeve, sleeve_id)
+    if not sleeve or not sleeve.image:
+        raise HTTPException(status_code=404, detail="Sleeve not found.")
+    path = (base_path / Path(sleeve.image)).resolve()
     if not path.exists():
         raise HTTPException(status_code=404, detail="Sleeve image not found.")
-    
     return FileResponse(path)

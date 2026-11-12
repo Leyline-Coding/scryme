@@ -24,7 +24,7 @@
     {% if sleeve %}
     <a href="/decks/{{ deck.id }}"" class="shrink-0">
       {% if sleeve.image %}
-      <img src="/sleeves/{{ sleeve.image }}" alt="{{sleeve.name}}" loading="lazy" class="w-10 aspect-[5/7] object-cover rounded">
+      <img src="/sleeves/{{ sleeve.id }}/image" alt="{{sleeve.name}}" loading="lazy" class="w-10 aspect-[5/7] object-cover rounded">
       {% elif sleeve.color %}
       <div class="w-10 aspect-[5/7] object-cover rounded" style="background-color: {{ sleeve.color }}"></div>
       {% endif %}

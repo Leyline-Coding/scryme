@@ -1,7 +1,7 @@
 {# Inline editor for a deck line: choose the printing + mark it proxy/special.
    Loaded via HTMX into #ed-<card_id>; saving refreshes the whole deck page (HX-Redirect). #}
 <form hx-post="/decks/{{ deck_id }}/card/{{ card_id }}" hx-swap="none"
-      class="rounded-xl bg-surface-2 p-3 text-sm relative">
+      class="rounded-xl bg-surface-2 mx-2 my-1.5 p-3 text-sm relative">
   <button type="button" class="text-muted hover:text-fg absolute top-1.5 right-2" @click="editing = false"><i class="fa-solid fa-circle-xmark"></i></button>
   <div class="flex flex-wrap items-center">
     <input type="hidden" name="format" value="{{ fmt }}">

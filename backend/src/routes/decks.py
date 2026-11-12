@@ -54,12 +54,13 @@ from src.decks import (
 from src.llm import get_config
 from src.locations import find_or_create_locations, find_or_create_grouped_locations
 from src.models import Card, CollectionCard, Deck, DeckCard, DeckVersion, Location, Sleeve
-from src.pricing import get_price_source
+from src.pricing import get_price_source, resolve_prices
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
 from src.share import DECK, links_for, revoke_links_for
 from src.templating import templates
 from src.wishlist import add_deck_missing
+from src.currency import unit_price
 
 router = APIRouter(tags=["decks"])
 
@@ -273,6 +274,8 @@ async def view_deck(
     request: Request,
     deck_id: int,
     format: str = "",
+    sort_by: str = "name",
+    sort_dir: str = "asc",
     session: AsyncSession = Depends(get_session),
     shared: str = "",
 ) -> HTMLResponse:
@@ -288,6 +291,49 @@ async def view_deck(
     # Get locations for the location picker
     locations = await find_or_create_locations(session, binders=True, boxes=True, decks=True)
     
+    # Normalize sort parameters
+    sort_by = sort_by.lower() if sort_by else "name"
+    sort_dir = sort_dir.lower() if sort_dir else "asc"
+    
+    # Apply sorting to the deck cards
+    if sort_by == "quantity":
+        # Sort by quantity (descending by default)
+        coverage.main.sort(key=lambda x: x.quantity, reverse=(sort_dir == "desc"))
+        coverage.side.sort(key=lambda x: x.quantity, reverse=(sort_dir == "desc"))
+        coverage.main_combined.sort(key=lambda x: x.quantity, reverse=(sort_dir == "desc"))
+        coverage.side_combined.sort(key=lambda x: x.quantity, reverse=(sort_dir == "desc"))
+    elif sort_by == "price":
+        # Sort by price (descending by default)
+        def _get_card_price(card_row):
+            if card_row.scryfall_card and card_row.scryfall_card.prices:
+                return unit_price(resolve_prices(card_row.scryfall_card.prices, card_row.scryfall_card.market_prices, source), card_row.finish, currency)
+            return 0.0
+        
+        coverage.main.sort(key=lambda x: _get_card_price(x), reverse=(sort_dir == "desc"))
+        coverage.side.sort(key=lambda x: _get_card_price(x), reverse=(sort_dir == "desc"))
+        coverage.main_combined.sort(key=lambda x: _get_card_price(x), reverse=(sort_dir == "desc"))
+        coverage.side_combined.sort(key=lambda x: _get_card_price(x), reverse=(sort_dir == "desc"))
+    else:  # default to name
+        # Sort by name (ascending by default)
+        coverage.main.sort(key=lambda x: x.name.lower(), reverse=(sort_dir == "desc"))
+        coverage.side.sort(key=lambda x: x.name.lower(), reverse=(sort_dir == "desc"))
+        coverage.main_combined.sort(key=lambda x: x.name.lower(), reverse=(sort_dir == "desc"))
+        coverage.side_combined.sort(key=lambda x: x.name.lower(), reverse=(sort_dir == "desc"))
+    
+    # Check if this is an HTMX request for just the deck boards partial
+    is_htmx = request.headers.get("HX-Request") == "true"
+    if is_htmx:
+        return templates.TemplateResponse(
+            request,
+            "_deck_boards.html",
+            {
+                "cov": coverage,
+                "deck": deck,
+                "sort_by": sort_by,
+                "sort_dir": sort_dir,
+                "read_only": get_settings().read_only,
+            },
+        )
     
     return templates.TemplateResponse(
         request,
@@ -310,6 +356,8 @@ async def view_deck(
             "share_new": shared,
             "ai_ready": (await get_config(session)).ready,
             "locations": locations,
+            "sort_by": sort_by,
+            "sort_dir": sort_dir,
         },
     )
 

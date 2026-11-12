@@ -124,7 +124,14 @@ async def delete_sleeve(
 @router.get("/sleeves/{filename}")
 async def serve_sleeve_image(filename: str) -> FileResponse:
     """Serve a sleeve image."""
-    path = _upload_path() / filename
+    base_path = _upload_path().resolve()
+    path = (base_path / filename).resolve()
+
+    try:
+        path.relative_to(base_path)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Sleeve image not found.")
+
     if not path.exists():
         raise HTTPException(status_code=404, detail="Sleeve image not found.")
     

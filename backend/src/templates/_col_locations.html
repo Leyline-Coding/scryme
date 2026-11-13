@@ -55,13 +55,12 @@
       onclick='window.location.href="/search?q={{ ('loc:\"box:' ~ b.name ~ '\"') | urlencode }}&scope=collection"'>
       <div class="flex-1">
         <div class="font-medium truncate">
-          <i class="fa-solid fa-box"></i> <span id="box-name"
-                  onclick="event.stopPropagation();">{{ b.name }}</span>
+          <i class="fa-solid fa-box"></i> <span id="box-name-{{b.id}}" onclick="event.stopPropagation();">{{ b.name }}</span>
           {% if not read_only %}
           <button type="button" 
                   hx-post="/edit-name"
-                  hx-vals='{"placeholder": "{{b.name}}", "action": "/box/{{ b.id }}/rename", "target": "#box-name"}'
-                  hx-target="#box-name"
+                  hx-vals='{"placeholder": "{{b.name}}", "action": "/box/{{ b.id }}/rename", "target": "#box-name-{{b.id}}"}'
+                  hx-target="#box-name-{{b.id}}"
                   hx-swap="innerHTML"
                   hx-trigger="click"
                   class="ml-2 text-muted hover:text-accent"

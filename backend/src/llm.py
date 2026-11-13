@@ -27,7 +27,7 @@ from src.config import get_settings
 from src.deck_builder import classify_role
 from src.deck_synergy import DeckProfile, card_synergy, deck_themes, deck_tribes
 from src.decks import deck_coverage, deck_stats
-from src.models import Card, CollectionCard, Deck, LLMSettings
+from src.models import Card, CollectionCard, Deck, DeckChatMessage, LLMSettings
 from src.search import SearchError, build_search
 
 _UA = f"scryme/{__version__} (+https://github.com/Leyline-Coding/scryme)"
@@ -813,6 +813,20 @@ async def plan_upgrades(
 
 # --- deck coaching chat (#172) ------------------------------------------------------------------
 
+
+async def _deck_chat_history(session: AsyncSession, deck_id: int) -> tuple[DeckChatMessage | None, list[DeckChatMessage]]:
+    deck_messages = list((await session.execute(
+        select(DeckChatMessage).where(DeckChatMessage.deck_id == deck_id)
+        .order_by(DeckChatMessage.id)
+    )).scalars().all())
+
+    if deck_messages and hasattr(deck_messages[-1], "role") and deck_messages[-1].role=="user":
+        last_user_message = deck_messages.pop()
+        return (last_user_message, deck_messages)
+    
+    return (None, deck_messages)
+
+
 async def deck_chat(
     session: AsyncSession,
     client: ChatClient,
@@ -868,3 +882,37 @@ async def answer_card_question(
         {"role": "user", "content": f"{context}\n\nQuestion: {question}"},
     ]
     return await _chat_nonempty(client, messages, retries=2, temperature=0.3, max_tokens=1500)
+
+
+
+
+
+
+
+# --- Background Workers ---------------------------------------------------------------------------
+
+
+
+async def ai_deck_chat_response_worker(
+    session: AsyncSession,
+    deck_id: int,
+    include_deck: bool,
+    include_collection: bool
+) -> int | None:
+    """Start a background task to process the AI response for a user message."""
+    deck = await session.get(Deck, deck_id)
+    if deck is None: return None
+    cfg = await get_config(session)
+    last_user_message, prior = await _deck_chat_history(session, deck_id)
+    if not last_user_message: return False
+    history = [{"role": m.role, "content": m.content} for m in prior]
+    try:
+        reply = await deck_chat(session, ChatClient(cfg), deck if include_deck else None, history, last_user_message.content, interfaceContext='deck_building')
+    except (httpx.HTTPError, KeyError, IndexError, ValueError):
+        reply = ""
+    # Immediately add the ai's message to the chat log
+    deck_message = DeckChatMessage(deck_id=deck_id, role="assistant",
+                                content=reply or "(the AI endpoint didn't respond — try again)")
+    session.add(deck_message)
+    await session.commit()
+    return deck_message.id

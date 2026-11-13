@@ -6,19 +6,20 @@ analyze a deck and suggest cards to add from the owned collection, grounded in r
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import httpx
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.background_service import queue_service
 from src.config import get_settings
 from src.db import get_session
 from src.llm import (
     ChatClient,
     answer_card_question,
     build_from_prompt,
-    deck_chat,
     find_commanders,
     get_config,
     plan_upgrades,
@@ -229,21 +230,41 @@ async def deck_ai_modal_chat(
     if not cfg.ready or not text:
         # Return just the chat log without adding new message
         return templates.TemplateResponse(
-            request, "_ai_chat_log.html", {"messages": await _deck_chat_history(session, deck_id), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER})
-    prior = await _deck_chat_history(session, deck_id)
-    history = [{"role": m.role, "content": m.content} for m in prior]
-    try:
-        reply = await deck_chat(session, ChatClient(cfg), deck if include_deck else None, history, text, interfaceContext='deck_building')
-    except (httpx.HTTPError, KeyError, IndexError, ValueError):
-        reply = ""
+            request, "_ai_chat_log.html", {"messages": await _deck_chat_history(session, deck_id), 'now': datetime.now(timezone.utc), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER})
     
-    session.add(DeckChatMessage(deck_id=deck_id, role="user", content=text))
-    session.add(DeckChatMessage(deck_id=deck_id, role="assistant",
-                                content=reply or "(the AI endpoint didn't respond — try again)"))
+    # Immediately add the user's message to the chat log
+    new_message = DeckChatMessage(deck_id=deck_id, role="user", content=text)
+    session.add(new_message)
     await session.commit()
     
-    return templates.TemplateResponse(
-        request, "_ai_chat_log.html", {"messages": await _deck_chat_history(session, deck_id), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER})
+    # Start background processing task for the AI response
+    # We pass the text as a unique identifier for this task
+    queue_service(f"deck_{deck.id}_chat_{new_message.id}", 'ai_chat', deck.id, include_deck, include_collection)
+    
+    # Return updated chat log with user message and temporary assistant message
+    return templates.TemplateResponse( request, "_ai_chat_log.html", {"messages": await _deck_chat_history(session, deck_id), 'now': datetime.now(timezone.utc), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER})
+
+
+@router.get("/decks/{deck_id}/ai/chat/status", response_class=HTMLResponse)
+async def deck_ai_modal_chat_status(
+    request: Request,
+    deck_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Check the status of the last AI message for a deck."""
+    # This endpoint is meant to be polled by frontend
+    # Returns information about whether the last assistant message is ready
+    messages = await _deck_chat_history(session, deck_id)
+    if not messages: raise HTTPException(status_code=286, detail="No messages")
+    
+    # Check if the last message is an assistant message
+    if messages[-1].role == "assistant":
+        # Assistant message
+        return templates.TemplateResponse( request, "_ai_chat_log.html", {"messages": messages, 'now': datetime.now(timezone.utc), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER})
+        #HTMLResponse(status_code=286, content="Response complete")
+    else:
+        # Still processing
+        return HTMLResponse(status_code=202, content="Processing...")
 
 
 @router.post("/decks/{deck_id}/ai/modal/open", response_class=HTMLResponse)
@@ -255,19 +276,19 @@ async def deck_chat_modal_open(
     cfg = await get_config(session)
     return templates.TemplateResponse(
         request, "_ai_chat_modal.html",
-        {"title": 'AI Deck Assistant', "deck": deck, "messages": await _deck_chat_history(session, deck_id), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER, "ai_ready": cfg.ready, 'include_deck': True},
+        {"title": '✨ AI Deck Assistant', "deck": deck, "messages": await _deck_chat_history(session, deck_id), 'now': datetime.now(timezone.utc), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER, "ai_ready": cfg.ready, 'include_deck': True},
     )
 
 
-@router.post("/decks/{deck_id}/ai/modal/clear", response_class=HTMLResponse)
-async def deck_ai_modal_clear(
+@router.post("/decks/{deck_id}/ai/chat/clear", response_class=HTMLResponse)
+async def deck_ai_chat_clear(
     request: Request, deck_id: int, session: AsyncSession = Depends(get_session)
 ) -> HTMLResponse:
-    """Clear chat history in the AI modal."""
+    """Clear chat history in the AI chat."""
     await _load_deck(session, deck_id)
     await session.execute(delete(DeckChatMessage).where(DeckChatMessage.deck_id == deck_id))
     await session.commit()
-    return templates.TemplateResponse(request, "_ai_chat_log.html", {"messages": [], 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER})
+    return templates.TemplateResponse(request, "_ai_chat_log.html", {"messages": [], 'now': datetime.now(timezone.utc), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER})
 
 
 @router.post("/card/{scryfall_id}/ask", response_class=HTMLResponse)

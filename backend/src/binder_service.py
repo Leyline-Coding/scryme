@@ -113,11 +113,3 @@ async def get_all_binder_cards(session: AsyncSession, binder_id: int) -> list[Co
             Location.foreign_id == binder_id
         )
     )).scalars().all())
-
-
-async def binders_for_card(session: AsyncSession, scryfall_id) -> set[int]:
-    """Ids of binders that already contain this printing (to check/uncheck in the add UI)."""
-    rows = (await session.execute(
-        select(BinderCard.binder_id).where(BinderCard.scryfall_id == _as_uuid(scryfall_id))
-    )).scalars().all()
-    return set(rows)

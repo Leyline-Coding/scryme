@@ -6,8 +6,8 @@ a ``_col_<tab>`` partial inside the shared shell. The old per-feature routes red
 """
 
 from __future__ import annotations
-from datetime import datetime, timezone
 
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select, desc, asc

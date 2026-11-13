@@ -10,7 +10,7 @@ from __future__ import annotations
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import Box, CollectionCard
+from src.models import Box, CollectionCard, Location
 
 
 
@@ -40,10 +40,13 @@ async def rename_box(session: AsyncSession, box: Box, name: str) -> str:
 async def delete_box(session: AsyncSession, box_id: int) -> None:
     """Delete the registry entry and unfile its stacks (clear their location)."""
     box = await session.get(Box, box_id)
-    if not box:
-        return
+    if not box: return
+    location = (await session.execute(select(Location).where(Location.type=="box" and Location.foreign_id==box.id))).scalars().first()
+    if not location: return
     await session.execute(
-        update(CollectionCard).where(CollectionCard.location == box.name).values(location=None)
+        update(CollectionCard)
+        .where(CollectionCard.location == location.id)
+        .values(location=None)
     )
     await session.delete(box)
     await session.commit()

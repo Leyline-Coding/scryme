@@ -1,12 +1,14 @@
 {# Deck coaching chat modal (#172). #}
-<dialogue class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onclick="if (event.target === this) this.remove()" onkeydown="if(event.key==='Escape') this.remove()" >
+<dialogue class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onclick="if (event.target === this) this.remove()" onkeydown="if(event.key==='Escape') this.remove()" x-data="{ chat_thinking: {%if messages and (messages | last).role=='user' %}true{%else%}false{%endif%}, message: '' }">
   <div class="bg-surface rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-edge">
     <div class="flex items-center justify-between px-4 py-2 border-b border-edge">
       <h3 class="font-semibold text-lg">{{title}}</h3>
-      <form hx-post="/decks/{{ deck.id }}/chat/clear" 
+      <form hx-post="/decks/{{ deck.id }}/ai/chat/clear" 
             hx-target="#chat-log"
             hx-swap="innerHTML"
-            class="ml-auto">
+            class="ml-auto"
+            @htmx:after-request="chat_thinking = false"
+            >
         <button type="submit" class="text-xs text-muted hover:text-fg">Clear chat</button>
       </form>
       <div class="flex justify-end gap-2">
@@ -18,11 +20,12 @@
         </button>
       </div>
     </div>
-    
+
     <form hx-post="/decks/{{ deck.id }}/ai/chat" 
           hx-target="#chat-log"
-          hx-swap="beforeend"
-          hx-indicator="#chat-spin">
+          hx-swap="innerhtml"
+          @htmx:after-swap="if(event.detail.successful && event.detail.xhr.status !== 286 && event.detail.xhr.status !== 202) { message = ''; chat_thinking = ($el.querySelector('input[type=hidden]')?.value === 'True')}"
+          >
 
       <div class="flex-1 overflow-y-auto p-4 max-h-[500px] min-h-[200px] flex flex-col-reverse overscroll-contain">
         <div id="chat-log" class="space-y-3 flex flex-col">
@@ -30,10 +33,24 @@
         </div>
       </div>
 
-      <div id="chat-spin" class="htmx-indicator htmx-indicator-expand text-muted px-5 pb-4"><span class="loading-animator">thinking</span></div>
+
+      <div id="taskPoller"
+          hx-get="/decks/{{deck.id}}/ai/chat/status" 
+          hx-trigger="every 2s [taskPoller.dataset.thinking === 'true']"
+          hx-swap="none"
+          :data-thinking="chat_thinking"
+          @htmx:afterRequest="if ($event.detail.xhr.status !== 202) {
+            chat_thinking = false;
+          }"
+          hx-on::after-request="if (event.detail.xhr.status === 200) { htmx.swap('#chat-log', event.detail.xhr.responseText, { swapStyle: 'innerHTML' }); }"
+          class="text-muted px-5 pb-4"
+          >
+        <span x-show="chat_thinking" x-cloack class="loading-animator">thinking</span>
+      </div>
+
 
       <div class="p-4 border-t border-edge flex gap-2">
-        <input type="text" name="message" autofocus autocomplete="off"
+        <input type="text" name="message" x-model="message" autofocus autocomplete="off"
               placeholder="Ask the assistant..."
               class="flex-1 min-w-0 rounded-full bg-surface-2 px-4 py-2 text-sm border border-edge hover:border-accent" />
         <button type="submit"
@@ -42,18 +59,18 @@
 
 
       <div class="text-muted px-5 pb-4 flex flex-wrap gap-x-2 items-center">
-        <span class="">Inclusions:</span>
+        <span class="">Share:</span>
 
         <label class="inline-flex items-center cursor-pointer">
           <input type="checkbox" name="include_deck" value="1" {% if include_deck %}checked{% endif %} class="sr-only peer">
           <div class="relative w-9 h-5 rounded-full border border-edge hover:border-accent bg-surface-2 peer-checked:bg-accent peer-checked:after:translate-x-full peer-checked:after:border-buffer after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
-          <span class="select-none ml-1 text-sm font-medium text-heading" title="Give AI access to details about this deck including its description, card list, and any derived statistics about the cards.">This Deck</span>
+          <span class="select-none ml-1 text-sm font-medium text-heading" title="Give AI access to details about this deck including its description, card list, and any derived statistics about the cards.">This Deck Details & Cards</span>
         </label>
 
         <label class="inline-flex items-center cursor-pointer">
           <input type="checkbox" name="include_collection" value="1" {% if include_collection %}checked{% endif %} class="sr-only peer">
           <div class="relative w-9 h-5 rounded-full border border-edge hover:border-accent bg-surface-2 peer-checked:bg-accent peer-checked:after:translate-x-full peer-checked:after:border-buffer after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
-          <span class="select-none ml-1 text-sm font-medium text-heading" title="Give AI access to the list of ALL cards in the collection which are not currently in a Deck.">Available in Collection</span>
+          <span class="select-none ml-1 text-sm font-medium text-heading" title="Give AI access to the list of ALL cards in the collection which are not currently in a Deck.">All cards available in collection</span>
         </label>
 
       </div>

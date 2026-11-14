@@ -12,13 +12,11 @@ from src.deck_synergy import deck_themes
 from src.decks import create_deck
 from src.llm import (
     ChatClient,
-    DeckContext,
     LLMConfig,
     _clean_query,
     _parse_decklines,
     _parse_named_reasons,
     _parse_suggestions,
-    _scan_deck_cards,
     _validate_upgrade,
     answer_card_question,
     build_from_prompt,
@@ -27,9 +25,9 @@ from src.llm import (
     find_commanders,
     has_config_row,
     save_config,
-    suggest_from_collection,
 )
 from src.llm import test_connection as check_connection
+from src.llm_card_analysis import DeckContext
 from src.models import Card, CollectionCard
 from src.scryfall.mapping import card_to_columns
 

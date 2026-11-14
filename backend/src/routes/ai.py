@@ -24,7 +24,6 @@ from src.llm import (
     get_config,
     plan_upgrades,
     save_config,
-    suggest_from_collection,
     test_connection,
 )
 from src.models import Card, Deck, DeckChatMessage
@@ -89,25 +88,6 @@ async def _load_deck(session: AsyncSession, deck_id: int) -> Deck:
     return deck
 
 
-@router.post("/decks/{deck_id}/suggest", response_class=HTMLResponse)
-async def deck_suggest(
-    request: Request, deck_id: int, session: AsyncSession = Depends(get_session)
-) -> HTMLResponse:
-    deck = await _load_deck(session, deck_id)
-    cfg = await get_config(session)
-    if not cfg.ready:
-        return templates.TemplateResponse(
-            request, _DECK_AI_ERROR_TMPL, {"message": _NOT_CONFIGURED})
-    try:
-        result = await suggest_from_collection(session, deck, ChatClient(cfg))
-    except (httpx.HTTPError, KeyError, IndexError, ValueError):
-        return templates.TemplateResponse(
-            request, _DECK_AI_ERROR_TMPL, {"message": _UNREACHABLE})
-    if result.empty:
-        return templates.TemplateResponse(request, _DECK_AI_ERROR_TMPL, {"message": _EMPTY})
-    return templates.TemplateResponse(request, "_deck_suggest.html", {"result": result})
-
-
 @router.post("/decks/build/prompt", response_class=HTMLResponse)
 async def build_prompt(
     request: Request, prompt: str = Form(""), session: AsyncSession = Depends(get_session)
@@ -170,26 +150,6 @@ async def _deck_chat_history(session: AsyncSession, deck_id: int) -> list[DeckCh
 
 # --- deck AI modal  -----------------------------------------------------------------------
 '''
-
-
-@router.post("/decks/{deck_id}/ai/suggest", response_class=HTMLResponse)
-async def deck_ai_suggest(
-    request: Request, deck_id: int, session: AsyncSession = Depends(get_session)
-) -> HTMLResponse:
-    """Suggest cards from collection via AI."""
-    deck = await _load_deck(session, deck_id)
-    cfg = await get_config(session)
-    if not cfg.ready:
-        return templates.TemplateResponse(
-            request, _DECK_AI_ERROR_TMPL, {"message": _NOT_CONFIGURED})
-    try:
-        result = await suggest_from_collection(session, deck, ChatClient(cfg))
-    except (httpx.HTTPError, KeyError, IndexError, ValueError):
-        return templates.TemplateResponse(
-            request, _DECK_AI_ERROR_TMPL, {"message": _UNREACHABLE})
-    if result.empty:
-        return templates.TemplateResponse(request, _DECK_AI_ERROR_TMPL, {"message": _EMPTY})
-    return templates.TemplateResponse(request, "_deck_suggest.html", {"result": result})
 
 
 @router.post("/decks/{deck_id}/ai/upgrade", response_class=HTMLResponse)

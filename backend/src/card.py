@@ -47,7 +47,11 @@ async def card_name_text_search_matcher() -> None:
 
     async with SessionLocal() as session:
       if(not (await get_config(session)).ready): return None
-      items = (await session.scalars(select(Card).where(and_(Card.type_line != "Card", Card.type_line.not_ilike("%token%"))))).all()
+      items = (await session.execute(
+          select(Card.name, Card.scryfall_id)
+          .where(and_(Card.type_line != "Card", Card.type_line.not_ilike("%token%")))
+          .distinct(Card.name)
+        )).all()
       if(len(items)==0): return None
       automaton = ahocorasick.Automaton()
       for item in items:

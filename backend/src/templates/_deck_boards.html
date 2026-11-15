@@ -184,8 +184,8 @@
         <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
       </h2>
 
-      <div x-data="{ deck_legality_inspector_open: false}" class="sm:relative action-scope-collection">
-        <button @click="deck_legality_inspector_open = !deck_legality_inspector_open" type="button" class="rounded-full bg-surface-2  border border-edge hover:border-accent px-2.5 py-1 text-sm font-medium">Inspect Deck Legality Details ▾</button>
+      <div x-data="{ deck_legality_inspector_open: false}" class="sm:relative action-scope-collection mb-2 ">
+        <button @click="deck_legality_inspector_open = !deck_legality_inspector_open" type="button" class="rounded-full ml-2 text-muted bg-surface border border-edge px-3 py-1 text-xs font-medium hover:border-accent whitespace-nowrap"><span class="hidden sm:inline">Inspect Deck </span>Legality ▾</button>
         <div x-show="deck_legality_inspector_open" @click.outside="deck_legality_inspector_open = false" x-transition="" style="display: none" class="absolute right-0 mt-2 w-64 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
           <div class="px-3 py-1.5 text-xs font-medium text-muted">Formats</div>
           {% for f in formats %}

@@ -22,10 +22,16 @@ Every mutation bumps ``version``, so an absolute edit notices a relative one tha
 
 from __future__ import annotations
 
+import re
+from markupsafe import Markup, escape
+import ahocorasick
 
+from sqlalchemy import select, and_
 
+from src.db import SessionLocal
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
+from src.llm import get_config
 from src.models import Card
 
 _cache = ImageCache()
@@ -35,3 +41,56 @@ def _image(card: Card, size: str = "normal") -> str:
     if size == "normal" and _cache.is_cached(sid):
         return _cache.url_path(sid)
     return cdn_image_url(card.raw, size) or cdn_image_url(card.raw) or ""
+
+
+async def card_name_text_search_matcher() -> None:
+
+    async with SessionLocal() as session:
+      if(not (await get_config(session)).ready): return None
+      items = (await session.scalars(select(Card).where(and_(Card.type_line != "Card", Card.type_line.not_ilike("%token%"))))).all()
+      if(len(items)==0): return None
+      automaton = ahocorasick.Automaton()
+      for item in items:
+          automaton.add_word(
+              item.name.lower(),
+              (item.scryfall_id, item.name)
+          )
+
+      automaton.make_automaton()
+      print(f"Finished loading {len(items)} cards for ahocorasick name matching algorythm.")
+      return automaton
+
+
+def linkify_names(text: str, automaton, useMarkdown:bool=False) -> Markup:
+    text_lower = text.lower()
+    matches = []
+
+    for end, (item_id, name) in automaton.iter(text_lower):
+        start = end - len(name) + 1
+        # Word boundaries
+        if start > 0 and text[start - 1].isalnum():
+            continue
+        if end + 1 < len(text) and text[end + 1].isalnum():
+            continue
+        matches.append((start, end + 1, item_id))
+
+    # Prefer longest matches when names overlap
+    matches.sort(key=lambda x: (x[0], -(x[1] - x[0])))
+    result = []
+    pos = 0
+    for start, end, item_id in matches:
+        if start < pos:
+            continue
+        result.append(escape(text[pos:start]))
+        if(useMarkdown):
+            result.append('['+escape(text[start:end])+f'](/card/{item_id})' )
+        else:
+            result.append(
+                Markup(f'<a href="/card/{item_id}">')
+                + escape(text[start:end])
+                + Markup('</a>')
+            )
+        pos = end
+
+    result.append(escape(text[pos:]))
+    return Markup('').join(result)

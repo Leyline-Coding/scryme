@@ -7,12 +7,14 @@ Scryfall bulk refresh.
 
 from contextlib import asynccontextmanager
 
+import asyncio
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src import __version__
+from src.card import card_name_text_search_matcher
 from src.config import get_settings
 from src.lan import access_decision, lan_state
 from src.routes import (
@@ -63,6 +65,10 @@ async def lifespan(app: FastAPI):
     # The daily bulk refresh runs in-process. Skip it under tests and in read-only demos.
     if settings.environment != "test" and not settings.read_only:
         start_scheduler(refresh_hours=max(1, settings.bulk_refresh_min_hours))
+    # A full text search engine for cards names is initialized if AI is setup
+    async def initialize_matcher():
+      app.state.card_name_text_search_matcher = await card_name_text_search_matcher()
+    task = asyncio.create_task(initialize_matcher())
     # Mirror cached FX rates into memory so converted display currencies (#232) work from the first
     # request (even in read-only demos). Non-critical: a failure just leaves conversion unavailable.
     try:

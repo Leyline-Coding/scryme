@@ -14,6 +14,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.background_service import queue_service
+from src.card import linkify_names
 from src.config import get_settings
 from src.db import get_session
 from src.llm import (
@@ -140,11 +141,22 @@ async def deck_upgrade(
     return templates.TemplateResponse(request, "_deck_upgrade.html", {"plan": plan})
 
 
-async def _deck_chat_history(session: AsyncSession, deck_id: int) -> list[DeckChatMessage]:
-    return list((await session.execute(
+async def _deck_chat_history(request, session: AsyncSession, deck_id: int) -> list[DeckChatMessage]:
+    messages = list((await session.execute(
         select(DeckChatMessage).where(DeckChatMessage.deck_id == deck_id)
         .order_by(DeckChatMessage.id)
     )).scalars().all())
+    ## Inject urls
+    for m in messages:
+        if(m.role=='user'): continue
+        ## card_name_text_search_matcher loads slowly asyncronously on startup. It may not yet be available
+        if(not hasattr(request.app.state, 'card_name_text_search_matcher') or not request.app.state.card_name_text_search_matcher): continue
+        m.content = linkify_names(
+            m.content,
+            request.app.state.card_name_text_search_matcher,
+            useMarkdown=True
+        )
+    return messages
 
 
 
@@ -190,7 +202,7 @@ async def deck_ai_modal_chat(
     if not cfg.ready or not text:
         # Return just the chat log without adding new message
         return templates.TemplateResponse(
-            request, "_ai_chat_log.html", {"messages": await _deck_chat_history(session, deck_id), 'now': datetime.now(timezone.utc), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER})
+            request, "_ai_chat_log.html", {"messages": await _deck_chat_history(request, session, deck_id), 'now': datetime.now(timezone.utc), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER})
     
     # Immediately add the user's message to the chat log
     new_message = DeckChatMessage(deck_id=deck_id, role="user", content=text)
@@ -202,7 +214,7 @@ async def deck_ai_modal_chat(
     queue_service(f"deck_{deck.id}_chat_{new_message.id}", 'ai_chat', deck.id, include_deck, include_collection)
     
     # Return updated chat log with user message and temporary assistant message
-    return templates.TemplateResponse( request, "_ai_chat_log.html", {"messages": await _deck_chat_history(session, deck_id), 'now': datetime.now(timezone.utc), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER})
+    return templates.TemplateResponse( request, "_ai_chat_log.html", {"messages": await _deck_chat_history(request, session, deck_id), 'now': datetime.now(timezone.utc), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER})
 
 
 @router.get("/decks/{deck_id}/ai/chat/status", response_class=HTMLResponse)
@@ -214,7 +226,7 @@ async def deck_ai_modal_chat_status(
     """Check the status of the last AI message for a deck."""
     # This endpoint is meant to be polled by frontend
     # Returns information about whether the last assistant message is ready
-    messages = await _deck_chat_history(session, deck_id)
+    messages = await _deck_chat_history(request, session, deck_id)
     if not messages: raise HTTPException(status_code=286, detail="No messages")
     
     # Check if the last message is an assistant message
@@ -236,7 +248,7 @@ async def deck_chat_modal_open(
     cfg = await get_config(session)
     return templates.TemplateResponse(
         request, "_ai_chat_modal.html",
-        {"title": '✨ AI Deck Assistant', "deck": deck, "messages": await _deck_chat_history(session, deck_id), 'now': datetime.now(timezone.utc), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER, "ai_ready": cfg.ready, 'include_deck': True},
+        {"title": '✨ AI Deck Assistant', "deck": deck, "messages": await _deck_chat_history(request, session, deck_id), 'now': datetime.now(timezone.utc), 'placeholder':_DECK_CHAT_LOG_PLACEHOLDER, "ai_ready": cfg.ready, 'include_deck': True},
     )
 
 

@@ -6,7 +6,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import __version__
@@ -229,7 +229,7 @@ async def collection_ai_context(session: AsyncSession) -> CollectionContext:
                 Card.type_line, Card.oracle_text, Card.keywords)
         .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
         .outerjoin(Location, CollectionCard.location == Location.id)
-        .where(CollectionCard.quantity>0, Card.oracle_id.is_not(None), (Location.type != "deck") | (Location.id.is_(None)))
+        .where(CollectionCard.quantity>0, Card.oracle_id.is_not(None), (Location.type != "deck") | (Location.id.is_(None)), and_(Card.type_line != "Card", Card.type_line.not_ilike("%token%")))
         .distinct(Card.oracle_id)
         .order_by(Card.oracle_id, Card.released_at.desc().nulls_last())
     )).all()

@@ -17,3 +17,6 @@ apscheduler==3.11.3
 structlog==26.1.0
 cryptography==50.0.1
 qrcode==8.2
+nh3==0.3.7
+markdown==3.11.3
+pyahocorasick==2.3.1

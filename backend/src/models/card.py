@@ -99,7 +99,27 @@ class Card(Base):
     def front_face_image(self, cache=None) -> str | None:
         """Return front-face image URL."""
         sid = str(self.scryfall_id)
-        return cache.url_path(sid) if cache and cache.is_cached(sid) else cdn_image_url(self.raw)
+        # If a cache is provided and the image is cached in it, use that path
+        if cache is not None and cache.is_cached(sid):
+            return cache.url_path(sid)
+        # When no explicit cache is passed (as in templates), check if the default cache has it
+        # Import ImageCache locally to avoid circular imports
+        try:
+            from src.scryfall.images import ImageCache
+            default_cache = ImageCache()
+            if default_cache.is_cached(sid):
+                return default_cache.url_path(sid)
+        except Exception:
+            pass  # If we can't access cache, fall back to CDN
+
+        # If we don't have a cached image, and this is the first time accessing it,
+        # trigger background download of the image
+        
+        # Create a background job to download this specific card's image
+        from src.background_service import queue_service
+        queue_service(f"image_download_{sid[:8]}", "backfill-image", [sid])
+            
+        return cdn_image_url(self.raw)
 
 
     def back_face_image(self) -> str | None:

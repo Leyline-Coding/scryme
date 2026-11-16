@@ -1,7 +1,7 @@
 {% macro render(grouped_locations, selected_location=None, name='location', label='Move To', selectedAsLabel=False, class='', x_class='', onchange='', open_right=True) %}
 <div x-data="{ {{name}}: false }" class="sm:relative action-scope-collection">
   <button @click="{{name}} = !{{name}}" type="button"
-    class="{{class}}" :class="{{x_class}}">
+    class="{{class}}"{% if x_class %}:class="{{x_class}}"{% endif %}>
     {% if selectedAsLabel and selected_location!=False %}
       {% if selected_location==None %}
         <i class="fa-solid fa-bars-staggered"></i> Unfiled

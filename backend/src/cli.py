@@ -3,6 +3,7 @@
 Usage:
     python -m src.cli ingest [--force]      # download + ingest Default Cards bulk
     python -m src.cli backfill-images       # cache images for owned cards
+    python -m src.cli queue-backfill-images # queue image downloads for owned cards (concurrent)
     python -m src.cli seed-demo            # add the curated demo collection
 """
 
@@ -10,6 +11,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+
+from sqlalchemy import select
 
 from src.demo import seed_demo, seed_demo_decks
 from src.scryfall.images import ImageCache
@@ -24,9 +27,37 @@ async def _ingest(force: bool) -> None:
         print(f"Ingested {result.card_count} cards.")
 
 
-async def _backfill() -> None:
+async def _backfill_images() -> None:
     fetched = await ImageCache().backfill_owned()
     print(f"Cached {fetched} new images.")
+
+async def _queue_backfill_images(size: str = "normal", limit: int | None = None) -> None:
+    """Queue image downloads for owned cards using a background queue system."""
+    from src.background_service import queue_service
+    from src.db import SessionLocal
+    from src.models import Card, CollectionCard
+    
+    # Get list of card IDs to download
+    async with SessionLocal() as session:
+        stmt = (
+            select(Card)
+            .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
+            .where(Card.image_status != "cached")
+            .distinct()
+        )
+        if limit:
+            stmt = stmt.limit(limit)
+        cards = (await session.execute(stmt)).scalars().all()
+    
+    card_ids = [str(card.scryfall_id) for card in cards]
+    
+    # Generate a unique job ID
+    import uuid
+    job_id = f"image_download_{uuid.uuid4().hex[:8]}"
+    
+    # Use existing queue_service with new job type
+    queue_service(job_id, "backfill-image", card_ids, size=size)
+    print(f"Queued {len(card_ids)} image downloads with job ID: {job_id}")
 
 
 async def _seed_demo() -> None:
@@ -193,6 +224,10 @@ def main() -> None:
 
     sub.add_parser("backfill-images", help="Cache images for owned cards")
 
+    p_queue_images = sub.add_parser("queue-backfill-images", help="Queue image downloads for owned cards (concurrent)")
+    p_queue_images.add_argument("--size", default="normal", help="Image size (default: normal)")
+    p_queue_images.add_argument("--limit", type=int, help="Limit number of cards to process")
+
     sub.add_parser("seed-demo", help="Add sample cards to the collection (demo)")
 
     sub.add_parser("snapshot-prices", help="Capture a price snapshot of the owned collection")
@@ -249,7 +284,8 @@ def main() -> None:
     # a small lambda to bind them from `args`; the rest reference their worker directly.
     handlers = {
         "ingest": lambda: _ingest(args.force),
-        "backfill-images": _backfill,
+        "backfill-images": _backfill_images,
+        "queue-backfill-images": lambda: _queue_backfill_images(args.size, args.limit),
         "seed-demo": _seed_demo,
         "snapshot-prices": _snapshot_prices,
         "seed-price-history": lambda: _seed_price_history(args.months),

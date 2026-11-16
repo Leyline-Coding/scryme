@@ -81,7 +81,7 @@ async def checklist_to_wishlist(checklist_id: int, session: AsyncSession = Depen
 
 
 def _back(checklist_id: int) -> RedirectResponse:
-    return RedirectResponse(url=f"/checklists/{checklist_id}", status_code=303)
+    return RedirectResponse(url=f"/checklists/{int(checklist_id)}", status_code=303)
 
 
 @router.post("/checklists/{checklist_id}/items")
@@ -94,7 +94,7 @@ async def add_items(
     if checklist is None:
         raise HTTPException(status_code=404, detail=_NOT_FOUND)
     await add_checklist_items(session, checklist, cards)
-    return _back(checklist_id)
+    return _back(checklist.id)
 
 
 @router.post("/checklists/{checklist_id}/items/{item_id}")

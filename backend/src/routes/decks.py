@@ -583,7 +583,7 @@ async def resync_deck_printings(
     except DeckImportError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     await resync_printings(session, deck, decklist)
-    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+    return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
 
 
 @router.post("/decks/{deck_id}/replace-list")
@@ -630,7 +630,7 @@ async def replace_deck_list(
     deck.updated_at = datetime.datetime.now(datetime.timezone.utc)
     
     await session.commit()
-    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+    return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
 
 
 
@@ -707,7 +707,7 @@ async def save_deck_version(
     if deck is None:
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     await save_version(session, deck, label)
-    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+    return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
 
 
 @router.post("/decks/{deck_id}/versions/{version_id}/delete")
@@ -719,7 +719,7 @@ async def delete_deck_version(
     if version is not None and version.deck_id == deck_id:
         await session.delete(version)
         await session.commit()
-    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+    return RedirectResponse(url=f"/decks/{int(deck_id)}", status_code=303)
 
 
 async def _diff_source(session: AsyncSession, deck: Deck, src: str):
@@ -827,7 +827,7 @@ async def deck_checkout(
     deck = await session.get(Deck, deck_id)
     if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     await checkout_deck(session, deck, mainboard=mainboard, sideboard=sideboard)
-    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+    return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
 
 
 @router.post("/decks/{deck_id}/deconstruct")
@@ -844,7 +844,7 @@ async def deck_deconstruct(
     
     # Call the deconstruct function with the specified location
     await deconstruct_deck(session, deck, location=location_id)
-    return RedirectResponse(url=f"/decks/{deck_id}", status_code=303)
+    return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
 
 
 @router.get("/decks/{deck_id}/deconstruct", response_class=HTMLResponse)

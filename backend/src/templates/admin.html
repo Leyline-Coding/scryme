@@ -28,6 +28,34 @@
     {{ tile("Database size", stats.db_size_bytes | filesizeformat) }}
   </div>
 
+  <h2 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">Migrations</h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+    <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
+      <div class="text-xs text-muted">Migrations Status</div>
+      <div id="migration-status" class="text-2xl font-bold">
+        {% if pending_migrations %}⚠️Migrations pending⚠️{%else%}Database is up to date{%endif%}
+      </div>
+      <div id="migration-details" class="text-sm text-muted mt-1"></div>
+      <div class="mt-3">
+        {% if pending_migrations %}
+        <button 
+          hx-post="/admin/migrations/apply"
+          hx-target="#migration-details"
+          hx-swap="innerHTML"
+          hx-indicator="#migration-spinner"
+          hx-on::after-request="setTimeout(function(){ window.location.reload(); }, 1000)"
+          class="rounded-full bg-surface-2 border border-edge hover:border-accent px-3 py-1.5"
+        >
+          <span id="migration-spinner" class="htmx-indicator">
+            <span class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-accent"></span>
+          </span>
+          Apply Now
+        </button>
+        {%endif%}
+      </div>
+    </div>
+  </div>
+
   <h2 class="text-sm font-semibold text-muted uppercase tracking-wide mb-2">Your data</h2>
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
     {{ tile("Owned cards", '{:,}'.format(stats.collection_cards),
@@ -49,4 +77,5 @@
     Machine-readable metrics (Prometheus format) are at <a href="/metrics" class="underline">/metrics</a>.
   </p>
 </div>
+
 {% endblock %}

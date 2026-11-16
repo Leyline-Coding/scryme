@@ -53,5 +53,6 @@ async def index(request: Request, session: AsyncSession = Depends(get_session)) 
             "cur": info(currency),
             "price_alerts": price_alerts,
             "digest": digest,
+            "pending_migrations": hasattr(request.app.state, 'pending_migrations') and request.app.state.pending_migrations,
         },
     )

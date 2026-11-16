@@ -23,6 +23,7 @@ Every mutation bumps ``version``, so an absolute edit notices a relative one tha
 from __future__ import annotations
 
 import re
+import structlog
 from markupsafe import Markup, escape
 import ahocorasick
 
@@ -33,6 +34,8 @@ from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
 from src.llm import get_config
 from src.models import Card
+
+log = structlog.get_logger()
 
 _cache = ImageCache()
 
@@ -61,7 +64,7 @@ async def card_name_text_search_matcher() -> None:
           )
 
       automaton.make_automaton()
-      print(f"Finished loading {len(items)} cards for ahocorasick name matching algorythm.")
+      log.info("card.finished_ahocorasick_card_name_preload", items=len(items))
       return automaton
 
 

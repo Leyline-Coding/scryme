@@ -7,7 +7,34 @@
     <span class="text-4xl font-bold tracking-tight"><span class="text-accent">scry</span>me</span>
   </a>
 
-  {% if needs_cards %}
+
+  {% if pending_migrations %}
+  <div class="rounded-xl max-w-4xl mx-auto bg-surface ring-1 ring-edge p-4">
+    <div id="migration-status" class="text-2xl font-bold">
+      {% if pending_migrations %}⚠️Migrations pending⚠️{%endif%}
+    </div>
+    <div class="text-sm text-muted mt-2">scryme v{{ app_version }} has introduced some database changes. It looks like you are running an older version of the database. To continue using this version of the software, some migrations need to be run. Please backup your database before proceeding. Your data should be carried forward.</div>
+    <div id="migration-details" class="text-sm text-muted mt-1"></div>
+    <div class="mt-3">
+      {% if pending_migrations %}
+      <button 
+        hx-post="/admin/migrations/apply"
+        hx-swap="none"
+        hx-indicator="#migration-spinner"
+        hx-on::after-request="setTimeout(function(){ window.location.reload(); }, 1000)"
+        class="rounded-full bg-surface-2 border border-edge hover:border-accent px-3 py-1.5"
+      >
+        <span id="migration-spinner" class="htmx-indicator">
+          <span class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-accent"></span>
+        </span>
+        Apply Now
+      </button>
+      {%endif%}
+    </div>
+  </div>
+
+
+  {% elif needs_cards %}
   {# Fresh install: the card database is empty, so kick off a one-time ingest with live progress. #}
   <div class="w-full max-w-lg text-center" x-data="firstRun()" x-init="start()">
     <h2 class="text-2xl font-semibold mb-2">Setting up scryme</h2>

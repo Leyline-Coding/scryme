@@ -65,6 +65,8 @@ async def lifespan(app: FastAPI):
     # The daily bulk refresh runs in-process. Skip it under tests and in read-only demos.
     if settings.environment != "test" and not settings.read_only:
         start_scheduler(refresh_hours=max(1, settings.bulk_refresh_min_hours))
+    # Check for outstanding migrations
+    app.state.pending_migrations = await _check_has_pending_migrations()
     # A full text search engine for cards names is initialized if AI is setup
     async def initialize_matcher():
       app.state.card_name_text_search_matcher = await card_name_text_search_matcher()
@@ -73,7 +75,6 @@ async def lifespan(app: FastAPI):
     # request (even in read-only demos). Non-critical: a failure just leaves conversion unavailable.
     try:
         from src import fx
-
         await fx.load_rates()
     except Exception as exc:  # noqa: BLE001 - display-currency conversion is non-critical
         log.warning("fx.load_failed", error=str(exc))
@@ -157,6 +158,33 @@ def _install_prefs_loader(app: FastAPI) -> None:
             except SQLAlchemyError:
                 request.state.prefs = None
         return await call_next(request)
+
+
+async def _check_has_pending_migrations(alembic_ini_path: str = "alembic.ini") -> bool:
+    from alembic.config import Config
+    from alembic.runtime.migration import MigrationContext
+    from alembic.script import ScriptDirectory
+    from sqlalchemy import create_engine
+    
+    alembic_cfg = Config(alembic_ini_path)
+    script = ScriptDirectory.from_config(alembic_cfg)
+    head_revs = set(script.get_heads())
+
+    from src.db import SessionLocal
+    def _check_revs(sync_conn) -> set[str]:
+        context = MigrationContext.configure(sync_conn)
+        return set(context.get_current_heads())
+
+    async with SessionLocal() as session:
+        conn = await session.connection()
+        current_revs = await conn.run_sync(_check_revs)
+
+    if(current_revs != head_revs): 
+        log.warn("scryme.migrations_pending")
+        return True
+    else:
+        log.info("scryme.no_pending_migrations")
+        return False
 
 
 def create_app() -> FastAPI:

@@ -42,6 +42,9 @@ class Deck(Base):
     # Where the deck was imported from, so its printings can be re-synced from the source later.
     source_url: Mapped[str | None] = mapped_column(String(512))
 
+    # ID of the commander card in this deck (if any)
+    commander_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     cards: Mapped[list['DeckCard']] = relationship(
         back_populates="deck", cascade="all, delete-orphan", lazy="selectin"
     )

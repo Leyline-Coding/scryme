@@ -133,5 +133,13 @@ class Card(Base):
         return back if front and back else None
 
 
+    def is_legendary_creature(self) -> bool:
+        """Check if this card is a legendary creature."""
+        if not self.type_line:
+            return False
+        type_line = self.type_line.lower()
+        return "legendary" in type_line and "creature" in type_line
+
+
 
 

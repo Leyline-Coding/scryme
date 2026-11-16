@@ -885,3 +885,36 @@ async def update_deck_description(
     deck.description = html.escape(description) if description else None
     await session.commit()
     return deck.description
+
+
+
+
+@router.post("/decks/{deck_id}/set-commander")
+async def set_commander(
+    deck_id: int, 
+    card_id: int = Form(...),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Set a card as the commander for a deck."""
+    _guard_writable()
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    
+    # Get the deck card
+    dc = await session.get(DeckCard, card_id)
+    if dc is None or dc.deck_id != deck_id:
+        raise HTTPException(status_code=404, detail="Card not found in this deck.")
+    
+    # Check if this card is a legendary creature by examining its type_line
+    card = await session.get(Card, dc.scryfall_id) if dc.scryfall_id else None
+    
+    # Check for legendary creature
+    if not card or not card.is_legendary_creature() or dc.quantity != 1 :
+        raise HTTPException(status_code=400, detail="Only legendary creatures can be commanders.")
+    
+    # Set this card as the commander
+    deck.commander_id = dc.id
+    await session.commit()
+    
+    return Response(status_code=200, headers={"HX-Refresh": "true"})

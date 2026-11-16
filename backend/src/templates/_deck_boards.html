@@ -5,15 +5,23 @@
     <li class="py-1.5 text-sm break-inside-avoid" x-data="{ editing: false }">
       <div class="flex flex-wrap items-center gap-x-2 {% if not r.matched %}text-amber-500{% endif %}">
         {% if not read_only and r.matched %}
-        <span class="shrink-0 flex items-center md:gap-0.5">
-          <button type="button" title="One fewer" hx-post="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/qty"
-                  hx-vals='{"delta": -1}' class="w-3 md:w4 text-muted hover:text-accent leading-none tap">−</button>
-          <span class="w5 md:w-7 text-center text-muted tabular-nums">{{ r.quantity }}×</span>
-          <button type="button" title="One more" hx-post="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/qty"
-                  hx-vals='{"delta": 1}' class="w-3 md:w4  text-muted hover:text-accent leading-none tap">+</button>
+        <span class="inline-flex items-center rounded-full bg-surface-2 overflow-hidden shrink-0{% if cov.deck.commander_id == r.card_id %} opacity-50{% endif %}">
+          {% if cov.deck.commander_id == r.card_id %}
+            <button type="button" title="Commander must have exactly one copy" disabled class="px-1.5">−</button>
+          {% else %}
+            <button type="button" title="One fewer" hx-post="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/qty"
+                    hx-vals='{"delta": -1}' class="px-1.5 hover:bg-surface-3 tap">−</button>
+          {% endif %}
+          <span class="px-0.5 tabular-nums">{{ r.quantity }}</span>
+          {% if cov.deck.commander_id == r.card_id %}
+            <button type="button" title="Commander must have exactly one copy" disabled class="px-1.5">+</button>
+          {% else %}
+            <button type="button" title="One more" hx-post="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/qty"
+                    hx-vals='{"delta": 1}' class="px-1.5 hover:bg-surface-3 tap">+</button>
+          {% endif %}
         </span>
         {% else %}
-        <span class="w-8 shrink-0 text-right text-muted tabular-nums">{{ r.quantity }}×</span>
+        <span class="inline-flex items-center rounded-full bg-surface-2 overflow-hidden shrink-0">{{ r.quantity }}</span>
         {% endif %}
         <div class="min-w-0 flex-1 flex items-center gap-x-2">
           {% if r.scryfall_card.scryfall_id %}
@@ -67,6 +75,28 @@
         {% if not read_only and r.matched %}
         {% if r.stack_coverage.in_deck==0 and r.stack_coverage.owned==0 and r.stack_coverage.swappable > 0 %}
         <button type="button" hx-post="/decks/{{ cov.deck.id }}/card/{{ r.card_id }}/quickswap" hx-swap="none" x-show="cardView === 'distinct'" class="shrink-0 text-xs text-muted hover:text-accent tap" title="Swap this card for the next available card in the colelction that functionaly substitutes it (by Oracle ID)."><i class="fa-solid fa-retweet"></i></button>
+        {% endif %}
+        {# Commander selection button for legendary creatures #}
+        {% if r.scryfall_card and r.scryfall_card.type_line %}
+          {% set type_line = r.scryfall_card.type_line | lower %}
+          {% if "legendary" in type_line and "creature" in type_line %}
+            {% if cov.deck.commander_id != r.card_id %}
+              {% if r.quantity == 1 %}
+                <button type="button" 
+                        hx-post="/decks/{{ cov.deck.id }}/set-commander"
+                        hx-vals='{"card_id": {{ r.card_id }}}'
+                        hx-target="#mainboard"
+                        class="shrink-0 text-xs text-muted hover:text-accent tap"
+                        title="Select as commander">
+                  <i class="fa-solid fa-crown"></i>
+                </button>
+              {% else %}
+                <span class="shrink-0 text-xs text-muted" title="Commander must have exactly one copy in the deck"><i class="fa-solid fa-crown"></i></span>
+              {% endif %}
+            {% else %}
+              <span class="shrink-0 text-xs text-accent" title="This card is the commander"><i class="fa-solid fa-crown"></i></span>
+            {% endif %}
+          {% endif %}
         {% endif %}
         <button type="button" title="Change printing / mark as proxy"
                 class="shrink-0 text-xs text-muted hover:text-accent tap"

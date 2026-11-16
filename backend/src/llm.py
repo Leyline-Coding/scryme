@@ -27,7 +27,7 @@ from src.deck_builder import classify_role
 from src.deck_synergy import DeckProfile, card_synergy, deck_themes, deck_tribes
 from src.decks import deck_coverage, deck_stats
 from src.llm_card_analysis import collection_ai_context, deck_ai_context
-from src.models import Card, CollectionCard, Deck, DeckChatMessage, LLMSettings
+from src.models import Card, CollectionCard, Deck, DeckChatMessage, LLMSettings, NLQCache
 from src.search import SearchError, build_search
 
 _UA = f"scryme/{__version__} (+https://github.com/Leyline-Coding/scryme)"
@@ -689,6 +689,37 @@ async def ai_deck_chat_response_worker(
     session.add(deck_message)
     await session.commit()
     return deck_message.id
+
+
+
+async def nlq_worker(
+    session: AsyncSession,
+    nlqcache_id: int,
+) -> int | None:
+    """Start a background task to Translate a plain-English request to a Scryfall query (#171)."""
+    matching_nl_to_q = await session.get(NLQCache, nlqcache_id)
+    if(not matching_nl_to_q): return None
+    cfg = await get_config(session)
+    if cfg.ready and matching_nl_to_q.nl_text:
+        try:
+            generated = await nl_to_query(matching_nl_to_q.nl_text, ChatClient(cfg))
+            matching_nl_to_q.q_text = generated
+            await session.commit()
+            return matching_nl_to_q.id
+        except httpx.HTTPStatusError as e:
+            # Check for specific HTTP errors that indicate AI service issues
+            if e.response.status_code == 404:
+                # For a 404 error, let the user know the AI endpoint might be misconfigured
+                # But still fallback gracefully to raw search as before
+                raise Exception("AI service not found (404) - please check your LLM configuration.")
+            else:
+                raise Exception(f"Unexpected AI service error ({e.response.status_code}).")
+        except:
+            raise Exception(f"Unexpected AI service error.")
+    raise Exception(f"Unexpected AI service error. cfg.ready or matching_nl_to_q.nl_text")
+    
+
+
 
 
 

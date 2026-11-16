@@ -16,6 +16,7 @@ from src.models.import_snapshot import ImportSnapshot
 from src.models.ingest import IngestState
 from src.models.llm_settings import LLMSettings
 from src.models.location import Location
+from src.models.nlqcache import NLQCache
 from src.models.preferences import Preferences
 from src.models.price import CardPricePoint, PriceSnapshot
 from src.models.price_target import PriceTarget
@@ -32,8 +33,7 @@ __all__ = [
     "Binder", "Box", "Card", "CardEmbedding", "CardPricePoint",
     "Checklist", "ChecklistItem", "ClientToken", "CollectionCard", "FxRate", "FxRateHistory",
     "Deck", "DeckCard", "DeckVersion", "DeckChatMessage", "ImportSnapshot", "IngestState",
-    "ImportStaging", "Location", "Sleeve",
-    "LLMSettings", "Preferences",
+    "ImportStaging", "LLMSettings", "Location", "NLQCache", "Preferences",
     "PriceSnapshot", "PriceTarget", "RulesChunk", "SavedSearch", "SetRelease", "ShareLink",
-    "TradePool", "TradePoolItem", "WishlistItem",
+    "Sleeve", "TradePool", "TradePoolItem", "WishlistItem",
 ]

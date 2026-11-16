@@ -11,11 +11,12 @@ from dataclasses import dataclass
 from urllib.parse import quote
 
 import httpx
-from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.background_service import queue_service
 from src.binder_service import all_binders
 from src.box_service import (
     all_boxes,
@@ -25,12 +26,11 @@ from src.models import Deck
 from src.currency import get_currency, info
 from src.db import get_session
 from src.facets import compute_facets
-from src.llm import ChatClient, get_config, nl_to_query
 from src.locations import find_or_create_grouped_locations
-from src.models import Card
+from src.llm import get_config
+from src.models import Card, NLQCache
 from src.perfcache import memoize
 from src.prices import biggest_movers
-from src.routes._safe import local_redirect
 from src.routes.saved import list_saved
 from src.scryfall.images import ImageCache
 from src.search import SearchError, SearchScope
@@ -194,42 +194,21 @@ async def advanced(request: Request, q: str = "", session: AsyncSession = Depend
     )
 
 
-@router.post("/search/nl")
-async def search_nl(
-    nl: str = Form(""),
-    scope: str = Form(SearchScope.COLLECTION.value),
+@router.get("/search/nl/status")
+async def search_nl_status(
+    nl: str = "",
     session: AsyncSession = Depends(get_session),
-) -> RedirectResponse:
-    """Translate a plain-English request to a Scryfall query and run it (#171).
-
-    Falls back to searching the request text as-is when AI is off or translation fails, so the box
-    always does *something*. The generated query is shown editable on the results page.
-    """
-    text = nl.strip()
-    generated = ""
-    cfg = await get_config(session)
-    ai_error = None
-
-    if cfg.ready and text:
-        try:
-            generated = await nl_to_query(text, ChatClient(cfg))
-        except httpx.HTTPStatusError as e:
-            # Check for specific HTTP errors that indicate AI service issues
-            if e.response.status_code == 404:
-                # For a 404 error, let the user know the AI endpoint might be misconfigured
-                # But still fallback gracefully to raw search as before
-                generated = ""
-                ai_error = "AI service not found - please check your LLM configuration"
-            else:
-                # For other HTTP errors, fallback to original behavior 
-                generated = ""
-        except (KeyError, IndexError, ValueError):
-            generated = ""
-    url = f"/search?q={quote(generated or text)}&scope={quote(scope)}&nl={quote(text)}"
-    if ai_error:
-        # Add error to URL parameters so it can be displayed on the results page
-        url += f"&ai_error={quote(ai_error)}"
-    return local_redirect(url)
+) -> HTMLResponse:
+    """Check if an NL query has been processed and return the resolved query."""
+    if not nl: return HTMLResponse(status_code=400, content="No NL query provided")
+    # Check if there's a cached result
+    matching_nl_to_q = (await session.execute(
+        select(NLQCache)
+        .where(func.lower(NLQCache.nl_text) == func.lower(nl))
+    )).scalars().first()
+    if not matching_nl_to_q: return HTMLResponse(status_code=404, content="No NL query being processed.")
+    if matching_nl_to_q and matching_nl_to_q.q_text: return HTMLResponse(status_code=200, content=matching_nl_to_q.q_text)
+    else: return HTMLResponse(status_code=202, content="Processing...")
 
 
 async def _run_into_ctx(
@@ -266,6 +245,22 @@ async def search(
     ai_error: str = "",
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
+    # If nl is passed one of two things happens
+    nl_from_cache_and_preloaded = False
+    if(nl!=""):
+      # If it has already been processed and cached, simply load that cache and inject into q
+      matching_nl_to_q = (await session.execute(select(NLQCache).where(func.lower(NLQCache.nl_text) == func.lower(nl)))).scalars().first()
+      if(matching_nl_to_q and matching_nl_to_q.q_text!=None):
+          q = matching_nl_to_q.q_text
+          nl_from_cache_and_preloaded = True
+      # If this is a new search query, add it to the queue, start a background process, then initialize the front end when it is ready
+      elif(not matching_nl_to_q):
+          new_matching_nl_to_q = NLQCache(nl_text = nl.strip(), q_text=None)
+          session.add(new_matching_nl_to_q)
+          await session.commit()
+          # Start background processing task for the AI nl to q
+          queue_service(f"nl_to_q_{new_matching_nl_to_q.id}", 'nl_to_q', nlqcache_id=new_matching_nl_to_q.id)
+
     scope_enum = SearchScope.ALL if scope == SearchScope.ALL.value else SearchScope.COLLECTION
     sort = sort if sort in SORT_KEYS else DEFAULT_SORT
     descending = dir == "desc"
@@ -277,7 +272,7 @@ async def search(
     effective_q = _apply_universal(q, universal)
 
     ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir,
-                  "read_only": get_settings().read_only, "view": view, "nl": nl,
+                  "read_only": get_settings().read_only, "view": view, "nl": nl, "nl_from_cache_and_preloaded": nl_from_cache_and_preloaded,
                   "universal": universal, "cur": info(get_currency(request)),
                   "page_sizes": PAGE_SIZES, "page_size": page_size, "infinite": infinite,
                   "prefs": dp, "ai_error": ai_error}

@@ -1,9 +1,38 @@
+{% if ai_error %}
+<div class="order-last w-full mb-4 p-3 bg-amber-500/15 text-amber-500 rounded-lg text-sm">
+  <span class="font-medium">AI Error:</span> {{ ai_error }}
+</div>
+{% elif nl and not nl_from_cache_and_preloaded %}
+<div class="order-last w-full text-xs text-muted">
+  AI is generating a scryfall query for the prompt <span class="text-fg">“{{nl}}”</span>. <span class="loading-animator">Thinking</span>
+</div>
+{# Poller for NL queries that redirects once resolved #}
+<div id="nlPoller"
+  hx-get="/search/nl/status?nl={{ nl | urlencode }}" 
+  hx-trigger="every 2s"
+  hx-swap="none"
+  hx-on::after-request="if (event.detail.xhr.status === 200) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('q', event.detail.xhr.responseText);
+    window.location.href = url.toString() 
+  }"
+  class="hidden">
+</div>
+{% elif nl %}
+<p class="order-last w-full text-xs text-muted">
+  AI generated the scryfall query <span class="text-fg">“{{ q }}”</span> from the prompt <span class="text-fg">“{{ nl }}”</span>.
+</p>
+{% endif %}
+
 {% if error %}
 <div class="rounded-lg border border-rose-700 bg-rose-950/50 px-4 py-3 text-rose-200">
   {{ error }}
 </div>
+{% elif nl and not nl_from_cache_and_preloaded %}
+<div>
+</div>
 {% elif result %}
-<div class="flex items-center justify-between gap-3 mb-4">
+<div class="flex items-center justify-between gap-3 mb-4 mt-2">
   <p class="text-sm text-muted">
     {{ result.total }} card{{ '' if result.total == 1 else 's' }}
     {% if scope == 'collection' %}in your collection{% endif %}

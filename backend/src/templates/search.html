@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Search · scryme{% endblock %}
 {% block content %}
+
 <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6" x-data="{ ai: {{ 'true' if nl else 'false' }}, dir: '{{dir}}', scope: '{{scope}}', sidebarOpen: false}">
-  <header class="flex flex-wrap items-center gap-3 mb-6">
+  <header class="flex flex-wrap items-center gap-3 mb-4">
     {% include "_brand.html" %}
     <a href="/search?scope=all" class="text-sm text-muted hover:text-fg shrink-0" id="all-cards-link">All Cards</a>
     <a href="/collection" class="text-sm text-muted hover:text-fg shrink-0" id="my-collection-link">My Collection</a>
@@ -79,16 +80,6 @@
         </div>
       </form>
     </div>
-
-    {% if ai_error %}
-    <div class="order-last w-full mb-4 p-3 bg-amber-500/15 text-amber-500 rounded-lg text-sm">
-      <span class="font-medium">AI Error:</span> {{ ai_error }}
-    </div>
-    {% elif nl %}
-    <p class="order-last w-full text-xs text-muted">
-      AI generated the scryfall query <span class="text-fg">“{{ q }}”</span> from the prompt <span class="text-fg">“{{ nl }}”</span>.
-    </p>
-    {% endif %}
   </header>
 
   {% include "_movers_panel.html" %}
@@ -273,17 +264,6 @@
     f.querySelector('[name=bulk_action]').value = action;
     f.submit();
   }
-  
-  // Update visibility when scope changes
-  document.addEventListener('DOMContentLoaded', function() {
-    // Initial check
-    updateScopeButtonVisibility();
-    // Listen for radio button changes
-    var scopeEl = document.querySelectorAll('input[name="scope"]');
-    scopeEl.forEach(function(radio) {
-      radio.addEventListener('change', updateScopeButtonVisibility);
-    });
-  });
 
   // After an HTMX results swap the checkboxes are fresh (unchecked) — re-sync the bar.
   document.body.addEventListener('htmx:afterSwap', function (e) {

@@ -33,19 +33,22 @@ async def worker(job_id: str, job_type: str, *args, **kwargs):
     """Executes your actual task and updates the job dictionary when done."""
     jobs[job_id]["status"] = "processing"
     async with SessionLocal() as session:
-      print('Job', jobs[job_id])
+      print('Job', job_id, jobs[job_id])
       try:
           if(job_type=='ai_chat'):
               from src.llm import ai_deck_chat_response_worker
               message_id = await ai_deck_chat_response_worker(session, *args, **kwargs)
               result = "DeckMessage #"+str(message_id)
-
+          elif(job_type=='nl_to_q'):
+              from src.llm import nlq_worker
+              nlq_id = await nlq_worker(session, *args, **kwargs)
+              result = "NLQ #"+str(nlq_id)
 
           # Save result and mark complete
           jobs[job_id]["status"] = "completed"
           jobs[job_id]["result"] = f"Processed: "+result
-          print('Job', jobs[job_id])
+          print('Job', job_id, jobs[job_id])
       except Exception as e:
           jobs[job_id]["status"] = "failed"
           jobs[job_id]["result"] = str(e)
-          print('Job', jobs[job_id])
+          print('Job', job_id, jobs[job_id])

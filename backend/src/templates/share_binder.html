@@ -24,7 +24,7 @@
             <span class="text-muted uppercase text-xs">{{ cc.card.set_code }}</span></td>
           {% if show_prices %}
           <td class="px-3 text-right tabular-nums text-muted">
-            {{ currency.format_and_decorate(((cc.card.prices or {}).get('usd')|float)*cur.usd_to_cur_rate, cur.symbol) }}
+            {{ (((cc.card.prices or {}).get('usd')|float)*cur.usd_to_cur_rate) | currency_filter(currency) }}
           </td>
           {% endif %}
         </tr>

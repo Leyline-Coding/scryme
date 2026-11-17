@@ -141,5 +141,7 @@ class Card(Base):
         return "legendary" in type_line and "creature" in type_line
 
 
-
+    def simple_price(self) -> float | None:
+        if(self.prices and self.prices['usd']): return float(self.prices['usd'])
+        else: return None
 

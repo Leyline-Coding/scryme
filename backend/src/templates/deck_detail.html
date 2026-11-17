@@ -89,10 +89,10 @@
           {% endif %}
         </div>
         <div class="text-right text-sm">
-          <div class="text-xs text-muted">Deck value ({{ cur.label }})</div>
-          <div class="text-2xl font-bold">{{ currency.format_and_decorate(stats.total_value, cur.symbol) }}</div>
+          <div class="text-xs text-muted">Deck value ({{ currency }})</div>
+          <div class="text-2xl font-bold">{{ stats.total_value | currency_filter(currency) }}</div>
           {% if cov.missing_count %}
-          {% if cov.missing_cost %}<div class="text-muted text-xs">≈ {{ currency.format_and_decorate(cov.missing_cost, cur.symbol) }} to complete</div>{% endif %}
+          {% if cov.missing_cost %}<div class="text-muted text-xs">≈ {{ cov.missing_cost | currency_filter(currency) }} to complete</div>{% endif %}
           {% endif %}
           {% if cov.missing_count and not read_only and cov.unique_missing > cov.unmatched %}
           <form method="post" action="/decks/{{ cov.deck.id }}/wishlist" class="mt-1 md:hidden">

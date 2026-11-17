@@ -2,7 +2,10 @@
 
 from pathlib import Path
 
+from fastapi import Request
 from fastapi.templating import Jinja2Templates
+from babel.numbers import format_currency
+from jinja2 import pass_context
 
 from src import __version__
 from src.config import get_settings
@@ -33,8 +36,13 @@ def _inject_prefs(request) -> dict:
     # so a fresh instance's defaults never overwrite an upgrading user's existing device theme.
     authoritative = writable and getattr(state, "prefs_saved", False)
     return {"theme_prefs": appearance, "prefs_writable": writable,
-            "theme_authoritative": authoritative}
+            "theme_authoritative": authoritative, 'currency': prefs.currency.upper()}
 
+
+def currency_filter(value:float, currency="USD", locale="en_US"):
+    if value is None:
+        return ""
+    return format_currency(value, currency, locale=locale)
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR), context_processors=[_inject_prefs])
 
@@ -43,6 +51,9 @@ if REUSABLES_DIR.exists() and REUSABLES_DIR.is_dir():
     for file in REUSABLES_DIR.iterdir():
         if file.is_file() and file.suffix in [".html", ".jinja", ".j2"]:
             jinja_env.globals[file.stem] = jinja_env.get_template(f"reusables/{file.name}").module
+
+# International support for currency printing
+templates.env.filters["currency_filter"] = currency_filter
 
 # Render Scryfall {…} symbol tokens and set symbols via the vendored Mana/Keyrune fonts.
 templates.env.filters["mana"] = mana_symbols

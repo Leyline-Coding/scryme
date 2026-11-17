@@ -273,8 +273,7 @@ async def search(
 
     ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir,
                   "read_only": get_settings().read_only, "view": view, "nl": nl, "nl_from_cache_and_preloaded": nl_from_cache_and_preloaded,
-                  "universal": universal, "cur": info(get_currency(request)),
-                  "page_sizes": PAGE_SIZES, "page_size": page_size, "infinite": infinite,
+                  "universal": universal, "page_sizes": PAGE_SIZES, "page_size": page_size, "infinite": infinite,
                   "prefs": dp, "ai_error": ai_error}
 
     try:

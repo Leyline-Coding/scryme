@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.brackets import BRACKET_LABELS, estimate_bracket, normalize_bracket
 from src.collection_edit import add_or_increment
 from src.config import get_settings
-from src.currency import get_currency, info
+from src.currency import get_currency, fx, info
 from src.db import get_session
 from src.deck_builder import BuildError, build_commander_deck, owned_commanders
 from src.deck_card import find_swappable_deck_card_in_collection_card, quickswap_deck_card
@@ -333,6 +333,7 @@ async def view_deck(
                 "sort_by": sort_by,
                 "sort_dir": sort_dir,
                 "read_only": get_settings().read_only,
+                "fx_rate": fx.rate(currency)
             },
         )
     
@@ -349,7 +350,7 @@ async def view_deck(
             "bracket_labels": BRACKET_LABELS,
             "stats": await deck_stats(session, deck, currency, source),
             "export_formats": EXPORT_FORMATS,
-            "cur": info(currency),
+            "fx_rate": fx.rate(currency),
             "read_only": get_settings().read_only,
             "share_kind": DECK,
             "share_target": deck.id,

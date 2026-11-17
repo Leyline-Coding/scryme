@@ -183,13 +183,13 @@
     <div class="flex items-baseline justify-between gap-3 mb-2">
       <h2 class="text-sm font-semibold text-muted uppercase tracking-wide"><i class="fa-solid fa-chart-line"></i> Prices <a href="prices" class="ml-1 text-xs normal-case font-normal hover:text-fg">details →</a></h2>
       <p class="text-sm">
-        {% if digest.delta >= 0 %}<span class="text-emerald-500 font-semibold">▲ + {{ currency.format_and_decorate(digest.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>
-        {% else %}<span class="text-rose-500 font-semibold">▼ - {{ currency.format_and_decorate(-digest.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>{% endif %}
+        {% if digest.delta >= 0 %}<span class="text-emerald-500 font-semibold">▲ + {{ (digest.delta*cur.usd_to_cur_rate) | currency_filter(currency) }}</span>
+        {% else %}<span class="text-rose-500 font-semibold">▼ - {{ (-digest.delta*cur.usd_to_cur_rate) | currency_filter(currency) }}</span>{% endif %}
         <span class="text-muted">({{ '{:+.1f}'.format(digest.pct) }}%)</span>
       </p>
     </div>
     <p class="text-xs text-muted mb-2">Since {{ digest.baseline_at.strftime('%b %d').replace(' 0', ' ') }}
-      · now {{ currency.format_and_decorate(digest.end_value*cur.usd_to_cur_rate, cur.symbol) }}</p>
+      · now {{ (digest.end_value*cur.usd_to_cur_rate) | currency_filter(currency) }}</p>
     {% if digest.gainers or digest.losers %}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
       <div>
@@ -197,7 +197,7 @@
         {% for m in digest.gainers[:5] %}
         <a href="/card/{{ m.scryfall_id }}" class="flex items-center justify-between gap-2 hover:text-accent">
           <span class="truncate">{{ m.name }} <span class="text-[10px] text-muted uppercase">{{ m.set_code }}</span></span>
-          <span class="text-emerald-500 shrink-0 tabular-nums">+ {{ currency.format_and_decorate(m.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>
+          <span class="text-emerald-500 shrink-0 tabular-nums">+ {{ (m.delta*cur.usd_to_cur_rate) | currency_filter(currency) }}</span>
         </a>
         {% endfor %}
       </div>
@@ -206,7 +206,7 @@
         {% for m in digest.losers[:5] %}
         <a href="/card/{{ m.scryfall_id }}" class="flex items-center justify-between gap-2 hover:text-accent">
           <span class="truncate">{{ m.name }} <span class="text-[10px] text-muted uppercase">{{ m.set_code }}</span></span>
-          <span class="text-rose-500 shrink-0 tabular-nums">- {{ currency.format_and_decorate(-m.delta*cur.usd_to_cur_rate, cur.symbol) }}</span>
+          <span class="text-rose-500 shrink-0 tabular-nums">- {{ (-m.delta*cur.usd_to_cur_rate) | currency_filter(currency) }}</span>
         </a>
         {% endfor %}
       </div>

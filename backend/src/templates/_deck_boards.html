@@ -65,11 +65,15 @@
         <span class="shrink-0 text-xs">unrecognized</span>
         {% else %}
         <span class="shrink-0 text-xs text-muted">
-            {% if not r.legality or r.legality in ('legal', 'restricted') %}
-            <span class="rounded bg-{% if r.quantity > r.stack_coverage.in_deck %}amber{%else%}emerald{%endif%}-500/80 text-white text-[9px] px-1 py-0.5" title="Constructed{% if r.stack_coverage.in_deck!=0 %}/required{%endif%}">{% if r.stack_coverage.in_deck==0 %}0{% elif r.quantity > r.stack_coverage.in_deck %}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%else%}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%endif%}</span>
-            <span class="rounded bg-{% if r.quantity > (r.stack_coverage.in_deck+r.stack_coverage.owned) %}amber{%else%}emerald{%endif%}-700/80 text-white text-[9px] px-1 py-0.5" x-show="cardView === 'distinct'" title="Exact copies available in collection{% if r.quantity > r.stack_coverage.in_deck %}/required{%endif%}">{{ r.stack_coverage.owned }}{% if r.quantity > r.stack_coverage.in_deck %}/{{ r.quantity }}{%endif%}</span>
+            <span class="rounded bg-{% if r.quantity > r.stack_coverage.in_deck %}amber{%else%}emerald{%endif%}-500/80 text-white text-[9px] px-1 py-0.5" title="Constructed{% if r.stack_coverage.in_deck!=0 %}/required{%endif%}" x-show="attribute_view=='coverage'">{% if r.stack_coverage.in_deck==0 %}0{% elif r.quantity > r.stack_coverage.in_deck %}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%else%}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%endif%}</span>
+            <span class="rounded bg-{% if r.quantity > (r.stack_coverage.in_deck+r.stack_coverage.owned) %}amber{%else%}emerald{%endif%}-700/80 text-white text-[9px] px-1 py-0.5" title="Exact copies available in collection{% if r.quantity > r.stack_coverage.in_deck %}/required{%endif%}" x-show="cardView === 'distinct' && attribute_view === 'coverage'">{{ r.stack_coverage.owned }}{% if r.quantity > r.stack_coverage.in_deck %}/{{ r.quantity }}{%endif%}</span>
+            <span class="rounded bg-emerald-900/90 text-white text-[9px] px-1 py-0.5" title="Other swappable copies available in collection" x-show="attribute_view=='coverage'">{{ r.stack_coverage.swappable }}</span>
+            {% if fx_rate and r.scryfall_card and r.scryfall_card.simple_price() %}
+                <span class="" title="Purchase price" x-show="attribute_view=='price'">{{ (r.scryfall_card.simple_price()*fx_rate) | currency_filter(currency) }}</span>
             {% endif %}
-            <span class="rounded bg-emerald-900/90 text-white text-[9px] px-1 py-0.5" title="Other swappable copies available in collection">{{ r.stack_coverage.swappable }}</span>
+            {% if r.scryfall_card and r.scryfall_card.mana_cost %}
+                <span class="" title="Mana cost" x-show="attribute_view=='casting_cost'">{{ r.scryfall_card.mana_cost | mana }}</span>
+            {% endif %}
         </span>
         {% endif %}
         {% if not read_only and r.matched %}
@@ -182,13 +186,13 @@
     
     {% if cov.side %}
     <div class="hidden md:block">
-      <span class="mx-1 text-muted">|</span>
+      <span class="text-xs text-muted mr-1">Sideboard:</span>
       <button type="button" @click="setLayout('rows')"
               :class="layout === 'rows' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
-              class="rounded px-2 py-0.5 text-xs">Sideboard Below</button>
+              class="rounded px-2 py-0.5 text-xs">Below</button>
       <button type="button" @click="setLayout('grid')"
               :class="layout === 'grid' ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-muted hover:text-fg'"
-              class="rounded px-2 py-0.5 text-xs">Sideboard Aside</button>
+              class="rounded px-2 py-0.5 text-xs">Aside</button>
     </div>
     {% endif %}
   </div>
@@ -206,15 +210,20 @@
           hx-swap="innerHTML">
           {% if sort_dir == 'desc' %}<i class="fa-solid fa-arrow-down-wide-short"></i>{% else %}<i class="fa-solid fa-arrow-down-short-wide"></i>{% endif %}
         </a>
-        <select name="sort_by" title="Sort by" class="rounded-full bg-surface border border-edge px-3 py-1 text-xs font-medium hover:border-accent" hx-get="/decks/{{ cov.deck.id }}" hx-target="#deck-boards" hx-swap="innerHTML" hx-include="[name='sort_dir']">
+        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+        <select name="sort_by" title="Sort by" class="rounded-full bg-surface border border-edge px-3 py-1 text-xs font-medium hover:border-accent" hx-get="/decks/{{ cov.deck.id }}" hx-target="#deck-boards" hx-swap="innerHTML" hx-include="[name='sort_dir']" @change="setDeckSortBy($event.target.value)">
           <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name</option>
           <option value="quantity" {% if sort_by == 'quantity' %}selected{% endif %}>Quantity</option>
           <option value="price" {% if sort_by == 'price' %}selected{% endif %}>Price</option>
         </select>
-        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
       </h2>
 
       <div x-data="{ deck_legality_inspector_open: false}" class="sm:relative action-scope-collection mb-2 ">
+        <select name="attribute_view" title="Display attributes" class="rounded-full bg-surface border border-edge px-3 py-1 text-muted text-xs font-medium hover:border-accent" x-model="attribute_view" @change="setDeckAttributeView($event.target.value)">
+          <option value="coverage">Coverage</option>
+          <option value="price">Price</option>
+          <option value="casting_cost">Casting Cost</option>
+        </select>
         <button @click="deck_legality_inspector_open = !deck_legality_inspector_open" type="button" class="rounded-full ml-2 text-muted bg-surface border border-edge px-3 py-1 text-xs font-medium hover:border-accent whitespace-nowrap"><span class="hidden sm:inline">Inspect Deck </span>Legality ▾</button>
         <div x-show="deck_legality_inspector_open" @click.outside="deck_legality_inspector_open = false" x-transition="" style="display: none" class="absolute right-0 mt-2 w-64 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
           <div class="px-3 py-1.5 text-xs font-medium text-muted">Formats</div>
@@ -280,10 +289,14 @@
     return {
         view: localStorage.getItem("scryme_deck_view") || "list",
         cardView: localStorage.getItem("scryme_deck_card_view") || "distinct",
+        attribute_view: localStorage.getItem("scryme_deck_attribute_view") || "coverage",
+        deckSortBy: localStorage.getItem("scryme_deck_sort_by") || "name",
         layout: localStorage.getItem("scryme_deck_layout") || "rows",
         setView(v) { this.view = v; localStorage.setItem("scryme_deck_view", v); },
         setCardView(v) { this.cardView = v; localStorage.setItem("scryme_deck_card_view", v); },
         setLayout(l) { this.layout = l; localStorage.setItem("scryme_deck_layout", l); },
+        setDeckSortBy(a) { this.attribute_view = a; localStorage.setItem("scryme_deck_sort_by", a); },
+        setDeckAttributeView(a) { this.attribute_view = a; localStorage.setItem("scryme_deck_attribute_view", a); },
 
     };
   }

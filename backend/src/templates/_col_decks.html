@@ -44,7 +44,7 @@
         •
         <span title="Updated {{ updated_at.strftime('%Y-%m-%d %H:%M') }}">Updated {{ time.humanize_dt(updated_at, now) }}</span>
         •
-        <span>{{ currency.format_and_decorate(value, cur.symbol) }}</span>
+        <span>{{ value | currency_filter(currency) }}</span>
       </div>
     </a>
     

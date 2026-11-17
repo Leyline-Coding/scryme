@@ -41,7 +41,7 @@ def normalize(value: str | None) -> str | None:
 
 
 def info(currency: str | None) -> dict:
-    return {**CURRENCIES[normalize(currency) or DEFAULT], 'usd_to_cur_rate': fx.rate(currency) or 1.0}
+    return {**CURRENCIES[normalize(currency) or DEFAULT], 'usd_to_cur_rate': fx.rate(currency or "usd") or 1.0}
 
 
 def unit_price(prices: dict | None, finish: str, currency: str) -> float:

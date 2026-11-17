@@ -15,20 +15,9 @@
       {% if owned_total %}
       <span class="ml-1 text-xs normal-case font-normal"> {{ owned_total }} of {{owned_total+owned_other_printing_total+owned_equivalent_oracle_id_total}} total</span>
       {% endif %}
-      {% if not read_only %}
-      <form class="ml-auto flex flex-wrap items-end gap-1.5 text-sm"
-            hx-post="/collection/add" hx-target="#card-collection" hx-swap="outerHTML"
-            hx-on::after-request="this.reset()">
-        <input type="hidden" name="scryfall_id" value="{{ card_id }}" />
-        <input type="number" name="quantity" value="1" min="1" title="Quantity" autocomplete="off"
-              class="w-14 rounded-full bg-surface border border-edge px-2 py-1" />
-        <button type="submit"
-                class="rounded-full bg-accent text-accent-fg px-3 py-1 font-medium"><i class="fa-solid fa-plus"></i> Add</button>
-      </form>
       {% if owned and not read_only %}
-      <button type="button" class="rounded-full bg-accent text-accent-fg px-3 py-1 font-medium"
+      <button type="button" class="ml-auto rounded-full bg-accent text-accent-fg px-3 py-1 font-medium"
               hx-get="/card/{{ card_id }}/remove-modal" hx-target="#remove-modal" hx-swap="innerHTML" title="Bulk Edit"><i class="fa-solid fa-file-pen"></i><span class="hidden md:inline"> Bulk Edit</span></button>
-      {% endif %}
       {% endif %}
     </h2>
     {% for s in owned %}
@@ -236,6 +225,17 @@
   </ul>
   {% else %}
   <p class="text-sm text-muted">You don't own this printing yet.</p>
+    {% if not read_only %}
+      <form class="ml-auto flex flex-wrap items-end gap-1.5 text-sm mt-2"
+            hx-post="/collection/add" hx-target="#card-collection" hx-swap="outerHTML"
+            hx-on::after-request="this.reset()">
+        <input type="hidden" name="scryfall_id" value="{{ card_id }}" />
+        <input type="number" name="quantity" value="1" min="1" title="Quantity" autocomplete="off"
+              class="w-14 rounded-full bg-surface border border-edge px-2 py-1" />
+        <button type="submit"
+                class="rounded-full bg-accent text-accent-fg px-3 py-1 font-medium"><i class="fa-solid fa-plus"></i> Add</button>
+      </form>
+    {% endif %}
   {% endif %}
 
   {% for owned_cards, owned_count, mode in [[owned_other_printing,owned_other_printing_total,"other_printings"],[owned_equivalent_oracle_id,owned_equivalent_oracle_id_total,"equivalent_oracle_id"]] %}

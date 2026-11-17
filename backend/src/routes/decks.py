@@ -482,15 +482,34 @@ async def change_deck_card_qty(
     new_qty = max(1, dc.quantity + delta)
     applied = new_qty - dc.quantity  # 0 when already at the floor of 1
     dc.quantity = new_qty
+    deck_card_unique_stack_key = dc.get_unique_stack_key()
     
-    ## Modify collection_card if as many a qty is located in this deck and the new quantity has decreased
+    
+    ## Modify collection_card if the new quantity is less than what's in the deck
     if(delta < 0 and dc.scryfall_id):
       location = (await session.scalars(select(Location).where(Location.type == 'deck', Location.foreign_id==deck_id))).first()
       matches = await match_deck_cards_in_deck_collection_cards(session, source_cards=[dc], source_location=location.id if location else None)
-      matching_collection_cards = matches[dc.scryfall_id]
-      if(sum([c.quantity for c in matching_collection_cards]) > 0):
-          collection_card_to_move = matching_collection_cards[max(range(len(matching_collection_cards)), key=lambda i: matching_collection_cards[i].quantity)]
-          moved_cards = await move_qty_from_existing_stack(session, collection_card=collection_card_to_move, quantity=abs(delta), new_location_id=None)
+      matching_collection_cards = matches[deck_card_unique_stack_key]
+      
+      # Calculate how many cards need to be moved back to unfiled
+      current_in_deck = sum([c.quantity for c in matching_collection_cards])
+      if(current_in_deck > new_qty):
+          # We need to move excess quantity back to unfiled
+          quantity_to_move_back = current_in_deck - new_qty
+          
+          # Move the maximum possible quantity from deck cards back to unfiled
+          # Start with the largest stacks first
+          sorted_collection_cards = sorted(matching_collection_cards, key=lambda x: x.quantity, reverse=True)
+          remaining_to_move = quantity_to_move_back
+          
+          for collection_card in sorted_collection_cards:
+              if remaining_to_move <= 0:
+                  break
+              
+              move_qty = min(remaining_to_move, collection_card.quantity)
+              if move_qty > 0:
+                  await move_qty_from_existing_stack(session, collection_card=collection_card, quantity=move_qty, new_location_id=None)
+                  remaining_to_move -= move_qty
 
     await session.commit()
     if applied:

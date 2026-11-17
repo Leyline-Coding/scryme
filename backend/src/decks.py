@@ -970,7 +970,7 @@ async def deck_stack_coverages(
         if(result): sc.swappable = max(0, sum([x.quantity for x in result])-sc.owned)
         
         stack_coverage[dc.id] = sc ## We use dc.id and not dc.scryfall_id because a deck could specify multiple different stacks with the same scryfall_id, for example one normal copy and one foil copy
-        
+    
     return stack_coverage
 
 

@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import Card, CollectionCard
+from src.models import Card, CollectionCard, DeckCard, Location
 
 
 _STACK_NOT_FOUND = "Stack not found."
@@ -227,27 +227,43 @@ async def move_stacks_location(session: AsyncSession, stack_ids: list[int], loca
             CollectionCard.scryfall_id.in_([card.scryfall_id for card in stacks_to_move])
         )
     )).all()
-
+    location = await session.get(Location, location_id)
+    
     sids = []
     # Process each stack one by one
     for stack_to_move in stacks_to_move:
           
-          # Finely check the coarsely preload CollectionCard matches using _cards_are_identical()
-          identical_existing = next(
-              (existing_stack for existing_stack in existing_stacks_preloaded if stack_to_move.is_identical_to_stack(existing_stack)),
-              None
-          )
+        # Finely check the coarsely preload CollectionCard matches using _cards_are_identical()
+        identical_existing = next(
+            (existing_stack for existing_stack in existing_stacks_preloaded if stack_to_move.is_identical_to_stack(existing_stack)),
+            None
+        )
 
-          if identical_existing:
-              # Merge the stacks: increment the quantity of the existing card and delete source
-              identical_existing.quantity += stack_to_move.quantity
-              await session.delete(stack_to_move)
-              sids += [identical_existing.id]
-          else:
-              # No identical card at target location, just update location of the existing stack
-              stack_to_move.location = location_id
-              sids += [stack_to_move.id]
-    
+        if identical_existing:
+            # Merge the stacks: increment the quantity of the existing card and delete source
+            identical_existing.quantity += stack_to_move.quantity
+            await session.delete(stack_to_move)
+            sids += [identical_existing.id]
+        else:
+            # No identical card at target location, just update location of the existing stack
+            stack_to_move.location = location_id
+            sids += [stack_to_move.id]
+
+        # If moving to a deck, we need to populate deck cards there too.
+        if(location and location.type=='deck'):
+            new_deck_card = DeckCard(
+                deck_id=location.foreign_id,
+                name=stack_to_move.card.name,
+                quantity=stack_to_move.quantity,
+                finish=stack_to_move.finish,
+                language=stack_to_move.language,
+                board="main",
+                oracle_id=stack_to_move.card.oracle_id,
+                scryfall_id=stack_to_move.card.scryfall_id
+            )
+            session.add(new_deck_card)
+            ## TODO: A more complex algorythm should try to fill existing, vacant deck_cards by their quantity first
+
     await session.commit()
     return sids
 

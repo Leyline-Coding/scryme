@@ -480,11 +480,10 @@ async def change_deck_card_qty(
     ## Modify deck_card
     dc = await _get_deck_card(session, deck_id, card_id)
     delta = 1 if delta > 0 else -1
-    new_qty = max(1, dc.quantity + delta)
+    new_qty = max(0, dc.quantity + delta)
     applied = new_qty - dc.quantity  # 0 when already at the floor of 1
     dc.quantity = new_qty
     deck_card_unique_stack_key = dc.get_unique_stack_key()
-    
     
     ## Modify collection_card if the new quantity is less than what's in the deck
     if(delta < 0 and dc.scryfall_id):
@@ -511,6 +510,11 @@ async def change_deck_card_qty(
               if move_qty > 0:
                   await move_qty_from_existing_stack(session, collection_card=collection_card, quantity=move_qty, new_location_id=None)
                   remaining_to_move -= move_qty
+
+    ## Remove from deck entirely if the new qty is zero
+    if(new_qty==0):
+        await session.delete(dc)
+        await session.commit()
 
     await session.commit()
     if applied:

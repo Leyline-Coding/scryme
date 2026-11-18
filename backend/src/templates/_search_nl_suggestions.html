@@ -1,0 +1,30 @@
+{# Simple template for nl search suggestions #}
+{% if rows %}
+  {% for row in rows %}
+    <div class="p-2 hover:bg-surface-3 cursor-pointer flex items-center gap-2"
+    @click="_nl = {{ row.nl_text | tojson | forceescape }}">
+      {% set search_term = nl|default("") %}
+      {%- if search_term -%}
+      {%- set lower_parts = row.nl_text.lower().split(search_term.lower()) -%}
+      {%- set ns = namespace(pos=0) -%}
+      {%- set term_len = search_term | length -%}
+
+        <span>
+          {%- for part in lower_parts -%}
+            {%- set part_len = part | length -%}
+            {{- row.nl_text[ns.pos : ns.pos + part_len] -}}
+            {%- set ns.pos = ns.pos + part_len -%}
+            {%- if not loop.last -%}
+              <span class="bg-accent text-white">{{- row.nl_text[ns.pos : ns.pos + term_len] -}}</span>
+              {%- set ns.pos = ns.pos + term_len -%}
+            {%- endif -%}
+          {%- endfor -%}
+        </span>
+      {%- else -%}
+        <span>{{ row.nl_text }}</span>
+      {%- endif -%}
+
+      <i class="fa-solid fa-angles-right"></i> {{row.q_text}}
+    </div>
+  {% endfor %}
+{% endif %}

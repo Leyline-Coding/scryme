@@ -210,6 +210,31 @@ async def search_nl_status(
     if matching_nl_to_q and matching_nl_to_q.q_text: return HTMLResponse(status_code=200, content=matching_nl_to_q.q_text)
     else: return HTMLResponse(status_code=202, content="Processing...")
 
+@router.get("/search/nl/suggestions")
+async def search_nl_suggestions(
+    request: Request,
+    nl: str = "",
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Get NL query suggestions based on current input or recent queries."""
+    if not nl:
+        # Return 10 most recent NL queries
+        result = await session.execute(
+            select(NLQCache)
+            .order_by(NLQCache.created_at.desc())
+            .limit(10)
+        )
+    else:
+        # Return up to 5 most relevant results matching the partial query
+        result = await session.execute(
+            select(NLQCache)
+            .where(func.lower(NLQCache.nl_text).contains(func.lower(nl)))
+            .order_by(NLQCache.created_at.desc())
+            .limit(5)
+        )
+
+    return templates.TemplateResponse(request, "_search_nl_suggestions.html", {"nl":nl, "rows": result.scalars().all()})
+    
 
 async def _run_into_ctx(
     ctx: dict, session, query: str, scope_enum, page: int, sort: str, descending: bool,

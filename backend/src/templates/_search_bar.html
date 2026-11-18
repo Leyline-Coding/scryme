@@ -26,16 +26,36 @@
 {% if ai_ready %}
 {# AI / natural-language mode (#171): translate to Scryfall syntax, then run it. #}
 <div x-show="ai" class=" flex w-full items-center mb-2">
-  <div class="relative flex-1">
+  <div x-data="{ _nl: '', nlIsFocused: false, suggestions: [], selectedIndex: -1}" class="relative w-full"
+      @focusin="nlIsFocused = true" 
+      @keydown.escape="nlIsFocused = false"
+      @click.outside="nlIsFocused = false">
     <input type="search" name="nl" x-ref="ainput" id="ai-search-input" value="{{ nl }}"
             placeholder="Ask in plain English — cheap red removal that hits creatures"
+            autocomplete="off"
             class="w-full rounded-l-full bg-surface border border-edge border-r-0 px-5 py-2.5
-                  focus:outline-none focus:ring-2 focus:ring-accent" />
+                  focus:outline-none focus:ring-2 focus:ring-accent" 
+            hx-get="/search/nl/suggestions"
+            hx-target="#nl-suggestion-results"
+            hx-trigger="keyup changed delay:200ms, focus"
+            hx-indicator="#nl-suggestion-spinner"
+            hx-include="#ai-search-input"
+            x-model="_nl"
+          />
+    <span id="nl-suggestion-spinner" class="htmx-indicator absolute right-3 top-1.5 text-xs">
+      <i class="fa-solid fa-spinner fa-spin"></i>
+    </span>
     <button 
       type="button" 
       id="ai-search-clear-button"
       class="absolute top-1/2 -translate-y-1/2 right-3 flex items-center justify-center w-6 h-6 rounded-full bg-surface-2 text-gray-400 hover:text-gray-600 hidden font-bold"
     ><i class="fa-solid fa-xmark"></i></button>
+    
+    {# NL query suggestions dropdown #}
+    <div id="nl-suggestion-results" 
+        x-show="nlIsFocused" x-cloak
+        class="absolute z-10 w-full mt-1 bg-surface-2 border border-edge rounded-lg shadow-lg overflow-hidden">
+    </div>
   </div>
   <button type="button" @click="ai = false" title="Back to Scryfall syntax"
           class="rounded-r-full bg-accent border border-accent px-5 py-2.5 font-medium text-white hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 whitespace-nowrap">Syntax search</button>
@@ -92,4 +112,5 @@
     document.getElementById('ai-search-clear-button'),
     document.querySelector('form[method="post"][action="/search/nl"]')
   );
+
 </script>

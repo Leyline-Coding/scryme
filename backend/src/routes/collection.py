@@ -106,6 +106,7 @@ async def _collection_partial_generator(
             .all()
         )
 
+        # Get cards with same oracle_id but exclude those already shown in owned_other_printing
         owned_equivalent_oracle_id = list(
             (
                 await session.execute(
@@ -113,6 +114,7 @@ async def _collection_partial_generator(
                     .join(Card, CollectionCard.scryfall_id==Card.scryfall_id)
                     .where(CollectionCard.scryfall_id != card.scryfall_id)
                     .where(Card.oracle_id == card.oracle_id)
+                    .where(CollectionCard.scryfall_id.not_in([c.scryfall_id for c in owned_other_printing]))
                     .order_by(CollectionCard.finish, CollectionCard.language)
                 )
             )

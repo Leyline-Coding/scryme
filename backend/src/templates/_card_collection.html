@@ -124,7 +124,7 @@
       {# Unified location picker (#160): file this stack into a box, binder, or deck. #}
       <form hx-post="/collection/stack/{{ s.id }}/edit" name="location_select_{{s.id}}" hx-trigger="hiddenChange" hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
         <input type="hidden" name="location_moved" value="True"/>
-        {{ locations_select.render(grouped_locations, selected_location=s.location, name="location_id", selectedAsLabel=True, onchange="document.querySelector('form[name=\"location_select_%s\"]').dispatchEvent(new Event('hiddenChange'))" % s.id, class="rounded-full bg-surface-2 border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem] overflow_hidden whitespace-nowrap") }}
+        {{ locations_select.render(grouped_locations, selected_location=s.location, name="location_id", id="stack_" ~ s.id ~ "_location_selector", selectedAsLabel=True, onchange="document.querySelector('form[name=\"location_select_%s\"]').dispatchEvent(new Event('hiddenChange'))" % s.id, class="rounded-full bg-surface-2 border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem] overflow_hidden whitespace-nowrap") }}
       </form>
       {% endif %}
       {% if trade_pools and not read_only %}
@@ -238,7 +238,7 @@
     {% endif %}
   {% endif %}
 
-  {% for owned_cards, owned_count, mode in [[owned_other_printing,owned_other_printing_total,"other_printings"],[owned_equivalent_oracle_id,owned_equivalent_oracle_id_total,"equivalent_oracle_id"]] %}
+    {% for owned_cards, owned_count, mode in [[owned_other_printing,owned_other_printing_total,"other_printings"],[owned_equivalent_oracle_id,owned_equivalent_oracle_id_total,"equivalent_oracle_id"]] %}
   {% if owned_cards %}
   <ul class="text-sm mt-2 pt-2 border-t border-edge" x-data="{ expanded_{{mode}}: false }" >
     <h2 class="text-sm font-semibold text-muted mb-1 tracking-wide">{%if mode=="other_printings" %}Owned Other printings{%else%}Other Cards Named "{{card.name}}"{%endif%}
@@ -268,6 +268,7 @@
       {% endif %} →</a>
     </li>
     {% endfor %}
+    {% if owned_cards|length > 5 %}
     <button 
       @click="expanded_{{mode}} = !expanded_{{mode}}"
       class="inline-flex items-center gap-1 text-sm font-semibold text-accent hover:text-fg transition-colors focus:outline-none"
@@ -275,6 +276,7 @@
       <span x-text="expanded_{{mode}} ? 'Show less' : 'Show more'"></span>
       <i class="fa-solid fa-chevron-down" :class="expanded_{{mode}} ? 'rotate-180' : ''" ></i>
     </button>
+    {% endif %}
   </ul>
   {% endif %}
   {% endfor %}

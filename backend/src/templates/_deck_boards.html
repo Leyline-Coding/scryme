@@ -66,8 +66,8 @@
         {% else %}
         <span class="shrink-0 text-xs text-muted">
             <span class="rounded bg-{% if r.quantity > r.stack_coverage.in_deck %}amber{%else%}emerald{%endif%}-500/80 text-white text-[9px] px-1 py-0.5" title="Constructed{% if r.stack_coverage.in_deck!=0 %}/required{%endif%}" x-show="attribute_view=='coverage'">{% if r.stack_coverage.in_deck==0 %}0{% elif r.quantity > r.stack_coverage.in_deck %}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%else%}{{ r.stack_coverage.in_deck }}/{{ r.quantity }}{%endif%}</span>
-            <span class="rounded bg-{% if r.quantity > (r.stack_coverage.in_deck+r.stack_coverage.owned) %}amber{%else%}emerald{%endif%}-700/80 text-white text-[9px] px-1 py-0.5" title="Exact copies available in collection{% if r.quantity > r.stack_coverage.in_deck %}/required{%endif%}" x-show="cardView === 'distinct' && attribute_view === 'coverage'">{{ r.stack_coverage.owned }}{% if r.quantity > r.stack_coverage.in_deck %}/{{ r.quantity }}{%endif%}</span>
-            <span class="rounded bg-emerald-900/90 text-white text-[9px] px-1 py-0.5" title="Other swappable copies available in collection" x-show="attribute_view=='coverage'">{{ r.stack_coverage.swappable }}</span>
+            <span class="rounded bg-{% if r.quantity > (r.stack_coverage.in_deck+r.stack_coverage.owned) %}amber{%else%}blue{%endif%}-500/80 text-white text-[9px] px-1 py-0.5" title="Exact copies available in collection{% if r.quantity > r.stack_coverage.in_deck %}/required{%endif%}" x-show="cardView === 'distinct' && attribute_view === 'coverage'">{{ r.stack_coverage.owned }}{% if r.quantity > r.stack_coverage.in_deck %}/{{ r.quantity }}{%endif%}</span>
+            <span class="rounded bg-accent text-white text-[9px] px-1 py-0.5" title="Other swappable copies available in collection" x-show="attribute_view=='coverage'">{{ r.stack_coverage.swappable }}</span>
             {% if fx_rate and r.scryfall_card and r.scryfall_card.simple_price() %}
                 <span class="" title="Purchase price" x-show="attribute_view=='price'">{{ (r.scryfall_card.simple_price()*fx_rate) | currency_filter(currency) }}</span>
             {% endif %}
@@ -200,8 +200,8 @@
   {# Full width unless there's a sideboard to sit beside it — otherwise a Commander deck's
       grid is squeezed into one column and the cards are unreadable. #}
   <section class="rounded-xl bg-surface ring-1 ring-edge p-4{% if not cov.side %} md:col-span-2{% endif %}">
-    <div class="flex items-center justify-between mb-2">
-      <h2 class="flex items-center gap-2 text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
+    <div class="grid grid-cols-1 md:grid-cols-3 items-center mb-2">
+      <h2 class="flex items-center gap-2 text-sm font-semibold text-muted uppercase tracking-wide mb-2">
         <a id="mainboard">Mainboard ({{ cov.main | map(attribute='quantity') | sum }})</a>
         <a href="/decks/{{ cov.deck.id }}?sort_by={{ sort_by }}&sort_dir={{ 'desc' if sort_dir == 'asc' else 'asc' }}"
           class="rounded-full bg-surface border border-edge px-3 py-1 text-xs font-medium ml-2 hover:border-accent {{ 'ring-2 ring-offset-2 ring-accent' if sort_dir == 'desc' else '' }}"
@@ -218,7 +218,40 @@
         </select>
       </h2>
 
-      <div x-data="{ deck_legality_inspector_open: false}" class="sm:relative action-scope-collection mb-2 ">
+      <div class="sm:relative action-scope-collection flex md:items-center md:justify-center mb-2">
+        {# Card search field #}
+        {% if not read_only %}
+        <div x-data="{ q: '', qIsFocused: false}"  class="relative w-full"
+            @focusin="qIsFocused = true" 
+            @keydown.escape="qIsFocused = false"
+            @click.outside="qIsFocused = false">
+          <input 
+            autocomplete="off"
+            type="text" 
+            id="deck-search-{{ cov.deck.id }}"
+            name="q"
+            placeholder="Search cards to add..." 
+            class="block rounded-full bg-surface-2 border border-edge px-3 py-1 text-xs w-full focus:outline-none focus:ring-1 focus:ring-accent"
+            hx-get="/decks/{{ cov.deck.id }}/search-cards"
+            hx-target="#search-results-{{ cov.deck.id }}"
+            hx-trigger="keyup changed delay:200ms"
+            hx-indicator="#search-spinner-{{ cov.deck.id }}"
+            hx-include="#deck-search-{{ cov.deck.id }}"
+            x-model="q"
+          />
+          <span id="search-spinner-{{ cov.deck.id }}" class="htmx-indicator absolute right-3 top-1.5 text-xs">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+          </span>
+          <div id="search-results-{{ cov.deck.id }}" 
+              x-show="q.length > 0 && qIsFocused" x-cloak
+              class="absolute z-10 w-full mt-1 bg-surface-2 border border-edge rounded-lg shadow-lg overflow-hidden">
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+
+      <div x-data="{ deck_legality_inspector_open: false}" class="sm:relative action-scope-collection flex md:items-end md:justify-end mb-2">
         <select name="attribute_view" title="Display attributes" class="rounded-full bg-surface border border-edge px-3 py-1 text-muted text-xs font-medium hover:border-accent" x-model="attribute_view" @change="setDeckAttributeView($event.target.value)">
           <option value="coverage">Coverage</option>
           <option value="price">Price</option>
@@ -239,6 +272,24 @@
         </div>
       </div>
     </div>
+
+    <script>
+      function addCardToDeck(deckId, scryfallId) {
+        // Create a form to submit the request
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/decks/${deckId}/add-card`;
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'scryfall_id';
+        input.value = scryfallId;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+      }
+    </script>
 
     {# Summary message if there are issues with the deck #}
     {% if cov.fmt %}

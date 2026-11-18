@@ -1,0 +1,41 @@
+{# Simple template for search suggestions #}
+{% if cards %}
+  {% for card in cards %}
+    <div class="p-2 hover:bg-surface-3 cursor-pointer flex items-center justify-between gap-2" 
+         hx-post="/decks/{{ deck_id }}/add-card"
+         hx-target="#deck-boards"
+         hx-swap="innerHTML"
+         hx-vals='{"scryfall_id": "{{ card.scryfall_id }}"}'>
+      {% set search_term = q|default("") %}
+      {%- if search_term -%}
+      {%- set lower_parts = card.name.lower().split(search_term.lower()) -%}
+      {%- set ns = namespace(pos=0) -%}
+      {%- set term_len = search_term | length -%}
+
+        <span>
+          {%- for part in lower_parts -%}
+            {%- set part_len = part | length -%}
+            {{- card.name[ns.pos : ns.pos + part_len] -}}
+            {%- set ns.pos = ns.pos + part_len -%}
+            {%- if not loop.last -%}
+              <span class="bg-accent text-white">{{- card.name[ns.pos : ns.pos + term_len] -}}</span>
+              {%- set ns.pos = ns.pos + term_len -%}
+            {%- endif -%}
+          {%- endfor -%}
+        </span>
+      {%- else -%}
+        <span>{{ card.name }}</span>
+      {%- endif -%}
+
+      {% if card.coverage %}
+        <div class="flex gap-1 text-[9px]">
+          <span class="bg-emerald-500/80 text-white px-1 py-0.5 rounded" title="Constructed (this deck)">{{ card.coverage.in_deck }}</span>
+          <span class="bg-blue-500/80 text-white px-1 py-0.5 rounded" title="Exact copies available in collection">{{ card.coverage.available }}</span>
+          <span class="bg-accent text-white px-1 py-0.5 rounded" title="Other swappable copies available in collection">{{ card.coverage.swappable - card.coverage.available }}</span>
+        </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="p-2 text-muted text-sm">No cards found</div>
+{% endif %}

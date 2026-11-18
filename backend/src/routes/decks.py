@@ -11,7 +11,7 @@ import html
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.brackets import BRACKET_LABELS, estimate_bracket, normalize_bracket
@@ -942,3 +942,207 @@ async def set_commander(
     await session.commit()
     
     return Response(status_code=200, headers={"HX-Refresh": "true"})
+
+
+@router.post("/decks/{deck_id}/add-card")
+async def add_card_to_deck_endpoint(
+    deck_id: int,
+    scryfall_id: str = Form(""),
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    """Add a card to the deck by its scryfall_id."""
+    _guard_writable()
+    
+    # Get the deck
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    
+    # Get the card
+    card = await session.get(Card, scryfall_id)
+    if card is None:
+        raise HTTPException(status_code=404, detail="Card not found.")
+    
+    # Add the card to the deck
+    await add_card_to_deck(session, deck_id, card)
+    
+    # Refresh the deck boards partial 
+    return Response(status_code=200, headers={"HX-Refresh": "true"})
+
+
+@router.get("/decks/{deck_id}/search-cards")
+async def search_cards(
+    request: Request,
+    deck_id: int,
+    q: str = "",
+    limit: int = 10,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Search for cards by name to suggest additions to a deck."""
+    # If no query or empty query, return empty results
+    if not q or q.strip() == "":
+        return templates.TemplateResponse(request, "_deck_search_suggestions.html", {"cards": [], "deck_id": deck_id})
+    
+    # Search for card names that match the query (case insensitive)
+    # Prioritize matches: exact match > starts with > contains anywhere
+    stmt = select(Card.name, Card.scryfall_id).where(
+        Card.name.ilike(f"%{q.strip()}%"),
+        and_(Card.type_line != "Card", Card.type_line.not_ilike("%token%"))
+    ).order_by(
+        # Prioritize exact matches first
+        Card.name.op('ILIKE')(f"{q.strip()}").desc(),
+        # Then prioritize matches that start with the query
+        Card.name.op('ILIKE')(f"{q.strip()}%").desc(),
+        # Then order by name for consistent sorting
+        Card.name
+    ).limit(limit * 3)  # Get more results to allow deduplication and ranking
+    
+    results = await session.execute(stmt)
+    cards = [{"name": row[0], "scryfall_id": str(row[1])} for row in results]
+    
+    # Deduplicate by name, choosing the best version based on collection availability
+    deduplicated_cards = []
+    seen_names = set()
+    
+    # First, let's group all cards by name to get all versions of each card
+    cards_by_name = {}
+    for card in cards:
+        name = card["name"]
+        if name not in cards_by_name:
+            cards_by_name[name] = []
+        cards_by_name[name].append(card)
+    
+    # For each unique name, select the best version according to our rules
+    for name, matching_cards in cards_by_name.items():
+        if name in seen_names:
+            continue
+            
+        # Select the best version based on quantity in collection
+        best_card = await _select_best_card_version(session, matching_cards)
+        
+        deduplicated_cards.append(best_card)
+        seen_names.add(name)
+        
+        # Limit to requested limit
+        if len(deduplicated_cards) >= limit:
+            break
+    
+    # Add coverage information for each card
+    cards_with_coverage = []
+    for card in deduplicated_cards:
+        # Get the card details for coverage calculation
+        card_details = await session.execute(
+            select(Card).where(Card.scryfall_id == card["scryfall_id"])
+        )
+        card_obj = card_details.scalars().first()
+        
+        if card_obj:
+            # Calculate coverage - we need to get deck coverage info for this specific card
+            # This is a simplified version that gets the basic coverage data
+            coverage_info = await _get_card_coverage(session, deck_id, card_obj)
+            card["coverage"] = coverage_info
+            cards_with_coverage.append(card)
+    
+    return templates.TemplateResponse(request, "_deck_search_suggestions.html", {"cards": cards_with_coverage, "deck_id": deck_id, "q": html.escape(q)})
+
+
+async def _select_best_card_version(session: AsyncSession, matching_cards: list[dict]) -> dict:
+    """Select the best card version based on quantity in collection.
+    
+    Rules:
+    1. Choose first item with > 0 quantity in non-deck location
+    2. If no matches in non-deck locations, choose first item with > 0 quantity in deck location
+    3. If no matches anywhere, pick the first card
+    """
+    # Get all unique scryfall_ids for these matching cards
+    scryfall_ids = [c["scryfall_id"] for c in matching_cards]
+    
+    # First, check collection cards that are NOT in a deck location (first preference)
+    stmt = select(CollectionCard).where(
+        CollectionCard.scryfall_id.in_(scryfall_ids)
+    ).outerjoin(Location, CollectionCard.location == Location.id).where(
+        (Location.type != "deck") | (Location.id.is_(None))
+    )
+    
+    collection_cards_non_deck = (await session.execute(stmt)).scalars().all()
+    
+    # Group by scryfall_id for easy lookup
+    collection_by_sid_non_deck = {}
+    for cc in collection_cards_non_deck:
+        if str(cc.scryfall_id) not in collection_by_sid_non_deck:
+            collection_by_sid_non_deck[str(cc.scryfall_id)] = []
+        collection_by_sid_non_deck[str(cc.scryfall_id)].append(cc)
+    
+    # Try to find a card with quantity > 0 in non-deck location
+    for card in matching_cards:
+        scryfall_id = card["scryfall_id"]
+        if scryfall_id in collection_by_sid_non_deck and any(cc.quantity > 0 for cc in collection_by_sid_non_deck[scryfall_id]):
+            return card
+    
+    # If no matches in non-deck locations, check deck locations (second preference)
+    stmt = select(CollectionCard).where(
+        CollectionCard.scryfall_id.in_(scryfall_ids)
+    ).join(Location, CollectionCard.location == Location.id).where(
+        Location.type == "deck"
+    )
+    
+    collection_cards_deck = (await session.execute(stmt)).scalars().all()
+    
+    # Group by scryfall_id for easy lookup
+    collection_by_sid_deck = {}
+    for cc in collection_cards_deck:
+        if str(cc.scryfall_id) not in collection_by_sid_deck:
+            collection_by_sid_deck[str(cc.scryfall_id)] = []
+        collection_by_sid_deck[str(cc.scryfall_id)].append(cc)
+    
+    # Try to find a card with quantity > 0 in deck location
+    for card in matching_cards:
+        scryfall_id = card["scryfall_id"]
+        if scryfall_id in collection_by_sid_deck and any(cc.quantity > 0 for cc in collection_by_sid_deck[scryfall_id]):
+            return card
+    
+    # If no matches anywhere, just pick the first one
+    return matching_cards[0]
+
+
+async def _get_card_coverage(session: AsyncSession, deck_id: int, card: Card) -> dict:
+    """Calculate coverage information for a card in the context of a specific deck."""
+    # This is simplified - in reality, this would involve more complex logic
+    # to determine how many copies are in deck vs. available elsewhere
+    
+    # Get all collection cards for this scryfall_id that are NOT in a deck location
+    stmt = select(CollectionCard).where(
+        CollectionCard.scryfall_id == card.scryfall_id
+    ).outerjoin(Location, CollectionCard.location == Location.id).where(
+        (Location.type != "deck") | (Location.id.is_(None))
+    )
+    
+    collection_cards_non_deck = (await session.execute(stmt)).scalars().all()
+    
+    # Get all collection cards for this scryfall_id that ARE in a deck location
+    stmt = select(CollectionCard).where(
+        CollectionCard.scryfall_id == card.scryfall_id
+    ).join(Location, CollectionCard.location == Location.id).where(
+        Location.type == "deck"
+    )
+    
+    collection_cards_deck = (await session.execute(stmt)).scalars().all()
+    
+    # Get deck cards for this scryfall_id
+    stmt = select(DeckCard).where(
+        DeckCard.scryfall_id == card.scryfall_id,
+        DeckCard.deck_id == deck_id
+    )
+    
+    deck_cards = (await session.execute(stmt)).scalars().all()
+    
+    # Calculate quantities
+    in_deck = sum(dc.quantity for dc in deck_cards)
+    available_non_deck = sum(cc.quantity for cc in collection_cards_non_deck)
+    swappable = sum(cc.quantity for cc in collection_cards_non_deck)  # Simplified for now
+    
+    return {
+        "in_deck": in_deck,
+        "available": available_non_deck,
+        "swappable": swappable
+    }

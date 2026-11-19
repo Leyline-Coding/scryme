@@ -7,11 +7,18 @@ Scryfall bulk refresh.
 
 from contextlib import asynccontextmanager
 
+from typing import cast
 import asyncio
 import structlog
+
+from starlette.types import ExceptionHandler
 from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from src import __version__
 from src.card import card_name_text_search_matcher
@@ -193,7 +200,13 @@ def create_app() -> FastAPI:
 
     # Compress text responses (HTML, the value-chart SVG, JSON API). Skips small bodies.
     app.add_middleware(GZipMiddleware, minimum_size=512)
-
+    
+    # Add rate limiting middleware - this should be applied before other middlewares that might be affected
+    # Initialize rate limiter
+    app.state.limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+    app.add_exception_handler(RateLimitExceeded, cast(ExceptionHandler, _rate_limit_exceeded_handler))
+    app.add_middleware(SlowAPIMiddleware)
+    
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     _install_cache_headers(app)

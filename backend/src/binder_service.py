@@ -55,53 +55,6 @@ async def delete_binder(session: AsyncSession, binder_id: int) -> None:
         await session.commit()
 
 
-async def add_card(session: AsyncSession, binder_id: int, scryfall_id) -> bool:
-    """Add an owned printing to a binder. False if unowned, missing binder, or already present."""
-    sid = _as_uuid(scryfall_id)
-    if await session.get(Binder, binder_id) is None:
-        return False
-    owned = await session.scalar(
-        select(CollectionCard.id).where(CollectionCard.scryfall_id == sid).limit(1)
-    )
-    if owned is None:
-        return False
-    exists = await session.scalar(
-        select(BinderCard.id).where(
-            BinderCard.binder_id == binder_id, BinderCard.scryfall_id == sid
-        )
-    )
-    if exists:
-        return False
-    session.add(BinderCard(binder_id=binder_id, scryfall_id=sid))
-    await session.commit()
-    return True
-
-
-async def bulk_add_to_binder(session: AsyncSession, binder_id: int, scryfall_ids) -> int:
-    """Add many owned printings to a binder; returns how many were newly added."""
-    if await session.get(Binder, binder_id) is None:
-        return 0
-    sids = {_as_uuid(s) for s in scryfall_ids}
-    if not sids:
-        return 0
-    owned = set((await session.execute(
-        select(CollectionCard.scryfall_id).where(CollectionCard.scryfall_id.in_(sids))
-    )).scalars().all())
-    already = set((await session.execute(
-        select(BinderCard.scryfall_id).where(
-            BinderCard.binder_id == binder_id, BinderCard.scryfall_id.in_(sids)
-        )
-    )).scalars().all())
-    added = 0
-    for sid in sids:
-        if sid in owned and sid not in already:
-            session.add(BinderCard(binder_id=binder_id, scryfall_id=sid))
-            added += 1
-    if added:
-        await session.commit()
-    return added
-
-
 async def get_all_binder_cards(session: AsyncSession, binder_id: int) -> list[CollectionCard]:
     return list((await session.execute(
         select(CollectionCard)

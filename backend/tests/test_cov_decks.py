@@ -175,7 +175,7 @@ async def test_deck_coverage_and_stats_and_missing(session):
 
     cov = await deck_coverage(session, deck, fmt="modern", currency="usd", source="tcgplayer")
     assert cov.total_needed == 15
-    assert cov.owned_count == 1
+    assert cov.total_owned == 1
     assert cov.unmatched == 1
     assert cov.fmt == "modern"
 

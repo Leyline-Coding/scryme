@@ -932,7 +932,7 @@ async def deck_stack_coverages(
     await session.refresh(deck, ["location"])
     # Get all collection cards that are located in this deck (already in the deck)
     deck_collection_cards = {}
-    if deck.location.id is not None:
+    if deck.location and deck.location.id is not None:
         result = (await session.execute(
             select(CollectionCard.scryfall_id, CollectionCard.finish, CollectionCard.language, func.sum(CollectionCard.quantity).label('quantity'))
             .where(CollectionCard.location == deck.location.id)

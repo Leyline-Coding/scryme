@@ -67,7 +67,6 @@ async def _clean_tables():
         await conn.execute(text("TRUNCATE preferences RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE card_embedding CASCADE"))
         await conn.execute(text("TRUNCATE rules_chunk RESTART IDENTITY CASCADE"))
-        await conn.execute(text("TRUNCATE binder_card RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE binder RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE box RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE set_release RESTART IDENTITY CASCADE"))
@@ -75,6 +74,7 @@ async def _clean_tables():
         await conn.execute(text("TRUNCATE trade_pool RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE client_token RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE share_link RESTART IDENTITY CASCADE"))
+        await conn.execute(text("TRUNCATE sleeves RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE cards CASCADE"))
 
 

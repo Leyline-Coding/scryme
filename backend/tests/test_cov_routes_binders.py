@@ -9,7 +9,7 @@ import uuid
 
 import pytest
 from fastapi import HTTPException
-from src.binder_service import binders_for_card, create_binder
+from src.binder_service import create_binder
 from src.config import get_settings
 from src.models import Card, CollectionCard
 from src.routes import binders as R
@@ -75,28 +75,6 @@ async def test_new_rename_delete_binder(session):
 
 
 @pytest.mark.asyncio
-async def test_card_binder_add_remove_partials(session):
-    b = await create_binder(session, "Ramp")
-    owned = await _own(session, "Sol Ring")
-    sid = str(owned.scryfall_id)
-
-    add = await R.card_binder_add(_request("/card"), sid, binder_id=str(b.id), session=session)
-    assert add.status_code == 200 and b"Ramp" in add.body
-    assert await binders_for_card(session, sid) == {b.id}
-
-    # Blank binder id -> no membership change, still renders the partial.
-    noop = await R.card_binder_add(_request("/card"), sid, binder_id="  ", session=session)
-    assert noop.status_code == 200
-
-    rm = await R.card_binder_remove(_request("/card"), sid, binder_id=str(b.id), session=session)
-    assert rm.status_code == 200
-    assert await binders_for_card(session, sid) == set()
-    # Blank binder id on remove -> no-op partial.
-    noop_rm = await R.card_binder_remove(_request("/card"), sid, binder_id="", session=session)
-    assert noop_rm.status_code == 200
-
-
-@pytest.mark.asyncio
 async def test_remove_card_route(session):
     b = await create_binder(session, "Ramp")
     owned = await _own(session, "Sol Ring")
@@ -104,7 +82,6 @@ async def test_remove_card_route(session):
     await add_card(session, b.id, str(owned.scryfall_id))
     resp = await R.remove_card_route(b.id, scryfall_id=str(owned.scryfall_id), session=session)
     assert resp.status_code == 303
-    assert await binders_for_card(session, str(owned.scryfall_id)) == set()
 
 
 @pytest.mark.asyncio

@@ -23,9 +23,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import __version__
 from src.config import get_settings
-from src.deck_builder import classify_role
-from src.deck_synergy import DeckProfile, card_synergy, deck_themes, deck_tribes
-from src.decks import deck_coverage, deck_stats
 from src.llm_card_analysis import collection_ai_context, deck_ai_context
 from src.models import Card, CollectionCard, Deck, DeckChatMessage, LLMSettings, NLQCache
 from src.search import SearchError, build_search
@@ -717,52 +714,3 @@ async def nlq_worker(
         except:
             raise Exception(f"Unexpected AI service error.")
     raise Exception(f"Unexpected AI service error. cfg.ready or matching_nl_to_q.nl_text")
-    
-
-
-
-
-
-
-
-
-
-
-
-
-'''
-async def suggest_from_collection(
-    session: AsyncSession, deck, client: ChatClient, limit: int = 10,
-) -> SuggestResult:
-    """Suggest owned cards to add, chosen from a validated candidate pool (no hallucinations)."""
-    ctx = await deck_ai_context(session, deck)
-    profile = DeckProfile(themes=ctx.themes, tribes=set(ctx.tribes))
-    cards = await _pool_cards(session, deck, profile)
-    if not cards:
-        return SuggestResult(considered=0)
-    # The validation map every named card is checked against stays the FULL legal pool, not the
-    # shortlist — a card the model knows about from elsewhere must still resolve if you own it.
-    pool = {c.name.lower(): (c.name, c.scryfall_id) for c in cards}
-
-    # Shortlist by deck fit rather than by whatever order the query returned (#295). The old slice
-    # took the first 60 by oracle id — effectively arbitrary, so most of the collection was never
-    # seen and which part *was* seen had nothing to do with the deck.
-    shortlist = sorted(cards, key=lambda c: (-c.synergy, c.name))[:_SHORTLIST]
-    messages = [
-        {"role": "system", "content":
-
-            
-            "'Name — role | keywords | what it does'.\n"
-            f"Return at most {limit} lines, each exactly 'Card Name - reason'. No preamble.\n\n"
-            + _DECKBUILD_GUIDE},
-        {"role": "user", "content":
-            ctx.block() + "\n\nOwned candidates (choose only from these):\n"
-            + "\n".join(c.line() for c in shortlist)},
-    ]
-    text = await _chat_nonempty(client, messages, retries=2, temperature=0.3, max_tokens=4000)
-    return SuggestResult(suggestions=_parse_suggestions(text, pool)[:limit],
-                         considered=len(pool), empty=not text.strip())
-
-'''
-
-

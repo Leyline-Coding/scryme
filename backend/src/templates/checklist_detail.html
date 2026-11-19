@@ -12,7 +12,7 @@
     <div class="flex items-end justify-between gap-3 mb-2">
       <div>
         <div class="text-2xl font-bold">{{ cov.pct_own }}% complete</div>
-        <div class="text-sm text-muted">{{ cov.owned_count }} of {{ cov.total }} owned</div>
+        <div class="text-sm text-muted">{{ cov.total_owned }} of {{ cov.total }} owned</div>
       </div>
       {% if not read_only and cov.missing_matched %}
       <form method="post" action="/checklists/{{ cov.checklist.id }}/wishlist">

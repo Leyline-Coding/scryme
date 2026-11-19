@@ -58,7 +58,7 @@ async def test_coverage_counts(session):
     await _card(session, "Mox Sapphire", 2, owned=False)
     cl = await create_checklist(session, "P9", "Black Lotus\nMox Sapphire\nUnknownCard")
     cov = await checklist_coverage(session, cl)
-    assert cov.total == 3 and cov.owned_count == 1 and cov.unmatched == 1
+    assert cov.total == 3 and cov.total_owned == 1 and cov.unmatched == 1
     assert cov.pct_own == 33 and cov.missing_matched == 1
     assert [r.name for r in cov.missing] == ["Mox Sapphire", "UnknownCard"]
 

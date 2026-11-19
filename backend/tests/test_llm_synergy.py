@@ -10,7 +10,8 @@ import uuid
 import pytest
 from src.deck_synergy import DeckProfile
 from src.decks import create_deck
-from src.llm import _pool_cards, _snippet, deck_ai_context, suggest_from_collection
+from src.llm import deck_ai_context
+from src.llm_card_analysis import _snippet
 from src.models import Card, CollectionCard
 from src.scryfall.mapping import card_to_columns
 
@@ -113,86 +114,3 @@ def test_snippet_collapses_and_truncates():
     assert long.endswith("…") and len(long) <= 111
     assert _snippet(None) == ""
 
-
-@pytest.mark.asyncio
-async def test_a_candidate_line_carries_role_and_what_the_card_does(session):
-    deck = await _deck(session)
-    await _card(session, "Elf Mystic", "Creature — Elf Druid", "Add {G}.", owned=1)
-
-    cards = await _pool_cards(session, deck)
-    line = next(c for c in cards if c.name == "Elf Mystic").line()
-    assert line.startswith("Elf Mystic — ")
-    assert "Ramp" in line and "Add {G}." in line
-
-
-@pytest.mark.asyncio
-async def test_a_candidate_line_names_the_keyword_it_shares_with_the_deck(session):
-    """Only keywords the deck actually cares about are worth prompt space."""
-    await _card(session, "Grave Captain", "Legendary Creature — Elf Warrior",
-                _MULTILINE_COMMANDER, cmc=4)
-    for i in range(3):
-        await _card(session, f"Flier {i}", "Creature — Bird", "", keywords=["Flying"])
-    deck = await create_deck(session, "Skies",
-                             "1 Grave Captain\n" + "\n".join(f"1 Flier {i}" for i in range(3)))
-    await _card(session, "Owned Flier", "Creature — Bird", "Attacks.", keywords=["Flying"],
-                owned=1)
-    await _card(session, "Owned Ground", "Creature — Bear", "Attacks.", keywords=["Trample"],
-                owned=1)
-
-    ctx = await deck_ai_context(session, deck)
-    profile = DeckProfile(themes=ctx.themes, tribes=set(ctx.tribes))
-    lines = {c.name: c.line() for c in await _pool_cards(session, deck, profile)}
-    assert "Flying" in lines["Owned Flier"]
-    assert "Trample" not in lines["Owned Ground"]   # not a theme of this deck
-
-
-@pytest.mark.asyncio
-async def test_the_prompt_annotates_candidates_and_demands_specific_synergy(session):
-    deck = await _deck(session)
-    await _card(session, "Elf Mystic", "Creature — Elf Druid", "Add {G}.", owned=1)
-    fake = FakeChat("Elf Mystic - ramps into the commander")
-
-    await suggest_from_collection(session, deck, fake)
-    assert "Elf Mystic — Ramp | Add {G}." in fake.user
-    assert "commander's specific ability" in fake.system
-    assert "generic staples" in fake.system
-
-
-# --- the shortlist is chosen by fit, not by row order ---------------------------------------------
-
-@pytest.mark.asyncio
-async def test_the_shortlist_prefers_cards_that_fit_the_deck(session):
-    """With more owned cards than fit in the prompt, the synergistic ones must be the ones sent."""
-    deck = await _deck(session)
-    for i in range(60):
-        await _card(session, f"Generic Bear {i:02d}", "Creature — Bear", "Vanilla.", owned=1)
-    await _card(session, "Elfish Ally", "Creature — Elf Shaman", "Add {G}.", owned=1)
-
-    fake = FakeChat("")
-    await suggest_from_collection(session, deck, fake)
-    assert "Elfish Ally" in fake.user
-    # The shortlist is capped, so the generics can't all be present — that's the point.
-    assert fake.user.count("Generic Bear") < 60
-
-
-@pytest.mark.asyncio
-async def test_validation_still_covers_the_whole_pool_not_just_the_shortlist(session):
-    """A named card must resolve even if it wasn't among the 40 sent — not a "hallucination"."""
-    deck = await _deck(session)
-    for i in range(60):
-        await _card(session, f"Generic Bear {i:02d}", "Creature — Bear", "Vanilla.", owned=1)
-    await _card(session, "Obscure Pick", "Creature — Bear", "Vanilla.", owned=1)
-
-    fake = FakeChat("Obscure Pick - fills a hole")
-    result = await suggest_from_collection(session, deck, fake)
-    assert [s.name for s in result.suggestions] == ["Obscure Pick"]
-    assert result.considered > 40
-
-
-@pytest.mark.asyncio
-async def test_no_owned_candidates_short_circuits(session):
-    deck = await _deck(session)
-    fake = FakeChat("")
-    result = await suggest_from_collection(session, deck, fake)
-    assert result.considered == 0 and result.suggestions == []
-    assert fake.messages == []   # no call made

@@ -258,10 +258,10 @@ async def test_collection_list_filters_and_mutations(session):
     assert filtered.total == 1 and filtered.items[0].name == "Alpha"
 
     added = await api.api_collection_add(
-        api.CollectionAddIn(scryfall_id=str(a.scryfall_id), quantity=1, binder="BoxA"),
+        api.CollectionAddIn(scryfall_id=str(a.scryfall_id), quantity=1, location=10),
         session=session)
     assert added.quantity >= 1
-    binder_view = await api.api_collection_list(binder="BoxA", session=session)
+    binder_view = await api.api_collection_list(location=10, session=session)
     assert binder_view.total >= 1
 
     with pytest.raises(HTTPException) as exc:
@@ -271,7 +271,7 @@ async def test_collection_list_filters_and_mutations(session):
     assert exc.value.status_code == 404
 
     row_id = filtered.items[0].id
-    up = await api.api_collection_update(row_id, api.StackUpdateIn(quantity=9, binder="New"),
+    up = await api.api_collection_update(row_id, api.StackUpdateIn(quantity=9, location=10),
                                          currency="eur", session=session)
     assert up.quantity == 9
     assert (await api.api_collection_delete(row_id, session=session)).ok is True
@@ -345,7 +345,7 @@ async def test_checklists_list_detail_and_404(session):
     listing = await api.api_checklists(session=session)
     assert listing[0].total == 2
     detail = await api.api_checklist_detail(listing[0].id, session=session)
-    assert detail.owned_count == 1
+    assert detail.total_owned == 1
     with pytest.raises(HTTPException) as exc:
         await api.api_checklist_detail(999999, session=session)
     assert exc.value.status_code == 404

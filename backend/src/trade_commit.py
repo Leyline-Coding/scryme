@@ -111,7 +111,7 @@ async def _remove_copies(session: AsyncSession, item: TradePoolItem, wanted: int
 
 
 async def _apply_line(
-    session: AsyncSession, item: TradePoolItem, *, binder: str | None, location: str | None
+    session: AsyncSession, item: TradePoolItem, *, location: int | None
 ) -> LineResult:
     outstanding = max(0, item.quantity - item.applied_quantity)
     name = item.card.name
@@ -122,7 +122,7 @@ async def _apply_line(
         stack = await add_or_increment(
             session, item.scryfall_id, outstanding,
             finish=item.finish, condition=item.condition, language=item.language,
-            binder=binder, location=location, commit=False,
+            location=location, commit=False,
         )
         # None only if the printing vanished from the card DB between staging and committing.
         applied = outstanding if stack is not None else 0

@@ -187,7 +187,7 @@ async def update_stack(
     if condition is not _UNSET:
         stack.condition = _clean(condition)
     if location is not _UNSET:
-        stack.location = _clean(location)
+        stack.location = int(location)
     if tags is not _UNSET:
         stack.tags = tags or None
     stack.version += 1

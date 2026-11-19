@@ -20,7 +20,7 @@ from src.config import get_settings
 from src.currency import get_currency, fx, info
 from src.db import get_session
 from src.deck_builder import BuildError, build_commander_deck, owned_commanders
-from src.deck_card import find_swappable_deck_card_in_collection_card, quickswap_deck_card
+from src.deck_card import quickswap_deck_card
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
 from src.deck_import import (
     PROFILE_PROVIDERS,

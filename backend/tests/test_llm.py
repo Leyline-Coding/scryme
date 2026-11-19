@@ -9,7 +9,6 @@ from src.llm import (
     LLMConfig,
     get_config,
     save_config,
-    suggest_from_collection,
 )
 from src.llm import test_connection as check_connection
 from src.models import Card, CollectionCard, LLMSettings
@@ -75,20 +74,6 @@ async def test_connection_reports_ok_and_failure(session):
     assert not bad and "reach" in msg.lower()
     off, _ = await check_connection(LLMConfig())
     assert not off
-
-
-@pytest.mark.asyncio
-async def test_suggest_only_returns_owned_candidates(session):
-    await _own(session, "Lightning Bolt")
-    await _own(session, "Shock")
-    await _own(session, "Fireball")
-    await _own(session, "Counterspell", identity=("U",))  # out of identity -> excluded
-    deck = await create_deck(session, "Burn", "1 Lightning Bolt")
-    reply = "Shock — cheap removal\nDefinitely Not A Real Card — nope\nFireball — finisher"
-    result = await suggest_from_collection(session, deck, FakeChat(reply=reply))
-    names = {s.name for s in result.suggestions}
-    assert names == {"Shock", "Fireball"}          # hallucination + off-color dropped
-    assert result.considered == 2                   # Shock, Fireball (not the deck's Bolt / blue)
 
 
 @pytest.mark.asyncio

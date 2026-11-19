@@ -77,10 +77,6 @@ async def test_api_collection_add_and_card_reflects(client, session):
 async def test_api_tags_and_wishlist(client, session):
     c = await _card(session, "Bolt", 1, owned=1)
     cid = str(c.scryfall_id)
-    tagged = await client.post(f"/api/v1/cards/{cid}/tags", json={"tag": "Trade"})
-    assert tagged.json()["tags"] == ["trade"]
-    untagged = await client.request("DELETE", f"/api/v1/cards/{cid}/tags?tag=trade")
-    assert untagged.json()["tags"] == []
 
     w = await client.post("/api/v1/wishlist", json={"scryfall_id": cid, "quantity": 2})
     assert w.status_code == 200
@@ -165,17 +161,17 @@ async def test_api_deck_card_edit_and_legality(client, session):
     detail = (await client.get(f"/api/v1/decks/{deck['id']}?format=commander")).json()
     assert detail["fmt"] == "commander"
     assert detail["illegal_count"] == 0 and detail["is_legal"] is True
-    assert deck["main"][0]["set_code"] == "cmm"
+    assert deck["main"][0]["finish"] == "normal"
 
-    card_id = deck["main"][0]["card_id"]
+    dc_id = deck["main"][0]["id"]
     resp = await client.patch(
-        f"/api/v1/decks/{deck['id']}/cards/{card_id}",
+        f"/api/v1/decks/{deck['id']}/cards/{dc_id}",
         json={"scryfall_id": variant["id"], "language": "JA", "proxy": True, "special": True},
     )
     assert resp.status_code == 200
     updated = (await client.get(f"/api/v1/decks/{deck['id']}?format=commander")).json()
     r = updated["main"][0]
-    assert r["set_code"] == "art" and r["language"] == "ja" and r["proxy"] and r["special"]
+    assert r["finish"] == "normal" and r["language"] == "ja" and r["proxy"] and r["special"]
     # Still legal despite pointing at the non-playable printing.
     assert updated["illegal_count"] == 0
 
@@ -190,9 +186,10 @@ async def test_api_collection_list_update_delete(client, session):
     assert len(listing["items"]) == 1 and listing["items"][0]["name"] == "Alpha"
 
     row_id = listing["items"][0]["id"]
-    up = await client.patch(f"/api/v1/collection/{row_id}", json={"quantity": 5, "binder": "Box A"})
+    up = await client.patch(f"/api/v1/collection/{row_id}", json={"quantity": 5, "location": 10})
+    
     assert up.status_code == 200
-    assert up.json()["quantity"] == 5 and up.json()["binder_name"] == "Box A"
+    assert up.json()["quantity"] == 5 and up.json()["location"] == 10
 
     assert (await client.delete(f"/api/v1/collection/{row_id}")).status_code == 200
     assert (await client.get("/api/v1/collection")).json()["total"] == 1
@@ -229,7 +226,7 @@ async def test_api_checklists(client, session):
     assert len(listing) == 1 and listing[0]["total"] == 2
     cid = listing[0]["id"]
     detail = (await client.get(f"/api/v1/checklists/{cid}")).json()
-    assert detail["total"] == 2 and detail["owned_count"] == 1
+    assert detail["total"] == 2 and detail["total_owned"] == 1
     assert any(r["owned"] for r in detail["rows"]) and any(not r["owned"] for r in detail["rows"])
     assert (await client.get("/api/v1/checklists/9999")).status_code == 404
     assert all("item_id" in r for r in detail["rows"])  # items must be addressable
@@ -248,7 +245,7 @@ async def test_api_checklist_create(client, session):
     await _card(session, name="Owned Card", n=1, owned=1)
     body = await _checklist(client, "Power", "Owned Card\nMissing Card")
     assert body["name"] == "Power" and body["total"] == 2
-    assert body["owned_count"] == 1 and body["unmatched"] == 1
+    assert body["total_owned"] == 1 and body["unmatched"] == 1
     assert (await client.get("/api/v1/checklists")).json()[0]["id"] == body["id"]
 
 

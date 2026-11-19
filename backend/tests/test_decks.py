@@ -131,7 +131,7 @@ async def test_coverage_counts_owned_and_missing(session):
     assert cov.total_needed == 25
     # Own 1 Bolt -> missing 3 Bolt + 20 Forest + 1 unmatched = 24.
     assert cov.missing_count == 24
-    assert cov.owned_count == 1
+    assert cov.total_owned == 1
     assert cov.unmatched == 1
     assert cov.unique_missing == 3  # Bolt, Forest, the unmatched line
     # Missing cost = 3 Bolt * $5 (owned LEA printing's price) + 20 Forest * $0.10.

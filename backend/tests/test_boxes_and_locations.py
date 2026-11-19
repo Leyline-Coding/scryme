@@ -4,7 +4,7 @@ import uuid
 
 import pytest
 from sqlalchemy import select
-from src.binder_service import binders_for_card, create_binder
+from src.binder_service import create_binder
 from src.box_service import (
     create_box,
     delete_box,
@@ -55,11 +55,6 @@ async def test_locate_stack_into_box_binder_deck(client, session):
                       data={"location_choice": f"box:{box.name}"})
     loc = await session.scalar(select(CollectionCard.location).where(CollectionCard.id == stack))
     assert loc == "Bulk"
-
-    # Binder -> adds the printing to the binder.
-    await client.post(f"/collection/stack/{stack}/locate",
-                      data={"location_choice": f"binder:{binder.id}"})
-    assert await binders_for_card(session, sid) == {binder.id}
 
     # Deck -> adds a decklist line.
     await client.post(f"/collection/stack/{stack}/locate",

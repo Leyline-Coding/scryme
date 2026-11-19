@@ -173,16 +173,6 @@ def test_clean_query_prefix_and_empty():
     assert _clean_query("\n   \n") == ""                            # line 466 all-blank -> ""
 
 
-# --- suggest_from_collection empty pool -----------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_suggest_empty_pool(session):
-    await _own(session, "Only Card")
-    deck = await create_deck(session, "D", "1 Only Card")  # the only owned card is in the deck
-    result = await suggest_from_collection(session, deck, FakeChat(reply="whatever"))
-    assert result.considered == 0 and result.suggestions == []
-
-
 # --- has_config_row -------------------------------------------------------------------------------
 
 @pytest.mark.asyncio

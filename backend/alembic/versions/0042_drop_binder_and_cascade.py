@@ -68,7 +68,7 @@ def upgrade() -> None:
         EXECUTE FUNCTION delete_location_after_source_delete('box');
     """)
 
-    # Table C
+    # Table deck
     op.execute("""
         CREATE TRIGGER deck_delete_location
         AFTER DELETE ON deck

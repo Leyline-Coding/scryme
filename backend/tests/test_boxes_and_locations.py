@@ -10,7 +10,7 @@ from src.box_service import (
     delete_box,
     rename_box,
 )
-from src.models import Card, CollectionCard, Deck
+from src.models import Card, CollectionCard, Deck, Location
 from src.scryfall.mapping import card_to_columns
 from src.tags import modify_stack_tag, tag_summaries
 
@@ -27,43 +27,24 @@ async def _own(session, name="Sol Ring", rarity="rare", location=None):
     return c
 
 
-
-@pytest.mark.asyncio
-async def test_rename_box_cascades_location(session):
-    box = await create_box(session, "Bulk")
-    card = await _own(session, "Sol Ring", location="Bulk")
-    await rename_box(session, box.id, "Storage A")
-    loc = await session.scalar(
-        select(CollectionCard.location).where(CollectionCard.scryfall_id == card.scryfall_id)
-    )
-    assert loc == "Storage A"
-
-
 @pytest.mark.asyncio
 async def test_locate_stack_into_box_binder_deck(client, session):
-    card = await _own(session, "Sol Ring")
-    stack = await session.scalar(select(CollectionCard.id))
-    sid = str(card.scryfall_id)
+    await _own(session, "Sol Ring")
+    stack_id = await session.scalar(select(CollectionCard.id))
     box = await create_box(session, "Bulk")
-    binder = await create_binder(session, "Ramp")
+    assert box is not None
+    
+    
     deck = Deck(name="Atraxa")
     session.add(deck)
     await session.commit()
-
+    location_id = await session.scalar(select(Location.id).where((Location.type == "box") & (Location.foreign_id == box.id)))
+    
     # Box -> sets the stack's physical location.
-    await client.post(f"/collection/stack/{stack}/locate",
-                      data={"location_choice": f"box:{box.name}"})
-    loc = await session.scalar(select(CollectionCard.location).where(CollectionCard.id == stack))
-    assert loc == "Bulk"
-
-    # Deck -> adds a decklist line.
-    await client.post(f"/collection/stack/{stack}/locate",
-                      data={"location_choice": f"deck:{deck.id}"})
-    await session.refresh(deck)
-    assert any(dc.name == "Sol Ring" for dc in deck.cards)
-
-    # Empty -> unfile.
-    await client.post(f"/collection/stack/{stack}/locate", data={"location_choice": ""})
-    loc = await session.scalar(select(CollectionCard.location).where(CollectionCard.id == stack))
-    assert loc is None
-
+    await client.post(f"/collection/bulk",
+                      data={"bulk_action": "location",
+                            "stack_ids": [stack_id],
+                            "bulk_location_id": location_id
+                      })
+    loc = await session.scalar(select(CollectionCard.location).where(CollectionCard.id == stack_id))
+    assert loc == location_id

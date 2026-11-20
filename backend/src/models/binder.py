@@ -9,9 +9,10 @@ import datetime
 import uuid
 
 from sqlalchemy import DateTime, Integer, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
 
 from src.db import Base
+from src.models.location import Location
 
 
 class Binder(Base):
@@ -24,4 +25,13 @@ class Binder(Base):
     )
     updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    location: Mapped[Location] = relationship(
+        "Location",
+        primaryjoin=lambda: (
+            (Binder.id == foreign(Location.foreign_id)) &
+            (Location.type == "binder")
+        ),
+        uselist=False,
+        viewonly=True,
     )

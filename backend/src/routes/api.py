@@ -178,7 +178,7 @@ class DeckCardOut(BaseModel):
     scryfall_id: str
     board: str
     quantity: int
-    stack_coverage: StackCoverage
+    stack_coverage: StackCoverage | None = None
     matched: bool
     language: str = "en"
     finish: str = ""
@@ -455,7 +455,7 @@ async def api_decks(session: AsyncSession = Depends(get_session)) -> list[DeckSu
 
 def _deck_card_out(r) -> DeckCardOut:
     return DeckCardOut(
-        id=r.card_id, name=r.name, scryfall_id=str(r.scryfall_card.scryfall_id), board=r.board, quantity=r.quantity, 
+        id=r.card_id, name=r.name, scryfall_id=str(getattr(r.scryfall_card, 'scryfall_id', '')), board=r.board, quantity=r.quantity, 
         stack_coverage=r.stack_coverage, matched=r.matched, legality=r.legality,
         proxy=r.proxy, special=r.special, language=r.language, finish=r.finish,
     )

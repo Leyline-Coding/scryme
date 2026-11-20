@@ -150,7 +150,12 @@ async def card_detail(
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     
-    collection_partial_data = await _collection_partial_generator(request, session, uuid.UUID(scryfall_id))
+    try:
+        card_uuid = uuid.UUID(scryfall_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Card not found.")
+        
+    collection_partial_data = await _collection_partial_generator(request, session, card_uuid)
     card = collection_partial_data['card']
     
     legalities = card.legalities or {}

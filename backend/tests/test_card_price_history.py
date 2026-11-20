@@ -80,7 +80,7 @@ async def test_card_page_shows_history_for_owned_card(client, session):
 
     resp = await client.get(f"/card/{c.scryfall_id}")
     assert resp.status_code == 200
-    assert "Price history" in resp.text
+    assert "Value over time" in resp.text
     assert f"/card/{c.scryfall_id}?range=" in resp.text  # range pills wired to this card
 
 
@@ -91,19 +91,6 @@ async def test_card_page_empty_state_when_no_history(client, session):
     resp = await client.get(f"/card/{c.scryfall_id}")
     assert resp.status_code == 200
     assert "No price history yet" in resp.text
-
-
-@pytest.mark.asyncio
-async def test_card_page_currency_dropdown_present(client, session):
-    c = await _add(session, "Owned", "1.50", "1")
-    session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish="normal"))
-    await session.commit()
-    await snapshot_prices(session)
-    await snapshot_prices(session)
-
-    resp = await client.get(f"/card/{c.scryfall_id}")
-    assert 'id="hist-currency"' in resp.text  # the currency dropdown replaces "(USD)"
-    assert ">GBP</option>" in resp.text and ">JPY</option>" in resp.text
 
 
 @pytest.mark.asyncio

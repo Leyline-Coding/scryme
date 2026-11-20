@@ -79,10 +79,13 @@ class Card(Base):
         also get the flip button — front battle ⇄ back permanent), so detect them by type line;
         planes use the "planar" layout; aftermath is a keyword.
         """
-        return (
-            "planar" in self.layout # type: ignore
-            or "split" in self.layout # type: ignore
-            or self.rotate_cw()
+        return bool(
+            self.layout
+            and (
+                "planar" in self.layout
+                or "split" in self.layout
+                or self.rotate_cw()
+            )
         )
 
     

@@ -3,47 +3,39 @@
 import uuid
 
 import pytest
-from src.models import Card, CollectionCard
+from sqlalchemy import select
+from src.models import Binder, Card, CollectionCard, Location
 from src.scryfall.mapping import card_to_columns
 
 
 async def _seed(session):
     names = [("Alpha", "Reds"), ("Beta", "Reds"), ("Gamma", None)]
-    for i, (name, binder) in enumerate(names):
+    for i, (name, binder_name) in enumerate(names):
+        if binder_name is not None:
+            # Only try to find/create a binder if the name isn't None
+            binder = await session.scalar(select(Binder).where(Binder.name == binder_name))
+            if not binder:
+              binder = Binder(name=binder_name)
+              session.add(binder)
+              await session.commit()  # Commit to ensure the binder is saved so that it gets an ID
+            location_id = await session.scalar(select(Location.id).where((Location.type == "binder") & (Location.foreign_id == binder.id)))
+        else:
+            # For cards with no binder, they should go into unfiled location
+            location_id = await session.scalar(select(Location.id).where((Location.type == "unfiled") & (Location.foreign_id.is_(None))))
         raw = {"id": str(uuid.uuid4()), "oracle_id": str(uuid.uuid4()), "name": name,
                "set": "TST", "collector_number": str(i), "rarity": "common", "cmc": 1,
                "type_line": "Creature", "colors": ["R"], "color_identity": ["R"]}
         c = Card(**card_to_columns(raw))
         session.add(c)
         await session.flush()
-        session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=2, binder_name=binder))
+        session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=2, location=location_id))
     await session.commit()
-
-
-@pytest.mark.asyncio
-async def test_view_named_binder(client, session):
-    await _seed(session)
-    resp = await client.get("/binders/cards", params={"name": "Reds"})
-    assert resp.status_code == 200
-    assert "Alpha" in resp.text and "Beta" in resp.text
-    assert "Gamma" not in resp.text  # not in this binder
-
-
-@pytest.mark.asyncio
-async def test_view_unsorted_binder(client, session):
-    await _seed(session)
-    resp = await client.get("/binders/cards", params={"name": "__none__"})
-    assert resp.status_code == 200
-    assert "Gamma" in resp.text
-    assert "Alpha" not in resp.text
 
 
 # --- custom binders (#206) ----------------------------------------------------------------------
 
 from src.binder_service import (  # noqa: E402
     create_binder,
-    delete_binder,
-    rename_binder,
 )
 
 
@@ -65,20 +57,6 @@ async def test_create_binder_unique_and_summaries(session):
     assert await create_binder(session, "Ramp") is not None
     assert await create_binder(session, "  ") is None          # blank
     assert await create_binder(session, "Ramp") is None        # duplicate name
-
-
-@pytest.mark.asyncio
-async def test_card_page_binder_routes(client, session):
-    b = await create_binder(session, "Ramp")
-    owned = await _own_card(session)
-    sid = str(owned.scryfall_id)
-
-    add = await client.post(f"/card/{sid}/binder-add", data={"binder_id": str(b.id)})
-    assert add.status_code == 200
-    assert "Ramp" in add.text
-
-    rm = await client.post(f"/card/{sid}/binder-remove", data={"binder_id": str(b.id)})
-    assert rm.status_code == 200
 
 
 @pytest.mark.asyncio

@@ -131,7 +131,7 @@ async def test_api_deck_crud_and_export(client, session):
     assert d["name"] == "Burn"
     deck_id = d["id"]
     row = next(r for r in d["main"] if r["name"] == "Lightning Bolt")
-    assert row["set_code"] == "tst" and row["owned"] == 1 and row["card_id"] > 0
+    assert row["finish"] == "normal" and row['stack_coverage']["owned"] == 1 and row["id"] > 0
 
     renamed = await client.patch(f"/api/v1/decks/{deck_id}", json={"name": "Burn v2"})
     assert renamed.json()["name"] == "Burn v2"

@@ -6,7 +6,7 @@ import uuid
 import pytest
 from sqlalchemy import func, select
 from src.backup import export_backup, restore_backup, validate_backup
-from src.models import Card, CollectionCard, SavedSearch, WishlistItem
+from src.models import Binder, Card, CollectionCard, Location, SavedSearch, WishlistItem
 from src.scryfall.mapping import card_to_columns
 
 
@@ -21,8 +21,12 @@ async def _card(session, name="Aaa", n=1):
 
 async def _seed_user_data(session):
     c = await _card(session, "Aaa", 1)
+    binder = Binder(name="Box")
+    session.add(binder)
+    await session.commit()  # Commit to ensure the binder is saved so that it gets an ID
+    location_id = await session.scalar(select(Location.id).where((Location.type == "binder") & (Location.foreign_id == binder.id)))
     session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=3, finish="foil",
-                               binder_name="Box", tags=["trade"]))
+                               location=location_id, tags=["trade"]))
     session.add(SavedSearch(name="reds", query="c:r", scope="all"))
     session.add(WishlistItem(scryfall_id=c.scryfall_id, quantity=2, note="want"))
     await session.commit()

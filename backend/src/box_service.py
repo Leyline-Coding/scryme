@@ -41,7 +41,7 @@ async def delete_box(session: AsyncSession, box_id: int) -> None:
     """Delete the registry entry and unfile its stacks (clear their location)."""
     box = await session.get(Box, box_id)
     if not box: return
-    location = (await session.execute(select(Location).where(Location.type=="box" and Location.foreign_id==box.id))).scalars().first()
+    location = (await session.execute(select(Location).where(Location.type=="box", Location.foreign_id==box.id))).scalars().first()
     if not location: return
     await session.execute(
         update(CollectionCard)

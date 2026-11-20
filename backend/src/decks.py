@@ -674,13 +674,19 @@ async def deck_coverage(
     
     ## Generate details for each deck card
     for c in deck.cards:
+        # For cards without scryfall_id (unmatched), we can't compute stack coverage
+        if c.scryfall_id is None:
+            stack_coverage = None
+        else:
+            stack_coverage = stack_coverages.get(c.id)
+        
         row = CardRow(
             name=c.name,
             card_id=c.id,
             scryfall_card=cards[c.scryfall_id] if c.scryfall_id else None,
             board=c.board,
             quantity=c.quantity,
-            stack_coverage=stack_coverages[c.id],
+            stack_coverage=stack_coverage,
             matched=c.oracle_id is not None,
             legality=_card_legality(c, fmt, legal_by_oracle, illegal_oracles),
             proxy=c.proxy,
@@ -706,45 +712,56 @@ async def deck_coverage(
         for name, rows_to_be_combined in name_groups.items():
             # Create a combined card row from the first card in the group
             result_store.append(copy.deepcopy(rows_to_be_combined[0]))
-            # Initialize stack coverage values for this combined card
-            result_store[-1].stack_coverage.in_deck = 0
-            result_store[-1].stack_coverage.owned = 0
-            result_store[-1].stack_coverage.swappable = 0
             
-            # Store all individual scryfall cards for comparison in UI
-            result_store[-1].sibling_scryfall_cards = [row.scryfall_card for row in rows_to_be_combined if row.scryfall_card]
-            
-            # Calculate total quantity by summing all copies
-            combined_quantity = 0
-            for row_to_be_combined in rows_to_be_combined:
-                combined_quantity += row_to_be_combined.quantity
-                result_store[-1].stack_coverage.in_deck += row_to_be_combined.stack_coverage.in_deck
-            
-            # For owned, we sum all owned quantities across copies (since they are different printings)
-            owned_sum = 0
-            for row_to_be_combined in rows_to_be_combined:
-                owned_sum += row_to_be_combined.stack_coverage.owned
-            
-            result_store[-1].stack_coverage.owned = owned_sum
-            
-            # For swappable, we sum the owned + swappable of each stack and then take the maximum
-            # This gives us the total potential substitute cards available for this card name
-            max_total_potential = 0
-            for row_to_be_combined in rows_to_be_combined:
-                total_potential = row_to_be_combined.stack_coverage.owned + row_to_be_combined.stack_coverage.swappable
-                if total_potential > max_total_potential:
-                    max_total_potential = total_potential
-            
-            result_store[-1].stack_coverage.swappable = max_total_potential
-            # Set the final quantity for this combined card
-            result_store[-1].quantity = combined_quantity
+            # Handle stack coverage for combined cards - if any card in the group has no stack_coverage (None), 
+            # we should set the combined stack coverage to None as well
+            if any(row.stack_coverage is None for row in rows_to_be_combined):
+                result_store[-1].stack_coverage = None
+            else:
+                # Initialize stack coverage values for this combined card
+                result_store[-1].stack_coverage.in_deck = 0
+                result_store[-1].stack_coverage.owned = 0
+                result_store[-1].stack_coverage.swappable = 0
+                
+                # Store all individual scryfall cards for comparison in UI
+                result_store[-1].sibling_scryfall_cards = [row.scryfall_card for row in rows_to_be_combined if row.scryfall_card]
+                
+                # Calculate total quantity by summing all copies
+                combined_quantity = 0
+                for row_to_be_combined in rows_to_be_combined:
+                    combined_quantity += row_to_be_combined.quantity
+                    result_store[-1].stack_coverage.in_deck += row_to_be_combined.stack_coverage.in_deck
+                
+                # For owned, we sum all owned quantities across copies (since they are different printings)
+                owned_sum = 0
+                for row_to_be_combined in rows_to_be_combined:
+                    owned_sum += row_to_be_combined.stack_coverage.owned
+                
+                result_store[-1].stack_coverage.owned = owned_sum
+                
+                # For swappable, we sum the owned + swappable of each stack and then take the maximum
+                # This gives us the total potential substitute cards available for this card name
+                max_total_potential = 0
+                for row_to_be_combined in rows_to_be_combined:
+                    total_potential = row_to_be_combined.stack_coverage.owned + row_to_be_combined.stack_coverage.swappable
+                    if total_potential > max_total_potential:
+                        max_total_potential = total_potential
+                
+                result_store[-1].stack_coverage.swappable = max_total_potential
+                # Set the final quantity for this combined card
+                result_store[-1].quantity = combined_quantity
 
     # Count total cards in deck location (those that are not in a deck location or are in this deck)
     cov.total_owned = 0
     cov.total_in_deck = 0
     for card_row in cov.main_combined+cov.side_combined: 
-        cov.total_in_deck += min(card_row.quantity, card_row.stack_coverage.in_deck)
-        cov.total_owned += min(card_row.quantity, card_row.stack_coverage.in_deck+card_row.stack_coverage.owned+card_row.stack_coverage.swappable)
+        if card_row.stack_coverage is not None:
+            cov.total_in_deck += min(card_row.quantity, card_row.stack_coverage.in_deck)
+            cov.total_owned += min(card_row.quantity, card_row.stack_coverage.in_deck+card_row.stack_coverage.owned+card_row.stack_coverage.swappable)
+        else:
+            # For unmatched cards (no scryfall_id), we can't compute coverage
+            cov.total_in_deck += 0
+            cov.total_owned += 0
     cov.pct_own = round(100 * cov.total_owned / cov.total_needed) if cov.total_needed else 0
     cov.pct_in_deck = round(100 * cov.total_in_deck / cov.total_needed) if cov.total_needed else 0
 

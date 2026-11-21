@@ -160,15 +160,6 @@ async def _sync_market_prices(force: bool) -> None:
         print("  (Card Kingdom empty? run `backfill-mtgjson-ids` once first.)")
 
 
-async def _organize_locations() -> None:
-    from src.collection_edit import organize_by_color_identity
-    from src.db import SessionLocal
-
-    async with SessionLocal() as session:
-        n = await organize_by_color_identity(session)
-    print(f"Filed {n} stack(s) into color-identity locations.")
-
-
 async def _refresh_sets() -> None:
     from src.db import SessionLocal
     from src.set_calendar import refresh_sets
@@ -294,7 +285,6 @@ def main() -> None:
         "prune-digital": _prune_digital,
         "backfill-embeddings": lambda: _backfill_embeddings("all" if args.all else "owned"),
         "backfill-rules": lambda: _backfill_rules(args.file),
-        "organize-locations": _organize_locations,
         "refresh-sets": _refresh_sets,
         "backfill-mtgjson-ids": _backfill_mtgjson_ids,
         "sync-market-prices": lambda: _sync_market_prices(args.force),

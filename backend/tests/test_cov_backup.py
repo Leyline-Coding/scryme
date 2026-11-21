@@ -39,7 +39,7 @@ async def _card(session, name="Aaa", n=1):
 async def _seed(session):
     c = await _card(session)
     session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=3, finish="foil",
-                               binder_name="Box", tags=["trade"]))
+                               location=None, tags=["trade"]))
     session.add(SavedSearch(name="reds", query="c:r", scope="all"))
     session.add(WishlistItem(scryfall_id=c.scryfall_id, quantity=2, note="want"))
     await session.commit()

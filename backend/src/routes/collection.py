@@ -30,7 +30,6 @@ from src.collection_edit import (
     delete_stack,
     move_stack_location,
     move_stacks_location,
-    organize_by_color_identity,
     owned_for_oracle,
     remove_copies,
     pull_stack_from_existing_stack,
@@ -450,13 +449,4 @@ async def delete_box_route(
 ) -> RedirectResponse:
     _guard_writable()
     await delete_box(session, box_id)
-    return RedirectResponse(url='/collection/locations', status_code=303)
-
-
-@router.post("/collection/organize-by-identity")
-async def organize_locations(
-    session: AsyncSession = Depends(get_session),
-) -> RedirectResponse:
-    _guard_writable()
-    await organize_by_color_identity(session)
     return RedirectResponse(url='/collection/locations', status_code=303)

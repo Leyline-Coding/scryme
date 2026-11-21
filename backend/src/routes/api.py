@@ -462,7 +462,7 @@ def _deck_card_out(r) -> DeckCardOut:
 
 
 async def _deck_detail(session: AsyncSession, deck: Deck, fmt: str | None) -> DeckDetailOut:
-    cov = await deck_coverage(session, deck, fmt=fmt or None)
+    cov = await deck_coverage(session, deck=deck, fmt=fmt or None)
     return DeckDetailOut(
         id=deck.id, name=deck.name, pct_own=cov.pct_own,
         total_needed=cov.total_needed, total_owned=cov.total_owned,
@@ -483,7 +483,7 @@ async def _require_deck(session: AsyncSession, deck_id: int) -> Deck:
 async def api_deck(
     deck_id: int, format: str = "", session: AsyncSession = Depends(get_session)
 ) -> DeckDetailOut:
-    return await _deck_detail(session, await _require_deck(session, deck_id), format)
+    return await _deck_detail(session, await _require_deck(session, deck_id), fmt=format)
 
 
 @router.post("/decks", response_model=DeckDetailOut, status_code=201)
@@ -492,7 +492,7 @@ async def api_deck_create(
 ) -> DeckDetailOut:
     _guard_writable()
     deck = await create_deck(session, body.name, body.decklist)
-    return await _deck_detail(session, deck, None)
+    return await _deck_detail(session, deck, fmt=None)
 
 
 @router.patch("/decks/{deck_id}", response_model=DeckDetailOut)
@@ -504,7 +504,7 @@ async def api_deck_update(
     if body.name is not None:
         deck.name = body.name.strip()[:256] or deck.name
     await session.commit()
-    return await _deck_detail(session, deck, None)
+    return await _deck_detail(session, deck, fmt=None)
 
 
 @router.delete("/decks/{deck_id}", response_model=OkOut)

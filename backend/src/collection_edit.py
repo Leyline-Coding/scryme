@@ -187,7 +187,7 @@ async def update_stack(
     if condition is not _UNSET:
         stack.condition = _clean(condition)
     if location is not _UNSET:
-        stack.location = int(location)
+        stack.location = int(location) if location is not None else None
     if tags is not _UNSET:
         stack.tags = tags or None
     stack.version += 1
@@ -425,42 +425,11 @@ def color_identity_group(color_identity: list[str] | None) -> str:
     return "Four-color" if len(key) == 4 else "Five-color"
 
 
-async def organize_by_color_identity(session: AsyncSession) -> int:
-    """Set every owned stack's ``location`` to its card's color-identity group. Returns rows set."""
-    from sqlalchemy import update
-
-    rows = (await session.execute(
-        select(CollectionCard.id, Card.color_identity)
-        .join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
-    )).all()
-    buckets: dict[str, list[int]] = {}
-    for stack_id, ci in rows:
-        buckets.setdefault(color_identity_group(ci), []).append(stack_id)
-    for name, ids in buckets.items():
-        await session.execute(
-            update(CollectionCard).where(CollectionCard.id.in_(ids)).values(location=name)
-        )
-    await session.commit()
-    return sum(len(ids) for ids in buckets.values())
-
-
 @dataclass
 class LocationSummary:
     location: str | None
     stacks: int
     quantity: int
-
-
-async def location_summary(session: AsyncSession) -> list[LocationSummary]:
-    """Card counts per physical location (None = unfiled), for the locations page."""
-    rows = (await session.execute(
-        select(CollectionCard.location, func.count(),
-                func.sum(CollectionCard.quantity))
-        .group_by(CollectionCard.location)
-        .order_by(CollectionCard.location.nulls_last())
-    )).all()
-    return [LocationSummary(loc, int(n), int(q or 0)) for loc, n, q in rows]
-
 
 
 async def pull_stack_from_existing_stack(session: AsyncSession, stack_id: int, num_cards: int = 1, new_location_id: int | None = None, expected_version: int | None = None) -> uuid.UUID | None:

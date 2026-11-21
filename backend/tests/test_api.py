@@ -156,7 +156,7 @@ async def test_api_deck_card_edit_and_legality(client, session):
         session.add(Card(**card_to_columns(raw)))
     await session.commit()
 
-    deck = (await client.post("/api/v1/decks", json={"name": "C", "decklist": "1 Sol Ring"})).json()
+    deck = (await client.post("/api/v1/decks", json={"name": "C", "decklist": "1 Sol Ring (CMM)"})).json()
     # Resolved to the tournament-legal printing, and legal in commander (judged by oracle).
     detail = (await client.get(f"/api/v1/decks/{deck['id']}?format=commander")).json()
     assert detail["fmt"] == "commander"

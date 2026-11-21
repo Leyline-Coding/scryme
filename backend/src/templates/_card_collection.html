@@ -38,6 +38,7 @@
       {% endif %}
       {% if not read_only %}
       <form hx-post="/collection/stack/{{s.id}}/edit" name="printing_select_{{s.id}}" hx-trigger="hiddenChange" hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
+        <input type="hidden" name="version" value="{{ s.version }}" />
         <div x-data="{ printing_select_{{s.id}}: false }" class="sm:relative action-scope-collection">
           <button @click="printing_select_{{s.id}} = !printing_select_{{s.id}}" type="button" class="capitalize rounded-full bg-surface-2 border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem] overflow_hidden whitespace-nowrap"> 
             <span class="uppercase">{{card.set_code}}</span> {{ set_symbol(card.set_code, card.rarity) }} #{{ card.collector_number }} ▾
@@ -57,6 +58,7 @@
       {% endif %}
       {% if not read_only %}
       <form hx-post="/collection/stack/{{s.id}}/edit" name="finish_select_{{s.id}}" hx-trigger="hiddenChange" hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
+        <input type="hidden" name="version" value="{{ s.version }}" />
         <div x-data="{ finish_select_{{s.id}}: false }" class="sm:relative action-scope-collection">
           <button @click="finish_select_{{s.id}} = !finish_select_{{s.id}}" type="button" class="capitalize rounded-full bg-surface-2 border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem] overflow_hidden whitespace-nowrap">
             {% if s.finish == 'foil' %}
@@ -81,6 +83,7 @@
       {% endif %}
       {% if not read_only %}
       <form hx-post="/collection/stack/{{s.id}}/edit" name="condition_select_{{s.id}}" hx-trigger="hiddenChange" hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
+        <input type="hidden" name="version" value="{{ s.version }}" />
         <div x-data="{ condition_select_{{s.id}}: false }" class="sm:relative action-scope-collection">
           <button @click="condition_select_{{s.id}} = !condition_select_{{s.id}}" type="button" class="uppercase rounded-full bg-surface-2 border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem] overflow_hidden whitespace-nowrap">{% if s.condition %}{% for key, val in condition_codes if val == s.condition %}{{ key }}{% endfor %}{% else %}*{% endif %}
             ▾
@@ -98,6 +101,7 @@
       {% endif %}
       {% if not read_only %}
       <form hx-post="/collection/stack/{{s.id}}/edit" name="language_select_{{s.id}}" hx-trigger="hiddenChange" hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
+        <input type="hidden" name="version" value="{{ s.version }}" />
         <div x-data="{ language_select_{{s.id}}: false }" class="sm:relative action-scope-collection">
           <button @click="language_select_{{s.id}} = !language_select_{{s.id}}" type="button" class="uppercase rounded-full bg-surface-2 border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem] overflow_hidden whitespace-nowrap"> {{s.language}}
             ▾
@@ -124,6 +128,7 @@
       {# Unified location picker (#160): file this stack into a box, binder, or deck. #}
       <form hx-post="/collection/stack/{{ s.id }}/edit" name="location_select_{{s.id}}" hx-trigger="hiddenChange" hx-target="#card-collection" hx-swap="outerHTML" class="shrink-0">
         <input type="hidden" name="location_moved" value="True"/>
+        <input type="hidden" name="version" value="{{ s.version }}" />
         {{ locations_select.render(grouped_locations, selected_location=s.location, name="location_id", id="stack_" ~ s.id ~ "_location_selector", selectedAsLabel=True, onchange="document.querySelector('form[name=\"location_select_%s\"]').dispatchEvent(new Event('hiddenChange'))" % s.id, class="rounded-full bg-surface-2 border border-edge hover:border-accent px-1.5 py-1 text-sm max-w-[10rem] overflow_hidden whitespace-nowrap") }}
       </form>
       {% endif %}

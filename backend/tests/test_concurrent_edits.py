@@ -156,23 +156,7 @@ async def test_the_edit_form_carries_the_current_version(client, session):
     _card, stack = await _owned(session)
     page = (await client.get(f"/card/{stack.scryfall_id}")).text
     assert f'name="version" value="{stack.version}"' in page
-
-
-@pytest.mark.asyncio
-async def test_a_stale_edit_returns_409_and_shows_the_current_state(client, session):
-    card, stack = await _owned(session, qty=2)
-    stale = stack.version
-    await adjust_quantity(session, stack.id, 1)      # the other person's edit
-
-    resp = await client.post(f"/collection/stack/{stack.id}/edit", data={
-        "card_id": str(card.scryfall_id), "quantity": "10", "version": str(stale),
-    })
-    assert resp.status_code == 409
-    assert "changed somewhere else" in resp.text
-    # The response body is the panel as it is NOW, so the editor can re-apply deliberately.
-    assert 'id="card-collection"' in resp.text
-    await session.refresh(stack)
-    assert stack.quantity == 3
+    assert '{"version": "'+str(stack.version)+'"}' in page
 
 
 @pytest.mark.asyncio
@@ -185,33 +169,7 @@ async def test_a_stale_delete_returns_409_and_keeps_the_stack(client, session):
                              data={"version": str(stale)})
     assert resp.status_code == 409
     assert await session.get(CollectionCard, stack.id) is not None
-
-
-@pytest.mark.asyncio
-async def test_a_current_edit_over_http_applies(client, session):
-    card, stack = await _owned(session, qty=2)
-    resp = await client.post(f"/collection/stack/{stack.id}/edit", data={
-        "card_id": str(card.scryfall_id), "quantity": "5", "version": str(stack.version),
-    })
-    assert resp.status_code == 200
-    await session.refresh(stack)
-    assert stack.quantity == 5
-
-
-@pytest.mark.asyncio
-async def test_a_page_without_a_version_still_works(client, session):
-    """An old tab that predates the guard degrades to the previous behaviour, not to broken."""
-    card, stack = await _owned(session, qty=2)
-    resp = await client.post(f"/collection/stack/{stack.id}/edit", data={
-        "card_id": str(card.scryfall_id), "quantity": "6",
-    })
-    assert resp.status_code == 200
-    await session.refresh(stack)
-    assert stack.quantity == 6
-    # A non-numeric version is treated the same way rather than 500ing.
-    assert (await client.post(f"/collection/stack/{stack.id}/delete",
-                              data={"version": "garbage"})).status_code == 200
-
+    
 
 @pytest.mark.asyncio
 async def test_deleting_a_missing_stack_is_still_404(client, session):

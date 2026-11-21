@@ -388,7 +388,7 @@ class CardRow:
     scryfall_card: Card | None      # Inherit the attributes of a scryfall card
     board: str
     quantity: int
-    stack_coverage: StackCoverage
+    stack_coverage: StackCoverage | None
     matched: bool
     legality: str | None = None     # status in the selected format, or None when no format chosen
     card_id: int = 0                # deck_card row id (for editing the printing)
@@ -661,11 +661,15 @@ async def deck_coverage(
         if c.oracle_id:
             needed_by_oracle[c.oracle_id] = needed_by_oracle.get(c.oracle_id, 0) + c.quantity
 
-    # Calculate deck legality
-    all_legalities,legality_details,illegal_oracles  = await deck_legality(session, deck)
+    # Calculate deck legalit: this is done for all formats, but the primary fmt will be reiterated in the coverage object
+    all_legalities, legality_details, illegal_oracles  = await deck_legality(session, deck)
     cov.all_legalities = all_legalities
     cov.legality_details = legality_details
-    cov.illegal_count = len(illegal_oracles)
+    # When no format is specified, we don't perform legality checking so illegal_count should be 0
+    if fmt is None:
+        cov.illegal_count = 0
+    else:
+        cov.illegal_count = len(legality_details[fmt]['illegal_cards'])
 
 
     # Calculate stack coverage
@@ -715,7 +719,7 @@ async def deck_coverage(
             
             # Handle stack coverage for combined cards - if any card in the group has no stack_coverage (None), 
             # we should set the combined stack coverage to None as well
-            if any(row.stack_coverage is None for row in rows_to_be_combined):
+            if not result_store[-1].stack_coverage or any(row.stack_coverage is None for row in rows_to_be_combined):
                 result_store[-1].stack_coverage = None
             else:
                 # Initialize stack coverage values for this combined card
@@ -746,8 +750,8 @@ async def deck_coverage(
                     total_potential = row_to_be_combined.stack_coverage.owned + row_to_be_combined.stack_coverage.swappable
                     if total_potential > max_total_potential:
                         max_total_potential = total_potential
-                
-                result_store[-1].stack_coverage.swappable = max_total_potential
+
+                result_store[-1].stack_coverage.swappable = max_total_potential-result_store[-1].stack_coverage.owned
                 # Set the final quantity for this combined card
                 result_store[-1].quantity = combined_quantity
 
@@ -758,10 +762,6 @@ async def deck_coverage(
         if card_row.stack_coverage is not None:
             cov.total_in_deck += min(card_row.quantity, card_row.stack_coverage.in_deck)
             cov.total_owned += min(card_row.quantity, card_row.stack_coverage.in_deck+card_row.stack_coverage.owned+card_row.stack_coverage.swappable)
-        else:
-            # For unmatched cards (no scryfall_id), we can't compute coverage
-            cov.total_in_deck += 0
-            cov.total_owned += 0
     cov.pct_own = round(100 * cov.total_owned / cov.total_needed) if cov.total_needed else 0
     cov.pct_in_deck = round(100 * cov.total_in_deck / cov.total_needed) if cov.total_needed else 0
 
@@ -870,7 +870,7 @@ async def deck_stats(
 
 
 async def deck_legality(
-    session: AsyncSession, deck: Deck) -> dict[uuid.UUID, StackCoverage]:
+    session: AsyncSession, deck: Deck) -> tuple[dict[str, bool], dict[str, dict], set[uuid.UUID]]:
     """Calculate legality of deck."""
     
     illegal_oracles: set = set()
@@ -937,8 +937,11 @@ async def deck_legality(
                 "unmatched": list(set(unmatched_cards)),
                 "format_violations": format_violations  # Separate field for format-specific issues
             }
-
-    return all_legalities, legality_details,illegal_oracles
+            
+            # Collect all illegal oracles across formats
+            illegal_oracles.update(illegal_oracles_for_format)
+    
+    return all_legalities, legality_details, illegal_oracles
 
 
 

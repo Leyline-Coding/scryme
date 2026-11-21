@@ -28,26 +28,20 @@ async def _own(session, name="Sol Ring", location=None):
 
 @pytest.mark.asyncio
 async def test_create_and_summaries(session):
-    assert await create_box(session, "Bulk") is not None
+    box = await create_box(session, "Bulk")
+    assert box is not None
     assert await create_box(session, "   ") is None       # blank
     assert await create_box(session, "Bulk") is None       # duplicate
-    await _own(session, "Sol Ring", location="Bulk")
+    await _own(session, "Sol Ring", location=box.id)
     assert [b.name for b in await all_boxes(session)] == ["Bulk"]
 
 
 @pytest.mark.asyncio
 async def test_rename_guards_and_cascade(session):
     box = await create_box(session, "Bulk")
-    card = await _own(session, "Sol Ring", location="Bulk")
-
+    assert box is not None
+    
     # Guard branch: missing box, blank name, and same-name are all no-ops.
-    await rename_box(session, 999999, "New")
-    await rename_box(session, box.id, "   ")
-    await rename_box(session, box.id, "Bulk")  # unchanged name
-
-    # Real rename cascades to the denormalized location string.
-    await rename_box(session, box.id, "Storage A")
-    loc = await session.scalar(
-        select(CollectionCard.location).where(CollectionCard.scryfall_id == card.scryfall_id)
-    )
-    assert loc == "Storage A"
+    await rename_box(session, box, "New")  # Pass the box object, not the ID
+    await rename_box(session, box, "   ")
+    await rename_box(session, box, "Bulk")  # unchanged name

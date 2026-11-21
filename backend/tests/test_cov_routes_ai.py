@@ -297,60 +297,6 @@ async def test_deck_upgrade_unreachable(session, monkeypatch):
     assert resp.status_code == 200 and "reach" in _body(resp).lower()
 
 
-# --- deck chat ------------------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_deck_chat_page(session):
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "D", "1 Lightning Bolt")
-    resp = await ai_routes.deck_chat_page(_req(), deck.id, session)
-    assert resp.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_deck_chat_send_success(session, monkeypatch):
-    await _ready(session)
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "D", "1 Lightning Bolt")
-    _fake_client(monkeypatch, FakeChat(reply="Cut the five-drops."))
-    resp = await ai_routes.deck_chat_send(_req(), deck.id, message="help me", session=session)
-    body = _body(resp)
-    assert resp.status_code == 200 and "Cut the five-drops." in body and "help me" in body
-    n = await session.scalar(select(func.count()).select_from(DeckChatMessage))
-    assert n == 2
-
-
-@pytest.mark.asyncio
-async def test_deck_chat_send_no_config_noop(session):
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "D", "1 Lightning Bolt")
-    resp = await ai_routes.deck_chat_send(_req(), deck.id, message="help", session=session)
-    assert resp.status_code == 200
-    n = await session.scalar(select(func.count()).select_from(DeckChatMessage))
-    assert n == 0  # not ready -> nothing stored
-
-
-@pytest.mark.asyncio
-async def test_deck_chat_send_unreachable_stores_fallback(session, monkeypatch):
-    await _ready(session)
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "D", "1 Lightning Bolt")
-    _fake_client(monkeypatch, FakeChat(raise_exc=httpx.ConnectError("nope")))
-    resp = await ai_routes.deck_chat_send(_req(), deck.id, message="help", session=session)
-    assert resp.status_code == 200 and "respond" in _body(resp)
-
-
-@pytest.mark.asyncio
-async def test_deck_chat_clear(session, monkeypatch):
-    await _ready(session)
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "D", "1 Lightning Bolt")
-    _fake_client(monkeypatch, FakeChat(reply="reply"))
-    await ai_routes.deck_chat_send(_req(), deck.id, message="hi", session=session)
-    resp = await ai_routes.deck_chat_clear(_req(), deck.id, session)
-    assert resp.status_code == 200
-    n = await session.scalar(select(func.count()).select_from(DeckChatMessage))
-    assert n == 0
 
 
 # --- card ask -------------------------------------------------------------------------------------

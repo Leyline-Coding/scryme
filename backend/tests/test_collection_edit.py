@@ -4,14 +4,16 @@ import uuid
 
 import pytest
 from sqlalchemy import func, select
+from src.box_service import create_box
 from src.collection_edit import (
     add_or_increment,
     adjust_quantity,
     bulk_add_to_collection,
     delete_stack,
 )
-from src.models import Card, CollectionCard
+from src.models import Card, CollectionCard, Location
 from src.scryfall.mapping import card_to_columns
+from src.tags import modify_stacks_tag
 
 
 async def _card(session, name="Aaa", n=1):
@@ -33,10 +35,17 @@ async def _count(session, sid):
 @pytest.mark.asyncio
 async def test_add_then_increment_same_stack(session):
     c = await _card(session)
-    s1 = await add_or_increment(session, c.scryfall_id, 2, finish="foil", binder="Box")
+    box = await create_box(session, "Box")
+    await session.commit()
+    assert box is not None
+    location_id = await session.scalar(select(Location.id).where((Location.type == "box") & (Location.foreign_id == box.id)))
+
+    s1 = await add_or_increment(session, c.scryfall_id, 2, finish="foil", location=location_id)
+    assert s1 is not None
     assert s1.quantity == 2 and s1.source_format == "manual"
     # Same finish+binder -> increments the same stack, not a new one.
-    s2 = await add_or_increment(session, c.scryfall_id, 3, finish="foil", binder="Box")
+    s2 = await add_or_increment(session, c.scryfall_id, 3, finish="foil", location=location_id)
+    assert s2 is not None
     assert s2.id == s1.id and s2.quantity == 5
     assert await session.scalar(
         select(func.count()).select_from(CollectionCard)
@@ -47,11 +56,13 @@ async def test_add_then_increment_same_stack(session):
 @pytest.mark.asyncio
 async def test_add_blank_fields_normalize_to_null(session):
     c = await _card(session)
-    s = await add_or_increment(session, c.scryfall_id, 1, condition="  ", binder="")
-    assert s.condition is None and s.binder_name is None
+    s1 = await add_or_increment(session, c.scryfall_id, 1, condition="  ", location=None)
+    assert s1 is not None
+    assert s1.condition is None and s1.location is None
     # A second add with empty strings matches the same NULL-keyed stack.
-    s2 = await add_or_increment(session, c.scryfall_id, 1, condition="", binder="")
-    assert s2.id == s.id and s2.quantity == 2
+    s2 = await add_or_increment(session, c.scryfall_id, 1, condition="", location=None)
+    assert s2 is not None
+    assert s2.id == s1.id and s2.quantity == 2
 
 
 @pytest.mark.asyncio
@@ -62,7 +73,9 @@ async def test_add_unknown_card_returns_none(session):
 @pytest.mark.asyncio
 async def test_adjust_and_delete_at_zero(session):
     c = await _card(session)
+    assert c is not None
     s = await add_or_increment(session, c.scryfall_id, 2)
+    assert s is not None
     await adjust_quantity(session, s.id, 1)
     assert await _count(session, c.scryfall_id) == 3
     await adjust_quantity(session, s.id, -3)  # 3 -> 0 deletes the stack
@@ -73,7 +86,9 @@ async def test_adjust_and_delete_at_zero(session):
 @pytest.mark.asyncio
 async def test_delete_stack(session):
     c = await _card(session)
+    assert c is not None
     s = await add_or_increment(session, c.scryfall_id, 4)
+    assert s is not None
     sid = await delete_stack(session, s.id)
     assert str(sid) == str(c.scryfall_id)
     assert await _count(session, c.scryfall_id) == 0
@@ -86,10 +101,15 @@ async def test_bulk_add_and_tag(session):
     assert added == 2
     assert await _count(session, a.scryfall_id) == 1
 
-    tags = await session.scalar(
-        select(CollectionCard.tags).where(CollectionCard.scryfall_id == a.scryfall_id)
-    )
+    collection_card_ids = (await session.execute(select(CollectionCard.id).where(CollectionCard.scryfall_id.in_((a.scryfall_id,b.scryfall_id))))).scalars().all()
+
+    tagged = await modify_stacks_tag(session, collection_card_ids, "Trade")
+    assert tagged == 2
+    tags = await session.scalar(select(CollectionCard.tags).where(CollectionCard.scryfall_id == a.scryfall_id))
     assert tags == ["trade"]
+
+    untagged = await modify_stacks_tag(session, collection_card_ids, "Trade", remove=True)
+    assert untagged == 2
 
 
 @pytest.mark.asyncio
@@ -99,12 +119,12 @@ async def test_card_edit_routes(client, session):
     add = await client.post("/collection/add", data={"scryfall_id": cid, "quantity": 2,
                                                      "finish": "normal"})
     assert add.status_code == 200
-    assert "In your collection" in add.text and "2 total" in add.text
+    assert "This printing" in add.text and "2 of 2 total" in add.text
 
     stack_id = await session.scalar(select(CollectionCard.id)
                                     .where(CollectionCard.scryfall_id == c.scryfall_id))
     bumped = await client.post(f"/collection/stack/{stack_id}/adjust", data={"delta": 1})
-    assert "3 total" in bumped.text
+    assert "3 of 3 total" in bumped.text
 
     gone = await client.post(f"/collection/stack/{stack_id}/delete")
     assert "don't own this printing yet" in gone.text

@@ -7,8 +7,6 @@ from sqlalchemy import select
 from src.collection_edit import (
     add_or_increment,
     color_identity_group,
-    location_summary,
-    organize_by_color_identity,
 )
 from src.models import Card, CollectionCard
 from src.scryfall.mapping import card_to_columns
@@ -40,30 +38,15 @@ async def _own(session, name, ci, owned=True):
 
 
 @pytest.mark.asyncio
-async def test_organize_by_color_identity_and_loc_search(session):
-    warhorse = await _own(session, "Phyrexian Warhorse", ("W", "B"))  # -> Orzhov
-    await _own(session, "Mono Black", ("B",))
-    await _own(session, "Rock", ())
-
-    assert await organize_by_color_identity(session) == 3
-    locs = {str(s.scryfall_id): s.location for s in
-            (await session.execute(select(CollectionCard))).scalars()}
-    assert locs[str(warhorse.scryfall_id)] == "Orzhov"
-    summary = {s.location: s.quantity for s in await location_summary(session)}
-    assert summary["Orzhov"] == 1 and summary["Colorless"] == 1
-
-    res = await run_search(session, "loc:orzhov", scope=SearchScope.COLLECTION)
-    assert "Phyrexian Warhorse" in [c.name for c in res.cards]
-    assert "Mono Black" not in [c.name for c in res.cards]
-
-
-@pytest.mark.asyncio
 async def test_location_is_part_of_stack_identity(session):
     c = await _own(session, "Splittable", ("R",), owned=False)
-    a = await add_or_increment(session, c.scryfall_id, 2, location="Box A")
-    b = await add_or_increment(session, c.scryfall_id, 3, location="Box B")
+    a = await add_or_increment(session, c.scryfall_id, 2, location=22)
+    b = await add_or_increment(session, c.scryfall_id, 3, location=22)
+    assert a is not None
+    assert b is not None
     assert a.id != b.id                                      # split across locations
-    again = await add_or_increment(session, c.scryfall_id, 1, location="Box A")
+    again = await add_or_increment(session, c.scryfall_id, 1, location=22)
+    assert again is not None
     assert again.id == a.id and again.quantity == 3          # same location increments
 
 

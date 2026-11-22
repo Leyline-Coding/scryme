@@ -160,6 +160,7 @@ async def test_similar_with_embeddings(session):
         session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1))
         if name == "Serra Angel":
             serra = c
+    assert serra is not None
     await session.commit()
     await backfill_embeddings(session, scope="owned", client=FakeClient())
     out = await api.api_similar(str(serra.scryfall_id), scope="owned", session=session)
@@ -198,7 +199,7 @@ async def test_deck_crud_export_and_404s(session):
     exp = await api.api_deck_export(did, fmt="bogus", session=session)  # bad fmt -> text
     assert b"Lightning Bolt" in exp.body
 
-    card_id = deck.main[0].card_id
+    card_id = deck.main[0].id
     ok = await api.api_deck_card_update(did, card_id, api.DeckCardUpdateIn(language="ja"),
                                         session=session)
     assert ok.ok is True
@@ -260,7 +261,7 @@ async def test_collection_list_filters_and_mutations(session):
     added = await api.api_collection_add(
         api.CollectionAddIn(scryfall_id=str(a.scryfall_id), quantity=1, location=10),
         session=session)
-    assert added.quantity >= 1
+    assert added.quantity is not None and added.quantity >= 1
     binder_view = await api.api_collection_list(location=10, session=session)
     assert binder_view.total >= 1
 

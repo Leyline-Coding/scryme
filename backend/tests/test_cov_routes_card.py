@@ -121,26 +121,6 @@ async def test_card_similar_with_matches(client, session, monkeypatch):
     assert "Shock" in resp.text
 
 
-# --- tags ---------------------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_add_and_delete_tag(client, session):
-    c = await _card(session)
-    session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1))
-    await session.commit()
-    add = await client.post(f"/card/{c.scryfall_id}/tags", data={"tag": "cube"})
-    assert add.status_code == 200 and "cube" in add.text
-    assert dele.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_tags_read_only(client, session, monkeypatch):
-    from src.config import get_settings
-    c = await _card(session)
-    monkeypatch.setattr(get_settings(), "read_only", True)
-    assert (await client.post(f"/card/{c.scryfall_id}/tags", data={"tag": "x"})).status_code == 403
-
-
 # --- rulings ------------------------------------------------------------------------------------
 
 @pytest.mark.asyncio

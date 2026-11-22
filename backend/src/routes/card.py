@@ -31,11 +31,9 @@ from src.prices import (
     earliest_snapshot_date,
     range_days,
 )
-from src.pricing import SOURCES, effective_prices, get_price_source
 from src.routes.collection import _collection_partial_generator
 from src.scryfall.client import ScryfallClient, ScryfallError
 from src.scryfall.images import ImageCache
-from src.tags import modify_stack_tag
 from src.templating import templates
 from src.wishlist import is_wishlisted
 
@@ -262,14 +260,6 @@ async def card_similar(
             items = [(by_oracle[oid], _image(by_oracle[oid], "small"))
                      for oid, _ in scored if oid in by_oracle]
     return templates.TemplateResponse(request, "_similar_cards.html", {"items": items})
-
-
-def _tags_response(request: Request, card_id: str, tags: list[str]) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request,
-        "_card_tags.html",
-        {"card_id": card_id, "tags": tags, "read_only": get_settings().read_only},
-    )
 
 
 async def fetch_rulings(scryfall_id: str, card: Card) -> list[dict] | None:

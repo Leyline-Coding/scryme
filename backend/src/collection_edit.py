@@ -46,6 +46,7 @@ def _as_uuid(value) -> uuid.UUID:
 
 def _clean(value: str | None) -> str | None:
     """Trim a free-text field; empty -> None (so it matches the NULLable stack key)."""
+    if value is None: return None 
     v = (value or "").strip()
     return v or None
 
@@ -85,7 +86,7 @@ async def add_or_increment(
         return None
     quantity = max(1, quantity)
     finish = finish if finish in ("normal", "foil", "etched") else "normal"
-    condition, location = _clean(condition), _clean(location)
+    condition, location = _clean(condition), location
     language = (language or "en").strip().lower() or "en"
 
     stack = (

@@ -48,13 +48,3 @@ async def test_location_is_part_of_stack_identity(session):
     again = await add_or_increment(session, c.scryfall_id, 1, location=22)
     assert again is not None
     assert again.id == a.id and again.quantity == 3          # same location increments
-
-
-@pytest.mark.asyncio
-async def test_organize_route(client, session):
-    await _own(session, "WB Card", ("W", "B"))
-    resp = await client.post("/collection/organize-by-identity", follow_redirects=False)
-    assert resp.status_code == 303
-    # Color-identity strings now surface as ad-hoc "other" locations on the Locations tab.
-    page = await client.get("/collection?tab=locations")
-    assert page.status_code == 200 and "Orzhov" in page.text

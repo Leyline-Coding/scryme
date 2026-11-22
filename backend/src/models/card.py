@@ -118,10 +118,6 @@ class Card(Base):
         # If we don't have a cached image, and this is the first time accessing it,
         # trigger background download of the image
         
-        # Create a background job to download this specific card's image
-        from src.background_service import queue_service
-        queue_service(f"image_download_{sid[:8]}", "backfill-image", [sid])
-            
         return cdn_image_url(self.raw)
 
 

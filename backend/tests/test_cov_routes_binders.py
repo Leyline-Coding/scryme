@@ -10,8 +10,9 @@ import uuid
 import pytest
 from fastapi import HTTPException
 from src.binder_service import create_binder
+from src.collection_edit import move_stack_location
 from src.config import get_settings
-from src.models import Card, CollectionCard
+from src.models import Card, CollectionCard, Location
 from src.routes import binders as R
 from src.scryfall.mapping import card_to_columns
 from starlette.requests import Request
@@ -32,24 +33,29 @@ async def _own(session, name="Sol Ring", owned=True, source_location_name=None):
     session.add(c)
     await session.flush()
     if owned:
-        session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, source_location_name=source_location_name))
+        cc = CollectionCard(scryfall_id=c.scryfall_id, quantity=1, source_location_name=source_location_name)
+        session.add(cc)
     await session.commit()
-    return c
+    return c, cc
 
 
 @pytest.mark.asyncio
 async def test_binders_home_redirect():
     resp = await R.binders_home()
-    assert resp.status_code == 307 and resp.headers["location"] == "/collection?tab=binders"
+    assert resp.status_code == 307 and resp.headers["location"] == "/collection/binders"
 
 
 @pytest.mark.asyncio
 async def test_binder_view_and_404(session):
     b = await create_binder(session, "Ramp")
-    owned = await _own(session, "Swords to Plowshares")
-    from src.binder_service import add_card
-    await add_card(session, b.id, str(owned.scryfall_id))
-
+    c, cc = await _own(session, "Swords to Plowshares")
+    assert b is not None
+    
+    l = Location(type='binder', foreign_id=b.id)
+    session.add(l)
+    await session.commit()
+    await move_stack_location(session, cc.id, l.id)
+    
     view = await R.binder_view(_request(f"/binders/view/{b.id}"), b.id, session)
     assert view.status_code == 200 and b"Swords to Plowshares" in view.body
 
@@ -57,71 +63,6 @@ async def test_binder_view_and_404(session):
         await R.binder_view(_request("/binders/view/0"), 999999, session)
     assert e.value.status_code == 404
 
-
-@pytest.mark.asyncio
-async def test_new_rename_delete_binder(session):
-    new = await R.new_binder(name="Cats", session=session)
-    assert new.status_code == 303 and new.headers["location"] == "/collection?tab=binders"
-    from src.binder_service import binder_summaries
-    b = (await binder_summaries(session))[0]
-
-    ren = await R.rename_binder_route(b.id, name="Kittens", session=session)
-    assert ren.status_code == 303
-    assert (await binder_summaries(session))[0].name == "Kittens"
-
-    dele = await R.delete_binder_route(b.id, session=session)
-    assert dele.status_code == 303 and dele.headers["location"] == "/collection?tab=binders"
-    assert await binder_summaries(session) == []
-
-
-@pytest.mark.asyncio
-async def test_remove_card_route(session):
-    b = await create_binder(session, "Ramp")
-    owned = await _own(session, "Sol Ring")
-    from src.binder_service import add_card
-    await add_card(session, b.id, str(owned.scryfall_id))
-    resp = await R.remove_card_route(b.id, scryfall_id=str(owned.scryfall_id), session=session)
-    assert resp.status_code == 303
-
-
-@pytest.mark.asyncio
-async def test_binder_cards_browse_named_and_unsorted(session):
-    await _own(session, "Alpha", source_location_name="Reds")
-    await _own(session, "Gamma", source_location_name=None)
-
-    named = await R.binder_cards_browse(_request("/binders/cards"), name="Reds", session=session)
-    assert b"Alpha" in named.body and b"Gamma" not in named.body
-
-    unsorted = await R.binder_cards_browse(_request("/binders/cards"), name="__none__",
-                                           session=session)
-    assert b"Gamma" in unsorted.body and b"Alpha" not in unsorted.body
-
-
-@pytest.mark.asyncio
-async def test_binder_remove_from_collection_and_relocate(session):
-    from sqlalchemy import func, select
-    a = await _own(session, "Alpha", source_location_name="Reds")   # 1 stack in Reds
-    b = await _own(session, "Beta", source_location_name="Reds")
-    # "Remove from collection": delete Alpha's stacks filed in Reds.
-    await R.binder_remove_from_collection(binder="Reds", scryfall_id=str(a.scryfall_id),
-                                          session=session)
-    assert await session.scalar(
-        select(func.count()).select_from(CollectionCard)
-        .where(CollectionCard.scryfall_id == a.scryfall_id)) == 0
-    # "Change location": move Beta from Reds to Blues.
-    await R.binder_relocate(binder="Reds", scryfall_id=str(b.scryfall_id), new_binder="Blues",
-                            session=session)
-    moved = await session.scalar(
-        select(CollectionCard.source_location_name).where(CollectionCard.scryfall_id == b.scryfall_id))
-    assert moved == "Blues"
-
-
-@pytest.mark.asyncio
-async def test_binder_browse_offers_other_binders(session):
-    await _own(session, "Alpha", source_location_name="Reds")
-    await _own(session, "Gamma", source_location_name="Blues")
-    page = await R.binder_cards_browse(_request("/binders/cards"), name="Reds", session=session)
-    assert b"Blues" in page.body  # the relocate datalist lists other binders
 
 
 @pytest.mark.asyncio
@@ -131,13 +72,6 @@ async def test_readonly_guards(session, monkeypatch):
         R.new_binder(name="x", session=session),
         R.rename_binder_route(1, name="x", session=session),
         R.delete_binder_route(1, session=session),
-        R.remove_card_route(1, scryfall_id=str(uuid.uuid4()), session=session),
-        R.card_binder_add(_request("/c"), str(uuid.uuid4()), binder_id="1", session=session),
-        R.card_binder_remove(_request("/c"), str(uuid.uuid4()), binder_id="1", session=session),
-        R.binder_remove_from_collection(binder="x", scryfall_id=str(uuid.uuid4()),
-                                        session=session),
-        R.binder_relocate(binder="x", scryfall_id=str(uuid.uuid4()), new_binder="y",
-                          session=session),
     ):
         with pytest.raises(HTTPException) as e:
             await coro

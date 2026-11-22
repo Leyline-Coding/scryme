@@ -20,7 +20,7 @@ def test_helper_error_paths_and_blank_name_skip():
     assert lotus.quantity == 1          # "abc" fell back to default
     assert lotus.purchase_price is None  # "xyz" fell back to None
     assert lotus.set_code == "lea"
-    assert lotus.binder_name == "Vault"
+    assert lotus.source_location_name == "Vault"
 
 
 def test_finish_normalization():

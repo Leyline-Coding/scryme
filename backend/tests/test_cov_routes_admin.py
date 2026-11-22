@@ -49,7 +49,7 @@ async def test_metrics(session):
 @pytest.mark.asyncio
 async def test_status(session):
     await _seed(session)
-    body = await admin.status()
+    body = await admin.status(_request())
     assert body["card_count"] == 1 and body["ingest"]["status"] == "never"
 
 

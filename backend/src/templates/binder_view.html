@@ -28,10 +28,10 @@
     <div class="relative group">
       <a href="/card/{{ c.scryfall_id }}" class="block rounded-lg overflow-hidden ring-1 ring-edge hover:ring-accent">
         {% if c.card.front_face_image() %}
-        <img src="{{ c.card.front_face_image() }}" alt="{{ c.name }}" loading="lazy"
+        <img src="{{ c.card.front_face_image() }}" alt="{{ c.card.name }}" loading="lazy"
             class="grid-card-img w-full aspect-[5/7] object-cover"
             {% if c.card.back_face_image() %}data-front="{{ c.card.front_face_image() }}" data-back="{{ c.card.back_face_image() }}"
-            data-face="front"{% endif %} />
+            data-face="front"{% endif %}/>
         {% if c.card.back_face_image() %}
         <span class="grid-flip-overlay absolute inset-0 z-10 flex items-center justify-center
                     opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -42,7 +42,7 @@
         {% endif %}
         {% else %}
         <div class="w-full aspect-[5/7] flex items-center justify-center text-center p-2 text-xs text-muted">
-          {{ c.name }}
+          {{ c.card.name }}
         </div>
         {% endif %}
       </a>

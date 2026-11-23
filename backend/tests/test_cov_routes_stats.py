@@ -8,4 +8,4 @@ import src.routes.stats as stats_mod
 async def test_stats_redirect():
     resp = await stats_mod.stats()
     assert resp.status_code == 307
-    assert resp.headers["location"] == "/collection?tab=stats"
+    assert resp.headers["location"] == "/collection/stats"

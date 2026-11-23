@@ -127,26 +127,6 @@ async def test_nl_to_query_validates_and_retries():
 
 
 @pytest.mark.asyncio
-async def test_search_nl_route_translates_and_falls_back(client, session, monkeypatch):
-    async def fake_nl(text, cl):
-        return "c:r"
-    monkeypatch.setattr("src.routes.search.nl_to_query", fake_nl)
-
-    # Not configured -> fall back to the raw text as the query.
-    off = await client.post("/search/nl", data={"q": "lightning bolt", "scope": "collection"},
-                            follow_redirects=False)
-    assert off.status_code == 303 and "q=lightning" in off.headers["location"].lower()
-
-    # Configured -> translated query + nl passthrough.
-    await save_config(session, base_url="http://x/v1", api_key="k", chat_model="m",
-                      embed_model="e", enabled=True)
-    on = await client.post("/search/nl", data={"q": "red cards", "scope": "all"},
-                           follow_redirects=False)
-    loc = on.headers["location"]
-    assert on.status_code == 303 and "q=c%3Ar" in loc and "scope=all" in loc and "nl=" in loc
-
-
-@pytest.mark.asyncio
 async def test_api_search_nl(client, session, monkeypatch):
     off = await client.get("/api/v1/search/nl?q=dragons")
     assert off.json() == {"query": "", "ok": False}

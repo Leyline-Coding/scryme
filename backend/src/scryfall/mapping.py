@@ -70,8 +70,9 @@ def card_to_columns(raw: dict) -> dict[str, Any]:
 def image_url(raw: dict, size: str = "normal") -> str | None:
     """Best image URL for a card at the requested size (front face for two-faced cards)."""
     # Create a background job to download this specific card's image
-    from src.background_service import queue_service
-    queue_service(f"image_download_{raw['id'][:8]}", "backfill-image", [raw['id']])
+    if(hasattr(raw, 'id')):
+        from src.background_service import queue_service
+        queue_service(f"image_download_{raw['id'][:8]}", "backfill-image", [raw['id']])
             
     uris = raw.get("image_uris")
     if uris and uris.get(size):

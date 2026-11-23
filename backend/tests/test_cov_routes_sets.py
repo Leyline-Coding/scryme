@@ -48,7 +48,7 @@ async def _seed_set(session):
 async def test_list_sets_redirect():
     resp = await R.list_sets()
     assert resp.status_code == 307
-    assert resp.headers["location"] == "/collection?tab=stats&view=sets"
+    assert resp.headers["location"] == "/collection/stats?view=sets"
 
 
 @pytest.mark.asyncio

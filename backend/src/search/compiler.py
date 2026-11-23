@@ -249,8 +249,21 @@ def _location(term: Term) -> ColumnElement:
         loc_type, loc_name = location_value.split(":", 1)
         loc_name = loc_name.strip('"\'')
         # Join Location Search Statement
+        # Use EXISTS to properly handle subqueries that might return multiple rows
         located = select(CollectionCard.scryfall_id).where(
-            CollectionCard.location == _find_location(loc_type, loc_name)
+            exists().where(
+                and_(
+                    CollectionCard.location == Location.id,
+                    Location.type == loc_type,
+                    Location.foreign_id.in_(
+                        select(Location.foreign_id)
+                        .where(
+                            Location.type == loc_type,
+                            Location.id.in_(_find_location(loc_type, loc_name))
+                        )
+                    )
+                )
+            )
         )
     else:
         # Backwards compatibility with old style "Library" (string matching)

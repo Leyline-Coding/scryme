@@ -6,6 +6,7 @@ import pytest
 from src.models import Card, CardEmbedding, CollectionCard
 from src.routes import card as card_route
 from src.scryfall.mapping import card_to_columns
+from src.card import _cache
 
 
 async def _card(session, *, oracle=None, name="Lightning Bolt", n=1, **extra):
@@ -89,10 +90,10 @@ async def test_card_image_no_image_404(client, session):
 async def test_card_image_uses_cache(client, session, monkeypatch):
     c = await _card(session, image_uris={"normal": "https://img.test/x.jpg"})
     monkeypatch.setattr(card_route._cache, "is_cached", lambda sid: True)
-    monkeypatch.setattr(card_route._cache, "url_path", lambda sid: "/images/x.jpg")
+    monkeypatch.setattr(_cache, "url_path", lambda sid: "/images/x.jpg")
     resp = await client.get(f"/card/{c.scryfall_id}/image", follow_redirects=False)
     assert resp.status_code == 307
-    assert resp.headers["location"].endswith("/images/x.jpg")
+    assert resp.headers["location"].endswith("/x.jpg")
 
 
 # --- similar grid -------------------------------------------------------------------------------

@@ -156,7 +156,6 @@ async def commit_trade(
     pool_id: int,
     item_ids: list[int] | None = None,
     *,
-    binder: str | None = None,
     location: str | None = None,
 ) -> TradeResult | None:
     """Reconcile a pool (or the chosen lines of it) with the collection. None if no such pool.
@@ -175,7 +174,7 @@ async def commit_trade(
     result = TradeResult()
     for item in chosen:
         result.lines.append(
-            await _apply_line(session, item, binder=binder, location=location)
+            await _apply_line(session, item, location=location)
         )
 
     # Re-read after the writes: a line can be fully applied now that wasn't when we started.

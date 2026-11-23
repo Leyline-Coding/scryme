@@ -37,9 +37,9 @@
 
 {# View toggle: Overview vs Set completion #}
 <div class="inline-flex rounded-lg ring-1 ring-edge overflow-hidden text-sm mb-6">
-  <a href="/collection?tab=stats&view=overview"
+  <a href="/collection/stats&view=overview"
      class="px-3 py-1.5 {% if view != 'sets' %}bg-surface-2 text-fg{% else %}text-muted hover:text-fg{% endif %}">Overview</a>
-  <a href="/collection?tab=stats&view=sets"
+  <a href="/collection/stats?view=sets"
      class="px-3 py-1.5 border-l border-edge {% if view == 'sets' %}bg-surface-2 text-fg{% else %}text-muted hover:text-fg{% endif %}">Sets</a>
 </div>
 
@@ -117,7 +117,7 @@
   {# Time-range selector + chart, shared with the per-card price history (#233). #}
   {% import "_value_chart.html" as vc %}
   {{ vc.chart(value_chart, chart_ranges, chart_range,
-              "/collection?tab=stats&view=overview&", "Collection value over time", 
+              "/collection/stats&view=overview&", "Collection value over time", 
               symbol=cur.symbol, currency_code=cur.code) }}
 </section>
 {% endif %}

@@ -434,7 +434,7 @@ async def test_the_card_page_offers_open_pools(client, session):
     await _stack(session, card, qty=1)
     await create_pool(session, "Friday")
     page = (await client.get(f"/card/{card.scryfall_id}")).text
-    assert "🤝 trade…" in page and "Friday" in page
+    assert '<i class="fa-solid fa-handshake"></i> trade…' in page and "Friday" in page
 
 
 @pytest.mark.asyncio
@@ -465,7 +465,7 @@ async def test_pools_are_listed_on_the_trade_tab(client, session):
     pool = await create_pool(session, "Friday")
     card = await _card(session, "Spare")
     await stage_printing(session, pool.id, "in", card.scryfall_id, 2)
-    page = (await client.get("/collection?tab=trade")).text
+    page = (await client.get("/collection/trade")).text
     assert "Friday" in page and "Start a trade" in page
 
 

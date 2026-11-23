@@ -78,7 +78,7 @@ async def test_checklist_routes(client, session):
     assert page.status_code == 200
     assert "P9" in page.text and "% complete" in page.text and "Black Lotus" in page.text
 
-    listing = await client.get("/collection?tab=checklists")
+    listing = await client.get("/collection/checklists")
     assert "P9" in listing.text
 
 

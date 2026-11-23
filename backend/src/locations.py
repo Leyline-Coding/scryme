@@ -129,3 +129,13 @@ async def get_location_summaries_remapped(*args, **kwargs) -> dict:
     for item in (await get_location_summaries(*args, **kwargs)):
         grouped_counts[item.type][item.foreign_id] = item
     return grouped_counts
+
+
+
+
+async def get_location_name(session, location):
+    model = LOCATION_TYPES[location.type]
+
+    return await session.scalar(
+        select(model.name).where(model.id == location.foreign_id)
+    )

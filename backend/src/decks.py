@@ -583,10 +583,10 @@ def proxy_cards(cov: DeckCoverage, source: str = "proxy",
         if source == "proxy":
             copies = row.quantity if row.proxy else 0
         elif source == "missing":
-            copies = max(0, row.quantity - row.owned)
+            copies = max(0, row.quantity - row.stack_coverage.owned)
         else:  # all
             copies = row.quantity
-        out.extend(ProxyCard(row.name, row.scryfall_id, row.special) for _ in range(copies))
+        out.extend(ProxyCard(row.name, str(row.scryfall_card.scryfall_id), row.special) for _ in range(copies))
     return out
 
 

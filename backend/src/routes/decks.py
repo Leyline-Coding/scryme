@@ -447,6 +447,7 @@ async def update_deck_card(
     )
     # Mirror a printing change into the collection for an owned deck card (#298).
     deck = await session.get(Deck, deck_id)
+    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     await sync_printing(session, deck, dc, old_sid, dc.quantity)
     url = f"/decks/{deck_id}" + (f"?format={format}" if format in LEGALITY_FORMATS else "")
     # HTMX form post -> refresh the whole deck page (coverage + legality change).
@@ -454,7 +455,7 @@ async def update_deck_card(
 
 
 @router.post("/decks/{deck_id}/card/{card_id}/quickswap")
-async def update_deck_card(
+async def update_deck_card_quickswap(
     deck_id: int,
     card_id: int,
     session: AsyncSession = Depends(get_session),

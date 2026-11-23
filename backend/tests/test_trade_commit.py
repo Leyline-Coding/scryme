@@ -410,7 +410,7 @@ async def test_the_pool_page_offers_and_then_stops_offering_settling(client, ses
     await commit_trade(session, pool.id)
     page = (await client.get(f"/trade/pool/{pool.id}")).text
     assert "Every card in this trade has moved" in page and "Settle this trade →" not in page
-    assert "settled" in (await client.get("/collection?tab=trade")).text
+    assert "settled" in (await client.get("/collection/trade")).text
 
 
 @pytest.mark.asyncio

@@ -23,7 +23,6 @@ from src.box_service import (
 )
 from src.config import get_settings
 from src.models import Deck
-from src.currency import get_currency, info
 from src.db import get_session
 from src.facets import compute_facets
 from src.locations import find_or_create_grouped_locations
@@ -210,6 +209,7 @@ async def search_nl_status(
     if matching_nl_to_q and matching_nl_to_q.q_text: return HTMLResponse(status_code=200, content=matching_nl_to_q.q_text)
     else: return HTMLResponse(status_code=202, content="Processing...")
 
+
 @router.get("/search/nl/suggestions")
 async def search_nl_suggestions(
     request: Request,
@@ -234,7 +234,7 @@ async def search_nl_suggestions(
         )
 
     return templates.TemplateResponse(request, "_search_nl_suggestions.html", {"nl":nl, "rows": result.scalars().all()})
-    
+
 
 async def _run_into_ctx(
     ctx: dict, session, query: str, scope_enum, page: int, sort: str, descending: bool,
@@ -254,7 +254,6 @@ async def _run_into_ctx(
         )
     elif not result.total:
         ctx["suggestions"] = await name_suggestions(session, ctx["q"], scope_enum)
-
 
 
 @router.get("/search", response_class=HTMLResponse)

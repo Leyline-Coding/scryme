@@ -9,6 +9,7 @@ records them. Every call still asserts the real response / side effect.
 import uuid
 
 import pytest
+from src.main import templates 
 from fastapi import HTTPException
 from src.config import get_settings
 from src.decks import create_deck
@@ -70,28 +71,32 @@ async def test_new_deck_and_readonly(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_create_and_view(session):
+async def test_create_and_view(session, monkeypatch):
+    monkeypatch.setitem(templates.env.globals, "currency", "$")
+  
     await _add(session, _raw("Lightning Bolt"), owned=1)
     redirect = await R.create(_request("/decks"), name="Burn", decklist="4 Lightning Bolt",
                               session=session)
     assert redirect.status_code == 303
     deck_id = int(redirect.headers["location"].split("/")[-1])
 
-    view = await R.view_deck(_request(f"/decks/{deck_id}"), deck_id, "modern", session)
+    view = await R.view_deck(_request(f"/decks/{deck_id}"), deck_id=deck_id, format="modern", session=session)
     assert view.status_code == 200
 
     with pytest.raises(HTTPException) as e:
-        await R.view_deck(_request("/decks/0"), 999999, "", session)
+        await R.view_deck(_request("/decks/0"), deck_id=999999, format="", session=session)
     assert e.value.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_deck_page_includes_goldfish(session):
+async def test_deck_page_includes_goldfish(session, monkeypatch):
     """The deck page embeds the client-side sample-hand tester with the mainboard as its
     library JSON (#180)."""
+    monkeypatch.setitem(templates.env.globals, "currency", "$")
+    
     await _add(session, _raw("Lightning Bolt"))
     deck = await create_deck(session, "Burn", "4 Lightning Bolt")
-    body = (await R.view_deck(_request(f"/decks/{deck.id}"), deck.id, "", session)).body.decode()
+    body = (await R.view_deck(_request(f"/decks/{deck.id}"), deck_id=deck.id, format="", session=session)).body.decode()
     # The x-data attr must be SINGLE-quoted: tojson emits double-quoted JSON, so a double-quoted
     # attribute would be closed by the first `"` and break Alpine.
     assert "x-data='goldfish(" in body and "Test hand" in body
@@ -142,19 +147,19 @@ async def test_proxy_sheet_route(session):
     deck = await create_deck(session, "C", "2 Sol Ring")
 
     # Nothing flagged yet -> the 'proxy' sheet is empty and says so.
-    empty = await R.proxy_sheet(_request("/p"), deck.id, source="proxy", session=session)
+    empty = await R.proxy_sheet(_request("/p"), deck_id=deck.id, source="proxy", session=session)
     assert empty.status_code == 200
     assert b"Nothing to proxy" in empty.body and b"Sol Ring" not in empty.body
 
     # Flag the line as a proxy, then it prints one card per copy (quantity 2).
     deck.cards[0].proxy = True
     await session.commit()
-    sheet = await R.proxy_sheet(_request("/p"), deck.id, source="proxy", session=session)
+    sheet = await R.proxy_sheet(_request("/p"), deck_id=deck.id, source="proxy", session=session)
     assert sheet.status_code == 200 and sheet.body.count(b"Sol Ring") >= 2
 
     # 'all' includes it too; an unknown source falls back to 'proxy'.
-    allsheet = await R.proxy_sheet(_request("/p"), deck.id, source="all", session=session)
-    bogus = await R.proxy_sheet(_request("/p"), deck.id, source="bogus", session=session)
+    allsheet = await R.proxy_sheet(_request("/p"), deck_id=deck.id, source="all", session=session)
+    bogus = await R.proxy_sheet(_request("/p"), deck_id=deck.id, source="bogus", session=session)
     assert b"Sol Ring" in allsheet.body and bogus.status_code == 200
 
     with pytest.raises(HTTPException):

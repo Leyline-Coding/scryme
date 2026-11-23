@@ -466,7 +466,7 @@ async def pool_summaries(session: AsyncSession) -> list[PoolSummary]:
 
 
 async def stage_selection(
-    session: AsyncSession, pool_id: int, direction: str, scryfall_ids: list[str],
+    session: AsyncSession, pool_id: int, direction: str, stack_ids: list[int],
     quantity: int = 1,
 ) -> int:
     """Bulk-stage printings selected in the results grid. Returns how many items were staged.
@@ -478,7 +478,7 @@ async def stage_selection(
     outgoing one shows up as a shortfall in :func:`pool_view` until it's corrected.
     """
     staged = 0
-    for raw in scryfall_ids:
+    for stack_id in stack_ids:
         try:
             sid = _as_uuid(raw)
         except (ValueError, AttributeError, TypeError):

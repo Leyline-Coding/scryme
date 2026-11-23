@@ -44,7 +44,7 @@ async def _target_exists(session: AsyncSession, kind: str, target_id: int) -> bo
 
 
 async def create_share_link(
-    session: AsyncSession, kind: str, target_id: int, currency: str, *, show_prices: bool = False
+    session: AsyncSession, kind: str, target_id: int, currency: str ="$", *, show_prices: bool = False
 ) -> tuple[ShareLink, str] | None:
     """Mint a link for one deck or binder. Returns (row, token), or None if the target is unknown.
 

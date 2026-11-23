@@ -88,7 +88,7 @@ async def test_wishlist_routes(client, session):
     assert add.status_code == 200
     assert "On wishlist" in add.text
 
-    page = await client.get("/collection?tab=wishlist")
+    page = await client.get("/collection/wishlist")
     assert page.status_code == 200
     assert "Aaa" in page.text
 

@@ -5,7 +5,6 @@ from pathlib import Path
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 from babel.numbers import format_currency
-from jinja2 import pass_context
 
 from src import __version__
 from src.config import get_settings

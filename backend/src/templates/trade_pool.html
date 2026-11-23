@@ -56,8 +56,8 @@
   {% elif not view.is_empty and not read_only %}
   <div class="mb-6 flex flex-wrap items-center gap-3">
     <a href="/trade/pool/{{ pool.id }}/commit"
-       class="rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium">Settle this trade →</a>
-    <span class="text-xs text-muted">Review what moves before anything does.</span>
+       class="rounded-full bg-accent text-accent-fg px-4 py-2 text-sm font-medium">Start this trade <i class="fa-solid fa-arrow-right"></i></a>
+    <span class="text-xs text-muted">You will have a chance to make final modifications.</span>
   </div>
   {% endif %}
 

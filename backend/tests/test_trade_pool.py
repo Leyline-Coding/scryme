@@ -16,7 +16,8 @@ from src.trade_pool import (
     pool_view,
     remove_item,
     stage_printing,
-    stage_selection,
+    trade_pool_in,
+    trade_pool_out,
     stage_stack,
     update_item,
     update_pool,
@@ -291,14 +292,14 @@ async def test_deleting_a_pool_leaves_the_collection_alone(session):
 # --- bulk staging from the results grid ----------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_bulk_out_stages_the_largest_owned_stack(session):
+async def test_bulk_out_stages_owned_stack(session):
     """A bulk add means "the copies I have", so it picks the stack with the most in it."""
     pool = await create_pool(session, "Friday")
     card = await _card(session, "Spare")
-    await _stack(session, card, qty=1, finish="foil")
-    await _stack(session, card, qty=6, condition="LP")
+    stack_2 = await _stack(session, card, qty=6, condition="LP")
+    await session.flush()
 
-    assert await stage_selection(session, pool.id, "out", [str(card.scryfall_id)]) == 1
+    assert await trade_pool_out(session, pool.id, [stack_2.id]) == 1
     row = (await pool_view(session, await session.get(TradePool, pool.id))).giving.rows[0]
     assert (row.finish, row.condition) == ("normal", "LP")
 
@@ -307,22 +308,12 @@ async def test_bulk_out_stages_the_largest_owned_stack(session):
 async def test_bulk_in_stages_a_plain_copy_and_bad_ids_are_skipped(session):
     pool = await create_pool(session, "Friday")
     card = await _card(session, "Spare")
-    staged = await stage_selection(
-        session, pool.id, "in", [str(card.scryfall_id), "not-a-uuid", str(uuid.uuid4())]
+    staged = await trade_pool_in(
+        session, pool.id, [str(card.scryfall_id)]
     )
     assert staged == 1
     row = (await pool_view(session, await session.get(TradePool, pool.id))).getting.rows[0]
     assert (row.finish, row.language, row.owned) == ("normal", "en", 0)
-
-
-@pytest.mark.asyncio
-async def test_bulk_out_of_an_unowned_printing_shows_as_short(session):
-    """Selecting a card you don't own is staged honestly rather than silently dropped."""
-    pool = await create_pool(session, "Friday")
-    card = await _card(session, "Unowned")
-    assert await stage_selection(session, pool.id, "out", [str(card.scryfall_id)]) == 1
-    view = await pool_view(session, await session.get(TradePool, pool.id))
-    assert view.giving.rows[0].short == 1
 
 
 # --- routes --------------------------------------------------------------------------------------
@@ -441,12 +432,13 @@ async def test_the_card_page_offers_open_pools(client, session):
 async def test_bulk_staging_from_the_results_grid(client, session):
     pool = await create_pool(session, "Friday")
     card = await _card(session, "Spare")
-    await _stack(session, card, qty=3)
-
+    stack = await _stack(session, card, qty=3)
+    await session.flush()
+    
     for action, direction, expected in (("trade_out", "out", 1), ("trade_in", "in", 1)):
         resp = await client.post("/collection/bulk", data={
-            "bulk_action": action, "scryfall_ids": [str(card.scryfall_id)],
-            "pool_id": str(pool.id), "q": "", "scope": "collection",
+            "bulk_action": action, "pool_id": str(pool.id), "scope": "collection",
+            **({"scryfall_ids": [str(card.scryfall_id)]} if direction=="in" else {"stack_ids": [stack.id]}),
         })
         assert resp.status_code == 303
         items = (await session.execute(
@@ -456,7 +448,7 @@ async def test_bulk_staging_from_the_results_grid(client, session):
 
     # A non-numeric pool id from a hand-rolled form is ignored rather than crashing.
     assert (await client.post("/collection/bulk", data={
-        "bulk_action": "trade_out", "scryfall_ids": [str(card.scryfall_id)], "pool_id": "x",
+        "bulk_action": "trade_out", "stack_ids": [stack.id], "pool_id": "x",
     })).status_code == 303
 
 

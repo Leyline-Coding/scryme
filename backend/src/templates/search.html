@@ -168,6 +168,7 @@
     <input type="hidden" name="q" /><input type="hidden" name="scope" />
     <input type="hidden" name="sort" /><input type="hidden" name="dir" />
     <input type="hidden" name="bulk_action" id="bulk_action" />
+
     <div id="bulkbar" class="hidden sticky top-2 z-30 mb-3 flex justify-between items-center w-full rounded-xl bg-surface ring-1 ring-accent px-3 py-2 text-sm shadow-lg">
       <!-- Left side buttons -->
       <div class="flex gap-2 items-center">
@@ -177,7 +178,8 @@
       </div>
 
       <!-- Right side buttons -->
-      <div class="flex gap-2 items-center">
+      <div class="flex gap-2 items-center" x-data="{quick_counter: 1}">
+        <input type="hidden" name="quantity" id="quick_counter_input" x-model="quick_counter" />
         <input name="tag" placeholder="tag" class="rounded-full bg-surface px-2 py-1 w-28 border border-edge hover:border-accent" :class="scope=='all' ? 'hidden' : ''" />
         <button type="button" onclick="bulkSubmit('tag')" :class="scope=='all' ? 'hidden' : ''"
           class="rounded-full bg-surface-2 px-2.5 py-1 border border-edge hover:border-accent">Add tag</button>
@@ -191,21 +193,25 @@
           onchange="bulkSubmit('location')"
         ) }}
         {% endif %}
+        <span class="inline-flex items-center rounded-full bg-surface-2 overflow-hidden shrink-0">
+          <button type="button" title="Remove one" class="px-2 py-1 hover:bg-surface-3" @click="quick_counter = Math.max(1, quick_counter - 1)" :disabled="quick_counter <= 1">−</button>
+          <span class="px-1 tabular-nums" x-text="quick_counter">1</span>
+          <button type="button" title="Add one" class="px-2 py-1 hover:bg-surface-3" @click="quick_counter = Math.min(99, quick_counter + 1)" :disabled="quick_counter >= 99">+</button>
+        </span>
         <button type="button" id="bulk-wishlist-btn" onclick="bulkSubmit('wishlist')" :class="scope=='all' ? '' : 'hidden'"
-          class="rounded-full bg-surface-2 text-accent-fg px-2.5 py-1 border border-edge hover:border-accent"><i class="fa-regular fa-heart"></i> +1 Wishlist</button>
+          class="rounded-full bg-surface-2 text-accent-fg px-2.5 py-1 border border-edge hover:border-accent"><i class="fa-regular fa-heart"></i> +<span x-text="quick_counter">1</span> Wishlist</button>
         <button type="button" id="bulk-add-btn" onclick="bulkSubmit('add')" :class="scope=='all' ? '' : 'hidden'"
-          class="rounded-full bg-accent text-accent-fg px-2.5 py-1">+1 to collection</button>
+          class="rounded-full bg-accent text-accent-fg px-2.5 py-1">+<span x-text="quick_counter">1</span> to collection</button>
         {% if trade_pools %}
         {# Staging needs a side as well as a pool (#331), so the pool is a picker and the two
           buttons say which way the cards are moving. #}
-        <label class="sr-only" for="bulk-trade-pool">Trade pool</label>
-        <select name="pool_id" id="bulk-trade-pool" class="rounded-full bg-surface-2 px-2 py-1">
+        <select name="pool_id" id="bulk-trade-pool" class="rounded-full bg-bg px-2 py-1 border border-edge hover:border-accent">
           {% for tp in trade_pools %}<option value="{{ tp.id }}">{{ tp.name }}</option>{% endfor %}
         </select>
         <button type="button" onclick="bulkSubmit('trade_out')"
-          class="rounded-full bg-surface-2 px-2.5 py-1 border border-edge hover:border-accent">Give</button>
+          class="rounded-full bg-surface-2 px-2.5 py-1 border border-edge hover:border-accent">Give <span x-text="quick_counter">1</span></button>
         <button type="button" onclick="bulkSubmit('trade_in')"
-          class="rounded-full bg-surface-2 px-2.5 py-1 border border-edge hover:border-accent">Get</button>
+          class="rounded-full bg-surface-2 px-2.5 py-1 border border-edge hover:border-accent">Get <span x-text="quick_counter">1</span></button>
         {% endif %}
       </div>
     </div>

@@ -45,7 +45,7 @@ from src.models import Card, CollectionCard
 from src.routes.validators import ValidCondition, ValidFinish, ValidLanguage
 from src.tags import modify_stacks_tag
 from src.templating import templates
-from src.trade_pool import open_pools, stage_selection, stage_stack
+from src.trade_pool import open_pools, trade_pool_out, trade_pool_in, stage_stack
 from src.wishlist import add_to_wishlist
 
 router = APIRouter(tags=["collection"])
@@ -417,6 +417,8 @@ async def bulk(
             # Add selected cards to wishlist with quantity = 1
             for sid in scryfall_ids:
                 await add_to_wishlist(session, sid, quantity=1)
+        elif bulk_action == "trade_in" and pool_id.strip().isdigit():
+            await trade_pool_in(session, int(pool_id), scryfall_ids=scryfall_ids)
         stack_ids += (await scryfall_ids_to_stack_ids(session, scryfall_ids))
     if stack_ids:
         if bulk_action == "tag" and tag.strip():
@@ -425,9 +427,8 @@ async def bulk(
             await modify_stacks_tag(session, stack_ids=stack_ids, tag=tag, remove=True)
         elif (bulk_action == "location") and bulk_location_id:
             await move_stacks_location(session, stack_ids=stack_ids, location_id=int(bulk_location_id))
-        elif bulk_action in ("trade_out", "trade_in") and pool_id.strip().isdigit():
-            side = "out" if bulk_action == "trade_out" else "in"
-            await stage_selection(session, int(pool_id), side, stack_ids=stack_ids)
+        elif bulk_action == "trade_out" and pool_id.strip().isdigit():
+            await trade_pool_out(session, int(pool_id), stack_ids=stack_ids)
     if(refresh): return Response(status_code=200, headers={"HX-Refresh": "true"})
     params = urlencode({"q": q, "scope": scope, "sort": sort, "dir": dir})
     return RedirectResponse(url=f"/search?{params}", status_code=303)

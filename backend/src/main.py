@@ -142,12 +142,15 @@ def _install_prefs_loader(app: FastAPI) -> None:
     Skips static/image/health/metrics and the token-gated ``/api`` surface. Never 500s a request
     over prefs: a DB hiccup (or the table not yet migrated) falls back to ``None``, and the read
     helpers use their existing cookie/default path.
+    
+    Also updates specific cookie preferences from cookies to the database when they differ from 
+    stored values, but only for non-read-only deployments.
     """
     from sqlalchemy.exc import SQLAlchemyError
 
     from src.db import SessionLocal
     from src.models import Preferences
-    from src.preferences import resolve
+    from src.preferences import resolve, update_preferences, sync_cookie_prefs_to_db
 
     _skip = ("/static/", "/images/", "/api/")
 
@@ -158,10 +161,21 @@ def _install_prefs_loader(app: FastAPI) -> None:
             try:
                 async with SessionLocal() as s:
                     row = await s.get(Preferences, 1)
-                request.state.prefs = resolve(
-                    row, request.cookies, writable=not get_settings().read_only
-                )
-                request.state.prefs_saved = row is not None  # a value has actually been saved
+                    # Save cookie values to database if they differ from stored values and we're not read-only
+                    if row is not None and not get_settings().read_only:
+                        # Check for changes in cookie preferences and update DB if needed
+                        update_fields = sync_cookie_prefs_to_db(s, row, request.cookies)
+                        
+                        # If there are changes, save them to the database
+                        if update_fields:
+                            await update_preferences(s, **update_fields)
+                            # Reload the row to get updated values
+                            row = await s.get(Preferences, 1)
+                    
+                    request.state.prefs = resolve(
+                        row, request.cookies, writable=not get_settings().read_only
+                    )
+                    request.state.prefs_saved = row is not None  # a value has actually been saved
             except SQLAlchemyError:
                 request.state.prefs = None
         return await call_next(request)

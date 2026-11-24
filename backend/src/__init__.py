@@ -1,3 +1,3 @@
 """scryme — self-hostable, Scryfall-like search for your own MTG collection."""
 
-__version__ = "0.27.3"
+__version__ = "0.27.4"

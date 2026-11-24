@@ -171,29 +171,38 @@ def resolve(row: PreferencesRow | None, cookies: dict, *, writable: bool) -> Pre
     """
     base = _from_row(row) if row is not None else _defaults()
     if writable and row is not None:
-        # When there's a saved preference row, still apply session-specific cookie settings
-        # but keep the persistent global settings from the database
-        prefs_copy = base
-        # Apply only the UI/session-specific cookie preferences (not global ones)
-        if (c := cookies.get("scryme_currency")):
-            prefs_copy.currency = normalize_currency(c) or prefs_copy.currency
-        if (c := cookies.get("scryme_price_source")):
-            prefs_copy.price_source = normalize_source(c) or prefs_copy.price_source
-        if "scryme_search_filter" in cookies:
-            prefs_copy.search_filter = cookies["scryme_search_filter"]
-        if "scryme_movers" in cookies:
-            prefs_copy.movers = cookies["scryme_movers"] == "1"
-        if "scryme_view" in cookies:
-            prefs_copy.view = "list" if cookies["scryme_view"] == "list" else "grid"
-        if "scryme_infinite" in cookies:
-            prefs_copy.infinite = cookies["scryme_infinite"] == "1"
-        if (hc := normalize_currency(cookies.get("scryme_hist_currency"))):
-            prefs_copy.hist_currency = hc
-        try:
-            n = int(cookies.get("scryme_page_size", ""))
-            if n in _PAGE_SIZES:
-                prefs_copy.page_size = n
-        except (TypeError, ValueError):
-            pass
-        return prefs_copy
+        return base
     return _apply_cookies(base, cookies or {})
+
+
+def sync_cookie_prefs_to_db(session: AsyncSession, row: PreferencesRow, cookies: dict) -> dict[str, Any]:
+    """Check cookie preferences against database values and return fields that need updating.
+    
+    This function is used by middleware to synchronize specific cookie preferences to the database
+    when they differ from stored values.
+    
+    Returns a dict of field_name: new_value pairs for preferences that have changed.
+    """
+    # Define which cookie preferences should be synchronized to DB
+    cookie_pref_mapping = {
+        "page_size": ("scryme_page_size", int),
+        "infinite": ("scryme_infinite", lambda x: x == "1"),
+        "view": ("scryme_view", str),
+    }
+    
+    update_fields = {}
+    
+    # Check each preference for changes
+    for pref_name, (cookie_key, converter) in cookie_pref_mapping.items():
+        try:
+            cookie_value = cookies.get(cookie_key)
+            if cookie_value is not None:
+                converted_cookie_value = converter(cookie_value)
+                db_value = getattr(row, pref_name)
+                if converted_cookie_value != db_value:
+                    update_fields[pref_name] = converted_cookie_value
+        except (ValueError, TypeError):
+            # If conversion fails, skip this preference
+            continue
+    
+    return update_fields

@@ -37,7 +37,8 @@ in front of nginx (port `8080`).
 ## What read-only mode does
 
 - Shows a banner indicating the instance is a shared, read-only sandbox.
-- Returns `403` from `POST /upload`, `POST /upload/confirm`, and `POST /admin/ingest`.
+- Refuses every state-changing request (uploads, edits, admin actions) with `403`.
+- Disables the AI features, whatever `SCRYME_LLM_*` settings are present.
 - Disables the scheduled bulk refresh.
 
 Searching, browsing, and the collection/all scope toggle all continue to work.

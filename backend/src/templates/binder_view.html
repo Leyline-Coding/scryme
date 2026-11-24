@@ -9,7 +9,7 @@
       {% if not read_only %}
       <button type="button" 
               hx-post="/edit-name"
-              hx-vals='{"placeholder": "{{binder.name}}", "action": "/binders/{{ binder.id }}/rename", "target": "#binder-name"}'
+              hx-vals="{{ {'placeholder': binder.name, 'action': '/binders/' ~ binder.id ~ '/rename', 'target': '#binder-name'} | tojson | forceescape }}"
               hx-target="#binder-name"
               hx-swap="innerHTML"
               hx-trigger="click"

@@ -69,17 +69,11 @@ async def status(request: Request) -> dict:
     }
 
 def execute_migrations():
-    from pathlib import Path
-
     from alembic import command
-    from alembic.config import Config
-    BASE_DIR = Path(__file__).resolve().parent.parent.parent
-    ALEMBIC_INI_PATH = BASE_DIR / "alembic.ini"
-    alembic_cfg = Config(str(ALEMBIC_INI_PATH))
-    # Ensure script_location resolves properly regardless of working directory
-    alembic_cfg.set_main_option("script_location", str(BASE_DIR / "alembic"))
-    command.upgrade(alembic_cfg, "head")
 
+    from src.migrations import alembic_config
+
+    command.upgrade(alembic_config(), "head")
 
 
 @router.post("/admin/migrations/apply")

@@ -10,30 +10,15 @@ to the bundled database via the env vars Electron sets (``SCRYME_DATABASE_URL``,
 from __future__ import annotations
 
 import os
-import sys
-from pathlib import Path
 
 import uvicorn
 from alembic import command
-from alembic.config import Config
-
-
-def _base_dir() -> Path:
-    """Dir holding ``alembic/`` — the PyInstaller bundle root when frozen, else backend/."""
-    if getattr(sys, "frozen", False):  # PyInstaller sets sys.frozen + sys._MEIPASS
-        return Path(sys._MEIPASS)  # type: ignore[attr-defined]
-    return Path(__file__).resolve().parent.parent
 
 
 def _migrate() -> None:
-    from src.config import get_settings
+    from src.migrations import alembic_config
 
-    base = _base_dir()
-    cfg = Config()
-    cfg.set_main_option("script_location", str(base / "alembic"))
-    # env.py reads the URL from settings, but set it here too so a bare Config works when frozen.
-    cfg.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
-    command.upgrade(cfg, "head")
+    command.upgrade(alembic_config(), "head")
 
 
 def main() -> None:

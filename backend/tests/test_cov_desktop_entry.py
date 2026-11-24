@@ -6,33 +6,41 @@ the ``if __name__ == '__main__'`` guard (line 52) is unreachable on import."""
 from pathlib import Path
 
 import src.desktop_entry as de
+from src import migrations
 
 
 def test_base_dir_not_frozen():
     # Not frozen: base dir is the backend/ directory (parent of src/).
-    assert de._base_dir().name == "backend"
+    assert migrations.base_dir().name == "backend"
 
 
 def test_base_dir_frozen(monkeypatch):
-    monkeypatch.setattr(de.sys, "frozen", True, raising=False)
-    monkeypatch.setattr(de.sys, "_MEIPASS", "/tmp/meipass-bundle", raising=False)
-    assert Path(de._base_dir()).as_posix().endswith("/tmp/meipass-bundle")
+    monkeypatch.setattr(migrations.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(migrations.sys, "_MEIPASS", "/tmp/meipass-bundle", raising=False)
+    assert Path(migrations.base_dir()).as_posix().endswith("/tmp/meipass-bundle")
 
 
-def test_migrate_wires_alembic_config(monkeypatch):
+def test_alembic_config_ignores_working_directory(monkeypatch, tmp_path):
+    # The frozen desktop backend starts in a directory with no alembic.ini; the config must still
+    # find the migration scripts (a relative lookup crashed startup there).
+    from alembic.script import ScriptDirectory
+
+    monkeypatch.chdir(tmp_path)
+    cfg = migrations.alembic_config()
+    assert Path(cfg.get_main_option("script_location")).is_dir()
+    assert cfg.get_main_option("sqlalchemy.url")
+    assert ScriptDirectory.from_config(cfg).get_heads()
+
+
+def test_migrate_upgrades_to_head(monkeypatch):
     recorded = {}
-
-    class FakeConfig:
-        def set_main_option(self, key, value):
-            recorded[key] = value
-
-    monkeypatch.setattr(de, "Config", FakeConfig)
-    monkeypatch.setattr(de.command, "upgrade", lambda cfg, rev: recorded.__setitem__("rev", rev))
+    monkeypatch.setattr(
+        de.command, "upgrade", lambda cfg, rev: recorded.update(cfg=cfg, rev=rev)
+    )
 
     de._migrate()
     assert recorded["rev"] == "head"
-    assert recorded["script_location"].endswith("alembic")
-    assert "sqlalchemy.url" in recorded
+    assert recorded["cfg"].get_main_option("script_location").endswith("alembic")
 
 
 def test_main_migrates_then_launches_server(monkeypatch):

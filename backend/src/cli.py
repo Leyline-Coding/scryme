@@ -14,12 +14,18 @@ import asyncio
 
 from sqlalchemy import select
 
-from src.demo import seed_demo, seed_demo_decks
+from src.demo import seed_demo, seed_demo_decks, seed_demo_featured_sets
 from src.scryfall.images import ImageCache
-from src.scryfall.ingest import ingest_default_cards
+from src.scryfall.ingest import ingest_default_cards, last_ingest_age_days
 
 
-async def _ingest(force: bool) -> None:
+async def _ingest(force: bool, min_age_days: int | None = None) -> None:
+    if min_age_days is not None:
+        age = await last_ingest_age_days()
+        if age is not None and age < min_age_days:
+            print(f"Card data is {age:.0f} day(s) old (under {min_age_days}); skipping ingest.")
+            return
+        force = True  # stale (or never ingested): refresh regardless of the 24h guard
     result = await ingest_default_cards(force=force)
     if result.skipped:
         print(f"Skipped (cached); {result.card_count} cards already ingested.")
@@ -65,6 +71,9 @@ async def _seed_demo() -> None:
     print(f"Added {added} cards to the demo collection.")
     decks = await seed_demo_decks()
     print(f"Created {decks} example deck(s).")
+    for name, count in (await seed_demo_featured_sets()).items():
+        if count:
+            print(f"Added {count} cards from {name}.")
 
 
 async def _snapshot_prices() -> None:
@@ -212,6 +221,12 @@ def main() -> None:
 
     p_ingest = sub.add_parser("ingest", help="Ingest the Scryfall Default Cards bulk file")
     p_ingest.add_argument("--force", action="store_true", help="Ignore the 24h cache guard")
+    p_ingest.add_argument(
+        "--min-age-days", type=int, default=None, metavar="N",
+        help="Only ingest when the card data is at least N days old (or missing); then refresh "
+             "regardless of the 24h guard. For start-up scripts that should not ingest on every "
+             "restart but must not let the data go stale either.",
+    )
 
     sub.add_parser("backfill-images", help="Cache images for owned cards")
 
@@ -276,7 +291,7 @@ def main() -> None:
     # command -> a no-arg callable returning the coroutine to run. Commands that take arguments use
     # a small lambda to bind them from `args`; the rest reference their worker directly.
     handlers = {
-        "ingest": lambda: _ingest(args.force),
+        "ingest": lambda: _ingest(args.force, args.min_age_days),
         "backfill-images": _backfill_images,
         "queue-backfill-images": lambda: _queue_backfill_images(args.size, args.limit),
         "seed-demo": _seed_demo,

@@ -64,15 +64,19 @@ spec:
                 echo "waiting for postgres..."; sleep 2;
               done
               alembic upgrade head
-              # Ingest only on first boot (empty DB). The card DB persists on the PVC, so later
-              # restarts skip the ~115k-card ingest and the pod becomes Ready in seconds — keeping
-              # the Recreate-strategy downtime minimal even when Scryfall has a newer bulk file.
+              # Ingest on first boot (empty DB), and again only when the card data has gone stale.
+              # The card DB persists on the PVC, so an ordinary restart skips the ~115k-card
+              # ingest and the pod becomes Ready in seconds, keeping the Recreate-strategy downtime
+              # minimal. But the in-app scheduler does not run in read-only mode, so without the
+              # staleness check nothing ever refreshed the demo and new sets never appeared. With
+              # it, at most one restart every two weeks pays for an ingest (a few minutes).
               CARDS=$(python -c "import asyncio; from src.scryfall.ingest import current_card_count; print(asyncio.run(current_card_count()))")
               if [ "${CARDS:-0}" -lt 1000 ]; then
                 python -m src.cli ingest
               else
-                echo "cards already present ($CARDS); skipping ingest"
+                python -m src.cli ingest --min-age-days 14
               fi
+              # Also tops the collection up with the featured recent sets (src/demo.py).
               python -m src.cli seed-demo
           envFrom:
             - configMapRef:

@@ -172,7 +172,7 @@ never renamed — deployed databases have them recorded.
 
 **Six of the eight milestones are closed**: #7 (Decks & EDH tooling), #8 (Collection & physical
 organization), #9 (Platform: API & AI), #10 (UX, mobile & polish), #13 (Collection Pricing, Selling
-& Grading) and #14 (Trade Function). Current release line is **0.27.x**; migrations through
+& Grading) and #14 (Trade Function). Current release line is **0.28.x**; migrations through
 `0047_repair_fork_databases`.
 
 In flight:

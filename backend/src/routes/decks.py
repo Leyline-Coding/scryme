@@ -1016,6 +1016,7 @@ async def search_cards(
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     """Search for cards by name to suggest additions to a deck."""
+    limit = max(1, min(limit, 50))
     # If no query or empty query, return empty results
     if not q or q.strip() == "":
         return templates.TemplateResponse(

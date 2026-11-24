@@ -18,6 +18,7 @@ database and files each stack by that name, creating a box for a name that match
 
 from __future__ import annotations
 
+import asyncio
 import datetime
 import json
 import uuid
@@ -164,7 +165,8 @@ async def restore_backup(
     """
     if is_encrypted(data):
         try:
-            data = decrypt_backup(data, passphrase)
+            # Key derivation is deliberately slow; keep it off the event loop.
+            data = await asyncio.to_thread(decrypt_backup, data, passphrase)
         except BackupDecryptError as exc:
             return RestoreResult(ok=False, error=str(exc), needs_passphrase=True)
     error = validate_backup(data)

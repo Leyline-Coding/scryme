@@ -150,6 +150,17 @@ vars. Every card the model names is **validated against the database** before it
 so hallucinated cards never surface. The HTTP client is injectable — tests use a deterministic
 fake and never hit the network.
 
+**Request boundary (`src/security.py`).** One middleware decides what every route can rely on, so
+do not re-implement these per route: `Host` allowlist (`SCRYME_ALLOWED_HOSTS`; always on for
+desktop), refusal of cross-site state-changing requests, login when `SCRYME_API_TOKEN` is set (it
+gates the whole UI through `/login`, not only `/api/v1`), central read-only enforcement (a new
+write route is refused in read-only mode unless added to `_READ_ONLY_ALLOWED`), rate limits, and
+security headers including the CSP. Front-end libraries are vendored under `static/vendor` (see its
+`NOTICE.md`); never add a `<script>` or stylesheet from a third-party host. In inline handlers
+(`onclick`, `x-data`, `hx-on`, `hx-vals`) never interpolate a value into code — use a `data-`
+attribute or `tojson|forceescape`. AI is disabled outright in read-only mode. Web-request sessions
+carry a statement timeout (`SCRYME_STATEMENT_TIMEOUT_MS`).
+
 **JSON API:** versioned at `/api/v1` (`src/routes/api.py`), OpenAPI at `/docs`, optional
 `SCRYME_API_TOKEN`.
 

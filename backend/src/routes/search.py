@@ -290,7 +290,9 @@ async def search(
           nl_from_cache_and_preloaded = True
       # If this is a new search query, add it to the queue, start a background process, then
       # initialize the front end when it is ready
-      elif(not matching_nl_to_q):
+      # Only when AI is actually available: otherwise every visitor's text would be stored and a
+      # job queued for a model that is switched off (always the case on a read-only instance).
+      elif(not matching_nl_to_q and (await get_config(session)).ready):
           new_matching_nl_to_q = NLQCache(nl_text = nl.strip(), q_text=None)
           session.add(new_matching_nl_to_q)
           await session.commit()

@@ -120,7 +120,7 @@ async def test_restore_blocked_in_read_only(client, session, monkeypatch):
     files = {"file": ("b.json", json.dumps({"version": 1, "tables": {}}), "application/json")}
     resp = await client.post("/backup/restore", data={"mode": "apply"}, files=files)
     assert resp.status_code == 403
-    # Preview is still allowed (read-only safe).
+    # Preview is still allowed (it changes nothing, and is bounded in size and KDF cost).
     ok = await client.post("/backup/restore", data={"mode": "preview"}, files=files)
     assert ok.status_code == 200
 

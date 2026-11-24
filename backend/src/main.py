@@ -7,19 +7,13 @@ Scryfall bulk refresh.
 
 import asyncio
 from contextlib import asynccontextmanager
-from typing import cast
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
-from starlette.types import ExceptionHandler
 
-from src import __version__
+from src import __version__, security
 from src.card import card_name_text_search_matcher
 from src.config import get_settings
 from src.lan import access_decision, lan_state
@@ -27,6 +21,7 @@ from src.routes import (
     admin,
     ai,
     api,
+    auth,
     backup,
     binders,
     boxes,
@@ -115,7 +110,7 @@ def _install_lan_guard(app: FastAPI) -> None:
         response = await call_next(request)
         if decision == "set_cookie":
             response.set_cookie("scryme_lan", request.query_params["code"], max_age=2592000,
-                                samesite="lax")
+                                samesite="lax", httponly=True)
         return response
 
 
@@ -213,6 +208,39 @@ async def _check_has_pending_migrations() -> bool:
         return False
 
 
+# Postgres SQLSTATEs that mean "the request asked for something impossible", not "scryme broke".
+_BAD_INPUT_STATES = {
+    "22P02",  # invalid text representation (e.g. a card id that is not a UUID)
+    "2201B",  # invalid regular expression
+    "2201W",  # invalid LIMIT
+    "2201X",  # invalid OFFSET
+}
+_QUERY_CANCELED = "57014"
+
+
+def _install_db_error_handlers(app: FastAPI) -> None:
+    """Answer bad input and timed-out statements with a 4xx/503 instead of a bare 500."""
+    from fastapi.responses import JSONResponse
+    from sqlalchemy.exc import DBAPIError
+
+    @app.exception_handler(DBAPIError)
+    async def db_error(request, exc: DBAPIError):
+        state = getattr(exc.orig, "sqlstate", None) or getattr(exc.orig, "pgcode", None)
+        # asyncpg rejects a malformed UUID/number while encoding, before Postgres sees it.
+        encoding_error = "invalid input for query argument" in str(exc.orig)
+        if state in _BAD_INPUT_STATES or encoding_error:
+            return JSONResponse({"detail": "That request could not be understood."},
+                                status_code=400)
+        if state == _QUERY_CANCELED:
+            log.warning("db.statement_timeout", path=request.url.path)
+            return JSONResponse(
+                {"detail": "That took too long and was stopped. Try a narrower search."},
+                status_code=503,
+            )
+        log.error("db.error", path=request.url.path, error=str(exc.orig))
+        return JSONResponse({"detail": "Internal Server Error"}, status_code=500)
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="scryme", version=__version__, lifespan=lifespan)
@@ -220,23 +248,18 @@ def create_app() -> FastAPI:
     # Compress text responses (HTML, the value-chart SVG, JSON API). Skips small bodies.
     app.add_middleware(GZipMiddleware, minimum_size=512)
 
-    # Add rate limiting middleware - this should be applied before other middlewares that might be
-    # affected
-    # Initialize rate limiter
-    app.state.limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
-    app.add_exception_handler(
-        RateLimitExceeded, cast(ExceptionHandler, _rate_limit_exceeded_handler)
-    )
-    app.add_middleware(SlowAPIMiddleware)
-
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     _install_cache_headers(app)
     _install_prefs_loader(app)
+    # Outside everything above, so a refused request costs no database work.
+    security.install(app)
+    _install_db_error_handlers(app)
     if settings.lan_guard:
         _install_lan_guard(app)
 
     app.include_router(health.router)
+    app.include_router(auth.router)
     app.include_router(home.router)
     app.include_router(admin.router)
     app.include_router(search.router)

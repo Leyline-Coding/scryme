@@ -121,7 +121,8 @@ async def open_saved(saved_id: int, session: AsyncSession = Depends(get_session)
     obj = await session.get(SavedSearch, saved_id)
     if obj is None:
         return RedirectResponse(url="/", status_code=303)
-    await clear_new(session, saved_id)
+    if not get_settings().read_only:
+        await clear_new(session, saved_id)
     return RedirectResponse(
         url=_run_url(obj.query, obj.scope, obj.sort, obj.direction), status_code=303
     )

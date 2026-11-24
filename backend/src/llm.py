@@ -76,6 +76,10 @@ class LLMConfig:
 async def get_config(session: AsyncSession) -> LLMConfig:
     """Resolve LLM config: the in-app row if present, else the SCRYME_LLM_* environment."""
     s = get_settings()
+    if s.read_only:
+        # A read-only instance is a public demo: anonymous visitors must not be able to spend the
+        # owner's model credits or compute, whatever is configured.
+        return LLMConfig()
     row = await session.get(LLMSettings, 1)
     if row is None:
         return LLMConfig(

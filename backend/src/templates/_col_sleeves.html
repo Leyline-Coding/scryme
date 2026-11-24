@@ -35,7 +35,7 @@
         <img src="/sleeves/{{ sleeve.id }}/image" alt="{% if sleeve.name %}{{ sleeve.name }}{% else %} Sleeve #{{ sleeve.id }}{% endif %}" loading="lazy" class="rounded-t-xl grid-card-img w-full aspect-[5/7] object-cover box-border border-8 border-black" />
         {% elif sleeve.color %}
         <div class="w-full aspect-[5/7] rounded-t-xl flex items-center justify-center"
-             style="background-color: {{ sleeve.color }}; border: 8px solid black;">
+             style="background-color: {{ sleeve.color | css_color }}; border: 8px solid black;">
         </div>
         {% else %}
         <div class="bg-muted border-2 border-dashed rounded w-16 h-20 flex items-center justify-center">
@@ -60,14 +60,15 @@
           <div x-show="sleeve_selection_open_{{sleeve.id}}" @click.outside="sleeve_selection_open_{{sleeve.id}} = false" x-transition="" style="display: none" class="absolute right-0 mt-2 w-64 rounded-lg bg-surface border border-edge shadow-xl py-1 z-40 text-sm">
             <div class="px-3 py-1.5 text-xs font-medium text-muted">Decks</div>
             {% for deck in decks %}
-            <button type="button" @click="sleeve_selection_open_{{sleeve.id}} = false;" hx-post="/decks/{{ deck.id }}/sleeve" hx-trigger="click consume" hx-swap="none" hx-vals='{"sleeve_id": {{ sleeve.id }}}' hx-swap="none" hx-on::after-request="if(event.detail.successful) document.getElementById('sleeve_selection_btn_{{sleeve.id}}').innerHTML = '{{ deck.name }} ▾'" class="block w-full text-left px-3 py-1.5 hover:bg-surface-2{%if deck.id == sleeve.deck_id %} bg-surface-3{% endif %}">{{ deck.name }}</button>
+            <button type="button" @click="sleeve_selection_open_{{sleeve.id}} = false;" hx-post="/decks/{{ deck.id }}/sleeve" hx-trigger="click consume" hx-swap="none" hx-vals='{"sleeve_id": {{ sleeve.id }}}' hx-swap="none" data-btn="sleeve_selection_btn_{{sleeve.id}}" data-label="{{ deck.name }} ▾" hx-on::after-request="if(event.detail.successful) document.getElementById(this.dataset.btn).textContent = this.dataset.label" class="block w-full text-left px-3 py-1.5 hover:bg-surface-2{%if deck.id == sleeve.deck_id %} bg-surface-3{% endif %}">{{ deck.name }}</button>
             {% endfor %}
             <div class="block w-full text-left px-3 py-1.5 text-accent hover:bg-surface-2 border-t border-edge mt-1 pt-1" 
               @click="sleeve_selection_open_{{sleeve.id}} = false;" 
                  hx-post="/sleeves/{{sleeve.id}}/unassociate"  
                  hx-trigger="click" 
                  hx-swap="none" 
-                 hx-on::after-request="if(event.detail.successful) document.getElementById('sleeve_selection_btn_{{sleeve.id}}').innerHTML = 'Deck Selection ▾'" >Clear</div>
+                 data-btn="sleeve_selection_btn_{{sleeve.id}}"
+                 hx-on::after-request="if(event.detail.successful) document.getElementById(this.dataset.btn).textContent = 'Deck Selection ▾'" >Clear</div>
           </div>
         </div>
 

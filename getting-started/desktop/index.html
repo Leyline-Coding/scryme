@@ -640,6 +640,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#privacy-local-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Privacy &amp; local security
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#build-from-source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1955,6 +1966,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#privacy-local-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Privacy &amp; local security
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#build-from-source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2005,6 +2027,10 @@ right there.</p>
 <td><code>scryme-&lt;version&gt;.AppImage</code> / <code>scryme-&lt;version&gt;-arm64.AppImage</code></td>
 </tr>
 <tr>
+<td><strong>Debian / Ubuntu (x64)</strong></td>
+<td><code>scryme-&lt;version&gt;-amd64.deb</code></td>
+</tr>
+<tr>
 <td><strong>Windows</strong></td>
 <td><code>scryme-Setup-&lt;version&gt;.exe</code> (x64; runs on Windows-on-ARM via emulation)</td>
 </tr>
@@ -2015,9 +2041,13 @@ right there.</p>
 </tbody>
 </table>
 <div class="admonition note">
-<p class="admonition-title">Linux is AppImage-only</p>
-<p>scryme ships Linux as an <strong>AppImage</strong> (both x64 and arm64) — the universal, distro-agnostic
-format. Mark it executable (<code>chmod +x</code>) and run it; no install or package manager needed.</p>
+<p class="admonition-title">Linux: AppImage or .deb</p>
+<p>The <strong>AppImage</strong> (x64 and arm64) is the universal, distro-agnostic format: mark it executable
+(<code>chmod +x</code>) and run it; no install or package manager needed.</p>
+<p>On <strong>Ubuntu 24.04+</strong> (and other distros that restrict unprivileged user namespaces through
+AppArmor) prefer the <strong><code>.deb</code></strong>: it installs an AppArmor profile so the browser engine's
+sandbox stays on. An AppImage cannot ship such a profile, so on those systems it has to start
+with that sandbox disabled.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Unsigned installers</p>
@@ -2044,8 +2074,27 @@ just focuses the window that's already open.</p>
 <li><strong>System notifications</strong> — saved-search alerts (cards that newly match after a card-data update)
   pop a native notification.</li>
 <li><strong>LAN sharing</strong> — opt in to browse your collection from your phone or tablet on the home network,
-  with a QR code and an optional access code. Off by default, and loopback-only until you enable it.</li>
-<li><strong>Auto-update</strong> — the app checks GitHub Releases on launch and offers to update.</li>
+  with a QR code and an optional access code. Off by default: the app listens on <code>127.0.0.1</code> only
+  until you enable it. Switching it on or off restarts the app's built-in server, which takes a few
+  seconds (the window shows "Applying the LAN sharing change…" and then comes back).</li>
+<li><strong>Update notifications</strong> — the app checks GitHub Releases on launch (and from <em>Help → Check for
+  Updates…</em>). When a newer version exists it tells you and opens the download page in your browser;
+  it never downloads or installs anything by itself. Because the installers aren't code-signed yet,
+  the app has no trustworthy way to verify an update on its own, so installing one stays a
+  deliberate step.</li>
+</ul>
+<h2 id="privacy-local-security">Privacy &amp; local security</h2>
+<ul>
+<li>The built-in database listens on <code>127.0.0.1</code> only and is protected by a random password generated
+  on first launch (stored in <code>pg-credentials.json</code> inside the data folder, readable only by you).
+  Installs from 0.28.0 or earlier are switched over automatically the next time the app starts.
+  If you copy or restore the data folder by hand, keep that file together with the <code>pg</code> folder.</li>
+<li>The data folder is private to your user account.</li>
+<li>Links to other sites open in your browser (<code>https</code> only); the app window itself only ever shows
+  scryme.</li>
+<li><code>SCRYME_*</code> environment variables from your shell are not passed to the desktop app's server,
+  except the documented AI (<code>SCRYME_LLM_*</code>), backup (<code>SCRYME_BACKUP_*</code>), <code>SCRYME_DEFAULT_CURRENCY</code>,
+  <code>SCRYME_DEFAULT_PRICE_SOURCE</code> and <code>SCRYME_API_TOKEN</code> settings.</li>
 </ul>
 <h2 id="build-from-source">Build from source</h2>
 <p>The app is built from the <a href="https://github.com/Leyline-Coding/scryme/tree/main/desktop"><code>desktop/</code></a>
@@ -2073,7 +2122,7 @@ build steps and the release/signing setup.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 16, 2026 23:26:44 UTC">July 16, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 22:50:15 UTC">November 24, 2026</span>
   </span>
 
     

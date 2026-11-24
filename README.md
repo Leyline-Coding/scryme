@@ -51,7 +51,7 @@ interface that understands [Scryfall search syntax](https://scryfall.com/docs/sy
 - 🐳 **Self-hostable via Docker**, with an optional read-only public demo.
 - 🖥️ **Desktop app** (macOS / Windows / Linux) — an install-free build that bundles PostgreSQL and
   the backend, with drag-and-drop import, a global quick-search hotkey, LAN sharing, and
-  auto-update.
+  update notifications.
 
 ## Quick start (self-host)
 
@@ -123,7 +123,8 @@ All data lives in one folder you can back up or point at a synced drive. Highlig
   notifications** for saved-search alerts.
 - **LAN sharing** — browse your collection from your phone on the home network (with a QR code and
   optional access code).
-- **Auto-update** from GitHub Releases.
+- **Update notifications**: the app tells you when a new release is out and links to it. Builds
+  are unsigned, so it never installs an update on its own.
 
 Installers are currently **unsigned**, so Windows SmartScreen / macOS Gatekeeper will warn on first
 open (signing is on the roadmap). Build from source and details: [`desktop/`](desktop/).

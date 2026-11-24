@@ -12,6 +12,8 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
+    "test": "node --test test/unit/",
+    "test:integration": "node --test test/integration/",
     "build:backend": "bash scripts/build-backend.sh",
     "dist": "electron-builder",
     "pack": "electron-builder --dir"

@@ -65,7 +65,7 @@ The MVP plus a steady stream of post-MVP features:
 
 The **[Electron desktop app](getting-started/desktop.md)** is shipped: an install-free build that
 bundles PostgreSQL and the backend, with drag-and-drop import, a global quick-search hotkey, LAN
-sharing, system notifications, and auto-update. Still on its roadmap:
+sharing, system notifications, and update notifications. Still on its roadmap:
 
 - **Signed & notarized installers** — today's builds are unsigned (SmartScreen / Gatekeeper warn on
   first open). The signing config is in place; it needs Windows/Apple certificates.

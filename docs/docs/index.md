@@ -38,7 +38,7 @@ Lens, then search it with Scryfall syntax and regular expressions.
   accent, playful **foil / etched card effects** and a cursor-reactive hover tilt, **USD/EUR**
   currency, and 🐳 **self-hostable via Docker** with an optional read-only public demo.
 - 🖥️ **Desktop app** (macOS / Windows / Linux) — an install-free build that bundles PostgreSQL and
-  the backend, with drag-and-drop import, a quick-search hotkey, LAN sharing, and auto-update.
+  the backend, with drag-and-drop import, a quick-search hotkey, LAN sharing, and update notifications.
 
 See the **[roadmap](roadmap.md)** for what's shipped and what's planned.
 

@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 from src import __version__
 from src.config import get_settings
 from src.markdown import render_markdown
+from src.sanitize import css_color, http_url
 from src.symbols import mana_symbols, set_symbol
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -62,3 +63,7 @@ templates.env.globals["lan_available"] = lambda: get_settings().lan_guard
 templates.env.globals["app_version"] = __version__
 
 templates.env.filters["markdown"] = render_markdown
+
+# Allowlist filters for values that land in a CSS / URL context, where autoescape is not enough.
+templates.env.filters["css_color"] = css_color
+templates.env.filters["http_url"] = http_url

@@ -44,6 +44,11 @@ async def test_embed_posts_and_sorts_by_index(monkeypatch):
     orig = httpx.AsyncClient
     monkeypatch.setattr(emb.httpx, "AsyncClient", lambda **kw: orig(transport=transport, **kw))
 
+    async def fake_resolve(host, port):  # the endpoint check resolves the host — no real DNS
+        return ["127.0.0.1"]
+
+    monkeypatch.setattr("src.llm_endpoint._resolve", fake_resolve)
+
     client = EmbeddingClient(base_url="http://x/v1", api_key="key", model="m")
     vecs = await client.embed(["a", "b"])
     assert vecs == [[0.1, 0.2], [0.9, 0.9]]  # re-sorted by index

@@ -93,6 +93,11 @@ async def test_chat_client_posts_and_returns_content(monkeypatch):
     monkeypatch.setattr(llm.httpx, "AsyncClient",
                         lambda **kw: orig(transport=transport, **kw))
 
+    async def fake_resolve(host, port):  # the endpoint check resolves the host — no real DNS
+        return ["127.0.0.1"]
+
+    monkeypatch.setattr("src.llm_endpoint._resolve", fake_resolve)
+
     cfg = LLMConfig(base_url="http://x/v1/", api_key="secret", chat_model="m", enabled=True)
     out = await ChatClient(cfg).chat([{"role": "user", "content": "hey"}])
     assert out == "hi there"

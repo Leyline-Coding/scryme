@@ -24,6 +24,17 @@
   {% if saved %}
   <div class="rounded-lg bg-emerald-500/10 text-emerald-600 text-sm px-3 py-2 mb-4">Settings saved.</div>
   {% endif %}
+  {% if key_cleared %}
+  <div class="rounded-lg bg-amber-500/10 text-amber-600 text-sm px-3 py-2 mb-4" role="status">
+    The endpoint address changed, so the stored API key was cleared — it is only ever sent to the
+    endpoint it was saved for. Enter the key for the new endpoint and save again.
+  </div>
+  {% endif %}
+  {% if error %}
+  <div class="rounded-lg bg-rose-500/10 text-rose-500 text-sm px-3 py-2 mb-4" role="alert">
+    Settings not saved. {{ error }}
+  </div>
+  {% endif %}
 
   <form method="post" action="/ai" class="space-y-4">
     <label class="flex items-center gap-2 text-sm">
@@ -43,6 +54,8 @@
       <input type="password" name="api_key" id="ai-api-key" autocomplete="off"
              placeholder="{{ 'leave blank to keep current key' if has_key else 'optional for local servers' }}"
              class="w-full rounded-lg bg-surface-2 border border-edge px-3 py-2 text-sm" />
+      <p class="text-xs text-muted mt-1">The key is tied to the endpoint it was saved for: changing
+        the endpoint's host, port or http/https clears it, and it must be entered again.</p>
     </div>
 
     <div class="grid grid-cols-2 gap-3">

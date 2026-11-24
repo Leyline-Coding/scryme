@@ -28,6 +28,7 @@ from src.llm import (
     save_config,
     test_connection,
 )
+from src.llm_endpoint import EndpointError, endpoint_error_message
 from src.models import Card, Deck, DeckChatMessage
 from src.routes.card import fetch_rulings
 from src.rules_rag import rules_for_question
@@ -59,7 +60,10 @@ async def ai_settings(
     return templates.TemplateResponse(
         request, "ai_settings.html",
         {"cfg": cfg, "has_key": bool(cfg.api_key), "read_only": get_settings().read_only,
-         "saved": request.query_params.get("saved") == "1"},
+         "saved": request.query_params.get("saved") == "1",
+         "key_cleared": request.query_params.get("key_cleared") == "1",
+         # A fixed message looked up by code — the query string is never echoed into the page.
+         "error": endpoint_error_message(request.query_params.get("error"))},
     )
 
 
@@ -73,11 +77,18 @@ async def ai_save(
     session: AsyncSession = Depends(get_session),
 ) -> RedirectResponse:
     _guard_writable()
-    await save_config(
-        session, base_url=base_url, api_key=api_key, chat_model=chat_model,
-        embed_model=embed_model, enabled=enabled is not None,
-    )
-    return RedirectResponse(url="/ai?saved=1", status_code=303)
+    try:
+        key_cleared = await save_config(
+            session, base_url=base_url, api_key=api_key, chat_model=chat_model,
+            embed_model=embed_model, enabled=enabled is not None,
+        )
+    except EndpointError as exc:
+        # Nothing was saved. Redirect with a code from a fixed set, never the submitted text.
+        return RedirectResponse(url=f"/ai?error={exc.code}", status_code=303)
+    # The stored key belonged to the previous endpoint, so it was dropped rather than sent to
+    # the new one — tell the owner it has to be entered again.
+    url = "/ai?saved=1&key_cleared=1" if key_cleared else "/ai?saved=1"
+    return RedirectResponse(url=url, status_code=303)
 
 
 @router.post("/ai/test", response_class=HTMLResponse)

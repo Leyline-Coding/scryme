@@ -50,11 +50,12 @@ async def test_config_save_encrypts_and_keeps_key(session):
     row = await session.get(LLMSettings, 1)
     assert row.api_key_enc and "secret-key" not in row.api_key_enc  # encrypted at rest
 
-    # A blank api_key on re-save keeps the existing key; enabled=False -> not ready.
-    await save_config(session, base_url="http://y/v1", api_key="",
+    # A blank api_key on re-save keeps the existing key while the endpoint's origin is unchanged
+    # (a different host clears it — see test_llm_endpoint_security); enabled=False -> not ready.
+    await save_config(session, base_url="http://x/v2", api_key="",
                       chat_model="m", embed_model="e", enabled=False)
     cfg2 = await get_config(session)
-    assert cfg2.api_key == "secret-key" and cfg2.base_url == "http://y/v1" and not cfg2.ready
+    assert cfg2.api_key == "secret-key" and cfg2.base_url == "http://x/v2" and not cfg2.ready
 
 
 @pytest.mark.asyncio
@@ -71,7 +72,7 @@ async def test_connection_reports_ok_and_failure(session):
     ok, _ = await check_connection(cfg, client=FakeChat())
     assert ok
     bad, msg = await check_connection(cfg, client=FakeChat(raise_exc=httpx.ConnectError("no")))
-    assert not bad and "reach" in msg.lower()
+    assert not bad and msg == "Could not connect to the endpoint."
     off, _ = await check_connection(LLMConfig())
     assert not off
 

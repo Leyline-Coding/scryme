@@ -11,6 +11,7 @@ model names against the database, so a hallucinated card never reaches the UI.
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from dataclasses import dataclass, field
@@ -24,10 +25,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import __version__
 from src.config import get_settings
 from src.llm_card_analysis import collection_ai_context, deck_ai_context
+from src.llm_endpoint import EndpointError, ensure_endpoint_allowed, parse_endpoint, same_origin
 from src.models import Card, CollectionCard, Deck, DeckChatMessage, LLMSettings, NLQCache
 from src.search import SearchError, build_search
 
 _UA = f"scryme/{__version__} (+https://github.com/Leyline-Coding/scryme)"
+
+log = logging.getLogger(__name__)
 
 
 # --- secret store (encrypt the API key at rest) -------------------------------------------------
@@ -96,22 +100,44 @@ async def get_config(session: AsyncSession) -> LLMConfig:
 async def save_config(
     session: AsyncSession, *, base_url: str, api_key: str | None,
     chat_model: str, embed_model: str, enabled: bool,
-) -> None:
-    """Upsert the config row. A blank ``api_key`` keeps the existing key (so it isn't wiped)."""
+) -> bool:
+    """Upsert the config row. Returns True if a stored API key was cleared by this save.
+
+    A blank ``api_key`` keeps the existing key (so re-saving the form doesn't wipe it) — but only
+    while the endpoint's origin (scheme + host + port) is unchanged. A stored key belongs to the
+    endpoint it was saved for: pointing the config at a different origin without supplying a new
+    key clears it, so the old key is never sent to the new host. A path-only change keeps it.
+
+    Raises :class:`~src.llm_endpoint.EndpointError` (nothing is written) for a non-blank URL that
+    isn't a plain http(s) endpoint or that targets a blocked address.
+    """
+    new_url = (base_url or "").strip()
+    if new_url:
+        parse_endpoint(new_url)
+    new_key = (api_key or "").strip()
     row = await session.get(LLMSettings, 1)
     if row is None:
         row = LLMSettings(id=1)
         session.add(row)
-    row.base_url = (base_url or "").strip()
-    if api_key:
-        row.api_key_enc = encrypt_secret(api_key)
+    key_cleared = False
+    if new_key:
+        row.api_key_enc = encrypt_secret(new_key)
+    elif row.api_key_enc and not same_origin(row.base_url or "", new_url):
+        row.api_key_enc = None
+        key_cleared = True
+    row.base_url = new_url
     row.chat_model = (chat_model or "").strip()
     row.embed_model = (embed_model or "").strip()
     row.enabled = enabled
     await session.commit()
+    return key_cleared
 
 
 # --- chat client --------------------------------------------------------------------------------
+
+_MSG_NO_CONNECT = "Could not connect to the endpoint."
+_MSG_BAD_REPLY = "The endpoint answered, but not with an OpenAI-compatible chat response."
+
 
 class ChatClient:
     """Minimal OpenAI-compatible chat client."""
@@ -123,10 +149,13 @@ class ChatClient:
                    max_tokens: int = 2000) -> str:
         # Note: reasoning models (e.g. Gemma QAT) spend part of this budget on hidden reasoning
         # before emitting `content`, so keep max_tokens generous or `content` can come back empty.
+        # Refuse non-http(s) URLs and link-local / metadata targets before anything is sent.
+        await ensure_endpoint_allowed(self.cfg.base_url)
         headers = {"User-Agent": _UA, "Content-Type": "application/json"}
         if self.cfg.api_key:
             headers["Authorization"] = f"Bearer {self.cfg.api_key}"
-        async with httpx.AsyncClient(timeout=120) as client:
+        # Never follow redirects: the key and the deck data go to the configured host only.
+        async with httpx.AsyncClient(timeout=120, follow_redirects=False) as client:
             resp = await client.post(
                 f"{self.cfg.base_url.rstrip('/')}/chat/completions",
                 headers=headers,
@@ -138,16 +167,31 @@ class ChatClient:
 
 
 async def test_connection(cfg: LLMConfig, client: ChatClient | None = None) -> tuple[bool, str]:
-    """Round-trip a tiny prompt. Returns (ok, human-readable message)."""
+    """Round-trip a tiny prompt. Returns (ok, human-readable message).
+
+    The message comes from a small fixed set: it never carries exception text or a response body,
+    and every way of failing to get an HTTP answer (refused, timed out, name not found, a
+    non-HTTP service on the port) reads the same. The detail goes to the server log instead.
+    """
     if not cfg.base_url:
         return False, "No endpoint URL set."
-    client = client or ChatClient(cfg)
     try:
+        parse_endpoint(cfg.base_url)
+        client = client or ChatClient(cfg)
         await client.chat([{"role": "user", "content": "Reply with: ok"}], max_tokens=5)
+    except EndpointError as exc:
+        log.warning("LLM connection test refused for %r: %s", cfg.base_url, exc.code)
+        return False, exc.message
     except httpx.HTTPStatusError as exc:
+        log.warning("LLM connection test: %r answered HTTP %s", cfg.base_url,
+                    exc.response.status_code)
         return False, f"HTTP {exc.response.status_code} from the endpoint."
-    except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
-        return False, f"Could not reach the endpoint: {exc}"
+    except httpx.HTTPError as exc:
+        log.warning("LLM connection test: could not connect to %r: %r", cfg.base_url, exc)
+        return False, _MSG_NO_CONNECT
+    except (KeyError, IndexError, ValueError, TypeError, AttributeError) as exc:
+        log.warning("LLM connection test: unusable reply from %r: %r", cfg.base_url, exc)
+        return False, _MSG_BAD_REPLY
     return True, f"Connected to {cfg.base_url} ({cfg.chat_model})."
 
 

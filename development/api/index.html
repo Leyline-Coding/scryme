@@ -1719,6 +1719,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#batch-scan-ingest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch scan ingest
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Batch scan ingest">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#send-an-idempotency-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Send an Idempotency-Key
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pairing-a-device" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pairing a device
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#example" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2014,6 +2053,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#batch-scan-ingest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch scan ingest
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Batch scan ingest">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#send-an-idempotency-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Send an Idempotency-Key
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pairing-a-device" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pairing a device
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#example" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2140,16 +2218,75 @@ Omitting <code>version</code> applies the write regardless, so existing clients 
 <td><code>/api/v1/wishlist</code> · <code>DELETE</code> <code>/api/v1/wishlist/{id}</code></td>
 <td>Add / remove a wishlist entry.</td>
 </tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/scan</code></td>
+<td><a href="#batch-scan-ingest">Batch scan ingest</a> — increment-merge a batch of scanned cards.</td>
+</tr>
 </tbody>
 </table>
+<h2 id="batch-scan-ingest">Batch scan ingest</h2>
+<p><code>POST /api/v1/scan</code> adds a batch of scanned cards straight to your collection, skipping the
+scan → export CSV → upload loop. It's what the companion scanner app talks to, but it's an ordinary
+endpoint — anything that can identify a printing can use it.</p>
+<p>Identify each row by <code>scryfall_id</code>, or by <code>set</code> + <code>collector_number</code>, or (least precisely) by
+<code>name</code>. Rows are resolved by the same matcher a CSV import uses, and anything that doesn't resolve
+comes back in the response instead of failing the batch.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>https://your-scryme-instance/api/v1/scan<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'Idempotency-Key: box-a-2026-09-02-001'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="s1">        "location": "Box A",</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="s1">        "rows": [</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="s1">          {"scryfall_id": "e3285e6b-3e79-4d7c-bf96-d920f973b0d5", "quantity": 2},</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="s1">          {"set": "mh2", "collector_number": "122", "finish": "foil"},</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="s1">          {"name": "Llanowar Elves"}</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="s1">        ]</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="s1">      }'</span>
+</code></pre></div>
+<p>The response reports each row in the order you sent it — what it resolved to, and how — plus the
+totals:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">"ok"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">"replayed"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nt">"idempotency_key"</span><span class="p">:</span><span class="w"> </span><span class="s2">"box-a-2026-09-02-001"</span><span class="p">,</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="nt">"total_rows"</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="nt">"matched"</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="nt">"unmatched"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">"inserted"</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="nt">"updated"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">"total_quantity"</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"> </span><span class="nt">"location"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Box A"</span><span class="p">,</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="nt">"rows"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span><span class="p">{</span><span class="nt">"index"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">"matched"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">"method"</span><span class="p">:</span><span class="w"> </span><span class="s2">"scryfall_id"</span><span class="p">,</span><span class="w"> </span><span class="nt">"quantity"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"…"</span><span class="p">},</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">    </span><span class="p">{</span><span class="nt">"index"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">"matched"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">"method"</span><span class="p">:</span><span class="w"> </span><span class="s2">"set_number"</span><span class="p">,</span><span class="w"> </span><span class="nt">"quantity"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Lightning Bolt"</span><span class="p">},</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">    </span><span class="p">{</span><span class="nt">"index"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">"matched"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">"method"</span><span class="p">:</span><span class="w"> </span><span class="s2">"name"</span><span class="p">,</span><span class="w"> </span><span class="nt">"quantity"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Llanowar Elves"</span><span class="p">}</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span><span class="p">]</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="p">}</span>
+</code></pre></div>
+<p>Cards are always <strong>added</strong> to what you already own — there's no replace mode, because a scan is
+unambiguously an addition. A <code>location</code> applies to the whole batch and keeps those copies as their
+own stack, so filing a box doesn't silently move cards that were never in it.</p>
+<h3 id="send-an-idempotency-key">Send an <code>Idempotency-Key</code></h3>
+<p>A scanner runs on a phone, on a home network, with an offline queue — so the same batch will
+eventually be sent twice. Give each batch a key and the second arrival returns the first one's
+response with <code>"replayed": true</code>, without adding the cards again. A retry is then safe to do
+blindly, which is the only way to make "did that land?" answerable after a timeout.</p>
+<p>Keep the key stable across retries of <em>the same</em> batch and different between batches. Without a
+key, every request is applied as sent.</p>
+<h3 id="pairing-a-device">Pairing a device</h3>
+<p>Rather than typing an address and a 43-character token into a phone, open <strong><code>/pair</code></strong> (or
+<strong>Settings → Devices → Show pairing code</strong>). It mints a fresh per-device token and shows a QR
+carrying exactly this:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span><span class="nt">"base_url"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http://192.168.1.5:8080"</span><span class="p">,</span><span class="w"> </span><span class="nt">"token"</span><span class="p">:</span><span class="w"> </span><span class="s2">"scryme_…"</span><span class="p">}</span>
+</code></pre></div>
+<p>The token is an ordinary device token, revocable on its own from Settings → Devices. If you're
+looking at the page over <code>localhost</code> — which you usually are, pairing from the machine running
+scryme — the code uses your machine's network address instead, since a phone can't reach
+<code>localhost</code>. On the desktop app the other device also needs
+<a href="../../getting-started/desktop/">LAN sharing</a> turned on; the pairing page says so when it's off.</p>
 <h2 id="example">Example</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Search your collection for red instants under 3 mana</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>curl<span class="w"> </span><span class="s2">"http://localhost:8080/api/v1/search?q=c:r+t:instant+mv&lt;=2"</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Add four foil copies of a printing</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/api/v1/collection<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"scryfall_id":"...","quantity":4,"finish":"foil"}'</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Search your collection for red instants under 3 mana</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>curl<span class="w"> </span><span class="s2">"https://your-scryme-instance/api/v1/search?q=c:r+t:instant+mv&lt;=2"</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Add four foil copies of a printing</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>https://your-scryme-instance/api/v1/collection<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span>-H<span class="w"> </span><span class="s1">'content-type: application/json'</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"scryfall_id":"...","quantity":4,"finish":"foil"}'</span>
 </code></pre></div>
 
 
@@ -2173,7 +2310,7 @@ Omitting <code>version</code> applies the write regardless, so existing clients 
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 21, 2026 22:20:56 UTC">August 21, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 18:00:42 UTC">November 24, 2026</span>
   </span>
 
     

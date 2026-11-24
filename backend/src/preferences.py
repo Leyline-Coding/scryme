@@ -162,7 +162,7 @@ def _apply_cookies(prefs: Prefs, cookies: dict) -> Prefs:
 
 def resolve(row: PreferencesRow | None, cookies: dict, *, writable: bool) -> Prefs:
     """Effective per-request preferences.
-
+    
     Precedence: when the instance is writable AND a saved singleton row exists, the singleton is
     authoritative (a synced device sees the account's choice). Otherwise — a fresh instance with no
     row yet, or the read-only demo — a device's own cookie wins so per-visitor choices still work.
@@ -171,5 +171,29 @@ def resolve(row: PreferencesRow | None, cookies: dict, *, writable: bool) -> Pre
     """
     base = _from_row(row) if row is not None else _defaults()
     if writable and row is not None:
-        return base
+        # When there's a saved preference row, still apply session-specific cookie settings
+        # but keep the persistent global settings from the database
+        prefs_copy = base
+        # Apply only the UI/session-specific cookie preferences (not global ones)
+        if (c := cookies.get("scryme_currency")):
+            prefs_copy.currency = normalize_currency(c) or prefs_copy.currency
+        if (c := cookies.get("scryme_price_source")):
+            prefs_copy.price_source = normalize_source(c) or prefs_copy.price_source
+        if "scryme_search_filter" in cookies:
+            prefs_copy.search_filter = cookies["scryme_search_filter"]
+        if "scryme_movers" in cookies:
+            prefs_copy.movers = cookies["scryme_movers"] == "1"
+        if "scryme_view" in cookies:
+            prefs_copy.view = "list" if cookies["scryme_view"] == "list" else "grid"
+        if "scryme_infinite" in cookies:
+            prefs_copy.infinite = cookies["scryme_infinite"] == "1"
+        if (hc := normalize_currency(cookies.get("scryme_hist_currency"))):
+            prefs_copy.hist_currency = hc
+        try:
+            n = int(cookies.get("scryme_page_size", ""))
+            if n in _PAGE_SIZES:
+                prefs_copy.page_size = n
+        except (TypeError, ValueError):
+            pass
+        return prefs_copy
     return _apply_cookies(base, cookies or {})

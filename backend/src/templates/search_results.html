@@ -42,21 +42,25 @@
   <div class="flex items-center gap-2 shrink-0 text-xs">
     <label class="sr-only" for="page-size">Cards per page</label>
     <select id="page-size" onchange="setPageSize(this.value)"
-            class="rounded bg-surface-2 border border-edge px-1.5 py-1">
+            class="rounded-full bg-surface border border-edge px-4 py-1.5 text-sm font-medium hover:border-accent">
       {% for n in page_sizes %}
       <option value="{{ n }}" {% if n == page_size %}selected{% endif %}>{{ n }}/page</option>
       {% endfor %}
     </select>
-    <label class="flex items-center gap-1 cursor-pointer text-muted"
-            title="Load more automatically as you scroll (grid view)">
-      <input type="checkbox" onchange="setInfinite(this.checked)" {% if infinite %}checked{% endif %}
-              class="accent-[color:var(--c-accent)]" /> ∞ scroll
+    <label class="inline-flex items-center cursor-pointer">
+      <input type="checkbox" name="infinite-scroll" onchange="setInfinite(this.checked)" autocomplete="off" {% if infinite %}checked{% endif %} class="sr-only peer">
+      <div class="relative w-9 h-5 rounded-full border border-edge hover:border-accent bg-surface peer-checked:bg-accent peer-checked:after:translate-x-full peer-checked:after:border-buffer after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+      <span class="select-none ml-1 text-sm font-medium text-heading"><i class="fa-solid fa-infinity"></i> scroll</span>
     </label>
-    <div class="inline-flex rounded-lg ring-1 ring-edge overflow-hidden text-base leading-none">
-      <button type="button" onclick="setView('grid')" title="Grid view" aria-label="Grid view"
-        class="px-2.5 py-1 {% if view != 'list' %}bg-surface-2 text-fg{% else %}text-muted hover:text-fg{% endif %}">▦</button>
-      <button type="button" onclick="setView('list')" title="List view" aria-label="List view"
-        class="px-2.5 py-1 border-l border-edge {% if view == 'list' %}bg-surface-2 text-fg{% else %}text-muted hover:text-fg{% endif %}">☰</button>
+    <div class="inline-flex rounded-full ring-1 ring-edge overflow-hidden shrink-0" title="Search scope">
+      <label class="cursor-pointer">
+        <input type="radio" name="card-view" value="grid" class="peer sr-only" autocomplete="off" {% if view == 'grid' %}checked=""{% endif %}>
+        <span class="block px-4 py-2 text-muted peer-checked:bg-surface peer-checked:text-fg" onclick="setView('grid')"><i class="fa-solid fa-grip"></i></span>
+      </label>
+      <label class="cursor-pointer border-l border-edge">
+        <input type="radio" name="card-view" value="list" class="peer sr-only" autocomplete="off" {% if view == 'list' %}checked=""{% endif %}>
+        <span class="block px-4 py-2 text-muted peer-checked:bg-surface peer-checked:text-fg" onclick="setView('list')"><i class="fa-solid fa-list"></i></span>
+      </label>
     </div>
   </div>
   {% endif %}
@@ -146,7 +150,7 @@
           <th class="px-2 text-right">#</th>
           <th class="px-2">Rarity</th>
           <th class="px-2 text-right">Qty</th>
-          <th class="px-2 text-right">{{ cur.symbol }}</th>
+          <th class="px-2 text-right">{{ currency.symbol }}</th>
         </tr>
       </thead>
       <tbody>
@@ -169,7 +173,7 @@
           <td class="px-2 capitalize text-muted">{{ v.card.rarity }}</td>
           <td class="px-2 text-right tabular-nums">{% if v.quantity %}{{ v.quantity }}{% endif %}</td>
           <td class="px-2 text-right tabular-nums text-muted">
-            {%- set p = v.card.prices.get(cur.key) if v.card.prices else None -%}
+            {%- set p = v.card.prices.get(currency.key) if v.card.prices else None -%}
             {% if p %}{{ cur.symbol }}{{ '{:,.2f}'.format(p | float) }}{% endif %}
           </td>
         </tr>

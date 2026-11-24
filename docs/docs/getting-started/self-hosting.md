@@ -33,7 +33,7 @@ serves the app through nginx on port **8080** (override with `SCRYME_PORT`).
 ```bash
 services:
   scryme:
-    image: ghcr.io/pstaubs/scryme:latest
+    image: ghcr.io/leyline-coding/scryme:latest
     container_name: scryme
     restart: unless-stopped
     ports:

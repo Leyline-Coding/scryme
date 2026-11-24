@@ -96,9 +96,11 @@ spec:
               # Toolbox image that already contains kubectl, curl, jq and bash, so nothing is
               # installed at run time (Docker Hub, public — no pull secret). Pinned by digest: this
               # container holds credentials that can change what the demo runs, so the tag alone
-              # is not enough. The digest is the multi-arch index for alpine/k8s:1.29.4; bump the
-              # tag and digest together (Dependabot's docker ecosystem does both).
-              image: alpine/k8s:1.29.4@sha256:ed410d899e43e9df9eb70595ea42967bb3230676adf70a97a849ac965e4389fc
+              # is not enough. The digest is the multi-arch index for alpine/k8s:1.35.10.
+              # The tag is the kubectl version, which must stay within one minor version of the
+              # cluster (k3s 1.35 here). Dependabot bumps patch releases, tag and digest together;
+              # move to a new minor by hand when the cluster is upgraded.
+              image: alpine/k8s:1.35.10@sha256:6b9b607247ab8f0d0bd2d6173a0b842b4d173c652475c9a715eec0c7ef27eac5
               env:
                 # Read-only root filesystem: kubectl wants a writable HOME for its discovery cache.
                 - name: HOME

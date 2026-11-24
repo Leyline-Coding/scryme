@@ -88,6 +88,11 @@ updates:
       - dependency-name: postgres
         update-types:
           - version-update:semver-major
+      # The tag is the kubectl version, which has to track the demo cluster's minor version.
+      - dependency-name: alpine/k8s
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
     labels:
       - dependencies
       - area:ci

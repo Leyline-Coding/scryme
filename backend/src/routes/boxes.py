@@ -1,8 +1,10 @@
 
 from __future__ import annotations
 
+import html
+
 from fastapi import APIRouter, Depends, Form, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.box_service import (
@@ -24,11 +26,12 @@ def _guard_writable() -> None:
 @router.post("/box/{box_id}/rename")
 async def rename_box_route(
     box_id: int, name: str = Form(""), session: AsyncSession = Depends(get_session)
-) -> PlainTextResponse:
+) -> HTMLResponse:
     _guard_writable()
     box = await session.get(Box, box_id)
     if box is None:
         raise HTTPException(status_code=404, detail=_BOX_NOT_FOUND)
     new_box_name = await rename_box(session, box, name)
-    return PlainTextResponse(new_box_name)
+    # htmx swaps this into the row with innerHTML, so it is an HTML fragment: escape it.
+    return HTMLResponse(html.escape(new_box_name))
 

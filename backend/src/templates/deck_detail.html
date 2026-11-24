@@ -30,7 +30,7 @@
       {% if not read_only %}
       <button type="button" 
               hx-post="/edit-name"
-              hx-vals='{"placeholder": "{{deck.name}}", "action": "/decks/{{ deck.id }}/rename", "target": "#deck-name"}'
+              hx-vals="{{ {'placeholder': deck.name, 'action': '/decks/' ~ deck.id ~ '/rename', 'target': '#deck-name'} | tojson | forceescape }}"
               hx-target="#deck-name"
               hx-swap="innerHTML"
               hx-trigger="click"
@@ -168,7 +168,7 @@
               <img src="/sleeves/{{ sleeve.id }}/image" alt="{{ sleeve.name or 'Sleeve' }}" 
                   loading="lazy" class="w-12 h-16 object-cover rounded border" />
             {% else %}
-              <div style="background-color: {{ sleeve.color }}; width: 48px; height: 64px; 
+              <div style="background-color: {{ sleeve.color | css_color }}; width: 48px; height: 64px; 
                         border: 1px solid black; border-radius: 4px; display: flex; align-items: center; 
                         justify-content: center;" class="flex items-center justify-center">
               </div>
@@ -225,10 +225,11 @@
 
       {% if not read_only %}
       <div class="text-sm">
-        {% if deck.source_url %}
+        {# Only an http(s) source is ever linked; anything else falls through to the re-link form. #}
+        {% if deck.source_url | http_url %}
         <div class="flex items-center gap-2 flex-wrap">
           <span class="text-muted">Source:</span>
-          <a href="{{ deck.source_url }}" target="_blank" rel="noopener"
+          <a href="{{ deck.source_url | http_url }}" target="_blank" rel="noopener noreferrer"
             class="text-xs text-muted hover:text-accent truncate max-w-[18rem]">{{ deck.source_url }}</a>
           <form method="post" action="/decks/{{ cov.deck.id }}/resync" class="ml-auto">
             <button type="submit" title="Re-fetch the source and correct each line's printing + finish"

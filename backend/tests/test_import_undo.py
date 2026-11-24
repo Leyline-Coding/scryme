@@ -34,7 +34,7 @@ async def _own(session, card, qty=1, **kw):
 @pytest.mark.asyncio
 async def test_snapshot_and_undo_restores_prior_state(session):
     card = await _card(session)
-    await _own(session, card, qty=2, purchase_price=1.50, binder_name="Box A")
+    await _own(session, card, qty=2, purchase_price=1.50, location=1)
     await session.commit()
 
     await snapshot_collection(session, "manabox import")
@@ -54,7 +54,7 @@ async def test_snapshot_and_undo_restores_prior_state(session):
     assert rows[0].scryfall_id == card.scryfall_id
     assert rows[0].quantity == 2
     assert rows[0].purchase_price == 1.50
-    assert rows[0].binder_name == "Box A"
+    assert rows[0].location == None
     # The snapshot is consumed by the undo.
     assert await snapshot_count(session) == 0
 

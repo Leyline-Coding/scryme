@@ -26,10 +26,10 @@ def _card(name, games, n):
 @pytest.mark.asyncio
 async def test_ingest_excludes_digital(tmp_path, session):
     cards = [_card("Paper Card", ["paper", "mtgo"], 1), _card("Arena Card", ["arena"], 2)]
-    path = tmp_path / "bulk.json"
-    path.write_text(json.dumps(cards))
+    f = tmp_path / "bulk.json"
+    f.write_text("\n".join(json.dumps(card) for card in cards) + "\n", encoding="utf-8")
 
-    ingested = await ingest_from_path(path, session_factory=SessionLocal)
+    ingested = await ingest_from_path(f, session_factory=SessionLocal)
     assert ingested == 1  # only the paper card
     names = set(await session.scalars(select(Card.name)))
     assert names == {"Paper Card"}

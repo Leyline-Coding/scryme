@@ -156,12 +156,12 @@ async def commit_trade(
     pool_id: int,
     item_ids: list[int] | None = None,
     *,
-    location: str | None = None,
+    location: int | None = None,
 ) -> TradeResult | None:
     """Reconcile a pool (or the chosen lines of it) with the collection. None if no such pool.
 
     ``item_ids`` is how a trade that falls through on some cards is committed: settle the lines
-    that held, leave the rest staged. ``binder`` / ``location`` file the incoming cards, which is
+    that held, leave the rest staged. ``location`` file the incoming cards, which is
     the same intake a manual addition gets.
     """
     pool = await session.get(TradePool, pool_id)

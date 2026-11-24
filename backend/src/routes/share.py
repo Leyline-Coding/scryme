@@ -57,7 +57,8 @@ async def view_share(
     confirm to a stranger that a token was once real, which is a small oracle worth not offering.
     """
     link = await resolve_share_link(session, token)
-    currency = link.currency or _DEFAULT_SHARE_CURRENCY
+    if not link: currency = _DEFAULT_SHARE_CURRENCY
+    else: currency = link.currency or _DEFAULT_SHARE_CURRENCY
     
     if link is None:
         raise HTTPException(status_code=404, detail=_GONE)

@@ -31,7 +31,7 @@
 {% elif nl and not nl_from_cache_and_preloaded %}
 <div>
 </div>
-{% elif result %}
+{% elif result and result.total > 0 %}
 <div class="flex items-center justify-between gap-3 mb-4 mt-2">
   <p class="text-sm text-muted">
     {{ result.total }} card{{ '' if result.total == 1 else 's' }}

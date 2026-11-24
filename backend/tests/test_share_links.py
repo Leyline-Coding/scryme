@@ -11,7 +11,7 @@ from sqlalchemy import select
 from src.client_tokens import hash_token
 from src.config import get_settings
 from src.decks import create_deck
-from src.models import Binder, Card, ShareLink
+from src.models import Binder, Card, CollectionCard, Location, ShareLink
 from src.scryfall.mapping import card_to_columns
 from src.share import (
     BINDER,
@@ -24,14 +24,17 @@ from src.share import (
 )
 
 
-async def _card(session, name="Bolt", cn="1", usd="3.50"):
+async def _card(session, name="Bolt", cn="1", quantity=1, usd="3.50", location=None):
     raw = {"id": str(uuid.uuid4()), "oracle_id": str(uuid.uuid4()), "name": name, "set": "TST",
            "collector_number": cn, "type_line": "Instant", "rarity": "rare",
            "prices": {"usd": usd}}
     card = Card(**card_to_columns(raw))
     session.add(card)
+    await session.flush()
+    cc = CollectionCard(scryfall_id=card.scryfall_id, quantity=quantity, location=location)
+    session.add(cc)
     await session.commit()
-    return card
+    return card, cc
 
 
 async def _deck(session, name="Burn"):
@@ -40,13 +43,15 @@ async def _deck(session, name="Burn"):
 
 
 async def _binder(session, name="Trades"):
-    card = await _card(session, "Shock", cn="2", usd="1.25")
-    binder = Binder(name=name)
-    session.add(binder)
+    b = Binder(name=name)
+    session.add(b)
     await session.flush()
+    l = Location(type='binder', foreign_id=b.id)
+    session.add(l)
+    await session.flush()
+    card, cc = await _card(session, "Shock", cn="2", usd="1.25", location=l.id)
     await session.commit()
-    await session.refresh(binder)
-    return binder
+    return b
 
 
 # --- minting -------------------------------------------------------------------------------------
@@ -55,7 +60,9 @@ async def _binder(session, name="Trades"):
 async def test_a_link_stores_only_a_hash_of_its_token(session):
     """The token travels in a pasted URL, so a database dump must not yield working links."""
     deck = await _deck(session)
-    row, token = await create_share_link(session, DECK, deck.id)
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    row, token = result
     assert len(token) > 20
     assert row.token_hash == hash_token(token)
     stored = (await session.execute(select(ShareLink))).scalar_one()
@@ -66,16 +73,24 @@ async def test_a_link_stores_only_a_hash_of_its_token(session):
 async def test_prices_are_off_unless_asked_for(session):
     """Sharing a list shouldn't also disclose what it's worth."""
     deck = await _deck(session)
-    plain, _ = await create_share_link(session, DECK, deck.id)
-    priced, _ = await create_share_link(session, DECK, deck.id, show_prices=True)
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    plain, _ = result
+    result = await create_share_link(session, DECK, deck.id, show_prices=True)
+    assert result is not None
+    priced, _ = result
     assert plain.show_prices is False and priced.show_prices is True
 
 
 @pytest.mark.asyncio
 async def test_every_token_is_distinct(session):
     deck = await _deck(session)
-    _, a = await create_share_link(session, DECK, deck.id)
-    _, b = await create_share_link(session, DECK, deck.id)
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    _, a = result
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    _, b = result
     assert a != b
 
 
@@ -93,8 +108,11 @@ async def test_unknown_targets_and_kinds_are_refused(session):
 @pytest.mark.asyncio
 async def test_only_the_real_token_resolves(session):
     deck = await _deck(session)
-    _, token = await create_share_link(session, DECK, deck.id)
-    assert (await resolve_share_link(session, token)).target_id == deck.id
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    _, token = result
+    result = (await resolve_share_link(session, token))
+    assert result is not None and result.target_id == deck.id
     assert await resolve_share_link(session, token + "x") is None
     assert await resolve_share_link(session, "") is None
 
@@ -102,7 +120,9 @@ async def test_only_the_real_token_resolves(session):
 @pytest.mark.asyncio
 async def test_a_revoked_link_stops_resolving_but_the_record_remains(session):
     deck = await _deck(session)
-    row, token = await create_share_link(session, DECK, deck.id)
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    row, token = result
     assert await revoke_share_link(session, row.id) is True
     assert await resolve_share_link(session, token) is None
     await session.refresh(row)
@@ -119,7 +139,9 @@ async def test_a_revoked_link_stops_resolving_but_the_record_remains(session):
 @pytest.mark.asyncio
 async def test_viewing_records_when_it_was_last_opened(session):
     deck = await _deck(session)
-    row, token = await create_share_link(session, DECK, deck.id)
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    row, token = result
     assert row.last_viewed_at is None
     await resolve_share_link(session, token)
     await session.refresh(row)
@@ -129,7 +151,9 @@ async def test_viewing_records_when_it_was_last_opened(session):
 @pytest.mark.asyncio
 async def test_links_are_listed_live_first(session):
     deck = await _deck(session)
-    old, _ = await create_share_link(session, DECK, deck.id)
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    old, _ = result
     await create_share_link(session, DECK, deck.id)
     await revoke_share_link(session, old.id)
     listed = await links_for(session, DECK, deck.id)
@@ -150,7 +174,9 @@ async def test_revoking_all_links_for_a_target(session):
 @pytest.mark.asyncio
 async def test_a_shared_deck_renders_its_list(client, session):
     deck = await _deck(session)
-    _, token = await create_share_link(session, DECK, deck.id)
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    _, token = result
     page = await client.get(f"/share/{token}")
     assert page.status_code == 200
     assert "Burn" in page.text and "Lightning Bolt" in page.text
@@ -161,7 +187,9 @@ async def test_a_shared_deck_renders_its_list(client, session):
 async def test_a_shared_view_offers_no_way_into_the_rest_of_the_collection(client, session):
     """A stranger with this URL must not be handed navigation into everything else."""
     deck = await _deck(session)
-    _, token = await create_share_link(session, DECK, deck.id)
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    _, token = result
     page = (await client.get(f"/share/{token}")).text
     for path in ('href="/"', 'href="/search', 'href="/collection', 'href="/decks',
                  'href="/settings'):
@@ -179,8 +207,12 @@ async def test_a_shared_view_offers_no_way_into_the_rest_of_the_collection(clien
 @pytest.mark.asyncio
 async def test_prices_appear_only_when_the_link_says_so(client, session):
     deck = await _deck(session)
-    _, plain = await create_share_link(session, DECK, deck.id)
-    _, priced = await create_share_link(session, DECK, deck.id, show_prices=True)
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    _, plain = result
+    result = await create_share_link(session, DECK, deck.id, show_prices=True)
+    assert result is not None
+    _, priced = result
     assert "$14.00" not in (await client.get(f"/share/{plain}")).text
     assert "$14.00" in (await client.get(f"/share/{priced}")).text   # 4 × $3.50
 
@@ -188,10 +220,12 @@ async def test_prices_appear_only_when_the_link_says_so(client, session):
 @pytest.mark.asyncio
 async def test_a_shared_binder_renders_its_cards(client, session):
     binder = await _binder(session)
-    _, token = await create_share_link(session, BINDER, binder.id)
-    page = (await client.get(f"/share/{token}")).text
-    assert "Trades" in page and "Shock" in page
-    assert "$1.25" not in page                       # prices off by default
+    result = await create_share_link(session, BINDER, binder.id)
+    assert result is not None
+    _, token = result
+    page = (await client.get(f"/share/{token}"))
+    assert "Trades" in page.text and "Shock" in page.text
+    assert "$1.25" not in page.text                       # prices off by default
 
 
 @pytest.mark.asyncio
@@ -200,7 +234,9 @@ async def test_an_empty_binder_shares_cleanly(client, session):
     session.add(binder)
     await session.commit()
     await session.refresh(binder)
-    _, token = await create_share_link(session, BINDER, binder.id)
+    result = await create_share_link(session, BINDER, binder.id)
+    assert result is not None
+    _, token = result
     assert "This binder is empty" in (await client.get(f"/share/{token}")).text
 
 
@@ -208,7 +244,9 @@ async def test_an_empty_binder_shares_cleanly(client, session):
 async def test_unknown_revoked_and_deleted_all_look_the_same(client, session):
     """One status for all three: telling a stranger a token was once real is a needless oracle."""
     deck = await _deck(session)
-    row, token = await create_share_link(session, DECK, deck.id)
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    row, token = result
     assert (await client.get("/share/never-existed")).status_code == 404
 
     await revoke_share_link(session, row.id)
@@ -218,7 +256,9 @@ async def test_unknown_revoked_and_deleted_all_look_the_same(client, session):
 @pytest.mark.asyncio
 async def test_a_link_to_a_deleted_deck_404s_rather_than_erroring(client, session):
     deck = await _deck(session)
-    row, token = await create_share_link(session, DECK, deck.id)
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    row, token = result
     row.revoked_at = None
     await session.commit()
     await session.delete(await session.get(type(deck), deck.id))
@@ -229,7 +269,9 @@ async def test_a_link_to_a_deleted_deck_404s_rather_than_erroring(client, sessio
 @pytest.mark.asyncio
 async def test_a_link_to_a_deleted_binder_404s_rather_than_erroring(client, session):
     binder = await _binder(session)
-    row, token = await create_share_link(session, BINDER, binder.id)
+    result = await create_share_link(session, BINDER, binder.id)
+    assert result is not None
+    row, token = result
     row.revoked_at = None
     await session.commit()
     await session.delete(await session.get(Binder, binder.id))
@@ -241,7 +283,9 @@ async def test_a_link_to_a_deleted_binder_404s_rather_than_erroring(client, sess
 async def test_a_shared_view_ignores_the_visitors_own_cookies(client, session):
     """Two people opening one link must see the same page — the view has no viewer preferences."""
     deck = await _deck(session)
-    _, token = await create_share_link(session, DECK, deck.id, show_prices=True)
+    result = await create_share_link(session, DECK, deck.id, show_prices=True)
+    assert result is not None
+    _, token = result
     plain = (await client.get(f"/share/{token}")).text
     with_cookie = (await client.get(f"/share/{token}",
                                     headers={"Cookie": "scryme_currency=eur"})).text
@@ -268,7 +312,9 @@ async def test_creating_a_link_from_the_deck_page_shows_it_once(client, session)
 @pytest.mark.asyncio
 async def test_the_binder_page_lists_and_revokes(client, session):
     binder = await _binder(session)
-    row, _ = await create_share_link(session, BINDER, binder.id)
+    result = await create_share_link(session, BINDER, binder.id)
+    assert result is not None
+    row, _ = result
     page = (await client.get(f"/binders/view/{binder.id}")).text
     assert "Share a read-only link" in page and "Revoke" in page
 
@@ -288,7 +334,9 @@ async def test_sharing_something_that_does_not_exist_is_404(client):
 @pytest.mark.asyncio
 async def test_deleting_the_target_withdraws_its_links(client, session):
     deck = await _deck(session)
-    row, token = await create_share_link(session, DECK, deck.id)
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    row, token = result
     await client.post(f"/decks/{deck.id}/delete")
     await session.refresh(row)
     assert row.revoked_at is not None
@@ -298,7 +346,9 @@ async def test_deleting_the_target_withdraws_its_links(client, session):
 @pytest.mark.asyncio
 async def test_deleting_a_binder_withdraws_its_links(client, session):
     binder = await _binder(session)
-    row, _ = await create_share_link(session, BINDER, binder.id)
+    result = await create_share_link(session, BINDER, binder.id)
+    assert result is not None
+    row, _ = result
     await client.post(f"/binders/{binder.id}/delete")
     await session.refresh(row)
     assert row.revoked_at is not None
@@ -308,7 +358,9 @@ async def test_deleting_a_binder_withdraws_its_links(client, session):
 async def test_read_only_cannot_mint_or_revoke_but_can_still_serve(client, session, monkeypatch):
     """A shared demo can show its links; it just can't hand out new ones."""
     deck = await _deck(session)
-    row, token = await create_share_link(session, DECK, deck.id)
+    result = await create_share_link(session, DECK, deck.id)
+    assert result is not None
+    row, token = result
     monkeypatch.setattr(get_settings(), "read_only", True)
 
     assert (await client.post(f"/share/deck/{deck.id}")).status_code == 403

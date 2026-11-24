@@ -40,11 +40,11 @@ async def _own(session, name, ci, owned=True):
 @pytest.mark.asyncio
 async def test_location_is_part_of_stack_identity(session):
     c = await _own(session, "Splittable", ("R",), owned=False)
-    a = await add_or_increment(session, c.scryfall_id, 2, location=22)
-    b = await add_or_increment(session, c.scryfall_id, 3, location=22)
+    a = await add_or_increment(session, c.scryfall_id, quantity=2, finish="normal", location=22)
+    b = await add_or_increment(session, c.scryfall_id, quantity=3, finish="foil", location=22)
     assert a is not None
     assert b is not None
     assert a.id != b.id                                      # split across locations
-    again = await add_or_increment(session, c.scryfall_id, 1, location=22)
+    again = await add_or_increment(session, c.scryfall_id, quantity=1, finish="normal", location=22)
     assert again is not None
     assert again.id == a.id and again.quantity == 3          # same location increments

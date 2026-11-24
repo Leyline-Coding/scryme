@@ -42,7 +42,7 @@ class ImageCache:
         self, card: Card, client: ScryfallClient, size: str = "normal"
     ) -> str:
         """Download the card's image if not already cached. Returns the image_status."""
-        path = self.local_path(card.scryfall_id, size)
+        path = self.local_path(str(card.scryfall_id), size)
         if path.exists():
             return "cached"
         url = image_url(card.raw, size)

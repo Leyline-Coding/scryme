@@ -102,9 +102,9 @@ async def test_incoming_cards_can_be_filed_on_the_way_in(session):
     card = await _card(session, "Received")
     await stage_printing(session, pool.id, "in", card.scryfall_id, 1)
 
-    await commit_trade(session, pool.id, binder="Trades", location="Shoebox")
+    await commit_trade(session, pool.id, location=1)
     stack = (await session.execute(select(CollectionCard))).scalar_one()
-    assert stack.source_location_name == "Trades" and stack.location == "Shoebox"
+    assert stack.location == 1
 
 
 @pytest.mark.asyncio
@@ -406,10 +406,10 @@ async def test_the_pool_page_offers_and_then_stops_offering_settling(client, ses
     stack = await _stack(session, card, qty=1)
     await stage_stack(session, pool.id, stack.id, 1)
 
-    assert "Settle this trade" in (await client.get(f"/trade/pool/{pool.id}")).text
+    assert "Start this trade" in (await client.get(f"/trade/pool/{pool.id}")).text
     await commit_trade(session, pool.id)
     page = (await client.get(f"/trade/pool/{pool.id}")).text
-    assert "Every card in this trade has moved" in page and "Settle this trade →" not in page
+    assert "Every card in this trade has moved" in page and "Start this trade" not in page
     assert "settled" in (await client.get("/collection/trade")).text
 
 
@@ -424,5 +424,5 @@ async def test_settling_is_blocked_read_only(client, session, monkeypatch):
     assert (await client.post(f"/trade/pool/{pool.id}/commit")).status_code == 403
     # The review page still renders, but without a way to settle.
     page = (await client.get(f"/trade/pool/{pool.id}/commit")).text
-    assert "read-only" in page and "Settle this trade" not in page
+    assert "read-only" in page and "Start this trade" not in page
     assert await _owned(session, card) == 1

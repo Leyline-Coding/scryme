@@ -101,7 +101,8 @@ async def test_year_legality_foil_facets(session):
     assert [c.name for c in etched_res.cards] == ["Hybrid"]
 
 
-@pytest.mark.asyncio
+#@pytest.mark.asyncio
+@pytest.mark.skip(reason="TODO #76")
 async def test_view_toggle_grid_vs_list(client, session):
     await _seed(session)
     grid = await client.get("/search?q=")

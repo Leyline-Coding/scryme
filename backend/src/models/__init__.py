@@ -22,6 +22,7 @@ from src.models.price import CardPricePoint, PriceSnapshot
 from src.models.price_target import PriceTarget
 from src.models.rules_chunk import RulesChunk
 from src.models.saved_search import SavedSearch
+from src.models.scan_batch import ScanBatch
 from src.models.set_release import SetRelease
 from src.models.share_link import ShareLink
 from src.models.staging import ImportStaging
@@ -34,6 +35,6 @@ __all__ = [
     "Checklist", "ChecklistItem", "ClientToken", "CollectionCard", "FxRate", "FxRateHistory",
     "Deck", "DeckCard", "DeckVersion", "DeckChatMessage", "ImportSnapshot", "IngestState",
     "ImportStaging", "LLMSettings", "Location", "NLQCache", "Preferences",
-    "PriceSnapshot", "PriceTarget", "RulesChunk", "SavedSearch", "SetRelease", "ShareLink",
-    "Sleeve", "TradePool", "TradePoolItem", "WishlistItem",
+    "PriceSnapshot", "PriceTarget", "RulesChunk", "SavedSearch", "ScanBatch", "SetRelease",
+    "ShareLink", "Sleeve", "TradePool", "TradePoolItem", "WishlistItem",
 ]

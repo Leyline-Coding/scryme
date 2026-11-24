@@ -141,6 +141,7 @@ Where to look when working on an area. Each module's docstring names the issue i
 | Physical organization | `/binders`, `/sets`, `/calendar`, `/checklists`, `/trade` | `binder_service.py`, `box_service.py`, `sets.py`, `set_calendar.py`, `checklists.py`, `grading.py`, `trade.py` |
 | AI (optional) | `/ai`, `/decks/{id}/{analyze,suggest,chat,upgrade}` | `llm.py`, `rules_rag.py`, `embeddings.py` |
 | Platform | `/api/v1`, `/admin`, `/settings`, `/prefs`, `/backup`, `/health` | `api.py`, `preferences.py`, `backup.py`, `cryptobackup.py`, `scheduler.py`, `perfcache.py`, `admin_stats.py`, `lan.py` |
+| Cross-app (scanner) | `POST /api/v1/scan`, `/pair` | `scan.py`, `routes/pair.py`, `client_tokens.py`, `lan.py` |
 
 **AI features are opt-in and grounded.** `src/llm.py` talks to any OpenAI-compatible
 `/chat/completions` endpoint (OpenAI, OpenRouter, local Ollama / LM Studio); config lives in the
@@ -157,14 +158,16 @@ fake and never hit the network.
 **Six of the eight milestones are closed**: #7 (Decks & EDH tooling), #8 (Collection & physical
 organization), #9 (Platform: API & AI), #10 (UX, mobile & polish), #13 (Collection Pricing, Selling
 & Grading) and #14 (Trade Function). Current release line is **0.26.x**; migrations through
-`0035_share_link`.
+`0036_scan_batch`.
 
 In flight:
-- **Milestone #11 — Cross-app integration.** The last unstarted epic, and now unblocked: a companion
-  scanner app ("scanme") consuming a batch scan-ingest API (#164), QR device pairing (#165), SSE
-  live updates (#166), perceptual-hash card recognition (#167), scan sessions (#168) and decklist
-  OCR (#169), plus QR-matched trading (#286). #209 tracks the producer/consumer contract map
-  against the scanme repo. Per-device tokens (#204) shipped, so nothing here is blocked any more.
+- **Milestone #11 — Cross-app integration.** Started. Batch scan-ingest (#164) and QR device
+  pairing (#165) have shipped: `POST /api/v1/scan` increment-merges a batch identified by Scryfall
+  id or set+number, honouring a per-batch `Idempotency-Key` (the `scan_batch` replay record), and
+  `/pair` hands a scanner a QR carrying `{base_url, token}` with a scoped `client_token`. Remaining:
+  SSE live updates (#166), perceptual-hash card recognition (#167), scan sessions (#168), decklist
+  OCR (#169) and QR-matched trading (#286). #209 tracks the producer/consumer contract map against
+  the scanme repo.
 - **Milestone #12 — Settings & multi-device foundation.** The preferences singleton, unified
   `/settings` page and per-device API tokens have shipped, as has the optimistic-concurrency half
   of #207 (a `version` guard on `collection_card`, HTTP 409 on mismatch). #207 stays open for its

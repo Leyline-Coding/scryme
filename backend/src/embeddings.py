@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import __version__
 from src.config import get_settings
 from src.db import SessionLocal
+from src.llm_endpoint import ensure_endpoint_allowed, same_origin
 from src.models import Card, CardEmbedding, CollectionCard
 
 _UA = f"scryme/{__version__} (+https://github.com/Leyline-Coding/scryme)"
@@ -44,16 +45,22 @@ class EmbeddingClient:
     def __init__(self, base_url: str = "", api_key: str = "", model: str = ""):
         s = get_settings()
         self.base_url = (base_url or s.llm_base_url).rstrip("/")
-        self.api_key = api_key or s.llm_api_key
+        # The SCRYME_LLM_API_KEY fallback belongs to SCRYME_LLM_BASE_URL: never pair it with a
+        # different (e.g. in-app configured) endpoint, or the env key would be sent to that host.
+        env_key = s.llm_api_key if same_origin(self.base_url, s.llm_base_url) else ""
+        self.api_key = api_key or env_key
         self.model = model or s.llm_embed_model
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
+        # Refuse non-http(s) URLs and link-local / metadata targets before anything is sent.
+        await ensure_endpoint_allowed(self.base_url)
         headers = {"User-Agent": _UA, "Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-        async with httpx.AsyncClient(timeout=60) as client:
+        # Never follow redirects: the key and the card text go to the configured host only.
+        async with httpx.AsyncClient(timeout=60, follow_redirects=False) as client:
             resp = await client.post(
                 f"{self.base_url}/embeddings",
                 headers=headers,

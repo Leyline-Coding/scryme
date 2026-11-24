@@ -28,9 +28,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macOS is Apple Silicon only — every Mac since 2023 is arm64, and the Intel (macos-13)
+          # macOS is Apple Silicon only — every Mac since 2023 is arm64, and the Intel
           # runner is chronically slow to schedule on the free tier.
-          - { os: macos-14, label: macOS arm64 }
+          - { os: macos-15, label: macOS arm64 }
           - { os: windows-latest, label: Windows x64 }
           - { os: ubuntu-latest, label: Linux x64 }
           # arm64 Linux: AppImage only — the bundled fpm (for .deb) is x86-only.

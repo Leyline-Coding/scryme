@@ -598,6 +598,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Start the stack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#self-contained-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-contained install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploy-from-image-byodb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deploy from image + BYODB
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1963,6 +1991,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Start the stack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#self-contained-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-contained install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploy-from-image-byodb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deploy from image + BYODB
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2044,15 +2100,39 @@ proxy that also serves cached card images.</p>
   if you need a specific one.</li>
 </ul>
 <h2 id="start-the-stack">Start the stack</h2>
+<h3 id="self-contained-install">Self-contained install</h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Leyline-Coding/scryme.git
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>scryme
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
 </code></pre></div>
 <p>This builds the backend image, starts PostgreSQL, applies database migrations automatically, and
 serves the app through nginx on port <strong>8080</strong> (override with <code>SCRYME_PORT</code>).</p>
+<h3 id="deploy-from-image-byodb">Deploy from image + BYODB</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>services:
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>scryme:
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span>image:<span class="w"> </span>ghcr.io/pstaubs/scryme:latest
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span>container_name:<span class="w"> </span>scryme
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span>restart:<span class="w"> </span>unless-stopped
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span>ports:
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">      </span>-<span class="w"> </span><span class="s1">'8000:8000'</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span>environment:
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">      </span>SCRYME_DB_HOST:<span class="w"> </span>...
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">      </span>SCRYME_DB_PORT:<span class="w"> </span><span class="s2">"5432"</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">      </span>SCRYME_DB_USER:<span class="w"> </span>...
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">      </span>SCRYME_DB_PASSWORD:<span class="w"> </span>...
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">      </span>SCRYME_DB_NAME:<span class="w"> </span><span class="s2">"scryme"</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">      </span>SCRYME_ENVIRONMENT:<span class="w"> </span>production
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">      </span>SCRYME_DATA_DIR:<span class="w"> </span>/data
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">      </span>SCRYME_IMAGE_CACHE_DIR:<span class="w"> </span>/data/images
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">    </span>volumes:
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">      </span>-<span class="w"> </span><span class="s1">'/path/to/persistent/storage:/data'</span>
+</code></pre></div>
+<p>In this example, we skip the build step and simply pull and then use the latest pre-built image. This configuration also deomnstrates a customized scryme setup running with external database and external data store.</p>
 <h2 id="load-card-data">Load card data</h2>
 <p>scryme searches a <strong>local</strong> copy of the Scryfall card database. Ingest it once after starting:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>backend<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>ingest
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>backend<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>ingest
 </code></pre></div>
 <p>This downloads Scryfall's <strong>Default Cards</strong> bulk file and streams it into PostgreSQL. A daily
 in-process job keeps it fresh, honoring Scryfall's "cache for at least 24 hours" guidance, so you
@@ -2061,7 +2141,7 @@ never need to re-run this manually.</p>
 <p class="admonition-title">Cache images for offline use</p>
 <p>Card images load from Scryfall's CDN by default. To cache the images for cards you own (so the
 app works fully offline), run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>backend<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>backfill-images
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>backend<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>src.cli<span class="w"> </span>backfill-images
 </code></pre></div>
 </div>
 <h2 id="status-monitoring">Status &amp; monitoring</h2>
@@ -2073,13 +2153,13 @@ backups are configured.</p>
 so you can scrape it into Prometheus/Grafana. Both endpoints are read-only; if your instance is
 public, put them behind your reverse proxy's auth.</p>
 <h2 id="upgrading">Upgrading</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>git<span class="w"> </span>pull
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--build
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>git<span class="w"> </span>pull
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>--build
 </code></pre></div>
 <p>Migrations run automatically on container start.</p>
 <h2 id="development-stack">Development stack</h2>
 <p>For hot-reload local development:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.dev.yml<span class="w"> </span>up<span class="w">   </span><span class="c1"># app on http://localhost:8000</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.dev.yml<span class="w"> </span>up<span class="w">   </span><span class="c1"># app on http://localhost:8000</span>
 </code></pre></div>
 <p>See <a href="../configuration/">Configuration</a> for environment variables and the
 <a href="../../development/architecture/">Architecture</a> page for how the pieces fit together.</p>
@@ -2105,7 +2185,7 @@ public, put them behind your reverse proxy's auth.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="June 29, 2026 14:19:02 UTC">June 29, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 12, 2026 06:47:23 UTC">November 12, 2026</span>
   </span>
 
     

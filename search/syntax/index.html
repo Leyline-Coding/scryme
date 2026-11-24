@@ -1004,10 +1004,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#printing-and-legality" class="md-nav__link">
+  <a href="#charachteristics-printing-and-legality" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Printing and legality
+        Charachteristics, Printing and legality
       
     </span>
   </a>
@@ -1019,6 +1019,17 @@
     <span class="md-ellipsis">
       
         Mana value vs. mana cost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#location" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Location
       
     </span>
   </a>
@@ -2105,10 +2116,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#printing-and-legality" class="md-nav__link">
+  <a href="#charachteristics-printing-and-legality" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Printing and legality
+        Charachteristics, Printing and legality
       
     </span>
   </a>
@@ -2120,6 +2131,17 @@
     <span class="md-ellipsis">
       
         Mana value vs. mana cost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#location" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Location
       
     </span>
   </a>
@@ -2423,7 +2445,68 @@ guild/shard/wedge names (<code>azorius</code>, <code>bant</code>, <code>jeskai</
 </tr>
 </tbody>
 </table>
-<h3 id="printing-and-legality">Printing and legality</h3>
+<h3 id="charachteristics-printing-and-legality">Charachteristics, Printing and legality</h3>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Aliases</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>is:foil</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>is:etched</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>is:transform</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>is:doublesided</code></td>
+<td><code>is:dfc</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>is:split</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>is:modal</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>is:modal_dfc</code></td>
+<td><code>is:mdfc</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>is:meld</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>is:leveler</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>is:graded</code></td>
+<td></td>
+<td>an owned <a href="../../features/grading/">graded copy</a>)</td>
+</tr>
+</tbody>
+</table>
 <table>
 <thead>
 <tr>
@@ -2463,12 +2546,6 @@ guild/shard/wedge names (<code>azorius</code>, <code>bant</code>, <code>jeskai</
 <td><code>language:</code></td>
 <td><code>lang:ja</code></td>
 <td></td>
-</tr>
-<tr>
-<td><code>is:</code></td>
-<td>—</td>
-<td><code>is:foil</code>, <code>is:etched</code>, <code>is:transform</code>, <code>is:graded</code></td>
-<td>layout (split/flip/transform/mdfc/dfc/meld/leveler/saga/adventure), <code>foil</code> / <code>etched</code> finish availability, <code>graded</code> (an owned <a href="../../features/grading/">graded copy</a>), or a boolean flag on the card</td>
 </tr>
 <tr>
 <td><code>layout:</code></td>
@@ -2529,6 +2606,46 @@ guild/shard/wedge names (<code>azorius</code>, <code>bant</code>, <code>jeskai</
 <li><code>m:</code> / <code>mana:</code> matches <strong>symbols</strong> in the printed mana cost (e.g. <code>m:{G}{G}</code>). It's an
   approximate "contains these symbols" match.</li>
 </ul>
+<h3 id="location">Location</h3>
+<ul>
+<li><code>loc:</code> matches a named location, e.g. <code>loc:"box:Bulk Box"</code> only in the <strong>My collection</strong> scope. Location names can be any of the following:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Location name</th>
+<th>Example</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>unfiled</code></td>
+<td><code>loc:"unfiled"</code></td>
+<td>any cards without a location</td>
+</tr>
+<tr>
+<td><code>binder:...</code></td>
+<td><code>loc:"binder:1"</code></td>
+<td>any binder named "1"</td>
+</tr>
+<tr>
+<td><code>box:...</code></td>
+<td><code>loc:"box:Bulk Box"</code></td>
+<td>any box named "Bulk Box"</td>
+</tr>
+<tr>
+<td><code>deck:...</code></td>
+<td><code>loc:"deck:Explosive Goblins"</code></td>
+<td>any deck named "Explosive Goblins"</td>
+</tr>
+<tr>
+<td>any other content</td>
+<td><code>loc:"Library"</code></td>
+<td>will attempt to load cards in any lcoation type wh's name matches the entered content</td>
+</tr>
+</tbody>
+</table>
 <h2 id="examples">Examples</h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>c:r t:instant mv&lt;=2                  cheap red instants
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>t:creature pow&gt;=5 f:commander        big creatures legal in Commander
@@ -2591,7 +2708,7 @@ searches are disabled in read-only (demo) mode.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="July 15, 2026 13:12:17 UTC">July 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 11, 2026 19:34:25 UTC">November 11, 2026</span>
   </span>
 
     

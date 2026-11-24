@@ -88,7 +88,22 @@ id:wubrg       five-color identity
 | `year` | — | `year<=2011` |
 | `date` | — | `date>=2020-01-01` |
 
-### Printing and legality
+### Charachteristics, Printing and legality
+
+
+| Filter | Aliases | Notes |
+| --- | --- | --- |
+| `is:foil` |  |  |
+| `is:etched` |  |  |
+| `is:transform` |  |  |
+| `is:doublesided` | `is:dfc` |  |
+| `is:split` |  |  |
+| `is:modal` |  |  |
+| `is:modal_dfc` | `is:mdfc` |  |
+| `is:meld` |  |  |
+| `is:leveler` |  |  |
+| `is:graded` |  | an owned [graded copy](../features/grading.md)) |
+
 
 | Filter | Aliases | Example | Notes |
 | --- | --- | --- | --- |
@@ -97,7 +112,6 @@ id:wubrg       five-color identity
 | `cn:` | `number:` | `cn:122` | collector number |
 | `f:` | `format:`, `legal:` | `f:modern` | legal or restricted in that format |
 | `lang:` | `language:` | `lang:ja` | |
-| `is:` | — | `is:foil`, `is:etched`, `is:transform`, `is:graded` | layout (split/flip/transform/mdfc/dfc/meld/leveler/saga/adventure), `foil` / `etched` finish availability, `graded` (an owned [graded copy](../features/grading.md)), or a boolean flag on the card |
 | `layout:` | — | `layout:saga` | |
 | `border:` | — | `border:black` | |
 | `frame:` | — | `frame:2015` | |
@@ -116,6 +130,20 @@ id:wubrg       five-color identity
 - `mv` / `cmc` compares the numeric **mana value**.
 - `m:` / `mana:` matches **symbols** in the printed mana cost (e.g. `m:{G}{G}`). It's an
   approximate "contains these symbols" match.
+
+
+### Location
+
+- `loc:` matches a named location, e.g. `loc:"box:Bulk Box"` only in the **My collection** scope. Location names can be any of the following:
+
+| Location name  | Example | Notes |
+| --- | --- | --- |
+| `unfiled` | `loc:"unfiled"` | any cards without a location |
+| `binder:...` | `loc:"binder:1"` | any binder named "1" |
+| `box:...` | `loc:"box:Bulk Box"` | any box named "Bulk Box" |
+| `deck:...` | `loc:"deck:Explosive Goblins"` | any deck named "Explosive Goblins" |
+| any other content |`loc:"Library"` | will attempt to load cards in any lcoation type wh's name matches the entered content |
+
 
 ## Examples
 

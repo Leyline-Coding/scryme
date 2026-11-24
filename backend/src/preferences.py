@@ -26,7 +26,8 @@ from src.pricing import normalize_source
 _DEFAULTS: dict[str, Any] = {
     "search_filter": "", "movers": False, "view": "grid", "page_size": 60, "infinite": False,
     "hist_currency": None, "mode": "dark", "palette": "trop-orange", "accent": "",
-    "foil_speed": 6, "spin": True, "spin_speed": 6, "card_size": 5,
+    "foil_speed": 6, "spin": True, "spin_speed": 6, "card_size": 5, "facet_row_cap": 4000,
+    "lang": "en",
 }
 
 
@@ -49,6 +50,8 @@ class Prefs:
     spin: bool = True
     spin_speed: int = 6
     card_size: int = 5
+    facet_row_cap: int = 4000
+    lang: str = "en"
     extra: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -100,8 +103,15 @@ def _normalize_field(name: str, value: Any) -> Any:
         return _clamp(value, 1, 10, 6)
     if name == "card_size":
         return _clamp(value, 1, 10, 5)
+    if name == "facet_row_cap":
+        return _clamp(value, 1000, 20000, 4000)
     if name in ("movers", "infinite", "spin"):
         return bool(value)
+    if name == "lang":
+        # This is a language code; use the same validation as deck.py's normalize_language function
+        from src.decks import _LANGUAGE_CODES
+        code = (value or "").strip().lower()
+        return code if code in _LANGUAGE_CODES else "en"
     if name == "extra":
         return value if isinstance(value, dict) else {}
     return value
@@ -164,3 +174,38 @@ def resolve(row: PreferencesRow | None, cookies: dict, *, writable: bool) -> Pre
     if writable and row is not None:
         return base
     return _apply_cookies(base, cookies or {})
+
+
+def sync_cookie_prefs_to_db(
+    session: AsyncSession, row: PreferencesRow, cookies: dict
+) -> dict[str, Any]:
+    """Check cookie preferences against database values and return fields that need updating.
+
+    This function is used by middleware to synchronize specific cookie preferences to the database
+    when they differ from stored values.
+
+    Returns a dict of field_name: new_value pairs for preferences that have changed.
+    """
+    # Define which cookie preferences should be synchronized to DB
+    cookie_pref_mapping = {
+        "page_size": ("scryme_page_size", int),
+        "infinite": ("scryme_infinite", lambda x: x == "1"),
+        "view": ("scryme_view", str),
+    }
+
+    update_fields = {}
+
+    # Check each preference for changes
+    for pref_name, (cookie_key, converter) in cookie_pref_mapping.items():
+        try:
+            cookie_value = cookies.get(cookie_key)
+            if cookie_value is not None:
+                converted_cookie_value = converter(cookie_value)
+                db_value = getattr(row, pref_name)
+                if converted_cookie_value != db_value:
+                    update_fields[pref_name] = converted_cookie_value
+        except (ValueError, TypeError):
+            # If conversion fails, skip this preference
+            continue
+
+    return update_fields

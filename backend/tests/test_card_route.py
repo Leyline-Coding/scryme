@@ -58,8 +58,8 @@ async def test_card_page_renders(client, session):
     assert "Lightning Bolt" in body
     assert "deals 3 damage" in body
     assert "Christopher Rush" in body
-    assert "In your collection" in body
-    assert "3 total" in body  # owned quantity (now shown with the inline +/- controls)
+    assert "This printing" in body
+    assert "3 of 3 total" in body  # owned quantity (now shown with the inline +/- controls)
     assert "Other printings" in body  # the LEA printing shares the oracle_id
     assert "Legalities" in body
 
@@ -85,9 +85,9 @@ async def test_transform_button_for_double_faced(client, session):
         ],
     })
     body = (await client.get(f"/card/{card.scryfall_id}")).text
-    assert "⇅ Transform" in body
+    assert "Flip to the other face" in body
     assert "https://img.test/back.jpg" in body   # back face available for the flip
-    assert "⟳ Rotate" not in body
+    assert "card-rotate-btn" not in body
 
 
 @pytest.mark.asyncio
@@ -98,8 +98,8 @@ async def test_rotate_button_for_planar_and_aftermath(client, session):
         "image_uris": {"normal": "https://img.test/plane.jpg"},
     })
     body = (await client.get(f"/card/{plane.scryfall_id}")).text
-    assert "⟳ Rotate" in body and "⇅ Transform" not in body
-    assert 'data-rotate-deg="-90"' in body  # planes turn counter-clockwise
+    assert "card-rotate-btn" in body and "Flip to the other face" not in body
+    assert 'rotate_cw: false' in body  # planes turn counter-clockwise
 
     aftermath = await _add(session, {
         "name": "Commit // Memory", "set": "akh", "collector_number": "211", "rarity": "rare",
@@ -107,7 +107,7 @@ async def test_rotate_button_for_planar_and_aftermath(client, session):
         "image_uris": {"normal": "https://img.test/after.jpg"},
     })
     body = (await client.get(f"/card/{aftermath.scryfall_id}")).text
-    assert "⟳ Rotate" in body
+    assert "card-rotate-btn" in body
 
     # Battles are stored with layout "transform" (detected by type line): both buttons appear.
     battle = await _add(session, {
@@ -119,15 +119,15 @@ async def test_rotate_button_for_planar_and_aftermath(client, session):
         ],
     })
     body = (await client.get(f"/card/{battle.scryfall_id}")).text
-    assert "⟳ Rotate" in body and "⇅ Transform" in body
-    assert 'data-rotate-deg="90"' in body  # battles turn clockwise (opposite of planes/aftermath)
+    assert "card-rotate-btn" in body and "Flip to the other face" in body
+    assert 'rotate_cw: true' in body  # battles turn clockwise (opposite of planes/aftermath)
 
 
 @pytest.mark.asyncio
 async def test_normal_card_has_no_flip_or_rotate(client, session):
     card = await _seed(session)
     body = (await client.get(f"/card/{card.scryfall_id}")).text
-    assert "⇅ Transform" not in body and "⟳ Rotate" not in body
+    assert "Flip to the other face" not in body and "card-rotate-btn" not in body
 
 
 @pytest.mark.asyncio

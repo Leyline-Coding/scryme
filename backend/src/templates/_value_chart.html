@@ -1,16 +1,17 @@
 {# Reusable value-over-time chart: a time-range selector + server-rendered SVG line chart.
-   Used by the collection Stats tab and the per-card price history (#233). Params:
-     chart          — a ValueChart (src/prices.py build_value_chart)
-     ranges         — CHART_RANGES [(label, days), ...]
-     current_range  — the active range label
-     range_base     — URL prefix ending in "?"/"&", e.g. "/card/<id>?" — range=<label> is appended
-     label          — accessible chart title (optional)
-     symbol         — currency symbol for value labels (default "$"; card page passes £/€/¥/… #233)
-     decimals       — decimal places for value labels (default 2; 0 for JPY)
-     approx         — True when values use a current-rate fallback (historical FX unavailable)
-#}
+    Used by the collection Stats tab and the per-card price history (#233). Params:
+      chart          — a ValueChart (src/prices.py build_value_chart)
+      ranges         — CHART_RANGES [(label, days), ...]
+      current_range  — the active range label
+      range_base     — URL prefix ending in "?"/"&", e.g. "/card/<id>?" — range=<label> is appended
+      label          — accessible chart title (optional)
+      symbol         — currency symbol for value labels (default "$"; card page passes £/€/¥/… #233)
+      decimals       — decimal places for value labels (default 2; 0 for JPY)
+      approx         — True when values use a current-rate fallback (historical FX unavailable)
+      currency_code  — the display currency code to use
+ #}
 {% macro chart(chart, ranges, current_range, range_base, label="Value over time",
-               symbol="$", decimals=2, approx=False) %}
+                symbol="$", decimals=2, approx=False, currency_code="usd") %}
   <div class="flex flex-wrap gap-1 mb-3">
     {% for rlabel, _days in ranges %}
     <a href="{{ range_base }}range={{ rlabel }}"

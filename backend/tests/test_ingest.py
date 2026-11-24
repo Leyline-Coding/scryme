@@ -15,7 +15,7 @@ from src.scryfall.ingest import (
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
-SAMPLE = FIXTURES / "scryfall_sample.json"
+SAMPLE = FIXTURES / "scryfall_sample.jsonl"
 
 
 @pytest.mark.asyncio

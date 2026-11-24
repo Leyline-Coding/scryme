@@ -23,7 +23,7 @@ async def _flagged(session, *, name="Sell Me", usd="12.34", n=1):
 async def test_sell_page_redirects(client):
     resp = await client.get("/sell", follow_redirects=False)
     assert resp.status_code == 307
-    assert resp.headers["location"] == "/collection?tab=sell"
+    assert resp.headers["location"] == "/collection/sell"
 
 
 @pytest.mark.asyncio

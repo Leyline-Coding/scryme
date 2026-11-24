@@ -2,6 +2,7 @@
 
 import os
 
+import pytest
 from src.admin_stats import image_cache_disk
 
 
@@ -24,6 +25,13 @@ def test_image_cache_disk_swallows_oserror(tmp_path):
     (tmp_path / "real.jpg").write_bytes(b"ok")
     # A broken symlink is listed by os.walk but getsize() raises OSError -> skipped.
     broken = tmp_path / "broken.jpg"
-    os.symlink(tmp_path / "missing-target", broken)
-    count, total = image_cache_disk(tmp_path)
-    assert count == 1 and total == 2  # only the real file counted
+    # This test needs to be run on a system that allows symlinks or we need to skip this
+    try:
+        os.symlink(tmp_path / "missing-target", broken)
+        count, total = image_cache_disk(tmp_path)
+        assert count == 1 and total == 2  # only the real file counted
+    except OSError as e:
+        # Skip test if symlinks are not supported on this platform (like Windows)
+        if e.winerror == 1314:  # A required privilege is not held by the client
+            pytest.skip("Symlinks not supported on this platform")
+        raise

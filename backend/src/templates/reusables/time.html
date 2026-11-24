@@ -1,0 +1,33 @@
+{% macro humanize_dt(dt, now_dt) %}
+  {% set diff = now_dt - dt %}
+  {% set day_diff = diff.days %}
+  {% set second_diff = diff.seconds %}
+
+  {% if day_diff >= 0 %}
+    {% if day_diff == 0 %}
+      {% if second_diff < 10 %}
+        just now
+      {% elif second_diff < 60 %}
+        {{ second_diff }} seconds ago
+      {% elif second_diff < 120 %}
+        a minute ago
+      {% elif second_diff < 3600 %}
+        {{ (second_diff / 60) | int }} minutes ago
+      {% elif second_diff < 7200 %}
+        an hour ago
+      {% elif second_diff < 86400 %}
+        {{ (second_diff / 3600) | int }} hours ago
+      {% endif %}
+    {% elif day_diff == 1 %}
+      Yesterday
+    {% elif day_diff < 7 %}
+      {{ day_diff }} days ago
+    {% elif day_diff < 31 %}
+      {{ (day_diff / 7) | int }} weeks ago
+    {% elif day_diff < 365 %}
+      {{ (day_diff / 30) | int }} months ago
+    {% else %}
+      {{ (day_diff / 365) | int }} years ago
+    {% endif %}
+  {% endif %}
+{% endmacro %}

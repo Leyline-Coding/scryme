@@ -24,7 +24,16 @@ from sqlalchemy import Float, and_, cast, func, or_, select, text, update
 from src.checklists import create_checklist
 from src.db import SessionLocal
 from src.decks import create_deck
-from src.models import Box, Card, CardPricePoint, Checklist, CollectionCard, Deck, PriceSnapshot
+from src.models import (
+    Box,
+    Card,
+    CardPricePoint,
+    Checklist,
+    CollectionCard,
+    Deck,
+    Location,
+    PriceSnapshot,
+)
 from src.wishlist import add_to_wishlist
 
 log = structlog.get_logger()
@@ -318,7 +327,7 @@ async def seed_demo() -> int:
             .select_from(CollectionCard)
             .where(CollectionCard.source_format == "demo")
         )
-        if existing >= _SEED_GUARD:
+        if existing and existing >= _SEED_GUARD:
             log.info("demo.seed_skipped", reason="already seeded", collection_size=existing)
             return 0
 
@@ -361,9 +370,24 @@ async def seed_demo() -> int:
         await _seed_price_history(session, rng)  # value curve from real acquisition dates
         # Showcase storage boxes (#160): two physical boxes, filed by rarity (idempotent).
         existing_boxes = set(await session.scalars(select(Box.name)))
+        ls = {}
         for name in ("Rares & Mythics", "Bulk Box"):
             if name not in existing_boxes:
-                session.add(Box(name=name))
+                b = Box(name=name)
+                session.add(b)
+                await session.flush()
+                ls[name] = Location(type='box', foreign_id=b.id)
+                session.add(ls[name])
+                await session.flush()
+            else:
+                box = (await session.scalars(select(Box).where(Box.name == name))).first()
+                if(box is None):
+                    continue
+                ls[name] = (
+                    await session.scalars(
+                        select(Location).where(Location.type == 'box', Location.foreign_id==box.id)
+                    )
+                ).first()
         for box_name, rarities in [("Rares & Mythics", ["rare", "mythic"]),
                                    ("Bulk Box", ["common", "uncommon"])]:
             await session.execute(
@@ -371,7 +395,7 @@ async def seed_demo() -> int:
                 .where(CollectionCard.scryfall_id.in_(
                     select(Card.scryfall_id).where(Card.rarity.in_(rarities))
                 ))
-                .values(location=box_name)
+                .values(location=ls[box_name].id)
             )
         await session.commit()
         await _seed_showcase(session)

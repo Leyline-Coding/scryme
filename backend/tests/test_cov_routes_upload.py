@@ -9,7 +9,7 @@ async def test_undo_with_no_snapshot_redirects(client):
     # undo_last is a no-op when there's no snapshot; the route still redirects.
     resp = await client.post("/upload/undo", follow_redirects=False)
     assert resp.status_code == 303
-    assert resp.headers["location"] == "/collection?tab=stats"
+    assert resp.headers["location"] == "/upload"
 
 
 @pytest.mark.asyncio

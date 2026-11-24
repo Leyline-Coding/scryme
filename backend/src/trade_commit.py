@@ -111,7 +111,7 @@ async def _remove_copies(session: AsyncSession, item: TradePoolItem, wanted: int
 
 
 async def _apply_line(
-    session: AsyncSession, item: TradePoolItem, *, binder: str | None, location: str | None
+    session: AsyncSession, item: TradePoolItem, *, location: int | None
 ) -> LineResult:
     outstanding = max(0, item.quantity - item.applied_quantity)
     name = item.card.name
@@ -122,7 +122,7 @@ async def _apply_line(
         stack = await add_or_increment(
             session, item.scryfall_id, outstanding,
             finish=item.finish, condition=item.condition, language=item.language,
-            binder=binder, location=location, commit=False,
+            location=location, commit=False,
         )
         # None only if the printing vanished from the card DB between staging and committing.
         applied = outstanding if stack is not None else 0
@@ -156,13 +156,12 @@ async def commit_trade(
     pool_id: int,
     item_ids: list[int] | None = None,
     *,
-    binder: str | None = None,
-    location: str | None = None,
+    location: int | None = None,
 ) -> TradeResult | None:
     """Reconcile a pool (or the chosen lines of it) with the collection. None if no such pool.
 
     ``item_ids`` is how a trade that falls through on some cards is committed: settle the lines
-    that held, leave the rest staged. ``binder`` / ``location`` file the incoming cards, which is
+    that held, leave the rest staged. ``location`` file the incoming cards, which is
     the same intake a manual addition gets.
     """
     pool = await session.get(TradePool, pool_id)
@@ -175,7 +174,7 @@ async def commit_trade(
     result = TradeResult()
     for item in chosen:
         result.lines.append(
-            await _apply_line(session, item, binder=binder, location=location)
+            await _apply_line(session, item, location=location)
         )
 
     # Re-read after the writes: a line can be fully applied now that wasn't when we started.

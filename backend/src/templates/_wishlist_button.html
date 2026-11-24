@@ -1,22 +1,22 @@
 {# Wishlist toggle for one printing. Swapped (outerHTML) after add/remove on the card page. #}
-<div id="wishlist-btn">
+<span id="wishlist-btn" class="md:ml-auto">
   {% if read_only %}
     {% if wishlisted %}
     <span class="inline-flex items-center gap-1 text-sm text-accent">★ On wishlist</span>
     {% endif %}
   {% elif wishlisted %}
   <button type="button"
-          class="inline-flex items-center gap-1 rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-1.5 text-sm"
+          class="rounded-full inline-flex items-center gap-1 bg-surface-2 border border-edge hover:border-accent px-3 py-1.5 text-sm"
           hx-post="/wishlist/remove" hx-vals='{"scryfall_id": "{{ card_id }}"}'
           hx-target="#wishlist-btn" hx-swap="outerHTML">
-    <span class="text-accent">★</span> On wishlist — remove
+    <span class="text-accent"><i class="fa-solid fa-heart"></i></span> On wishlist — remove
   </button>
   {% else %}
   <button type="button"
-          class="inline-flex items-center gap-1 rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-1.5 text-sm"
+          class="rounded-full inline-flex items-center gap-1 bg-surface-2 border border-edge hover:border-accent px-3 py-1.5 text-sm"
           hx-post="/wishlist/add" hx-vals='{"scryfall_id": "{{ card_id }}"}'
           hx-target="#wishlist-btn" hx-swap="outerHTML">
-    ☆ Add to wishlist
+    <i class="fa-regular fa-heart"></i> Add to wishlist
   </button>
   {% endif %}
-</div>
+</span>

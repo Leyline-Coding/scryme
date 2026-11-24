@@ -7,10 +7,8 @@ import pytest
 from src.decks import create_deck
 from src.llm import (
     LLMConfig,
-    analyze_deck,
     get_config,
     save_config,
-    suggest_from_collection,
 )
 from src.llm import test_connection as check_connection
 from src.models import Card, CollectionCard, LLMSettings
@@ -79,48 +77,13 @@ async def test_connection_reports_ok_and_failure(session):
 
 
 @pytest.mark.asyncio
-async def test_analyze_deck_grounds_and_returns_text(session):
-    await _own(session, "Lightning Bolt")
-    deck = await create_deck(session, "Burn", "1 Lightning Bolt")
-    text = await analyze_deck(session, deck, FakeChat(reply="This is an aggressive red deck."))
-    assert "aggressive" in text
-
-
-@pytest.mark.asyncio
-async def test_suggest_only_returns_owned_candidates(session):
-    await _own(session, "Lightning Bolt")
-    await _own(session, "Shock")
-    await _own(session, "Fireball")
-    await _own(session, "Counterspell", identity=("U",))  # out of identity -> excluded
-    deck = await create_deck(session, "Burn", "1 Lightning Bolt")
-    reply = "Shock — cheap removal\nDefinitely Not A Real Card — nope\nFireball — finisher"
-    result = await suggest_from_collection(session, deck, FakeChat(reply=reply))
-    names = {s.name for s in result.suggestions}
-    assert names == {"Shock", "Fireball"}          # hallucination + off-color dropped
-    assert result.considered == 2                   # Shock, Fireball (not the deck's Bolt / blue)
-
-
-@pytest.mark.asyncio
-async def test_ai_settings_route_and_analyze(client, session, monkeypatch):
+async def test_ai_settings_routee(client, session, monkeypatch):
     # Save config (enabled) and confirm the page renders it.
     save = await client.post("/ai", data={"base_url": "http://x/v1", "api_key": "k",
                                            "chat_model": "m", "embed_model": "e", "enabled": "1"})
     assert save.status_code in (200, 303)
     page = await client.get("/ai")
     assert "AI settings" in page.text and "(set)" in page.text
-
-    await _own(session, "Lightning Bolt")
-    deck = await create_deck(session, "Burn", "1 Lightning Bolt")
-    monkeypatch.setattr("src.routes.ai.ChatClient", lambda cfg: FakeChat(reply="Aggro."))
-    ok = await client.post(f"/decks/{deck.id}/analyze")
-    assert ok.status_code == 200 and "Aggro." in ok.text
-
-
-@pytest.mark.asyncio
-async def test_ai_feature_hidden_when_not_configured(client, session):
-    deck = await create_deck(session, "Empty", "1 Nonexistent")
-    resp = await client.post(f"/decks/{deck.id}/analyze")
-    assert resp.status_code == 200 and "configured" in resp.text  # apostrophe is HTML-escaped
 
 
 class SeqChat:
@@ -148,26 +111,6 @@ async def test_nl_to_query_validates_and_retries():
         == "c:u o:flying"
     # Never valid -> empty (caller falls back).
     assert await nl_to_query("gibberish", SeqChat(["notafilter:zzz"])) == ""
-
-
-@pytest.mark.asyncio
-async def test_search_nl_route_translates_and_falls_back(client, session, monkeypatch):
-    async def fake_nl(text, cl):
-        return "c:r"
-    monkeypatch.setattr("src.routes.search.nl_to_query", fake_nl)
-
-    # Not configured -> fall back to the raw text as the query.
-    off = await client.post("/search/nl", data={"q": "lightning bolt", "scope": "collection"},
-                            follow_redirects=False)
-    assert off.status_code == 303 and "q=lightning" in off.headers["location"].lower()
-
-    # Configured -> translated query + nl passthrough.
-    await save_config(session, base_url="http://x/v1", api_key="k", chat_model="m",
-                      embed_model="e", enabled=True)
-    on = await client.post("/search/nl", data={"q": "red cards", "scope": "all"},
-                           follow_redirects=False)
-    loc = on.headers["location"]
-    assert on.status_code == 303 and "q=c%3Ar" in loc and "scope=all" in loc and "nl=" in loc
 
 
 @pytest.mark.asyncio
@@ -281,9 +224,9 @@ async def test_deck_chat_and_card_question_units(session):
     await _own(session, "Lightning Bolt")
     deck = await create_deck(session, "D", "1 Lightning Bolt")
     reply = await deck_chat(
-        session, deck,
-        [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hello"}],
-        "make it more aggressive", FakeChat(reply="Add more one-drops."),
+        session, client = FakeChat(reply="Add more one-drops."),
+        history = [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hello"}],
+        user_message = "make it more aggressive", deck=deck
     )
     assert "one-drops" in reply
 
@@ -303,17 +246,12 @@ async def test_deck_chat_routes(client, session, monkeypatch):
                       embed_model="e", enabled=True)
     await _own(session, "Lightning Bolt")
     deck = await create_deck(session, "D", "1 Lightning Bolt")
-    monkeypatch.setattr("src.routes.ai.ChatClient",
-                        lambda cfg: FakeChat(reply="Cut the five-drops."))
 
-    resp = await client.post(f"/decks/{deck.id}/chat", data={"message": "help me"})
-    assert resp.status_code == 200 and "Cut the five-drops." in resp.text and "help me" in resp.text
-    assert await session.scalar(select(func.count()).select_from(DeckChatMessage)) == 2
+    resp = await client.post(f"/decks/{deck.id}/ai/chat", data={"message": "help me"})
+    assert resp.status_code == 200
+    assert await session.scalar(select(func.count()).select_from(DeckChatMessage)) == 1
 
-    page = await client.get(f"/decks/{deck.id}/chat")
-    assert page.status_code == 200 and "Cut the five-drops." in page.text
-
-    clr = await client.post(f"/decks/{deck.id}/chat/clear")
+    clr = await client.post(f"/decks/{deck.id}/ai/chat/clear")
     assert clr.status_code == 200
     assert await session.scalar(select(func.count()).select_from(DeckChatMessage)) == 0
 

@@ -1,63 +1,142 @@
-{% if error %}
-  <div class="rounded-lg border border-rose-700 bg-rose-950/50 px-4 py-3 text-rose-200">
-    {{ error }}
-  </div>
-{% elif result %}
-  <div class="flex items-center justify-between gap-3 mb-4">
-    <p class="text-sm text-muted">
-      {{ result.total }} card{{ '' if result.total == 1 else 's' }}
-      {% if scope == 'collection' %}in your collection{% endif %}
-      {% if result.total_pages > 1 %}· page {{ result.page }} of {{ result.total_pages }}{% endif %}
-    </p>
-    {% if views %}
-    <div class="flex items-center gap-2 shrink-0 text-xs">
-      <label class="sr-only" for="page-size">Cards per page</label>
-      <select id="page-size" onchange="setPageSize(this.value)"
-              class="rounded bg-surface-2 border border-edge px-1.5 py-1">
-        {% for n in page_sizes %}
-        <option value="{{ n }}" {% if n == page_size %}selected{% endif %}>{{ n }}/page</option>
-        {% endfor %}
-      </select>
-      <label class="flex items-center gap-1 cursor-pointer text-muted"
-             title="Load more automatically as you scroll (grid view)">
-        <input type="checkbox" onchange="setInfinite(this.checked)" {% if infinite %}checked{% endif %}
-               class="accent-[color:var(--c-accent)]" /> ∞ scroll
-      </label>
-      <div class="inline-flex rounded-lg ring-1 ring-edge overflow-hidden text-base leading-none">
-        <button type="button" onclick="setView('grid')" title="Grid view" aria-label="Grid view"
-          class="px-2.5 py-1 {% if view != 'list' %}bg-surface-2 text-fg{% else %}text-muted hover:text-fg{% endif %}">▦</button>
-        <button type="button" onclick="setView('list')" title="List view" aria-label="List view"
-          class="px-2.5 py-1 border-l border-edge {% if view == 'list' %}bg-surface-2 text-fg{% else %}text-muted hover:text-fg{% endif %}">☰</button>
-      </div>
-    </div>
-    {% endif %}
-  </div>
+{% if ai_error %}
+<div class="order-last w-full mb-4 p-3 bg-amber-500/15 text-amber-500 rounded-lg text-sm">
+  <span class="font-medium">AI Error:</span> {{ ai_error }}
+</div>
+{% elif nl and not nl_from_cache_and_preloaded %}
+<div class="order-last w-full text-xs text-muted">
+  AI is generating a scryfall query for the prompt <span class="text-fg">“{{nl}}”</span>. <span class="loading-animator">Thinking</span>
+</div>
+{# Poller for NL queries that redirects once resolved #}
+<div id="nlPoller"
+  hx-get="/search/nl/status?nl={{ nl | urlencode }}" 
+  hx-trigger="every 2s"
+  hx-swap="none"
+  hx-on::after-request="if (event.detail.xhr.status === 200) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('q', event.detail.xhr.responseText);
+    window.location.href = url.toString() 
+  }"
+  class="hidden">
+</div>
+{% elif nl %}
+<p class="order-last w-full text-xs text-muted">
+  AI generated the scryfall query <span class="text-fg">“{{ q }}”</span> from the prompt <span class="text-fg">“{{ nl }}”</span>.
+</p>
+{% endif %}
 
+{% if error %}
+<div class="rounded-lg border border-rose-700 bg-rose-950/50 px-4 py-3 text-rose-200">
+  {{ error }}
+</div>
+{% elif nl and not nl_from_cache_and_preloaded %}
+<div>
+</div>
+{% elif result and result.total > 0 %}
+<div class="flex items-center justify-between gap-3 mb-4 mt-2">
+  <p class="text-sm text-muted">
+    {{ result.total }} card{{ '' if result.total == 1 else 's' }}
+    {% if scope == 'collection' %}in your collection{% endif %}
+    {% if result.total_pages > 1 %}· page {{ result.page }} of {{ result.total_pages }}{% endif %}
+  </p>
   {% if views %}
-  <div class="flex gap-6">
+  <div class="flex items-center gap-2 shrink-0 text-xs">
+    <label class="sr-only" for="page-size">Cards per page</label>
+    <select id="page-size" onchange="setPageSize(this.value)"
+            class="rounded-full bg-surface border border-edge px-4 py-1.5 text-sm font-medium hover:border-accent">
+      {% for n in page_sizes %}
+      <option value="{{ n }}" {% if n == page_size %}selected{% endif %}>{{ n }}/page</option>
+      {% endfor %}
+    </select>
+    <label class="inline-flex items-center cursor-pointer">
+      <input type="checkbox" name="infinite-scroll" onchange="setInfinite(this.checked)" autocomplete="off" {% if infinite %}checked{% endif %} class="sr-only peer">
+      <div class="relative w-9 h-5 rounded-full border border-edge hover:border-accent bg-surface peer-checked:bg-accent peer-checked:after:translate-x-full peer-checked:after:border-buffer after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+      <span class="select-none ml-1 text-sm font-medium text-heading"><i class="fa-solid fa-infinity"></i> scroll</span>
+    </label>
+    <div class="inline-flex rounded-full ring-1 ring-edge overflow-hidden shrink-0" title="Search scope">
+      <label class="cursor-pointer">
+        <input type="radio" name="card-view" value="grid" class="peer sr-only" autocomplete="off" {% if view == 'grid' %}checked=""{% endif %}>
+        <span class="block px-4 py-2 text-muted peer-checked:bg-surface peer-checked:text-fg" onclick="setView('grid')"><i class="fa-solid fa-grip"></i></span>
+      </label>
+      <label class="cursor-pointer border-l border-edge">
+        <input type="radio" name="card-view" value="list" class="peer sr-only" autocomplete="off" {% if view == 'list' %}checked=""{% endif %}>
+        <span class="block px-4 py-2 text-muted peer-checked:bg-surface peer-checked:text-fg" onclick="setView('list')"><i class="fa-solid fa-list"></i></span>
+      </label>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% if views %}
+<div class="flex gap-6">
   {% if facets %}
-  <aside class="hidden lg:block w-44 shrink-0 space-y-4">
+  <div class="fixed inset-0 z-40 bg-black/50 transition-opacity duration-300" @click="sidebarOpen = false" x-show="sidebarOpen" x-cloak>
+  </div>
+  <aside 
+      class="bg-bg fixed inset-y-0 left-0 z-50 w-44 transform -translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0 md:relative md:z-0 p-4 md:pm-0 h-full overflow-y-auto"
+      :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
     {% for g in facets %}
+    {% set g_index = loop.index0 %}
     <div>
-      <h3 class="text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">{{ g.title }}</h3>
+      <h3 class="text-xs font-semibold text-muted uppercase tracking-wide mt-1.5">{{ g.title }}</h3>
       <ul class="space-y-0.5">
-        {% for f in g.values %}
-        <li>
-          <button type="button" class="facet-btn w-full flex items-center gap-1.5 text-left text-sm
-                   rounded px-1.5 py-0.5 hover:bg-surface-2
-                   {% if f.active %}text-accent font-medium{% endif %}"
-            data-q="{{ f.new_query }}">
-            <span class="w-3 shrink-0 text-xs">{% if f.active %}✓{% endif %}</span>
-            <span class="flex-1 min-w-0 truncate" title="{{ f.label }}">{{ f.label }}</span>
-            <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}</span>
-          </button>
-        </li>
-        {% endfor %}
+        {% set is_special = g.title in ['Colors', 'Rarity', 'Type'] %}
+        {% if is_special %}
+          {% for f in g.values %}
+          <li>
+            <button type="button" class="facet-btn w-full flex items-center gap-1.5 text-left text-sm
+                      rounded px-1.5 py-0.5 hover:bg-surface-2
+                      {% if f.active %}text-accent font-medium{% endif %}"
+                  data-q="{{ f.new_query }}">
+              <span class="w-3 shrink-0 text-xs">{% if f.active %}✓{% endif %}</span>
+              <span class="flex-1 min-w-0 truncate" title="{{ f.label }}">{{ f.label }}</span>
+              <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}{% if f.count >= prefs.facet_row_cap %}+{% endif %}</span>
+            </button>
+          </li>
+          {% endfor %}
+        {% else %}
+          {% set main_items = g.values[:6] %}
+          {% set extra_items = g.values[6:] %}
+          {% for f in main_items %}
+          <li>
+            <button type="button" class="facet-btn w-full flex items-center gap-1.5 text-left text-sm
+                      rounded px-1.5 py-0.5 hover:bg-surface-2
+                      {% if f.active %}text-accent font-medium{% endif %}"
+                  data-q="{{ f.new_query }}">
+              <span class="w-3 shrink-0 text-xs">{% if f.active %}✓{% endif %}</span>
+              <span class="flex-1 min-w-0 truncate" title="{{ f.label }}">{{ f.label }}</span>
+              <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}{% if f.count >= prefs.facet_row_cap %}+{% endif %}</span>
+            </button>
+          </li>
+          {% endfor %}
+          {% if extra_items %}
+          <li x-data="{extra_items_{{g_index}}: false}">
+            <button type="button" class="w-full text-left text-xs text-accent hover:underline px-1.5 py-0.5" x-show="!extra_items_{{g_index}}" x-cloak
+                    @click="extra_items_{{g_index}} = !extra_items_{{g_index}}">
+              + {{ extra_items|length }} more
+            </button>
+            <ul class="px-0 py-0 ml-0" x-show="extra_items_{{g_index}}" x-cloak>
+              {% for f in extra_items %}
+              <li class="py-0.5">
+                <button type="button" class="facet-btn w-full flex items-center gap-1.5 text-left text-sm
+                          rounded px-1.5 py-0.5 hover:bg-surface-2
+                          {% if f.active %}text-accent font-medium{% endif %}"
+                          data-q="{{ f.new_query }}">
+                  <span class="w-3 shrink-0 text-xs">{% if f.active %}✓{% endif %}</span>
+                  <span class="flex-1 min-w-0 truncate" title="{{ f.label }}">{{ f.label }}</span>
+                  <span class="text-xs text-muted tabular-nums">{{ '{:,}'.format(f.count) }}{% if f.count >= prefs.facet_row_cap %}+{% endif %}</span>
+                </button>
+              </li>
+              {% endfor %}
+            </ul>
+          </li>
+          {% endif %}
+        {% endif %}
       </ul>
     </div>
     {% endfor %}
   </aside>
   {% endif %}
+
   <div class="flex-1 min-w-0">
   {% if view == 'list' %}
   {# Compact table view #}
@@ -71,7 +150,7 @@
           <th class="px-2 text-right">#</th>
           <th class="px-2">Rarity</th>
           <th class="px-2 text-right">Qty</th>
-          <th class="px-2 text-right">{{ cur.symbol }}</th>
+          <th class="px-2 text-right">{{ currency.symbol }}</th>
         </tr>
       </thead>
       <tbody>
@@ -94,7 +173,7 @@
           <td class="px-2 capitalize text-muted">{{ v.card.rarity }}</td>
           <td class="px-2 text-right tabular-nums">{% if v.quantity %}{{ v.quantity }}{% endif %}</td>
           <td class="px-2 text-right tabular-nums text-muted">
-            {%- set p = v.card.prices.get(cur.key) if v.card.prices else None -%}
+            {%- set p = v.card.prices.get(currency.key) if v.card.prices else None -%}
             {% if p %}{{ cur.symbol }}{{ '{:,.2f}'.format(p | float) }}{% endif %}
           </td>
         </tr>
@@ -105,7 +184,7 @@
   {% else %}
   {% import "_result_card.html" as rc %}
   <div class="card-grid">
-    {% for v in views %}{{ rc.grid_card(v, read_only) }}{% endfor %}
+    {% for v in views %}{{ rc.grid_card(v, read_only, prefs.lang) }}{% endfor %}
     {% if infinite %}{{ rc.scroll_sentinel(q, scope, sort, dir, result.page, result.total_pages) }}{% endif %}
   </div>
   {% endif %}
@@ -126,21 +205,21 @@
     {% endif %}
   </nav>
   {% endif %}
-  </div>{# /flex-1 #}
-  </div>{# /flex gap-6 #}
-
-  {% else %}
-  <div class="text-muted py-16 text-center">
-    No cards match
-    {% if q %}<code class="text-fg">{{ q }}</code>{% else %}your collection yet{% endif %}.
-    {% if suggestions %}
-    <div class="mt-4 text-sm">
-      Did you mean:
-      {% for name in suggestions %}
-      <button type="button" class="facet-btn text-accent hover:underline" data-q="{{ name }}">{{ name }}</button>{% if not loop.last %}<span class="text-muted">·</span>{% endif %}
-      {% endfor %}
-    </div>
-    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% else %}
+<div class="text-muted py-16 text-center">
+  No cards match
+  {% if q %}<code class="text-fg">{{ q }}</code>{% else %}your collection yet{% endif %}.
+  {% if suggestions %}
+  <div class="mt-4 text-sm">
+    Did you mean:
+    {% for name in suggestions %}
+    <button type="button" class="facet-btn text-accent hover:underline" data-q="{{ name }}">{{ name }}</button>{% if not loop.last %}<span class="text-muted">·</span>{% endif %}
+    {% endfor %}
   </div>
   {% endif %}
+</div>
 {% endif %}
+

@@ -3,6 +3,7 @@
 Usage:
     python -m src.cli ingest [--force]      # download + ingest Default Cards bulk
     python -m src.cli backfill-images       # cache images for owned cards
+    python -m src.cli queue-backfill-images # queue image downloads for owned cards (concurrent)
     python -m src.cli seed-demo            # add the curated demo collection
 """
 
@@ -10,6 +11,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+
+from sqlalchemy import select
 
 from src.demo import seed_demo, seed_demo_decks
 from src.scryfall.images import ImageCache
@@ -24,9 +27,37 @@ async def _ingest(force: bool) -> None:
         print(f"Ingested {result.card_count} cards.")
 
 
-async def _backfill() -> None:
+async def _backfill_images() -> None:
     fetched = await ImageCache().backfill_owned()
     print(f"Cached {fetched} new images.")
+
+async def _queue_backfill_images(size: str = "normal", limit: int | None = None) -> None:
+    """Queue image downloads for owned cards using a background queue system."""
+    from src.background_service import queue_service
+    from src.db import SessionLocal
+    from src.models import Card, CollectionCard
+
+    # Get list of card IDs to download
+    async with SessionLocal() as session:
+        stmt = (
+            select(Card)
+            .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
+            .where(Card.image_status != "cached")
+            .distinct()
+        )
+        if limit:
+            stmt = stmt.limit(limit)
+        cards = (await session.execute(stmt)).scalars().all()
+
+    card_ids = [str(card.scryfall_id) for card in cards]
+
+    # Generate a unique job ID
+    import uuid
+    job_id = f"image_download_{uuid.uuid4().hex[:8]}"
+
+    # Use existing queue_service with new job type
+    queue_service(job_id, "backfill-image", card_ids, size=size)
+    print(f"Queued {len(card_ids)} image downloads with job ID: {job_id}")
 
 
 async def _seed_demo() -> None:
@@ -129,15 +160,6 @@ async def _sync_market_prices(force: bool) -> None:
         print("  (Card Kingdom empty? run `backfill-mtgjson-ids` once first.)")
 
 
-async def _organize_locations() -> None:
-    from src.collection_edit import organize_by_color_identity
-    from src.db import SessionLocal
-
-    async with SessionLocal() as session:
-        n = await organize_by_color_identity(session)
-    print(f"Filed {n} stack(s) into color-identity locations.")
-
-
 async def _refresh_sets() -> None:
     from src.db import SessionLocal
     from src.set_calendar import refresh_sets
@@ -192,6 +214,12 @@ def main() -> None:
     p_ingest.add_argument("--force", action="store_true", help="Ignore the 24h cache guard")
 
     sub.add_parser("backfill-images", help="Cache images for owned cards")
+
+    p_queue_images = sub.add_parser(
+        "queue-backfill-images", help="Queue image downloads for owned cards (concurrent)"
+    )
+    p_queue_images.add_argument("--size", default="normal", help="Image size (default: normal)")
+    p_queue_images.add_argument("--limit", type=int, help="Limit number of cards to process")
 
     sub.add_parser("seed-demo", help="Add sample cards to the collection (demo)")
 
@@ -249,7 +277,8 @@ def main() -> None:
     # a small lambda to bind them from `args`; the rest reference their worker directly.
     handlers = {
         "ingest": lambda: _ingest(args.force),
-        "backfill-images": _backfill,
+        "backfill-images": _backfill_images,
+        "queue-backfill-images": lambda: _queue_backfill_images(args.size, args.limit),
         "seed-demo": _seed_demo,
         "snapshot-prices": _snapshot_prices,
         "seed-price-history": lambda: _seed_price_history(args.months),
@@ -258,7 +287,6 @@ def main() -> None:
         "prune-digital": _prune_digital,
         "backfill-embeddings": lambda: _backfill_embeddings("all" if args.all else "owned"),
         "backfill-rules": lambda: _backfill_rules(args.file),
-        "organize-locations": _organize_locations,
         "refresh-sets": _refresh_sets,
         "backfill-mtgjson-ids": _backfill_mtgjson_ids,
         "sync-market-prices": lambda: _sync_market_prices(args.force),

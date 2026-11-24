@@ -16,6 +16,8 @@ proxy that also serves cached card images.
 
 ## Start the stack
 
+### Self-contained install
+
 ```bash
 git clone https://github.com/Leyline-Coding/scryme.git
 cd scryme
@@ -24,6 +26,34 @@ docker compose up -d
 
 This builds the backend image, starts PostgreSQL, applies database migrations automatically, and
 serves the app through nginx on port **8080** (override with `SCRYME_PORT`).
+
+
+### Deploy from image + BYODB
+
+```bash
+services:
+  scryme:
+    image: ghcr.io/pstaubs/scryme:latest
+    container_name: scryme
+    restart: unless-stopped
+    ports:
+      - '8000:8000'
+    environment:
+      SCRYME_DB_HOST: ...
+      SCRYME_DB_PORT: "5432"
+      SCRYME_DB_USER: ...
+      SCRYME_DB_PASSWORD: ...
+      SCRYME_DB_NAME: "scryme"
+
+      SCRYME_ENVIRONMENT: production
+      SCRYME_DATA_DIR: /data
+      SCRYME_IMAGE_CACHE_DIR: /data/images
+
+    volumes:
+      - '/path/to/persistent/storage:/data'
+```
+
+In this example, we skip the build step and simply pull and then use the latest pre-built image. This configuration also deomnstrates a customized scryme setup running with external database and external data store.
 
 ## Load card data
 

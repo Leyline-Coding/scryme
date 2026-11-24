@@ -36,13 +36,14 @@ from src.collection_edit import (
     StaleStackError,
     add_or_increment,
     delete_stack,
+    scryfall_ids_to_stack_ids,
     update_stack,
 )
 from src.config import get_settings
 from src.currency import normalize as normalize_currency
 from src.db import get_session
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
-from src.decks import apply_deck_card_edit, create_deck, deck_coverage
+from src.decks import StackCoverage, apply_deck_card_edit, create_deck, deck_coverage
 from src.embeddings import similar_to_oracle
 from src.importers.base import UnknownFormatError
 from src.importers.merge import MergeStrategy
@@ -78,7 +79,7 @@ from src.search import SearchError, SearchScope
 from src.search.engine import DEFAULT_SORT, SORT_KEYS, run_search
 from src.sets import set_detail, set_progress
 from src.stats import collection_stats
-from src.tags import add_card_tag, card_tags, remove_card_tag
+from src.tags import card_tags, modify_stack_tag
 from src.wishlist import add_to_wishlist, list_wishlist, remove_from_wishlist
 
 
@@ -159,7 +160,7 @@ class StackOut(BaseModel):
     finish: str
     condition: str | None = None
     language: str
-    binder_name: str | None = None
+    location: int | None = None
     tags: list[str] | None = None
 
 
@@ -184,16 +185,15 @@ class DeckSummaryOut(BaseModel):
 
 
 class DeckCardOut(BaseModel):
-    card_id: int
+    id: int
     name: str
-    quantity: int
+    scryfall_id: str
     board: str
-    owned: int
+    quantity: int
+    stack_coverage: StackCoverage | None = None
     matched: bool
-    scryfall_id: str | None = None
-    set_code: str | None = None
-    collector_number: str | None = None
     language: str = "en"
+    finish: str = ""
     proxy: bool = False
     special: bool = False
     legality: str | None = None
@@ -202,9 +202,9 @@ class DeckCardOut(BaseModel):
 class DeckDetailOut(BaseModel):
     id: int
     name: str
-    pct_complete: int
+    pct_own: float
     total_needed: int
-    owned_count: int
+    total_owned: int
     missing_count: int
     missing_cost: float
     fmt: str | None = None
@@ -240,7 +240,7 @@ class CollectionRowOut(BaseModel):
     finish: str
     condition: str | None = None
     language: str
-    binder_name: str | None = None
+    location: int | None = None
     tags: list[str] | None = None
     price: float | None = None
     image: str | None = None
@@ -261,11 +261,11 @@ class StackUpdateIn(BaseModel):
     finish: str | None = None
     condition: str | None = None
     language: str | None = None
-    binder: str | None = None
     tags: list[str] | None = None
     # Optional optimistic-concurrency guard (#207): the version this edit was based on. Omitted
     # means "apply regardless", which keeps existing clients working unchanged.
     version: int | None = None
+    location: int | None = None
 
 
 class WishlistItemOut(BaseModel):
@@ -406,7 +406,7 @@ async def api_card(
         oracle_text=card.oracle_text, legalities=card.legalities,
         owned=[StackOut(id=s.id, scryfall_id=str(s.scryfall_id), quantity=s.quantity,
                         finish=s.finish, condition=s.condition, language=s.language,
-                        binder_name=s.binder_name, tags=s.tags) for s in owned],
+                        location=s.location, tags=s.tags) for s in owned],
     )
 
 
@@ -467,18 +467,18 @@ async def api_decks(session: AsyncSession = Depends(get_session)) -> list[DeckSu
 
 def _deck_card_out(r) -> DeckCardOut:
     return DeckCardOut(
-        card_id=r.card_id, name=r.name, quantity=r.quantity, board=r.board, owned=r.owned,
-        matched=r.matched, scryfall_id=r.scryfall_id, set_code=r.set_code,
-        collector_number=r.collector_number, language=r.language, proxy=r.proxy,
-        special=r.special, legality=r.legality,
+        id=r.card_id, name=r.name, scryfall_id=str(getattr(r.scryfall_card, 'scryfall_id', '')),
+        board=r.board, quantity=r.quantity,
+        stack_coverage=r.stack_coverage, matched=r.matched, legality=r.legality,
+        proxy=r.proxy, special=r.special, language=r.language, finish=r.finish,
     )
 
 
 async def _deck_detail(session: AsyncSession, deck: Deck, fmt: str | None) -> DeckDetailOut:
-    cov = await deck_coverage(session, deck, fmt=fmt or None)
+    cov = await deck_coverage(session, deck=deck, fmt=fmt or None)
     return DeckDetailOut(
-        id=deck.id, name=deck.name, pct_complete=cov.pct_complete,
-        total_needed=cov.total_needed, owned_count=cov.owned_count,
+        id=deck.id, name=deck.name, pct_own=cov.pct_own,
+        total_needed=cov.total_needed, total_owned=cov.total_owned,
         missing_count=cov.missing_count, missing_cost=round(cov.missing_cost, 2),
         fmt=cov.fmt, is_legal=cov.is_legal if cov.fmt else None, illegal_count=cov.illegal_count,
         main=[_deck_card_out(r) for r in cov.main], side=[_deck_card_out(r) for r in cov.side],
@@ -496,7 +496,7 @@ async def _require_deck(session: AsyncSession, deck_id: int) -> Deck:
 async def api_deck(
     deck_id: int, format: str = "", session: AsyncSession = Depends(get_session)
 ) -> DeckDetailOut:
-    return await _deck_detail(session, await _require_deck(session, deck_id), format)
+    return await _deck_detail(session, await _require_deck(session, deck_id), fmt=format)
 
 
 @router.post("/decks", response_model=DeckDetailOut, status_code=201)
@@ -505,7 +505,7 @@ async def api_deck_create(
 ) -> DeckDetailOut:
     _guard_writable()
     deck = await create_deck(session, body.name, body.decklist)
-    return await _deck_detail(session, deck, None)
+    return await _deck_detail(session, deck, fmt=None)
 
 
 @router.patch("/decks/{deck_id}", response_model=DeckDetailOut)
@@ -517,7 +517,7 @@ async def api_deck_update(
     if body.name is not None:
         deck.name = body.name.strip()[:256] or deck.name
     await session.commit()
-    return await _deck_detail(session, deck, None)
+    return await _deck_detail(session, deck, fmt=None)
 
 
 @router.delete("/decks/{deck_id}", response_model=OkOut)
@@ -596,7 +596,7 @@ def _collection_row(s: CollectionCard, currency: str) -> CollectionRowOut:
     return CollectionRowOut(
         id=s.id, scryfall_id=str(s.scryfall_id), name=s.card.name, set_code=s.card.set_code,
         collector_number=s.card.collector_number, quantity=s.quantity, finish=s.finish,
-        condition=s.condition, language=s.language, binder_name=s.binder_name, tags=s.tags,
+        condition=s.condition, language=s.language, location=s.location, tags=s.tags,
         price=float(raw) if raw else None, image=image_url(s.card.raw), version=s.version,
     )
 
@@ -606,7 +606,7 @@ async def api_collection_list(
     page: int = 1,
     page_size: int = 50,
     q: str = "",
-    binder: str = "",
+    location: int | None = None,
     currency: str = "usd",
     session: AsyncSession = Depends(get_session),
 ) -> CollectionListOut:
@@ -616,8 +616,8 @@ async def api_collection_list(
     stmt = select(CollectionCard).join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
     if q:
         stmt = stmt.where(func.lower(Card.name).like(f"%{q.lower()}%"))
-    if binder:
-        stmt = stmt.where(CollectionCard.binder_name == binder)
+    if location:
+        stmt = stmt.where(CollectionCard.location == location)
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     rows = (
         await session.execute(
@@ -640,7 +640,7 @@ class CollectionAddIn(BaseModel):
     finish: str = "normal"
     condition: str | None = None
     language: str = "en"
-    binder: str | None = None
+    location: int | None = None
 
 
 @router.post("/collection", response_model=OkOut)
@@ -650,7 +650,7 @@ async def api_collection_add(
     _guard_writable()
     stack = await add_or_increment(
         session, body.scryfall_id, body.quantity, finish=body.finish,
-        condition=body.condition, language=body.language, binder=body.binder,
+        condition=body.condition, language=body.language, location=body.location,
     )
     if stack is None:
         raise HTTPException(status_code=404, detail="Unknown card.")
@@ -693,22 +693,24 @@ class TagIn(BaseModel):
     tag: str
 
 
-@router.post("/cards/{scryfall_id}/tags", response_model=OkOut)
+@router.post("/collection/{scryfall_id}/tags", response_model=OkOut)
 async def api_add_tag(
     scryfall_id: str, body: TagIn, session: AsyncSession = Depends(get_session)
 ) -> OkOut:
     _guard_writable()
-    card = await _get_card(session, scryfall_id)
-    return OkOut(tags=await add_card_tag(session, card.scryfall_id, body.tag))
+    stack_id = (await scryfall_ids_to_stack_ids(session, [scryfall_id]))[0]
+    await modify_stack_tag(session, stack_id, tag=body.tag)
+    return OkOut(tags=(await session.get(CollectionCard, stack_id)).tags)
 
 
-@router.delete("/cards/{scryfall_id}/tags", response_model=OkOut)
+@router.delete("/collection/{scryfall_id}/tags", response_model=OkOut)
 async def api_remove_tag(
     scryfall_id: str, tag: str = Query(...), session: AsyncSession = Depends(get_session)
 ) -> OkOut:
     _guard_writable()
-    card = await _get_card(session, scryfall_id)
-    return OkOut(tags=await remove_card_tag(session, card.scryfall_id, tag))
+    stack_id = (await scryfall_ids_to_stack_ids(session, [scryfall_id]))[0]
+    await modify_stack_tag(session, stack_id, tag=tag, remove=True)
+    return OkOut(tags=(await session.get(CollectionCard, stack_id)).tags)
 
 
 class WishlistAddIn(BaseModel):
@@ -931,9 +933,9 @@ class ChecklistDetailOut(BaseModel):
     id: int
     name: str
     total: int
-    owned_count: int
+    total_owned: int
     unmatched: int
-    pct_complete: int
+    pct_own: int
     rows: list[ChecklistRowOut]
 
 
@@ -970,8 +972,8 @@ async def _get_checklist(session: AsyncSession, checklist_id: int) -> Checklist:
 async def _checklist_out(session: AsyncSession, cl: Checklist) -> ChecklistDetailOut:
     cov = await checklist_coverage(session, cl)
     return ChecklistDetailOut(
-        id=cl.id, name=cl.name, total=cov.total, owned_count=cov.owned_count,
-        unmatched=cov.unmatched, pct_complete=cov.pct_complete,
+        id=cl.id, name=cl.name, total=cov.total, total_owned=cov.total_owned,
+        unmatched=cov.unmatched, pct_own=cov.pct_own,
         rows=[ChecklistRowOut(item_id=r.item_id, name=r.name, scryfall_id=r.scryfall_id,
                               matched=r.matched, owned=r.owned) for r in cov.rows],
     )

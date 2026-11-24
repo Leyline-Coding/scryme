@@ -4,6 +4,7 @@ Single-user deployment: the "admin" is simply the person running the instance, s
 auth. Mutating endpoints are disabled when the instance is in read-only (demo) mode.
 """
 
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,7 +32,15 @@ async def dashboard(
     img_count, img_bytes = image_cache_disk(get_settings().image_cache_dir)
     return templates.TemplateResponse(
         request, "admin.html",
-        {"stats": stats, "image_files": img_count, "image_bytes": img_bytes},
+        {
+            "stats": stats,
+            "image_files": img_count,
+            "image_bytes": img_bytes,
+            "pending_migrations": (
+                hasattr(request.app.state, 'pending_migrations')
+                and request.app.state.pending_migrations
+            ),
+        },
     )
 
 
@@ -42,7 +51,7 @@ async def metrics(session: AsyncSession = Depends(get_session)) -> PlainTextResp
 
 
 @router.get("/admin/status")
-async def status() -> dict:
+async def status(request: Request) -> dict:
     async with SessionLocal() as s:
         state = await s.get(IngestState, BULK_TYPE)
     return {
@@ -58,6 +67,35 @@ async def status() -> dict:
             "card_count": state.card_count if state else 0,
         },
     }
+
+def execute_migrations():
+    from pathlib import Path
+
+    from alembic import command
+    from alembic.config import Config
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+    ALEMBIC_INI_PATH = BASE_DIR / "alembic.ini"
+    alembic_cfg = Config(str(ALEMBIC_INI_PATH))
+    # Ensure script_location resolves properly regardless of working directory
+    alembic_cfg.set_main_option("script_location", str(BASE_DIR / "alembic"))
+    command.upgrade(alembic_cfg, "head")
+
+
+
+@router.post("/admin/migrations/apply")
+async def apply_pending_migrations(request: Request) -> dict:
+    """Apply pending migrations."""
+    import asyncio
+
+    if get_settings().read_only:
+        raise HTTPException(status_code=403, detail="Read-only demo: migrations are disabled.")
+    try:
+        await asyncio.to_thread(execute_migrations)
+        from src.main import _check_has_pending_migrations
+        request.app.state.pending_migrations = await _check_has_pending_migrations()
+        return {"status": "success", "message": "Database upgraded to head."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Migration failed: {str(exc)}") from exc
 
 
 @router.get("/admin/ingest/progress")

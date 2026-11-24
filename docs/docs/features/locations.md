@@ -25,7 +25,7 @@ On the Locations tab:
 - **Delete** a box — its cards become *unfiled* (they aren't removed from your collection).
 
 Click a box to search its contents. Boxes are searchable anywhere with the
-[`loc:` filter](../search/syntax.md) — e.g. `loc:"Bulk Box"`.
+[`loc:` filter](../search/syntax.md) — e.g. `loc:"box:Bulk Box"`.
 
 ## Filing a card
 

@@ -1,0 +1,19 @@
+{# Deck coaching chat transcript (#172). #}
+{% if messages %}
+  {% for m in messages %}
+    {% if m.role == 'user' %}
+      <div class="ml-auto max-w-[85%]">
+        <div class="rounded-lg bg-accent px-3 py-2 text-sm whitespace-pre-line">{{ m.content }}</div>
+        <p class="text-xs text-muted">{{ time.humanize_dt(m.created_at, now) }}</p>
+      </div>
+    {% else %}
+      <div class="mr-auto max-w-[90%]">
+        <div class="rounded-lg bg-surface-2 px-3 py-2 text-sm prose max-w-none [--tw-prose-body:inherit] [--tw-prose-headings:inherit] [--tw-prose-bold:inherit] [--tw-prose-counters:inherit] [--tw-prose-bullets:inherit] prose-a:text-accent"">{{ m.content | markdown }}</div>
+        <p class="text-xs text-muted">{{ time.humanize_dt(m.created_at, now) }}</p>
+      </div>
+    {% endif %}
+  {% endfor %}
+{% else %}
+  <p class="text-sm text-muted">{{placeholder or "Ask a question about the game of Magic The Gathering or about your library."}}</p>
+{% endif %}
+<input type="hidden" name="chat_thinking" id="chat_thinking_update" value="{%if messages and (messages | last).role=='user' %}True{%else%}False{%endif%}" x-model="chat_thinking" >

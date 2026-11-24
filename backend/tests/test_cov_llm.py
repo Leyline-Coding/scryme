@@ -9,16 +9,13 @@ import httpx
 import pytest
 from src import llm
 from src.deck_synergy import deck_themes
-from src.decks import create_deck
 from src.llm import (
     ChatClient,
-    DeckContext,
     LLMConfig,
     _clean_query,
     _parse_decklines,
     _parse_named_reasons,
     _parse_suggestions,
-    _scan_deck_cards,
     _validate_upgrade,
     answer_card_question,
     build_from_prompt,
@@ -27,9 +24,9 @@ from src.llm import (
     find_commanders,
     has_config_row,
     save_config,
-    suggest_from_collection,
 )
 from src.llm import test_connection as check_connection
+from src.llm_card_analysis import DeckContext, _scan_deck_cards
 from src.models import Card, CollectionCard
 from src.scryfall.mapping import card_to_columns
 
@@ -117,9 +114,9 @@ async def test_connection_http_status_error():
 
 def test_block_multiple_commanders_and_themes():
     ctx = DeckContext(
-        name="D", identity={"R"}, commanders=["Kaalia", "Talrand"],
+        name="D", description="some deck", identity={"R"}, commanders=["Kaalia", "Talrand"],
         curve="1:2", colors="R:3", themes=["tokens", "sacrifice"],
-        key_cards=["Sol Ring"], decklist="1 Sol Ring")
+        key_cards=["Sol Ring"], deck_coverage=None)
     block = ctx.block()
     assert "Possible commanders" in block and "Kaalia" in block   # line 209
     assert "Themes/keywords: tokens, sacrifice" in block          # line 216
@@ -175,16 +172,6 @@ def test_clean_query_prefix_and_empty():
     assert _clean_query("\n   \n") == ""                            # line 466 all-blank -> ""
 
 
-# --- suggest_from_collection empty pool -----------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_suggest_empty_pool(session):
-    await _own(session, "Only Card")
-    deck = await create_deck(session, "D", "1 Only Card")  # the only owned card is in the deck
-    result = await suggest_from_collection(session, deck, FakeChat(reply="whatever"))
-    assert result.considered == 0 and result.suggestions == []
-
-
 # --- has_config_row -------------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -222,19 +209,19 @@ async def test_find_commanders_survives_pitch_failure(session):
 # --- _validate_upgrade guards ---------------------------------------------------------------------
 
 def test_validate_upgrade_off_identity_dropped():
-    ctx = DeckContext(name="d", identity={"R"}, is_commander=False)
+    ctx = DeckContext(name="d", identity={"R"}, is_commander=False, description="some deck")
     card = _mkcard("Blue Thing", ci=("U",))
     assert _validate_upgrade(card, "draw", ctx, set(), 100.0) is None  # line 716
 
 
 def test_validate_upgrade_commander_illegal_dropped():
-    ctx = DeckContext(name="d", identity={"R"}, is_commander=True)
+    ctx = DeckContext(name="d", identity={"R"}, is_commander=True, description="some deck")
     card = _mkcard("Banned Card", ci=("R",), legal=False)
     assert _validate_upgrade(card, "ramp", ctx, set(), 100.0) is None  # line 719
 
 
 def test_validate_upgrade_over_budget_and_free_dropped():
-    ctx = DeckContext(name="d", identity={"R"}, is_commander=False)
+    ctx = DeckContext(name="d", identity={"R"}, is_commander=False, description="some deck")
     pricey = _mkcard("Pricey", ci=("R",), usd="50.00")
     assert _validate_upgrade(pricey, "x", ctx, set(), 10.0) is None   # line 719: over remaining
     free = _mkcard("Free", ci=("R",), usd="0.00")
@@ -242,7 +229,7 @@ def test_validate_upgrade_over_budget_and_free_dropped():
 
 
 def test_validate_upgrade_accepts_valid():
-    ctx = DeckContext(name="d", identity={"R"}, is_commander=True)
+    ctx = DeckContext(name="d", identity={"R"}, is_commander=True, description="some deck")
     card = _mkcard("Good Ramp", ci=("R",), usd="2.00", legal=True)
     result = _validate_upgrade(card, "ramp", ctx, set(), 100.0)
     assert result is not None and result[0].name == "Good Ramp" and result[1] == 2.0

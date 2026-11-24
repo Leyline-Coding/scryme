@@ -465,37 +465,30 @@ async def pool_summaries(session: AsyncSession) -> list[PoolSummary]:
     ]
 
 
-async def stage_selection(
-    session: AsyncSession, pool_id: int, direction: str, scryfall_ids: list[str],
+async def trade_pool_out(
+    session: AsyncSession, pool_id: int, stack_ids: list[int],
     quantity: int = 1,
 ) -> int:
-    """Bulk-stage printings selected in the results grid. Returns how many items were staged.
-
-    The grid selects *printings*, but value follows the physical copy. Outgoing printings are
-    therefore staged from the largest stack owned of each — the copy a bulk add most likely means.
-    An outgoing printing that isn't owned (and anything incoming, which by definition isn't) is
-    staged as a plain normal/English copy; that is the only honest guess available, and an
-    outgoing one shows up as a shortfall in :func:`pool_view` until it's corrected.
-    """
+    """Add a stack to the trade pool, to be traded away"""
     staged = 0
-    for raw in scryfall_ids:
-        try:
-            sid = _as_uuid(raw)
-        except (ValueError, AttributeError, TypeError):
-            continue
-        stack = None
-        if direction == OUT:
-            stack = (
-                await session.execute(
-                    select(CollectionCard)
-                    .where(CollectionCard.scryfall_id == sid)
-                    .order_by(CollectionCard.quantity.desc())
-                    .limit(1)
-                )
-            ).scalar_one_or_none()
-        item = (
-            await stage_stack(session, pool_id, stack.id, quantity) if stack
-            else await stage_printing(session, pool_id, direction, sid, quantity)
-        )
+    stacks = (await session.execute(
+        select(CollectionCard)
+        .where(CollectionCard.id.in_(stack_ids))
+        .order_by(CollectionCard.quantity.desc())
+    )).scalars().all()
+    for stack in stacks:
+        item = (await stage_stack(session, pool_id, stack.id, quantity))
+        staged += 1 if item is not None else 0
+    return staged
+
+
+async def trade_pool_in(
+    session: AsyncSession, pool_id: int, scryfall_ids: list[str],
+    quantity: int = 1,
+) -> int:
+    """Add scryfall cards to the trade pool, to be traded in."""
+    staged = 0
+    for scryfall_id in scryfall_ids:
+        item = (await stage_printing(session, pool_id, "in", scryfall_id, quantity))
         staged += 1 if item is not None else 0
     return staged

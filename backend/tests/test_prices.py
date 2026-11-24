@@ -185,7 +185,7 @@ async def test_stats_route_shows_value_chart(client, session):
     await _seed(session)
     await snapshot_prices(session)
     await snapshot_prices(session)
-    resp = await client.get("/collection?tab=stats")
+    resp = await client.get("/collection/stats")
     assert resp.status_code == 200
     assert "Value over time" in resp.text
     assert "<polyline" in resp.text

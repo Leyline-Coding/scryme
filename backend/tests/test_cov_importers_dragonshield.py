@@ -20,7 +20,7 @@ def test_parse_without_sep_line_and_blank_name():
     assert row.collector_number == "232"
     assert row.finish == "foil"
     assert row.quantity == 3
-    assert row.binder_name == "Box A"
+    assert row.source_location_name == "Box A"
 
 
 def test_strip_sep_line_still_parses():

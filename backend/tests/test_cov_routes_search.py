@@ -18,18 +18,11 @@ async def test_search_nl_translation_failure_falls_back(client, monkeypatch):
     async def _fake_get_config(session):
         return _Cfg()
 
-    async def _boom(text, chat_client):
-        raise ValueError("translation blew up")
-
     monkeypatch.setattr(search_route, "get_config", _fake_get_config)
-    monkeypatch.setattr(search_route, "ChatClient", lambda cfg: object())
-    monkeypatch.setattr(search_route, "nl_to_query", _boom)
 
-    resp = await client.post("/search/nl", data={"q": "cheap red burn"})
-    assert resp.status_code in (302, 303, 307)
-    loc = resp.headers["location"]
-    assert "q=cheap" in loc      # fell back to the raw text
-    assert "nl=" not in loc      # no generated query, so no editable-nl marker
+    resp = await client.get("/search?nl=cheap red burn")
+    assert resp.status_code == 200
+
 
 
 @pytest.mark.asyncio

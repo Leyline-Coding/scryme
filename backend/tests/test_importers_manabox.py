@@ -31,7 +31,7 @@ def test_parse_rows():
     bolt = rows[1]
     assert bolt.finish == "foil"
     assert bolt.quantity == 2
-    assert bolt.binder_name == "Spells"
+    assert bolt.source_location_name == "Spells"
 
     elves = rows[2]
     assert elves.scryfall_id is None  # blank Scryfall ID column

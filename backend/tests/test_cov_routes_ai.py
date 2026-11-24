@@ -8,11 +8,10 @@ import uuid
 import httpx
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import func, select
 from src.config import get_settings
 from src.decks import create_deck
 from src.llm import save_config
-from src.models import Card, CollectionCard, DeckChatMessage
+from src.models import Card, CollectionCard
 from src.routes import ai as ai_routes
 from src.scryfall.mapping import card_to_columns
 from starlette.requests import Request
@@ -118,90 +117,6 @@ async def test_load_deck_missing_404(session):
         await ai_routes._load_deck(session, 987654)
     assert exc.value.status_code == 404
 
-
-# --- deck analyze ---------------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_deck_analyze_not_configured(session):
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "Burn", "1 Lightning Bolt")
-    resp = await ai_routes.deck_analyze(_req(), deck.id, session)
-    assert resp.status_code == 200 and "configured" in _body(resp)
-
-
-@pytest.mark.asyncio
-async def test_deck_analyze_success(session, monkeypatch):
-    await _ready(session)
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "Burn", "1 Lightning Bolt")
-    _fake_client(monkeypatch, FakeChat(reply="This is an aggressive red deck."))
-    resp = await ai_routes.deck_analyze(_req(), deck.id, session)
-    assert resp.status_code == 200 and "aggressive" in _body(resp)
-
-
-@pytest.mark.asyncio
-async def test_deck_analyze_unreachable(session, monkeypatch):
-    await _ready(session)
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "Burn", "1 Lightning Bolt")
-    _fake_client(monkeypatch, FakeChat(raise_exc=httpx.ConnectError("nope")))
-    resp = await ai_routes.deck_analyze(_req(), deck.id, session)
-    assert resp.status_code == 200 and "reach" in _body(resp).lower()
-
-
-@pytest.mark.asyncio
-async def test_deck_analyze_empty(session, monkeypatch):
-    await _ready(session)
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "Burn", "1 Lightning Bolt")
-    _fake_client(monkeypatch, FakeChat(reply="   "))
-    resp = await ai_routes.deck_analyze(_req(), deck.id, session)
-    assert resp.status_code == 200 and "empty" in _body(resp).lower()
-
-
-# --- deck suggest ---------------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_deck_suggest_success(session, monkeypatch):
-    await _ready(session)
-    await _seed(session, "Lightning Bolt")
-    await _seed(session, "Shock")
-    deck = await create_deck(session, "Burn", "1 Lightning Bolt")
-    _fake_client(monkeypatch, FakeChat(reply="Shock - cheap removal"))
-    resp = await ai_routes.deck_suggest(_req(), deck.id, session)
-    assert resp.status_code == 200 and "Shock" in _body(resp)
-
-
-@pytest.mark.asyncio
-async def test_deck_suggest_empty(session, monkeypatch):
-    await _ready(session)
-    await _seed(session, "Lightning Bolt")
-    await _seed(session, "Shock")
-    deck = await create_deck(session, "Burn", "1 Lightning Bolt")
-    _fake_client(monkeypatch, FakeChat(reply=""))
-    resp = await ai_routes.deck_suggest(_req(), deck.id, session)
-    assert resp.status_code == 200 and "empty" in _body(resp).lower()
-
-
-@pytest.mark.asyncio
-async def test_deck_suggest_not_configured(session):
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "Burn", "1 Lightning Bolt")
-    resp = await ai_routes.deck_suggest(_req(), deck.id, session)
-    assert resp.status_code == 200 and "configured" in _body(resp)
-
-
-@pytest.mark.asyncio
-async def test_deck_suggest_unreachable(session, monkeypatch):
-    await _ready(session)
-    await _seed(session, "Lightning Bolt")
-    await _seed(session, "Shock")
-    deck = await create_deck(session, "Burn", "1 Lightning Bolt")
-    _fake_client(monkeypatch, FakeChat(raise_exc=httpx.ReadTimeout("slow")))
-    resp = await ai_routes.deck_suggest(_req(), deck.id, session)
-    assert resp.status_code == 200 and "reach" in _body(resp).lower()
-
-
 # --- build from prompt ----------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -297,60 +212,6 @@ async def test_deck_upgrade_unreachable(session, monkeypatch):
     assert resp.status_code == 200 and "reach" in _body(resp).lower()
 
 
-# --- deck chat ------------------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_deck_chat_page(session):
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "D", "1 Lightning Bolt")
-    resp = await ai_routes.deck_chat_page(_req(), deck.id, session)
-    assert resp.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_deck_chat_send_success(session, monkeypatch):
-    await _ready(session)
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "D", "1 Lightning Bolt")
-    _fake_client(monkeypatch, FakeChat(reply="Cut the five-drops."))
-    resp = await ai_routes.deck_chat_send(_req(), deck.id, message="help me", session=session)
-    body = _body(resp)
-    assert resp.status_code == 200 and "Cut the five-drops." in body and "help me" in body
-    n = await session.scalar(select(func.count()).select_from(DeckChatMessage))
-    assert n == 2
-
-
-@pytest.mark.asyncio
-async def test_deck_chat_send_no_config_noop(session):
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "D", "1 Lightning Bolt")
-    resp = await ai_routes.deck_chat_send(_req(), deck.id, message="help", session=session)
-    assert resp.status_code == 200
-    n = await session.scalar(select(func.count()).select_from(DeckChatMessage))
-    assert n == 0  # not ready -> nothing stored
-
-
-@pytest.mark.asyncio
-async def test_deck_chat_send_unreachable_stores_fallback(session, monkeypatch):
-    await _ready(session)
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "D", "1 Lightning Bolt")
-    _fake_client(monkeypatch, FakeChat(raise_exc=httpx.ConnectError("nope")))
-    resp = await ai_routes.deck_chat_send(_req(), deck.id, message="help", session=session)
-    assert resp.status_code == 200 and "respond" in _body(resp)
-
-
-@pytest.mark.asyncio
-async def test_deck_chat_clear(session, monkeypatch):
-    await _ready(session)
-    await _seed(session, "Lightning Bolt")
-    deck = await create_deck(session, "D", "1 Lightning Bolt")
-    _fake_client(monkeypatch, FakeChat(reply="reply"))
-    await ai_routes.deck_chat_send(_req(), deck.id, message="hi", session=session)
-    resp = await ai_routes.deck_chat_clear(_req(), deck.id, session)
-    assert resp.status_code == 200
-    n = await session.scalar(select(func.count()).select_from(DeckChatMessage))
-    assert n == 0
 
 
 # --- card ask -------------------------------------------------------------------------------------

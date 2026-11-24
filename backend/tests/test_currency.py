@@ -56,8 +56,8 @@ async def test_collection_stats_uses_currency(session):
 @pytest.mark.asyncio
 async def test_stats_route_currency_cookie(client, session):
     await _own(session, _PRICES, qty=2)
-    usd = await client.get("/collection?tab=stats")
+    usd = await client.get("/collection/stats")
     assert "Est. value (USD)" in usd.text and "$2.00" in usd.text
 
-    eur = await client.get("/collection?tab=stats", headers={"Cookie": "scryme_currency=eur"})
+    eur = await client.get("/collection/stats", headers={"Cookie": "scryme_currency=eur"})
     assert "Est. value (EUR)" in eur.text and "€1.60" in eur.text

@@ -34,6 +34,6 @@ def test_missing_rate_degrades_to_the_usd_number():
 
 def test_metadata_for_new_currencies():
     assert currency.normalize("gbp") == "gbp"
-    assert currency.info("cad")["symbol"] == "CA$"
+    assert currency.info("cad")["symbol"] == "C$"
     assert currency.info("jpy")["convert"] is True
     assert "convert" not in currency.info("usd")

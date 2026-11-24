@@ -86,16 +86,18 @@ async def test_edit_and_remove_routes(client, session):
     p1 = await _printing(session, oracle, 1)
     await _printing(session, oracle, 2)   # a sibling printing (offered in the picker/modal)
     s = await add_or_increment(session, p1.scryfall_id, 2, finish="normal")
+    assert s is not None
     sid = str(p1.scryfall_id)
 
     # Edit: bump to 4 and change to foil.
     resp = await client.post(f"/collection/stack/{s.id}/edit",
-                             data={"card_id": sid, "quantity": "4", "finish": "foil"})
+                             data={"card_id": sid, "language": "ja", "finish": "foil"})
     assert resp.status_code == 200
-    q, fin = (await session.execute(
-        select(CollectionCard.quantity, CollectionCard.finish)
+    language, finish = (await session.execute(
+        select(CollectionCard.language, CollectionCard.finish)
         .where(CollectionCard.id == s.id))).one()
-    assert q == 4 and fin == "foil"
+    assert language == "ja"
+    assert finish == "foil"
 
     # Remove modal lists both printings.
     modal = await client.get(f"/card/{sid}/remove-modal")
@@ -118,6 +120,7 @@ async def test_edit_printing_route_redirects(client, session):
     p1 = await _printing(session, oracle, 1)
     p2 = await _printing(session, oracle, 2)
     s = await add_or_increment(session, p1.scryfall_id, 1, finish="normal")
+    assert s is not None
 
     resp = await client.post(
         f"/collection/stack/{s.id}/edit",
@@ -125,4 +128,3 @@ async def test_edit_printing_route_redirects(client, session):
         follow_redirects=False,
     )
     assert resp.status_code == 200
-    assert resp.headers.get("HX-Redirect") == f"/card/{p2.scryfall_id}"

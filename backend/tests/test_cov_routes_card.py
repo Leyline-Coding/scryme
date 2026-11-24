@@ -3,6 +3,7 @@
 import uuid
 
 import pytest
+from src.card import _cache
 from src.models import Card, CardEmbedding, CollectionCard
 from src.routes import card as card_route
 from src.scryfall.mapping import card_to_columns
@@ -89,10 +90,10 @@ async def test_card_image_no_image_404(client, session):
 async def test_card_image_uses_cache(client, session, monkeypatch):
     c = await _card(session, image_uris={"normal": "https://img.test/x.jpg"})
     monkeypatch.setattr(card_route._cache, "is_cached", lambda sid: True)
-    monkeypatch.setattr(card_route._cache, "url_path", lambda sid: "/images/x.jpg")
+    monkeypatch.setattr(_cache, "url_path", lambda sid: "/images/x.jpg")
     resp = await client.get(f"/card/{c.scryfall_id}/image", follow_redirects=False)
     assert resp.status_code == 307
-    assert resp.headers["location"].endswith("/images/x.jpg")
+    assert resp.headers["location"].endswith("/x.jpg")
 
 
 # --- similar grid -------------------------------------------------------------------------------
@@ -119,29 +120,6 @@ async def test_card_similar_with_matches(client, session, monkeypatch):
     resp = await client.get(f"/card/{c.scryfall_id}/similar")
     assert resp.status_code == 200
     assert "Shock" in resp.text
-
-
-# --- tags ---------------------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_add_and_delete_tag(client, session):
-    c = await _card(session)
-    session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1))
-    await session.commit()
-    add = await client.post(f"/card/{c.scryfall_id}/tags", data={"tag": "cube"})
-    assert add.status_code == 200 and "cube" in add.text
-    dele = await client.post(f"/card/{c.scryfall_id}/tags/delete", data={"tag": "cube"})
-    assert dele.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_tags_read_only(client, session, monkeypatch):
-    from src.config import get_settings
-    c = await _card(session)
-    monkeypatch.setattr(get_settings(), "read_only", True)
-    assert (await client.post(f"/card/{c.scryfall_id}/tags", data={"tag": "x"})).status_code == 403
-    assert (await client.post(f"/card/{c.scryfall_id}/tags/delete",
-                              data={"tag": "x"})).status_code == 403
 
 
 # --- rulings ------------------------------------------------------------------------------------

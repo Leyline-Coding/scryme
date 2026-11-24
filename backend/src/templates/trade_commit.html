@@ -88,10 +88,10 @@
     <p class="text-sm text-muted">This instance is read-only, so nothing can be settled here.</p>
     {% else %}
     <div class="flex flex-wrap items-center gap-3">
-      <button type="submit" class="rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium">
-        Settle this trade
+      <a href="/trade/pool/{{ pool.id }}" class="rounded-full bg-surface border border-edge hover:border-accent px-4 py-2 text-sm text-muted"><i class="fa-solid fa-arrow-left"></i> Back</a>
+      <button type="submit" class="ml-auto rounded-full bg-accent text-accent-fg px-4 py-2 text-sm font-medium">
+        <i class="fa-solid fa-handshake"></i> Settle this trade
       </button>
-      <a href="/trade/pool/{{ pool.id }}" class="text-sm text-muted hover:text-fg">Cancel</a>
     </div>
     {% endif %}
   </form>

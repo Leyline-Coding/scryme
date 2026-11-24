@@ -3,17 +3,13 @@
 import uuid
 
 import pytest
-from sqlalchemy import select
 from src.collection_edit import (
     add_or_increment,
     adjust_quantity,
-    bulk_add_tag,
     bulk_add_to_collection,
     color_identity_group,
     delete_stack,
     edit_stack,
-    location_summary,
-    organize_by_color_identity,
     owned_for_oracle,
     remove_copies,
     update_stack,
@@ -51,6 +47,8 @@ async def test_add_increments_existing_stack(session):
 async def test_adjust_quantity_and_delete_at_zero(session):
     c = await _card(session)
     s = await add_or_increment(session, c.scryfall_id, 2)
+    assert s is not None
+
     assert str(await adjust_quantity(session, s.id, 1)) == str(c.scryfall_id)
     await session.refresh(s)
     assert s.quantity == 3
@@ -73,20 +71,24 @@ async def test_delete_stack(session):
 async def test_update_stack_all_fields(session):
     c = await _card(session)
     s = await add_or_increment(session, c.scryfall_id, 2)
+    assert s is not None
+
     out = await update_stack(session, s.id, quantity=0, finish="foil", language="",
-                             condition="NM", binder="B1", location="Shelf", tags=["a"])
+                             condition="NM", location=None, tags=["a"])
+    assert out is not None
     assert out.quantity == 1  # clamped to >= 1
     assert out.finish == "foil" and out.language == "en"
-    assert out.condition == "NM" and out.binder_name == "B1" and out.location == "Shelf"
+    assert out.condition == "NM" and out.location is None
     assert out.tags == ["a"]
 
 
 @pytest.mark.asyncio
 async def test_update_stack_clear_with_none(session):
     c = await _card(session)
-    s = await add_or_increment(session, c.scryfall_id, 1, condition="NM", binder="B")
-    out = await update_stack(session, s.id, condition=None, binder=None, location=None, tags=[])
-    assert out.condition is None and out.binder_name is None and out.tags is None
+    s = await add_or_increment(session, c.scryfall_id, 1, condition="NM")
+    out = await update_stack(session, s.id, condition=None, location=None, tags=[])
+    assert out is not None
+    assert out.condition is None and out.tags is None
 
 
 @pytest.mark.asyncio
@@ -137,7 +139,6 @@ async def test_bulk_add_and_tag(session):
                                         [str(a.scryfall_id), str(b.scryfall_id)], 1) == 2
     # An unknown id doesn't count.
     assert await bulk_add_to_collection(session, [str(uuid.uuid4())], 1) == 0
-    assert await bulk_add_tag(session, [str(a.scryfall_id), str(b.scryfall_id)], "trade") == 2
 
 
 @pytest.mark.asyncio
@@ -177,29 +178,3 @@ def test_color_identity_group_all_shapes():
     assert color_identity_group(["W", "U", "B"]) == "Esper"
     assert color_identity_group(["W", "U", "B", "R"]) == "Four-color"
     assert color_identity_group(["W", "U", "B", "R", "G"]) == "Five-color"
-
-
-@pytest.mark.asyncio
-async def test_organize_by_color_identity(session):
-    red = await _card(session, n=1, color_identity=["R"])
-    colorless = await _card(session, n=2, color_identity=[])
-    await add_or_increment(session, red.scryfall_id, 1)
-    await add_or_increment(session, colorless.scryfall_id, 1)
-    count = await organize_by_color_identity(session)
-    assert count == 2
-    locs = {s.location for s in (await session.execute(select(CollectionCard))).scalars().all()}
-    assert locs == {"Red", "Colorless"}
-
-
-# --- location summary ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_location_summary(session):
-    c1 = await _card(session, n=1)
-    c2 = await _card(session, n=2)
-    await add_or_increment(session, c1.scryfall_id, 3, location="Box A")
-    await add_or_increment(session, c2.scryfall_id, 2)  # unfiled
-    summaries = await location_summary(session)
-    by_loc = {s.location: (s.stacks, s.quantity) for s in summaries}
-    assert by_loc["Box A"] == (1, 3)
-    assert by_loc[None] == (1, 2)

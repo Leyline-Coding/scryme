@@ -1,21 +1,18 @@
 """First-class custom binders (#206).
 
-A ``Binder`` is a user-named collection of owned cards (many-to-many via ``BinderCard``).
-Distinct from the import ``collection_card.binder_name`` string and from tags. Membership is by
-printing (``scryfall_id``); ownership is enforced when adding. Binders are a flat list — users
-name them whatever suits their organization ("Ramp", "Removal", "Cats", "Orzhov", ...).
+Binders are a location type (like boxes and decks) that have some special rules with regards to
+how cards are displayed.
 """
 
 from __future__ import annotations
 
 import datetime
-import uuid
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, func
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import DateTime, Integer, String, func
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from src.db import Base
+from src.models.location import Location
 
 
 class Binder(Base):
@@ -26,18 +23,15 @@ class Binder(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-
-
-class BinderCard(Base):
-    __tablename__ = "binder_card"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    binder_id: Mapped[int] = mapped_column(
-        ForeignKey("binder.id", ondelete="CASCADE"), index=True
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-    scryfall_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
-    added_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+    location: Mapped[Location] = relationship(
+        "Location",
+        primaryjoin=lambda: (
+            (Binder.id == foreign(Location.foreign_id)) &
+            (Location.type == "binder")
+        ),
+        uselist=False,
+        viewonly=True,
     )
-
-    __table_args__ = (UniqueConstraint("binder_id", "scryfall_id", name="uq_binder_card"),)

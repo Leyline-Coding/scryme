@@ -9,6 +9,7 @@ The rules being pinned here, because both are security-relevant and neither is o
 """
 
 import datetime
+import sys
 
 import pytest
 from sqlalchemy import select
@@ -38,6 +39,7 @@ async def test_issuing_returns_a_secret_that_is_never_stored(session):
     assert row.label == "Pixel scanner" and row.scope == "write" and row.active
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Not supported on Windows")
 def test_stored_hashes_are_keyed_to_this_instance(tmp_path, monkeypatch):
     """A dump of client_token is not enough to check a guess — the key lives outside the DB.
 

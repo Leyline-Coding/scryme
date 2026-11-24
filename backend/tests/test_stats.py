@@ -73,7 +73,7 @@ async def test_empty_collection(session):
 @pytest.mark.asyncio
 async def test_stats_route_renders(client, session):
     await _seed(session)
-    resp = await client.get("/collection?tab=stats")
+    resp = await client.get("/collection/stats")
     assert resp.status_code == 200
     assert "My Collection" in resp.text
     assert "Most valuable" in resp.text
@@ -105,7 +105,7 @@ async def test_collection_growth_by_month(session):
     session.add(CollectionCard(scryfall_id=card.scryfall_id, quantity=1, finish="foil",
                                condition="nm", added_at=jan))
     session.add(CollectionCard(scryfall_id=card.scryfall_id, quantity=2, finish="normal",
-                               binder_name="B", added_at=mar))
+                               source_location_name="B", added_at=mar))
     await session.commit()
 
     growth = await collection_growth(session)
@@ -128,5 +128,5 @@ async def test_collection_growth_empty(session):
 @pytest.mark.asyncio
 async def test_stats_route_shows_growth(client, session):
     await _seed(session)
-    resp = await client.get("/collection?tab=stats")
+    resp = await client.get("/collection/stats")
     assert "Collection growth" in resp.text

@@ -5,7 +5,7 @@ import uuid
 
 import pytest
 import pytest_asyncio
-from src.models import Card, CollectionCard
+from src.models import Box, Card, CollectionCard, Location
 from src.scryfall.mapping import card_to_columns
 from src.search import SearchError, SearchScope
 from src.search.ast import Term
@@ -60,11 +60,17 @@ async def _names(session, query, scope=SearchScope.ALL):
 
 @pytest_asyncio.fixture
 async def seeded(session):
+    b = Box(name="Box A")
+    session.add(b)
+    await session.flush()
+    loc = Location(type='box', foreign_id=b.id)
+    session.add(loc)
+    await session.flush()
     for raw in _RAW:
         session.add(Card(**card_to_columns(raw)))
     # Owned stacks: a foil Bolt with a tag + location; a graded Niv.
     session.add(CollectionCard(scryfall_id=BOLT, quantity=1, finish="foil",
-                               tags=["for-trade"], location="Box A"))
+                               tags=["for-trade"], location=loc.id))
     session.add(CollectionCard(scryfall_id=NIV, quantity=1, finish="normal",
                                grade_company="PSA", grade="10"))
     await session.commit()
@@ -153,7 +159,7 @@ async def test_tag_location_and_owned_finish(seeded, session):
     session.add(CollectionCard(scryfall_id=NIV, quantity=1, finish="etched"))
     await session.commit()
     assert await _names(session, "tag:for-trade") == {"Lightning Bolt"}
-    assert await _names(session, "loc:box") == {"Lightning Bolt"}
+    assert await _names(session, 'loc:"box:Box A"') == {"Lightning Bolt"}
     # Etched is a kind of foil: is:foil includes etched copies, is:etched stays strict.
     assert await _names(session, "is:foil") == {"Lightning Bolt", "Niv-Mizzet, Parun"}
     assert await _names(session, "is:etched") == {"Niv-Mizzet, Parun"}

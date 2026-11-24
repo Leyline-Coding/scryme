@@ -24,7 +24,7 @@ async def _own(session, name, n, qty, usd="2.50"):
 async def test_trade_page_redirect():
     resp = await R.trade_page(keep=2)
     assert resp.status_code == 307
-    assert resp.headers["location"] == "/collection?tab=trade&keep=2"
+    assert resp.headers["location"] == "/collection/trade?keep=2"
 
 
 @pytest.mark.asyncio

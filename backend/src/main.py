@@ -5,14 +5,22 @@ later phases; this build ships the app skeleton, health/home/admin routes, and t
 Scryfall bulk refresh.
 """
 
+import asyncio
 from contextlib import asynccontextmanager
+from typing import cast
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
+from starlette.types import ExceptionHandler
 
 from src import __version__
+from src.card import card_name_text_search_matcher
 from src.config import get_settings
 from src.lan import access_decision, lan_state
 from src.routes import (
@@ -21,6 +29,7 @@ from src.routes import (
     api,
     backup,
     binders,
+    boxes,
     card,
     checklists,
     collection,
@@ -33,11 +42,13 @@ from src.routes import (
     pair,
     preferences,
     prices,
+    reusables,
     saved,
     search,
     sell,
     sets,
     share,
+    sleeves,
     stats,
     trade,
     upload,
@@ -61,11 +72,21 @@ async def lifespan(app: FastAPI):
     # The daily bulk refresh runs in-process. Skip it under tests and in read-only demos.
     if settings.environment != "test" and not settings.read_only:
         start_scheduler(refresh_hours=max(1, settings.bulk_refresh_min_hours))
+    # Check for outstanding migrations. The test schema is built from ORM metadata, not Alembic,
+    # so there is no revision to compare and every page would show the "migrations pending" gate.
+    app.state.pending_migrations = (
+        settings.environment != "test" and await _check_has_pending_migrations()
+    )
+    # A full text search engine for cards names is initialized if AI is setup
+    async def initialize_matcher():
+      app.state.card_name_text_search_matcher = await card_name_text_search_matcher()
+    # Keep a reference: the event loop only holds tasks weakly, so an unreferenced one can be
+    # garbage-collected before it finishes.
+    app.state.card_name_matcher_task = asyncio.create_task(initialize_matcher())
     # Mirror cached FX rates into memory so converted display currencies (#232) work from the first
     # request (even in read-only demos). Non-critical: a failure just leaves conversion unavailable.
     try:
         from src import fx
-
         await fx.load_rates()
     except Exception as exc:  # noqa: BLE001 - display-currency conversion is non-critical
         log.warning("fx.load_failed", error=str(exc))
@@ -126,12 +147,15 @@ def _install_prefs_loader(app: FastAPI) -> None:
     Skips static/image/health/metrics and the token-gated ``/api`` surface. Never 500s a request
     over prefs: a DB hiccup (or the table not yet migrated) falls back to ``None``, and the read
     helpers use their existing cookie/default path.
+
+    Also updates specific cookie preferences from cookies to the database when they differ from
+    stored values, but only for non-read-only deployments.
     """
     from sqlalchemy.exc import SQLAlchemyError
 
     from src.db import SessionLocal
     from src.models import Preferences
-    from src.preferences import resolve
+    from src.preferences import resolve, sync_cookie_prefs_to_db, update_preferences
 
     _skip = ("/static/", "/images/", "/api/")
 
@@ -142,13 +166,51 @@ def _install_prefs_loader(app: FastAPI) -> None:
             try:
                 async with SessionLocal() as s:
                     row = await s.get(Preferences, 1)
-                request.state.prefs = resolve(
-                    row, request.cookies, writable=not get_settings().read_only
-                )
-                request.state.prefs_saved = row is not None  # a value has actually been saved
+                    # Save cookie values to database if they differ from stored values and we're not
+                    # read-only
+                    if row is not None and not get_settings().read_only:
+                        # Check for changes in cookie preferences and update DB if needed
+                        update_fields = sync_cookie_prefs_to_db(s, row, request.cookies)
+
+                        # If there are changes, save them to the database
+                        if update_fields:
+                            await update_preferences(s, **update_fields)
+                            # Reload the row to get updated values
+                            row = await s.get(Preferences, 1)
+
+                    request.state.prefs = resolve(
+                        row, request.cookies, writable=not get_settings().read_only
+                    )
+                    request.state.prefs_saved = row is not None  # a value has actually been saved
             except SQLAlchemyError:
                 request.state.prefs = None
         return await call_next(request)
+
+
+async def _check_has_pending_migrations(alembic_ini_path: str = "alembic.ini") -> bool:
+    from alembic.config import Config
+    from alembic.runtime.migration import MigrationContext
+    from alembic.script import ScriptDirectory
+
+    alembic_cfg = Config(alembic_ini_path)
+    script = ScriptDirectory.from_config(alembic_cfg)
+    head_revs = set(script.get_heads())
+
+    from src.db import SessionLocal
+    def _check_revs(sync_conn) -> set[str]:
+        context = MigrationContext.configure(sync_conn)
+        return set(context.get_current_heads())
+
+    async with SessionLocal() as session:
+        conn = await session.connection()
+        current_revs = await conn.run_sync(_check_revs)
+
+    if(current_revs != head_revs):
+        log.warn("scryme.migrations_pending")
+        return True
+    else:
+        log.info("scryme.no_pending_migrations")
+        return False
 
 
 def create_app() -> FastAPI:
@@ -157,6 +219,15 @@ def create_app() -> FastAPI:
 
     # Compress text responses (HTML, the value-chart SVG, JSON API). Skips small bodies.
     app.add_middleware(GZipMiddleware, minimum_size=512)
+
+    # Add rate limiting middleware - this should be applied before other middlewares that might be
+    # affected
+    # Initialize rate limiter
+    app.state.limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+    app.add_exception_handler(
+        RateLimitExceeded, cast(ExceptionHandler, _rate_limit_exceeded_handler)
+    )
+    app.add_middleware(SlowAPIMiddleware)
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -193,6 +264,9 @@ def create_app() -> FastAPI:
     app.include_router(pair.router)
     app.include_router(watch.router)
     app.include_router(ai.router)
+    app.include_router(sleeves.router)
+    app.include_router(reusables.router)
+    app.include_router(boxes.router)
 
     # Cached card images are served from the data volume.
     settings.image_cache_dir.mkdir(parents=True, exist_ok=True)

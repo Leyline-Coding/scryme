@@ -102,7 +102,7 @@ async def collect_admin_stats(session: AsyncSession) -> AdminStats:
     )
 
 
-def image_cache_disk(directory: Path) -> tuple[int, int]:
+def image_cache_disk(directory: Path | None) -> tuple[int, int]:
     """(file count, total bytes) under *directory* — a walk, for the dashboard only."""
     if not directory or not directory.is_dir():
         return 0, 0

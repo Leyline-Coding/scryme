@@ -42,3 +42,5 @@ deploy/k8s/**/secret.yaml
 /building_standard_decks.txt
 /wiki_deck_types.txt
 /mtg_comprehensive_rules.txt
+backend/.env
+backend/.env-test

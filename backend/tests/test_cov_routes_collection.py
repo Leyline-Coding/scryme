@@ -5,10 +5,7 @@ import uuid
 import pytest
 from sqlalchemy import select
 from src.binder_service import create_binder
-from src.box_service import create_box
-from src.decks import create_deck
 from src.models import Card, CollectionCard
-from src.routes import collection as coll_route
 from src.scryfall.mapping import card_to_columns
 
 
@@ -30,23 +27,6 @@ async def _own(session, card, quantity=2, **kw):
     return stack
 
 
-# --- printing_options / location_choices helpers -------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_printing_options_unknown_card_returns_empty(session):
-    assert await coll_route.printing_options(session, uuid.uuid4()) == []
-
-
-@pytest.mark.asyncio
-async def test_printing_options_lists_siblings(session):
-    oracle = uuid.uuid4()
-    p1 = await _card(session, oracle=oracle, n=1)
-    await _card(session, oracle=oracle, n=2)
-    opts = await coll_route.printing_options(session, str(p1.scryfall_id))
-    assert len(opts) == 2
-    assert all("TST" in label for _, label in opts)
-
-
 # --- add ----------------------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -55,7 +35,7 @@ async def test_add_route(client, session):
     resp = await client.post("/collection/add",
                              data={"scryfall_id": str(c.scryfall_id), "quantity": 3,
                                    "finish": "foil", "condition": "NM", "language": "en",
-                                   "binder": "Box A", "location": "Shelf"})
+                                   "location": 1})
     assert resp.status_code == 200
     assert "3 total" in resp.text
 
@@ -108,7 +88,7 @@ async def test_edit_stack_printing_change_redirects(client, session):
                              data={"card_id": str(p1.scryfall_id),
                                    "printing": str(p2.scryfall_id)},
                              follow_redirects=False)
-    assert resp.headers.get("HX-Redirect") == f"/card/{p2.scryfall_id}"
+    assert "Owned Other printings" in resp.text
 
 
 # --- remove modal -------------------------------------------------------------------------------
@@ -155,58 +135,6 @@ async def test_remove_route(client, session):
     remaining = await session.scalar(
         select(func.count()).select_from(CollectionCard).where(CollectionCard.id == s.id))
     assert remaining == 0
-
-
-# --- locate stack -------------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_locate_stack_box(client, session):
-    c = await _card(session)
-    s = await _own(session, c, 1)
-    await create_box(session, "Long Box")
-    resp = await client.post(f"/collection/stack/{s.id}/locate",
-                             data={"location_choice": "box:Long Box"})
-    assert resp.status_code == 200
-    await session.refresh(s)
-    assert s.location == "Long Box"
-
-
-@pytest.mark.asyncio
-async def test_locate_stack_binder(client, session):
-    c = await _card(session)
-    s = await _own(session, c, 1)
-    b = await create_binder(session, "Binder One")
-    resp = await client.post(f"/collection/stack/{s.id}/locate",
-                             data={"location_choice": f"binder:{b.id}"})
-    assert resp.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_locate_stack_deck(client, session):
-    c = await _card(session)
-    s = await _own(session, c, 1)
-    d = await create_deck(session, "My Deck", "")
-    resp = await client.post(f"/collection/stack/{s.id}/locate",
-                             data={"location_choice": f"deck:{d.id}"})
-    assert resp.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_locate_stack_unfile(client, session):
-    c = await _card(session)
-    s = await _own(session, c, 1, location="Old Spot")
-    resp = await client.post(f"/collection/stack/{s.id}/locate",
-                             data={"location_choice": ""})
-    assert resp.status_code == 200
-    await session.refresh(s)
-    assert s.location is None
-
-
-@pytest.mark.asyncio
-async def test_locate_stack_404(client):
-    resp = await client.post("/collection/stack/999999/locate",
-                             data={"location_choice": "box:X"})
-    assert resp.status_code == 404
 
 
 # --- grade --------------------------------------------------------------------------------------
@@ -305,12 +233,6 @@ async def test_bulk_no_ids(client):
 
 # --- locations redirect + boxes -----------------------------------------------------------------
 
-@pytest.mark.asyncio
-async def test_locations_redirect(client):
-    resp = await client.get("/collection/locations", follow_redirects=False)
-    assert resp.status_code == 307
-    assert resp.headers["location"] == "/collection?tab=locations"
-
 
 @pytest.mark.asyncio
 async def test_box_new_rename_delete(client, session):
@@ -319,23 +241,10 @@ async def test_box_new_rename_delete(client, session):
                             follow_redirects=False)
     assert new.status_code == 303
     box_id = await session.scalar(select(Box.id).where(Box.name == "New Box"))
-    ren = await client.post(f"/collection/boxes/{box_id}/rename", data={"name": "Renamed"},
-                            follow_redirects=False)
-    assert ren.status_code == 303
+
     dele = await client.post(f"/collection/boxes/{box_id}/delete", follow_redirects=False)
     assert dele.status_code == 303
 
-
-@pytest.mark.asyncio
-async def test_organize_by_identity(client, session):
-    c = await _card(session)
-    await _own(session, c, 1)
-    resp = await client.post("/collection/organize-by-identity", follow_redirects=False)
-    assert resp.status_code == 303
-    await session.refresh(c)
-    stack = await session.scalar(select(CollectionCard).where(
-        CollectionCard.scryfall_id == c.scryfall_id))
-    assert stack.location == "Red"
 
 
 # --- read-only guards ---------------------------------------------------------------------------
@@ -351,14 +260,11 @@ async def test_read_only_blocks(client, session, monkeypatch):
         ("/collection/stack/1/delete", {}),
         ("/collection/stack/1/edit", {"card_id": str(c.scryfall_id)}),
         ("/collection/remove", {"card_id": str(c.scryfall_id)}),
-        ("/collection/stack/1/locate", {"location_choice": ""}),
         ("/collection/stack/1/grade", {"company": "PSA"}),
         ("/collection/stack/1/grade/clear", {}),
         ("/collection/bulk", {"bulk_action": "add"}),
         ("/collection/boxes/new", {"name": "x"}),
-        ("/collection/boxes/1/rename", {"name": "x"}),
         ("/collection/boxes/1/delete", {}),
-        ("/collection/organize-by-identity", {}),
     ]:
         resp = await client.post(url, data=data)
         assert resp.status_code == 403, url

@@ -1,8 +1,7 @@
 """Storage boxes (#160): a registry of user-named physical boxes.
 
-A box is a physical container for bulk storage. Membership is denormalized onto
-``collection_card.location`` (the box's name), so ``loc:`` search and the location column keep
-working; this table just lets users create/rename/delete boxes (including empty ones).
+A box is a physical container for bulk storage, a type of location.
+This table just lets users create/rename/delete boxes (including empty ones).
 """
 
 from __future__ import annotations

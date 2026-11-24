@@ -73,7 +73,7 @@ class ChecklistCoverage:
     checklist: Checklist
     rows: list[ChecklistRow] = field(default_factory=list)
     total: int = 0
-    owned_count: int = 0
+    total_owned: int = 0
     unmatched: int = 0
 
     @property
@@ -85,8 +85,8 @@ class ChecklistCoverage:
         return sum(1 for r in self.rows if not r.owned and r.matched)
 
     @property
-    def pct_complete(self) -> int:
-        return round(100 * self.owned_count / self.total) if self.total else 0
+    def pct_own(self) -> int:
+        return round(100 * self.total_owned / self.total) if self.total else 0
 
 
 async def checklist_coverage(session: AsyncSession, checklist: Checklist) -> ChecklistCoverage:
@@ -98,7 +98,7 @@ async def checklist_coverage(session: AsyncSession, checklist: Checklist) -> Che
         if not matched:
             cov.unmatched += 1
         if is_owned:
-            cov.owned_count += 1
+            cov.total_owned += 1
         cov.rows.append(
             ChecklistRow(
                 name=item.name,

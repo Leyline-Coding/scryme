@@ -36,7 +36,7 @@ async def _card(session, name):
 @pytest.mark.asyncio
 async def test_list_redirect():
     resp = await R.list_checklists()
-    assert resp.status_code == 307 and resp.headers["location"] == "/collection?tab=checklists"
+    assert resp.status_code == 307 and resp.headers["location"] == "/collection/checklists"
 
 
 @pytest.mark.asyncio

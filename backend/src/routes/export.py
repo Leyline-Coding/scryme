@@ -24,7 +24,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only
 
 from src.db import get_session
-from src.models import Card, CollectionCard
+from src.locations import get_location_name
+from src.models import Card, CollectionCard, Location
 from src.search import SearchError, SearchScope
 from src.search.engine import DEFAULT_SORT, SORT_KEYS, _owned_quantities, build_search
 
@@ -90,10 +91,10 @@ def _manabox_stream(stacks):
     writer, flush = _row_flusher()
     writer.writerow(MANABOX_HEADER)
     yield flush()
-    for stack, card in stacks:
+    for stack, card, location_name in stacks:
         price = "" if stack.purchase_price is None else stack.purchase_price
         writer.writerow([
-            stack.binder_name or "", "", card.name, card.set_code, card.set_name or "",
+            location_name or "", "", card.name, card.set_code, card.set_name or "",
             card.collector_number, stack.finish, card.rarity or "", stack.quantity, "",
             str(card.scryfall_id), price, "false", "false", stack.condition or "",
             stack.language, "USD" if price != "" else "", "",
@@ -128,14 +129,17 @@ async def export(
         ids = select(base.subquery().c.scryfall_id)
         rows = (
             await session.execute(
-                select(CollectionCard, Card)
+                select(CollectionCard, Card, Location)
                 .join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
+                .outerjoin(Location, CollectionCard.location == Location.id)
                 .where(CollectionCard.scryfall_id.in_(ids))
                 .order_by(Card.name, CollectionCard.finish)
                 .limit(MAX_EXPORT)
             )
         ).all()
-        content = _manabox_stream([(r[0], r[1]) for r in rows])
+        content = _manabox_stream(
+            [(r[0], r[1], (await get_location_name(session, r[2]))) for r in rows]
+        )
     else:
         cards = list(
             (

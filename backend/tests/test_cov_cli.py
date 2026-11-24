@@ -196,15 +196,6 @@ def test_sync_market_prices_empty_ck_hint(monkeypatch, capsys):
     assert "run `backfill-mtgjson-ids` once first" in capsys.readouterr().out
 
 
-def test_organize_locations(monkeypatch, capsys):
-    async def fake_org(session):
-        return 6
-
-    monkeypatch.setattr("src.collection_edit.organize_by_color_identity", fake_org)
-    _run(monkeypatch, ["organize-locations"])
-    assert "Filed 6 stack(s)" in capsys.readouterr().out
-
-
 def test_refresh_sets(monkeypatch, capsys):
     async def fake_refresh(session, force=False):
         assert force is True

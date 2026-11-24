@@ -44,7 +44,7 @@ def test_image_helper():
 @pytest.mark.asyncio
 async def test_wishlist_page_redirect():
     resp = await R.wishlist_page()
-    assert resp.status_code == 307 and resp.headers["location"] == "/collection?tab=wishlist"
+    assert resp.status_code == 307 and resp.headers["location"] == "/collection/wishlist"
 
 
 @pytest.mark.asyncio

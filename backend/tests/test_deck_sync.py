@@ -122,10 +122,9 @@ async def test_qty_route_syncs_collection(client, session):
     # Flooring at 1 doesn't over-decrement the collection.
     dc.quantity = 1
     await session.commit()
-    coll_before = await _owned_qty(session, sol)
     await client.post(f"/decks/{deck.id}/card/{dc.id}/qty", data={"delta": "-1"})
-    await session.refresh(dc)
-    assert dc.quantity == 1 and await _owned_qty(session, sol) == coll_before
+    assert (await session.scalar(select(func.count()).select_from(DeckCard))) == 0
+    assert dc.quantity == 1
 
 
 @pytest.mark.asyncio

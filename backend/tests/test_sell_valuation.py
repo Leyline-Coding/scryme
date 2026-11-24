@@ -61,11 +61,11 @@ async def test_valuation_report(session):
 async def test_sell_routes(client, session):
     await _own(session, "Sol Ring", "5.00", tags=["for-sale"])
 
-    tab = await client.get("/collection?tab=sell")
+    tab = await client.get("/collection/sell")
     assert tab.status_code == 200 and "Sol Ring" in tab.text
 
     redirect = await client.get("/sell", follow_redirects=False)
-    assert redirect.status_code == 307 and redirect.headers["location"] == "/collection?tab=sell"
+    assert redirect.status_code == 307 and redirect.headers["location"] == "/collection/sell"
 
     csv_resp = await client.get("/sell/export?fmt=csv")
     assert csv_resp.status_code == 200

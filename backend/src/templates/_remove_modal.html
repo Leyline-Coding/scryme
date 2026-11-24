@@ -1,15 +1,24 @@
 {# Remove-from-collection modal: choose how many copies (and which printings) to remove. Loaded
    into #remove-modal by HTMX; a successful remove re-renders #card-collection (clearing this). #}
-<div class="fixed inset-0 z-[70] flex items-center justify-center p-4">
-  <button type="button" class="absolute inset-0 w-full h-full border-0 bg-black/50" aria-label="Close dialog"
-       onclick="document.getElementById('remove-modal').innerHTML=''"
-       onkeydown="if(event.key==='Escape'){document.getElementById('remove-modal').innerHTML=''}"></button>
-  <div class="relative w-full max-w-md rounded-xl bg-surface ring-1 ring-edge shadow-2xl p-4">
-    <h3 class="font-semibold">Remove from collection</h3>
-    <p class="text-sm text-muted mb-3">
-      {{ name }} — set how many copies to remove{% if stacks|length > 1 %} from each printing/finish{% endif %}.
-    </p>
-    <form hx-post="/collection/remove" hx-target="#card-collection" hx-swap="outerHTML">
+<dialogue class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onclick="if (event.target === this) this.remove()" onkeydown="if(event.key==='Escape') this.remove()" >
+  <div class="bg-surface rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-edge">
+    <div class="flex items-center justify-between px-4 py-2 border-b border-edge">
+      <h3 class="font-semibold text-lg">Remove from collection</h3>
+      <div class="flex justify-end gap-2">
+        <button 
+          type="button" 
+          onclick="this.closest('dialogue').remove()" 
+          class="px-4 py-2">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+
+    <form hx-post="/collection/remove" hx-target="#card-collection" hx-swap="outerHTML" class="flex-1 overflow-y-auto p-4 space-y-3 max-h-[500px]">
+      <p class="text-sm text-muted mb-3">
+        {{ name }} — set how many copies to remove{% if stacks|length > 1 %} from each printing/finish{% endif %}.
+      </p>
+    
       <input type="hidden" name="card_id" value="{{ card_id }}" />
       <div class="space-y-1.5 max-h-64 overflow-y-auto pr-1">
         {% for cc, c in stacks %}
@@ -29,11 +38,11 @@
         {% endfor %}
       </div>
       <div class="flex justify-end gap-2 mt-4">
-        <button type="button" onclick="document.getElementById('remove-modal').innerHTML=''"
+        <button type="button" onclick="this.closest('dialogue').remove()" 
                 class="rounded-lg bg-surface-2 hover:bg-surface-3 px-3 py-1.5 text-sm">Cancel</button>
         <button type="submit"
                 class="rounded-lg bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 text-sm font-medium">Remove</button>
       </div>
     </form>
   </div>
-</div>
+</dialogue>

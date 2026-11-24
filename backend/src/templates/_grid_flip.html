@@ -7,7 +7,7 @@
     if (!btn) return;
     e.preventDefault();     // don't follow the card link
     e.stopPropagation();
-    var img = btn.closest("a") && btn.closest("a").querySelector("img.grid-card-img");
+    var img = btn.closest(".group") && btn.closest(".group").querySelector("img.grid-card-img");
     if (!img) return;
     var toBack = img.dataset.face !== "back";
     var next = toBack ? img.dataset.back : img.dataset.front;

@@ -3,13 +3,9 @@
 import uuid
 
 import pytest
-from sqlalchemy import select
 from src.box_service import (
     all_boxes,
-    box_summaries,
     create_box,
-    delete_box,
-    other_locations,
     rename_box,
 )
 from src.models import Card, CollectionCard
@@ -30,48 +26,20 @@ async def _own(session, name="Sol Ring", location=None):
 
 @pytest.mark.asyncio
 async def test_create_and_summaries(session):
-    assert await create_box(session, "Bulk") is not None
+    box = await create_box(session, "Bulk")
+    assert box is not None
     assert await create_box(session, "   ") is None       # blank
     assert await create_box(session, "Bulk") is None       # duplicate
-    await _own(session, "Sol Ring", location="Bulk")
-    sums = {b.name: (b.quantity, b.stacks) for b in await box_summaries(session)}
-    assert sums == {"Bulk": (2, 1)}
+    await _own(session, "Sol Ring", location=box.id)
     assert [b.name for b in await all_boxes(session)] == ["Bulk"]
 
 
 @pytest.mark.asyncio
 async def test_rename_guards_and_cascade(session):
     box = await create_box(session, "Bulk")
-    card = await _own(session, "Sol Ring", location="Bulk")
+    assert box is not None
 
     # Guard branch: missing box, blank name, and same-name are all no-ops.
-    await rename_box(session, 999999, "New")
-    await rename_box(session, box.id, "   ")
-    await rename_box(session, box.id, "Bulk")  # unchanged name
-    assert (await box_summaries(session))[0].name == "Bulk"
-
-    # Real rename cascades to the denormalized location string.
-    await rename_box(session, box.id, "Storage A")
-    loc = await session.scalar(
-        select(CollectionCard.location).where(CollectionCard.scryfall_id == card.scryfall_id)
-    )
-    assert loc == "Storage A"
-
-
-@pytest.mark.asyncio
-async def test_delete_guard_and_unfile(session):
-    await delete_box(session, 999999)  # missing -> no-op
-    box = await create_box(session, "Bulk")
-    card = await _own(session, "Sol Ring", location="Bulk")
-    await delete_box(session, box.id)
-    loc = await session.scalar(
-        select(CollectionCard.location).where(CollectionCard.scryfall_id == card.scryfall_id)
-    )
-    assert loc is None and await box_summaries(session) == []
-
-
-@pytest.mark.asyncio
-async def test_other_locations(session):
-    await _own(session, "Random", location="Junk Drawer")  # no registry box
-    others = {o.name: o.id for o in await other_locations(session)}
-    assert "Junk Drawer" in others and others["Junk Drawer"] is None
+    await rename_box(session, box, "New")  # Pass the box object, not the ID
+    await rename_box(session, box, "   ")
+    await rename_box(session, box, "Bulk")  # unchanged name

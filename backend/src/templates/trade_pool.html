@@ -10,7 +10,7 @@
     {% if pool.status == 'closed' %}
     <span class="rounded-full bg-surface-2 text-muted text-xs px-2 py-0.5">closed</span>
     {% endif %}
-    <a href="/collection?tab=trade" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Trade →</a>
+    <a href="/collection/trade" class="ml-auto text-sm text-muted hover:text-fg shrink-0">Trade →</a>
   </header>
 
   {# The valuation basis is frozen on the pool so both sides of a trade read the same totals
@@ -56,8 +56,8 @@
   {% elif not view.is_empty and not read_only %}
   <div class="mb-6 flex flex-wrap items-center gap-3">
     <a href="/trade/pool/{{ pool.id }}/commit"
-       class="rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium">Settle this trade →</a>
-    <span class="text-xs text-muted">Review what moves before anything does.</span>
+       class="rounded-full bg-accent text-accent-fg px-4 py-2 text-sm font-medium">Start this trade <i class="fa-solid fa-arrow-right"></i></a>
+    <span class="text-xs text-muted">You will have a chance to make final modifications.</span>
   </div>
   {% endif %}
 
@@ -101,7 +101,7 @@
             </span>
             {% if not read_only and pool.status != 'closed' %}
             <button type="button" @click="editing = !editing" title="Adjust this card"
-                    class="shrink-0 text-xs text-muted hover:text-accent tap">✎</button>
+                    class="shrink-0 text-xs text-muted hover:text-accent tap"><i class="fa-solid fa-pen"></i></button>
             <form method="post" action="/trade/pool/{{ pool.id }}/items/{{ r.item_id }}/delete"
                   class="shrink-0">
               <button type="submit" title="Unstage" class="text-xs text-muted hover:text-rose-500 tap">✕</button>

@@ -40,6 +40,7 @@ class ShareLink(Base):
     # a thing you chose.
     show_prices: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    currency: Mapped[str] = mapped_column(String(8))
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

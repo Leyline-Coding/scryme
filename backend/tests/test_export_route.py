@@ -3,8 +3,9 @@
 import uuid
 
 import pytest
+from src.binder_service import create_binder
 from src.importers.base import detect_format
-from src.models import Card, CollectionCard
+from src.models import Card, CollectionCard, Location
 from src.scryfall.mapping import card_to_columns
 
 
@@ -18,10 +19,17 @@ async def _seed(session):
     owned_card = Card(**card_to_columns(owned))
     session.add(owned_card)
     session.add(Card(**card_to_columns(unowned)))
+
+    b = await create_binder(session, "Reds")
+    assert b is not None
+
+    loc = Location(type='binder', foreign_id=b.id)
+    session.add(loc)
     await session.flush()
+
     session.add(CollectionCard(
         scryfall_id=owned_card.scryfall_id, quantity=3, finish="foil",
-        condition="near_mint", language="en", binder_name="Reds", purchase_price=2.5))
+        condition="near_mint", language="en", location=loc.id, purchase_price=2.5))
     await session.commit()
     return owned_card
 

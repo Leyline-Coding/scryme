@@ -3,6 +3,8 @@
 The uvicorn.run server launch itself is not unit-testable (it blocks serving), so it is mocked;
 the ``if __name__ == '__main__'`` guard (line 52) is unreachable on import."""
 
+from pathlib import Path
+
 import src.desktop_entry as de
 
 
@@ -14,7 +16,7 @@ def test_base_dir_not_frozen():
 def test_base_dir_frozen(monkeypatch):
     monkeypatch.setattr(de.sys, "frozen", True, raising=False)
     monkeypatch.setattr(de.sys, "_MEIPASS", "/tmp/meipass-bundle", raising=False)
-    assert str(de._base_dir()) == "/tmp/meipass-bundle"
+    assert Path(de._base_dir()).as_posix().endswith("/tmp/meipass-bundle")
 
 
 def test_migrate_wires_alembic_config(monkeypatch):

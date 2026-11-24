@@ -38,7 +38,7 @@ from src.trade_pool import (
 
 router = APIRouter(tags=["trade"])
 
-_TRADE_TAB = "/collection?tab=trade"
+_TRADE_TAB = "/collection/trade"
 _POOL_NOT_FOUND = "Trade pool not found."
 
 
@@ -50,7 +50,7 @@ def _guard_writable() -> None:
 @router.get("/trade")
 async def trade_page(keep: int = 1) -> RedirectResponse:
     # The trade binder is now the Trade tab of /collection.
-    return local_redirect(f"{_TRADE_TAB}&keep={keep}", status_code=307)
+    return local_redirect(f"{_TRADE_TAB}?keep={keep}", status_code=307)
 
 
 @router.get("/trade/export")
@@ -232,14 +232,12 @@ async def do_commit(
     request: Request,
     pool_id: int,
     item_ids: list[int] = Form(default=[]),
-    binder: str = Form(""),
     location: str = Form(""),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     """Move the ticked cards, then show exactly what happened — including what didn't."""
     _guard_writable()
-    result = await commit_trade(session, pool_id, item_ids or None,
-                                binder=binder or None, location=location or None)
+    result = await commit_trade(session, pool_id, item_ids or None, location=location or None)
     if result is None:
         raise HTTPException(status_code=404, detail=_POOL_NOT_FOUND)
     pool = await get_pool(session, pool_id)

@@ -46,9 +46,9 @@ async def test_coverage_counts(session):
     cl = await create_checklist(session, "P9", "Black Lotus\nMox Sapphire\nUnknownCard")
     cov = await checklist_coverage(session, cl)
     assert cov.total == 3
-    assert cov.owned_count == 1
+    assert cov.total_owned == 1
     assert cov.unmatched == 1
-    assert cov.pct_complete == 33
+    assert cov.pct_own == 33
     assert cov.missing_matched == 1  # Mox Sapphire (matched, not owned); UnknownCard isn't matched
     assert [r.name for r in cov.missing] == ["Mox Sapphire", "UnknownCard"]
 
@@ -78,7 +78,7 @@ async def test_checklist_routes(client, session):
     assert page.status_code == 200
     assert "P9" in page.text and "% complete" in page.text and "Black Lotus" in page.text
 
-    listing = await client.get("/collection?tab=checklists")
+    listing = await client.get("/collection/checklists")
     assert "P9" in listing.text
 
 

@@ -29,7 +29,7 @@ from src.scryfall.ingest import (
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
-SAMPLE = FIXTURES / "scryfall_sample.json"
+SAMPLE = FIXTURES / "scryfall_sample.jsonl"
 
 
 def test_is_paper_and_is_gzip(tmp_path):
@@ -49,6 +49,7 @@ def test_is_paper_and_is_gzip(tmp_path):
 def test_parse_dt():
     assert _parse_dt(None) is None
     dt = _parse_dt("2026-06-25T09:00:00Z")
+    assert dt is not None
     assert dt.year == 2026 and dt.tzinfo is not None
 
 
@@ -59,8 +60,8 @@ def test_read_batches_filters_digital_and_batches(tmp_path):
         {"id": "3", "name": "No games C"},  # kept (assume paper)
         {"id": "4", "name": "Paper D", "games": ["paper", "mtgo"]},
     ]
-    f = tmp_path / "cards.json"
-    f.write_text(json.dumps(cards))
+    f = tmp_path / "cards.jsonl"
+    f.write_text("\n".join(json.dumps(card) for card in cards) + "\n", encoding="utf-8")
     batches = list(_read_batches(f, batch_size=2))
     flat = [c["id"] for b in batches for c in b]
     assert flat == ["1", "3", "4"]  # arena dropped
@@ -270,8 +271,7 @@ class JsonlScryfallClient(FakeScryfallClient):
     async def download_to_file(self, url, dest: Path):
         self.downloaded.append(url)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        cards = json.loads(Path(self._source).read_text())
-        dest.write_bytes(gzip.compress(_jsonl(cards)))
+        dest.write_bytes(gzip.compress(Path(self._source).read_bytes()))
         return dest
 
 
@@ -282,7 +282,10 @@ async def test_ingest_default_cards_from_json_lines_catalog(session):
     result = await ingest_default_cards(force=True, client=client)
     assert client.downloaded == [url]
     assert result.skipped is False
-    expected = sum(1 for c in json.loads(SAMPLE.read_text()) if _is_paper(c))
+    expected = sum(
+        1 for line in SAMPLE.read_text().splitlines()
+        if line.strip() and _is_paper(json.loads(line))
+    )
     assert result.card_count == expected > 0
     assert get_ingest_progress()["phase"] == "done"
 

@@ -1,7 +1,8 @@
 """Logical backup & restore of the user's data (everything except the reproducible card DB).
 
 A backup is a single JSON document of the user tables — collection, decks, saved searches, price
-history, wishlist, and the tags carried on the collection. The card database (`cards`,
+history, wishlist, the tags carried on the collection, and the places cards are filed in (boxes,
+binders and the ``location`` rows that tie a stack to one of them). The card database (`cards`,
 `ingest_state`) is *not* included: it's rebuilt from Scryfall, so backups stay small and portable
 and survive re-ingests.
 
@@ -9,6 +10,10 @@ Restore is a **replace**: the user tables are wiped and repopulated from the fil
 transaction). Rows that reference a card not present in the current database (e.g. restoring before
 an ingest) are skipped and reported rather than failing the whole restore. Original primary keys
 are preserved so deck/snapshot relationships stay intact; the identity sequences are then advanced.
+
+Backups written before the location system carry no boxes or binders, and name a stack's place
+with a free-text ``location`` string. Restoring one keeps the boxes and binders already in the
+database and files each stack by that name, creating a box for a name that matches nothing.
 """
 
 from __future__ import annotations
@@ -19,18 +24,22 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from sqlalchemy import Date, DateTime, insert, select, text
+from sqlalchemy import Date, DateTime, delete, insert, select, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.cryptobackup import BackupDecryptError, decrypt_backup, encrypt_backup, is_encrypted
 from src.db import SessionLocal
+from src.locations import find_or_create_location_by_name
 from src.models import (
+    Binder,
+    Box,
     Card,
     CardPricePoint,
     CollectionCard,
     Deck,
     DeckCard,
+    Location,
     PriceSnapshot,
     SavedSearch,
     WishlistItem,
@@ -40,16 +49,26 @@ BACKUP_VERSION = 1
 
 # Parent-before-child order so preserved foreign keys insert cleanly on restore.
 _TABLES = [
+    ("box", Box),
+    ("binder", Binder),
+    ("deck", Deck),
+    ("location", Location),
     ("collection_card", CollectionCard),
     ("saved_search", SavedSearch),
     ("wishlist", WishlistItem),
-    ("deck", Deck),
     ("deck_card", DeckCard),
     ("price_snapshot", PriceSnapshot),
     ("card_price_point", CardPricePoint),
 ]
 # Tables whose scryfall_id must exist in `cards` (FK); rows pointing at unknown cards are skipped.
 _CARD_FK_TABLES = {"collection_card", "wishlist"}
+# The places a stack can be filed in. Only a backup that carries its own ``location`` table
+# replaces these; an older backup leaves the ones in the database alone (see the module docstring).
+_PLACE_TABLES = {"box", "binder", "location"}
+
+
+def _has_places(tables: dict) -> bool:
+    return "location" in tables
 
 
 def _to_json(value):
@@ -124,6 +143,9 @@ def _prepare_rows(
         good: list[dict] = []
         for row in tables.get(name) or []:
             coerced = {k: _from_json(cols[k], v) for k, v in row.items() if k in cols}
+            if name == "collection_card" and row.get("binder_name") is not None:
+                # Renamed column: the binder a CSV import said the stack came from.
+                coerced.setdefault("source_location_name", row["binder_name"])
             if name in _CARD_FK_TABLES and coerced.get("scryfall_id") not in existing_cards:
                 skipped += 1
                 continue
@@ -157,17 +179,24 @@ async def restore_backup(
     if dry_run:
         return RestoreResult(ok=True, applied=False, counts=counts, skipped_missing_cards=skipped)
 
+    has_places = _has_places(tables)
+    restored = [(n, m) for n, m in _TABLES if has_places or n not in _PLACE_TABLES]
     await session.execute(
-        text(
-            "TRUNCATE collection_card, saved_search, wishlist, deck, deck_card, "
-            "price_snapshot, card_price_point RESTART IDENTITY CASCADE"
-        )
+        text(f"TRUNCATE {', '.join(n for n, _ in restored)} RESTART IDENTITY CASCADE")
     )
-    for name, model in _TABLES:
+    if not has_places:
+        # TRUNCATE doesn't fire the delete triggers, and these would now point at whichever
+        # restored deck happened to reuse the id.
+        await session.execute(delete(Location).where(Location.type == "deck"))
+    for name, model in restored:
+        if name == "collection_card" and not has_places:
+            continue  # inserted below, once each stack's place has been worked out
         if prepared[name]:
             await session.execute(insert(model.__table__), prepared[name])
+    if not has_places:
+        await _file_legacy_stacks(session, prepared["collection_card"])
     # Preserved explicit ids don't advance the identity sequences — bump them past the max.
-    for name, _model in _TABLES:
+    for name, _model in restored:
         await session.execute(
             text(
                 f"SELECT setval(pg_get_serial_sequence('{name}', 'id'), "
@@ -176,6 +205,28 @@ async def restore_backup(
         )
     await session.commit()
     return RestoreResult(ok=True, applied=True, counts=counts, skipped_missing_cards=skipped)
+
+
+async def _file_legacy_stacks(session: AsyncSession, rows: list[dict]) -> None:
+    """Insert stacks from a backup that predates the location system, filing each by name."""
+    known = set(await session.scalars(select(Location.id)))
+    by_name: dict[str, int | None] = {}
+    for row in rows:
+        place = row.get("location")
+        if isinstance(place, str):
+            key = place.strip().lower()
+            if key not in by_name:
+                by_name[key] = await find_or_create_location_by_name(session, place)
+            row["location"] = by_name[key]
+        elif place is not None and place not in known:
+            row["location"] = None  # an id from some other database's location table
+    # One statement per column set: a multi-row insert takes its columns from the first row, so a
+    # column only some rows carry would be dropped from the rest — or lose its server default.
+    by_columns: dict[frozenset[str], list[dict]] = {}
+    for row in rows:
+        by_columns.setdefault(frozenset(row), []).append(row)
+    for group in by_columns.values():
+        await session.execute(insert(CollectionCard.__table__), group)
 
 
 # --- on-disk backups (the "backup to a folder" / desktop-sync engine) ---------------------------

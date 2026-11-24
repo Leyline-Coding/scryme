@@ -59,7 +59,8 @@ class DelverImporter:
                     condition=_get(row, "condition"),
                     language=normalize_language(_get(row, "language", "lang")),
                     purchase_price=to_float(_get(row, "purchase price", "my price", "price")),
-                    binder_name=_get(row, "binder name", "folder name", "tags"),
+                    source_location_name=_get(row, "binder name", "folder name", "tags"),
+                    location=None,
                 )
             )
         return rows

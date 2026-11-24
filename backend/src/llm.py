@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import os
 import re
-from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -24,10 +23,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import __version__
 from src.config import get_settings
-from src.deck_builder import classify_role
-from src.deck_synergy import DeckProfile, card_synergy, deck_themes, deck_tribes
-from src.decks import deck_coverage, deck_stats
-from src.models import Card, CollectionCard, LLMSettings
+from src.llm_card_analysis import collection_ai_context, deck_ai_context
+from src.models import Card, CollectionCard, Deck, DeckChatMessage, LLMSettings, NLQCache
 from src.search import SearchError, build_search
 
 _UA = f"scryme/{__version__} (+https://github.com/Leyline-Coding/scryme)"
@@ -152,9 +149,6 @@ async def test_connection(cfg: LLMConfig, client: ChatClient | None = None) -> t
 
 # --- grounded deck features ---------------------------------------------------------------------
 
-def _decklist_text(cov) -> str:
-    lines = [f"{r.quantity} {r.name}" for r in cov.main]
-    return "\n".join(lines)
 
 
 # Distilled deckbuilding guidance (paraphrased from established sources) that grounds the deck AI
@@ -176,134 +170,7 @@ _DECKBUILD_GUIDE = (
 
 
 
-@dataclass
-class DeckContext:
-    name: str
-    identity: set[str] = field(default_factory=set)  # color identity (union of the deck's cards)
-    is_commander: bool = False
-    commander: str = ""
-    commander_text: str = ""
-    commanders: list[str] = field(default_factory=list)  # all legendary creatures (ambiguous which)
-    decklist: str = ""
-    curve: str = ""
-    colors: str = ""
-    themes: list[str] = field(default_factory=list)
-    tribes: list[str] = field(default_factory=list)   # creature types the deck cares about (#295)
-    key_cards: list[str] = field(default_factory=list)
 
-    @property
-    def identity_str(self) -> str:
-        return "".join(c for c in "WUBRG" if c in self.identity) or "colorless"
-
-    @property
-    def format_note(self) -> str:
-        return (f"Commander (color identity {self.identity_str})" if self.is_commander
-                else f"color identity {self.identity_str}")
-
-    def block(self) -> str:
-        """Grounded context block for a prompt."""
-        lines = [f"Deck '{self.name}' — {self.format_note}."]
-        if len(self.commanders) > 1:
-            lines.append("Possible commanders (deck has several legendary creatures): "
-                         + ", ".join(self.commanders))
-        elif self.commander:
-            lines.append(f"Commander: {self.commander} — {self.commander_text}")
-        lines.append(f"Mana curve (nonland): {self.curve or 'n/a'}")
-        lines.append(f"Colors: {self.colors or 'n/a'}")
-        if self.themes:
-            lines.append("Themes/keywords: " + ", ".join(self.themes))
-        if self.tribes:
-            lines.append("Creature types this deck cares about: " + ", ".join(self.tribes))
-        if self.key_cards:
-            lines.append("Notable cards: " + ", ".join(self.key_cards))
-        lines.append(f"Decklist:\n{self.decklist}")
-        return "\n".join(lines)
-
-    def identity_rule(self) -> str:
-        return (f"Only recommend cards within the deck's color identity ({self.identity_str}) "
-                "and legal in its format — never cards of other colors.")
-
-
-# Commander text is joined onto one line so the grounding block stays line-oriented.
-_COMMANDER_TEXT = " / "
-_COMMANDER_TEXT_LIMIT = 600
-
-
-@dataclass
-class _DeckScan:
-    identity: set
-    kw_counts: Counter
-    text_cards: list
-    valued: list          # (usd, name, type_line)
-    commander: str
-    commander_text: str
-    commanders: list
-    creature_lines: list = field(default_factory=list)   # for tribe detection (#295)
-    legend_text: str = ""   # every legendary creature's full text, pooled for tribe detection
-
-
-def _scan_one_card(scan: _DeckScan, name, type_line, ci, oracle, keywords, prices) -> None:
-    """Fold a single card's data into the running deck scan."""
-    scan.identity.update(ci or [])
-    for k in (keywords or []):
-        scan.kw_counts[k] += 1
-    scan.text_cards.append((oracle or "").lower())
-    tl = (type_line or "").lower()
-    if "creature" in tl:
-        scan.creature_lines.append(type_line)
-    if "legendary" in tl and "creature" in tl:
-        scan.commanders.append(name)
-        scan.legend_text += " " + (oracle or "")
-        if not scan.commander:
-            scan.commander = name
-            # The WHOLE ability, not just its first line (#295). A commander's engine is routinely
-            # on line two or three — truncating to the first line hid the deck's actual plan from
-            # the model, which is a large part of why its picks read as generic goodstuff.
-            scan.commander_text = _COMMANDER_TEXT.join(
-                ln for ln in (oracle or "").splitlines() if ln.strip()
-            )[:_COMMANDER_TEXT_LIMIT]
-    if "land" not in tl:
-        scan.valued.append((float((prices or {}).get("usd") or 0.0), name, tl))
-
-
-def _scan_deck_cards(info: dict) -> _DeckScan:
-    """Aggregate identity, keywords, oracle text, commanders, and values across the deck's cards."""
-    scan = _DeckScan(set(), Counter(), [], [], "", "", [])
-    for _sid, row in info.items():
-        _scan_one_card(scan, *row)
-    return scan
-
-
-
-
-async def deck_ai_context(session: AsyncSession, deck) -> DeckContext:
-    """Rich grounded context for the AI deck features: identity, commander, themes, key cards."""
-    cov = await deck_coverage(session, deck)
-    stats = await deck_stats(session, deck)
-    curve = ", ".join(f"{b.label}:{b.count}" for b in stats.mana_curve)
-    colors = ", ".join(f"{b.label}:{b.count}" for b in stats.by_color)
-
-    sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
-    info: dict = {}
-    if sids:
-        for row in (await session.execute(
-            select(Card.scryfall_id, Card.name, Card.type_line, Card.color_identity,
-                   Card.oracle_text, Card.keywords, Card.prices).where(Card.scryfall_id.in_(sids))
-        )).all():
-            info[row[0]] = row[1:]
-
-    scan = _scan_deck_cards(info)
-    themes = deck_themes(scan.kw_counts, scan.text_cards)
-    key_cards = [n for _v, n, _t in sorted(scan.valued, reverse=True)[:5]]
-
-    tribes = deck_tribes(scan.legend_text, scan.creature_lines)
-    return DeckContext(
-        name=deck.name, identity=scan.identity, is_commander=bool(scan.commander),
-        commander=scan.commander, commander_text=scan.commander_text,
-        commanders=scan.commanders[:4],
-        decklist=_decklist_text(cov), curve=curve, colors=colors,
-        themes=themes[:6], tribes=sorted(tribes)[:6], key_cards=key_cards,
-    )
 
 
 async def _chat_nonempty(client: ChatClient, messages: list[dict], retries: int = 2, **kw) -> str:
@@ -315,21 +182,6 @@ async def _chat_nonempty(client: ChatClient, messages: list[dict], retries: int 
         if text.strip():
             break
     return text
-
-
-async def analyze_deck(session: AsyncSession, deck, client: ChatClient) -> str:
-    """Return a prose analysis of the deck, grounded in its list, identity, themes, and stats."""
-    ctx = await deck_ai_context(session, deck)
-    messages = [
-        {"role": "system", "content":
-            "You are a concise Magic: The Gathering deckbuilding coach. Analyze THIS deck's "
-            "strengths, weaknesses, mana curve, and missing roles (ramp, card draw, removal, win "
-            "conditions) against the guidance below, and comment on how well it supports its "
-            "commander/theme. Be specific and brief. Do not invent cards that aren't real. "
-            + ctx.identity_rule() + "\n\n" + _DECKBUILD_GUIDE},
-        {"role": "user", "content": ctx.block()},
-    ]
-    return await _chat_nonempty(client, messages, retries=1, temperature=0.5)
 
 
 @dataclass
@@ -345,77 +197,6 @@ class SuggestResult:
     considered: int = 0  # size of the owned candidate pool shown to the model
     empty: bool = False  # the model returned no usable text (e.g. reasoning ate the token budget)
 
-
-# What each shortlisted candidate is described as, and how many are sent (#295). Fewer, better
-# annotated candidates beat a longer bare list: reasoning models spend tokens proportional to input
-# size, so the budget is better spent telling the model what a card *does* than naming more of them.
-_SHORTLIST = 40
-_SNIPPET = 110
-
-
-@dataclass
-class _PoolCard:
-    name: str
-    scryfall_id: str
-    role: str
-    keywords: list[str]
-    snippet: str
-    synergy: int
-
-    def line(self) -> str:
-        """One annotated candidate line: name, role, matched keywords, what it actually does."""
-        bits = [self.role]
-        if self.keywords:
-            bits.append("/".join(self.keywords[:3]))
-        if self.snippet:
-            bits.append(self.snippet)
-        return f"{self.name} — " + " | ".join(bits)
-
-
-def _snippet(oracle_text: str | None) -> str:
-    """A one-line gist of a card's rules text, short enough to send 40 of them."""
-    text = " ".join((oracle_text or "").split())
-    return text[:_SNIPPET] + ("…" if len(text) > _SNIPPET else "")
-
-
-async def _pool_cards(session: AsyncSession, deck, profile: DeckProfile | None = None):
-    """The owned, in-identity candidate pool, annotated and scored for deck fit (#294/#295)."""
-    deck_sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
-    deck_oracles = {c.oracle_id for c in deck.cards if c.oracle_id}
-    identity: set[str] = set()
-    if deck_sids:
-        for (ci,) in (await session.execute(
-            select(Card.color_identity).where(Card.scryfall_id.in_(deck_sids))
-        )).all():
-            identity.update(ci or [])
-
-    rows = (await session.execute(
-        select(Card.name, Card.oracle_id, Card.scryfall_id, Card.color_identity,
-               Card.type_line, Card.oracle_text, Card.keywords)
-        .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
-        .where(Card.oracle_id.is_not(None))
-        .distinct(Card.oracle_id)
-        .order_by(Card.oracle_id, Card.released_at.desc().nulls_last())
-    )).all()
-
-    profile = profile or DeckProfile()
-    seen: set[str] = set()
-    pool: list[_PoolCard] = []
-    for name, oracle_id, sid, ci, type_line, oracle_text, keywords in rows:
-        if oracle_id in deck_oracles or name.lower() in seen:
-            continue
-        if identity and not set(ci or []).issubset(identity):
-            continue
-        seen.add(name.lower())
-        score, _ = card_synergy(
-            profile, keywords=keywords, type_line=type_line, oracle_text=oracle_text
-        )
-        pool.append(_PoolCard(
-            name=name, scryfall_id=str(sid), role=classify_role(type_line, oracle_text),
-            keywords=[k for k in (keywords or []) if k in profile.themes],
-            snippet=_snippet(oracle_text), synergy=score,
-        ))
-    return pool
 
 
 def _parse_suggestions(text: str, pool: dict[str, tuple[str, str]]) -> list[Suggestion]:
@@ -444,47 +225,6 @@ def _parse_suggestions(text: str, pool: dict[str, tuple[str, str]]) -> list[Sugg
                                   reason=reason.strip().strip("*_`").strip()))
     return out
 
-
-async def suggest_from_collection(
-    session: AsyncSession, deck, client: ChatClient, limit: int = 10,
-) -> SuggestResult:
-    """Suggest owned cards to add, chosen from a validated candidate pool (no hallucinations)."""
-    ctx = await deck_ai_context(session, deck)
-    profile = DeckProfile(themes=ctx.themes, tribes=set(ctx.tribes))
-    cards = await _pool_cards(session, deck, profile)
-    if not cards:
-        return SuggestResult(considered=0)
-    # The validation map every named card is checked against stays the FULL legal pool, not the
-    # shortlist — a card the model knows about from elsewhere must still resolve if you own it.
-    pool = {c.name.lower(): (c.name, c.scryfall_id) for c in cards}
-
-    # Shortlist by deck fit rather than by whatever order the query returned (#295). The old slice
-    # took the first 60 by oracle id — effectively arbitrary, so most of the collection was never
-    # seen and which part *was* seen had nothing to do with the deck.
-    shortlist = sorted(cards, key=lambda c: (-c.synergy, c.name))[:_SHORTLIST]
-    messages = [
-        {"role": "system", "content":
-            "You are a Magic: The Gathering deckbuilding assistant. Suggest cards to add, chosen "
-            "ONLY from the provided 'Owned candidates' list — never suggest a card not in that "
-            "list.\n"
-            "Rank by how well a card advances THIS deck's plan, not by how strong it is in the "
-            "abstract:\n"
-            "1. Cards that interact with the commander's specific ability (quoted below).\n"
-            "2. Cards that support the deck's stated themes and creature types.\n"
-            "3. Only then, cards that fill a thin role (ramp, draw, removal, win conditions).\n"
-            "Do NOT suggest generic staples that do not advance the plan, however powerful. Each "
-            "reason must name the SPECIFIC interaction (which ability, which theme) — not 'good "
-            "card' or 'solid value'. Each candidate is listed as "
-            "'Name — role | keywords | what it does'.\n"
-            f"Return at most {limit} lines, each exactly 'Card Name - reason'. No preamble.\n\n"
-            + _DECKBUILD_GUIDE},
-        {"role": "user", "content":
-            ctx.block() + "\n\nOwned candidates (choose only from these):\n"
-            + "\n".join(c.line() for c in shortlist)},
-    ]
-    text = await _chat_nonempty(client, messages, retries=2, temperature=0.3, max_tokens=4000)
-    return SuggestResult(suggestions=_parse_suggestions(text, pool)[:limit],
-                         considered=len(pool), empty=not text.strip())
 
 
 async def has_config_row(session: AsyncSession) -> bool:
@@ -825,20 +565,75 @@ async def plan_upgrades(
 
 # --- deck coaching chat (#172) ------------------------------------------------------------------
 
+
+async def _deck_chat_history(
+    session: AsyncSession, deck_id: int
+) -> tuple[DeckChatMessage | None, list[DeckChatMessage]]:
+    deck_messages = list((await session.execute(
+        select(DeckChatMessage).where(DeckChatMessage.deck_id == deck_id)
+        .order_by(DeckChatMessage.id)
+    )).scalars().all())
+
+    if deck_messages and hasattr(deck_messages[-1], "role") and deck_messages[-1].role=="user":
+        last_user_message = deck_messages.pop()
+        return (last_user_message, deck_messages)
+
+    return (None, deck_messages)
+
+
 async def deck_chat(
-    session: AsyncSession, deck, history: list[dict], user_message: str, client: ChatClient,
+    session: AsyncSession,
+    client: ChatClient,
+    history: list[dict],
+    user_message: str,
+    deck: Deck | None,
+    collection_cards: bool = False,
+    interfaceContext: str = ''
 ) -> str:
     """One turn of a coaching conversation, grounded in the deck's list, identity, and themes."""
-    ctx = await deck_ai_context(session, deck)
     system = (
-        "You are a friendly, concise Magic: The Gathering deckbuilding coach for THIS deck. Give "
-        "specific, actionable advice that fits its commander/theme; only reference real Magic "
-        "cards. " + ctx.identity_rule() + " Keep replies short.\n\n"
-        + _DECKBUILD_GUIDE + "\n\n" + ctx.block()
+        "You are a friendly, concise Magic: The Gathering (MTG) coach. Give specific, actionable "
+        "advice relevant to MTG cards, rules of the game, deckbuilding, and the like. At any time, "
+        "only reference real MTG cards. Keep replies short.\n\n"
     )
+    if(interfaceContext == 'deck_building'):
+        system += (
+            "The user is examining or building a deck, so provide advice that is relevant for MTG "
+            "deck building in general or about the composition of the deck specifically or, if the "
+            "user asks, suggestions of relevant replacements which further the theme or winning "
+            "strategy of desk while respecting relevant format rules. If suggesting replacements, "
+            "rank by how well each card advances THIS deck's plan, not by how strong it is in the "
+            "abstract, and identify the card that it should replace:\n"
+            "1. Cards that interact with the commander's specific ability, if there is a "
+            "commander.\n"
+            "2. Cards that support the deck's stated themes and creature types.\n"
+            "3. Only then, cards that fill a thin role (ramp, draw, removal, win conditions).\n"
+            "Do NOT suggest generic staples that do not advance the plan, however powerful. Each "
+            "suggested card must name the SPECIFIC interaction (which ability, which theme) — not "
+            "'good card' or 'solid value'.\n\n"
+        )
+        system += _DECKBUILD_GUIDE + "\n\n"
+    if(deck):
+        deck_context = await deck_ai_context(session, deck)
+        system += " "+deck_context.identity_rule()
+        system += (
+            "The user has opted to share the exact details of their deck as it looks right now. "
+        )
+        system += " "+deck_context.block()+"\n\n"
+    if(collection_cards):
+        collection_context = await collection_ai_context(session)
+        system += (
+            "The user has specifically shared the following list of MTG cards in their collection. "
+            "These cards are presumably available for use, for deck construction for example. If "
+            "the user has asked for recommended cards, only suggest cards from this list."
+        )
+        system += " "+collection_context.block()+"\n\n"
+
+
     messages = [{"role": "system", "content": system}]
     messages += [{"role": m["role"], "content": m["content"]} for m in history]
     messages.append({"role": "user", "content": user_message})
+
     return await _chat_nonempty(client, messages, retries=2, temperature=0.5, max_tokens=2000)
 
 
@@ -869,3 +664,78 @@ async def answer_card_question(
         {"role": "user", "content": f"{context}\n\nQuestion: {question}"},
     ]
     return await _chat_nonempty(client, messages, retries=2, temperature=0.3, max_tokens=1500)
+
+
+
+
+
+
+
+# --- Background Workers ---------------------------------------------------------------------------
+
+
+
+async def ai_deck_chat_response_worker(
+    session: AsyncSession,
+    deck_id: int,
+    include_deck: bool,
+    include_collection: bool,
+) -> int | None:
+    """Start a background task to process the AI response for a user message."""
+    deck = await session.get(Deck, deck_id)
+    if deck is None:
+        return None
+    cfg = await get_config(session)
+    last_user_message, prior = await _deck_chat_history(session, deck_id)
+    if not last_user_message:
+        return False
+    history = [{"role": m.role, "content": m.content} for m in prior]
+    try:
+        reply = await deck_chat(
+            session,
+            ChatClient(cfg),
+            history,
+            last_user_message.content,
+            deck if include_deck else None,
+            include_collection,
+            interfaceContext='deck_building'
+        )
+    except (httpx.HTTPError, KeyError, IndexError, ValueError):
+        reply = ""
+    # Immediately add the ai's message to the chat log
+    deck_message = DeckChatMessage(deck_id=deck_id, role="assistant",
+                                content=reply or "(the AI endpoint didn't respond — try again)")
+    session.add(deck_message)
+    await session.commit()
+    return deck_message.id
+
+
+
+async def nlq_worker(
+    session: AsyncSession,
+    nlqcache_id: int,
+) -> int | None:
+    """Start a background task to Translate a plain-English request to a Scryfall query (#171)."""
+    matching_nl_to_q = await session.get(NLQCache, nlqcache_id)
+    if(not matching_nl_to_q):
+        return None
+    cfg = await get_config(session)
+    if cfg.ready and matching_nl_to_q.nl_text:
+        try:
+            generated = await nl_to_query(matching_nl_to_q.nl_text, ChatClient(cfg))
+            matching_nl_to_q.q_text = generated
+            await session.commit()
+            return matching_nl_to_q.id
+        except httpx.HTTPStatusError as e:
+            # Check for specific HTTP errors that indicate AI service issues
+            if e.response.status_code == 404:
+                # For a 404 error, let the user know the AI endpoint might be misconfigured
+                # But still fallback gracefully to raw search as before
+                raise Exception(
+                    "AI service not found (404) - please check your LLM configuration."
+                ) from e
+            else:
+                raise Exception(f"Unexpected AI service error ({e.response.status_code}).") from e
+        except Exception as e:
+            raise Exception("Unexpected AI service error.") from e
+    raise Exception("Unexpected AI service error. cfg.ready or matching_nl_to_q.nl_text")

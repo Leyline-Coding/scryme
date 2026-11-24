@@ -10,7 +10,8 @@ import uuid
 
 import pytest
 from sqlalchemy import select
-from src.models import Card, CollectionCard, ScanBatch
+from src.locations import find_or_create_location_by_name as resolve_scan_location
+from src.models import Binder, Box, Card, CollectionCard, Location, ScanBatch
 from src.scan import ingest_scan, to_import_row
 from src.scryfall.mapping import card_to_columns
 
@@ -157,8 +158,10 @@ async def test_a_located_scan_is_a_separate_stack_from_the_unfiled_one(session):
     await ingest_scan(session, [_row(scryfall_id=BOLT, quantity=2)])
     await ingest_scan(session, [_row(scryfall_id=BOLT, quantity=3)], location="Box A")
 
+    box_a = await resolve_scan_location(session, "Box A")
     stacks = sorted(await _stacks(session), key=lambda s: s.quantity)
-    assert [(s.location, s.quantity) for s in stacks] == [(None, 2), ("Box A", 3)]
+    assert box_a is not None
+    assert [(s.location, s.quantity) for s in stacks] == [(None, 2), (box_a, 3)]
 
 
 @pytest.mark.asyncio
@@ -169,6 +172,34 @@ async def test_rescanning_the_same_location_increments_that_stack(session):
     stacks = await _stacks(session)
     assert len(stacks) == 1 and stacks[0].quantity == 2
     assert report.location == "Box A" and (report.inserted, report.updated) == (0, 1)
+
+
+@pytest.mark.asyncio
+async def test_an_unknown_scan_location_becomes_a_box_exactly_once(session):
+    """The scanner names a place; stacks point at a ``location`` row. Bridge the two by name."""
+    first = await resolve_scan_location(session, "Box A")
+    again = await resolve_scan_location(session, "  box a ")  # same place, typed differently
+    await session.commit()
+    assert first is not None and first == again
+    assert [b.name for b in (await session.execute(select(Box))).scalars()] == ["Box A"]
+    locations = (await session.execute(select(Location))).scalars().all()
+    assert [(loc.type, loc.id) for loc in locations] == [("box", first)]
+
+
+@pytest.mark.asyncio
+async def test_a_scan_location_matches_an_existing_binder_instead_of_shadowing_it(session):
+    session.add(Binder(name="Trades"))
+    await session.commit()
+    location_id = await resolve_scan_location(session, "trades")
+    location = await session.get(Location, location_id)
+    assert location.type == "binder"
+    assert (await session.execute(select(Box))).scalars().all() == []
+
+
+@pytest.mark.asyncio
+async def test_a_blank_scan_location_is_unfiled(session):
+    assert await resolve_scan_location(session, None) is None
+    assert await resolve_scan_location(session, "   ") is None
 
 
 # --- the HTTP surface ----------------------------------------------------------------------------

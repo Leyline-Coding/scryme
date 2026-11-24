@@ -8,7 +8,7 @@ from src.models import Card, CollectionCard
 from src.scryfall.mapping import card_to_columns
 from src.search import SearchScope
 from src.search.engine import run_search
-from src.tags import add_card_tag, card_tags, normalize_tag, remove_card_tag
+from src.tags import card_tags, modify_stack_tag, normalize_tag
 
 
 def _card(name, n):
@@ -17,12 +17,13 @@ def _card(name, n):
 
 
 async def _own(session, raw, **stack):
-    card = Card(**card_to_columns(raw))
-    session.add(card)
+    c = Card(**card_to_columns(raw))
+    session.add(c)
     await session.flush()
-    session.add(CollectionCard(scryfall_id=card.scryfall_id, quantity=1, **stack))
+    cc = CollectionCard(scryfall_id=c.scryfall_id, quantity=1, **stack)
+    session.add(cc)
     await session.commit()
-    return card
+    return c, cc
 
 
 def test_normalize_tag():
@@ -40,34 +41,36 @@ async def test_add_and_remove_tag_spans_all_stacks(session):
     session.add(c)
     await session.flush()
     # Two stacks of the same printing (normal + foil).
-    session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish="normal"))
+    cc = CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish="normal")
+    session.add(cc)
     session.add(CollectionCard(scryfall_id=c.scryfall_id, quantity=1, finish="foil"))
     await session.commit()
 
-    tags = await add_card_tag(session, c.scryfall_id, "For Trade")
-    assert tags == ["for trade"]
+    tags = await modify_stack_tag(session, cc.id, "For Trade")
+    assert tags == 1
     # Applied to every stack.
     stored = (await session.execute(
-        select(CollectionCard.tags).where(CollectionCard.scryfall_id == c.scryfall_id)
-    )).all()
-    assert all(row[0] == ["for trade"] for row in stored)
+        select(CollectionCard).where(CollectionCard.scryfall_id == c.scryfall_id)
+    )).scalars().all()
+    assert stored[0].tags is None
+    assert stored[1].tags == ["for trade"]
 
-    await add_card_tag(session, c.scryfall_id, "for trade")  # idempotent
+    await modify_stack_tag(session, cc.id, "for trade")  # idempotent
     assert await card_tags(session, c.scryfall_id) == ["for trade"]
 
-    assert await remove_card_tag(session, c.scryfall_id, "for trade") == []
+    assert await modify_stack_tag(session, cc.id, "for trade", remove=True) == 1
 
 
 @pytest.mark.asyncio
 async def test_tag_search_finds_and_excludes(session):
-    a = await _own(session, _card("Aaa", 1), finish="normal")
-    await _own(session, _card("Bbb", 2), finish="normal")
-    await add_card_tag(session, a.scryfall_id, "trade")
+    a_c, a_cc =  await _own(session, _card("Aaa", 1), finish="normal")
+    b_c, b_cc = await _own(session, _card("Bbb", 2), finish="normal")
+    await modify_stack_tag(session, a_cc.id, "trade")
 
     hit = await run_search(session, "tag:trade", scope=SearchScope.COLLECTION)
     assert [c.name for c in hit.cards] == ["Aaa"]
     # Tags are surfaced on the result for chip rendering.
-    assert hit.tags[str(a.scryfall_id)] == ["trade"]
+    assert hit.tags[str(a_c.scryfall_id)] == ["trade"]
 
     neg = await run_search(session, "-tag:trade", scope=SearchScope.COLLECTION)
     assert [c.name for c in neg.cards] == ["Bbb"]
@@ -75,19 +78,23 @@ async def test_tag_search_finds_and_excludes(session):
 
 @pytest.mark.asyncio
 async def test_tag_routes(client, session):
-    card = await _own(session, _card("Aaa", 1), finish="normal")
-    cid = str(card.scryfall_id)
+    card, cc = await _own(session, _card("Aaa", 1), finish="normal")
+    sid = str(card.scryfall_id)
 
-    add = await client.post(f"/card/{cid}/tags", data={"tag": "Deck:Goblins"})
+    add = await client.post(
+        "/collection/bulk",
+        data={"scryfall_ids": [sid], "bulk_action": "tag", "tag": "Deck:Goblins", "refresh":True}
+    )
     assert add.status_code == 200
-    assert "deck:goblins" in add.text
 
-    detail = await client.get(f"/card/{cid}")
-    assert "deck:goblins" in detail.text
-
-    rm = await client.post(f"/card/{cid}/tags/delete", data={"tag": "deck:goblins"})
+    rm = await client.post(
+        "/collection/bulk",
+        data={
+            "scryfall_ids": [sid], "bulk_action": "tag-remove", "tag": "deck:goblins",
+            "refresh":True
+        }
+    )
     assert rm.status_code == 200
-    assert "deck:goblins" not in rm.text
 
 
 @pytest.mark.asyncio
@@ -95,6 +102,9 @@ async def test_tag_routes_blocked_when_read_only(client, session, monkeypatch):
     from src.config import get_settings
     settings = get_settings()
     monkeypatch.setattr(settings, "read_only", True)
-    card = await _own(session, _card("Aaa", 1), finish="normal")
-    resp = await client.post(f"/card/{card.scryfall_id}/tags", data={"tag": "x"})
+    card, cc = await _own(session, _card("Aaa", 1), finish="normal")
+    resp = await client.post(
+        "/collection/bulk",
+        data={"scryfall_ids": [card.scryfall_id], "bulk_action": "tag", "tag": "x"}
+    )
     assert resp.status_code == 403

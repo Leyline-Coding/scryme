@@ -1,8 +1,7 @@
 {# Sell list (#97): cards you've flagged for-sale, priced, with a running total. #}
 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
   <p class="text-sm text-muted">
-    Cards tagged <code class="text-xs">for-sale</code> — flag them from a card's page or in bulk from
-    search results. Also see the
+    Cards tagged <span class="inline-flex items-center gap-1 rounded bg-surface-2 text-xs px-1 py-0.5">for-sale</span> — flag them from a card's page or in bulk from search results. Also see the
     <a href="/valuation" class="underline hover:text-fg">valuation report</a>.
   </p>
   {% if sell.cards %}
@@ -53,7 +52,7 @@
 </div>
 {% else %}
 <div class="text-muted py-16 text-center">
-  Nothing flagged to sell yet. Tag cards <code class="text-xs">for-sale</code> to build a priced
+  Nothing flagged to sell yet. Tag cards <span class="inline-flex items-center gap-1 rounded bg-surface-2 text-xs px-1 py-0.5">for-sale</span> to build a priced
   sell list.
 </div>
 {% endif %}

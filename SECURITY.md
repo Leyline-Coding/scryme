@@ -10,8 +10,8 @@ before reporting; older lines do not receive patches.
 
 | Version           | Supported |
 | ----------------- | --------- |
-| 0.28.x            | Yes       |
-| 0.27.x and older  | No        |
+| 0.29.x            | Yes       |
+| 0.28.x and older  | No        |
 
 ## Reporting a vulnerability
 

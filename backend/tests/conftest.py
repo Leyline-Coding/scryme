@@ -80,6 +80,7 @@ async def _clean_tables():
         await conn.execute(text("TRUNCATE share_link RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE sleeves RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE scan_batch RESTART IDENTITY CASCADE"))
+        await conn.execute(text("TRUNCATE nl_q_cache RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE cards CASCADE"))
 
 

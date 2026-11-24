@@ -17,6 +17,9 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 ITERATIONS = 600_000
+# The iteration count is read from the file being restored, so it is the uploader's to choose.
+# Accept anything a real backup could carry and nothing that turns a restore into minutes of CPU.
+MAX_ITERATIONS = 2_000_000
 
 
 class BackupDecryptError(ValueError):
@@ -53,8 +56,11 @@ def decrypt_backup(envelope: dict, passphrase: str) -> dict:
         raise BackupDecryptError("This backup is encrypted — a passphrase is required.")
     try:
         salt = base64.b64decode(envelope["salt"])
-        key = _derive_key(passphrase, salt, int(envelope.get("iterations", ITERATIONS)))
+        iterations = int(envelope.get("iterations", ITERATIONS))
+        if not 1 <= iterations <= MAX_ITERATIONS:
+            raise ValueError("unsupported iteration count")
+        key = _derive_key(passphrase, salt, iterations)
         raw = Fernet(key).decrypt(envelope["ciphertext"].encode("ascii"))
-    except (InvalidToken, KeyError, ValueError) as exc:
+    except (InvalidToken, KeyError, ValueError, TypeError, AttributeError) as exc:
         raise BackupDecryptError("Wrong passphrase, or the backup file is corrupt.") from exc
     return json.loads(raw)

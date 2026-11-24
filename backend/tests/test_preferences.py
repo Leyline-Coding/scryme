@@ -59,10 +59,17 @@ async def test_prefs_patch_blocked_read_only(client, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_prefs_router_is_not_token_gated(client, monkeypatch):
-    """The browser /prefs router must work even when SCRYME_API_TOKEN is set (unlike /api/v1)."""
+async def test_prefs_router_needs_the_token_when_one_is_set(client, monkeypatch):
+    """With SCRYME_API_TOKEN set, the browser /prefs router is protected like /api/v1 — it used to
+    answer without any credential, which made the token decorative."""
+    from src import security
+
     monkeypatch.setattr(get_settings(), "api_token", "secret")
-    assert (await client.get("/prefs")).status_code == 200            # no token needed
+    assert (await client.get("/prefs")).status_code == 401
+    signed_in = await client.get(
+        "/prefs", cookies={security.SESSION_COOKIE: security.session_value("secret")}
+    )
+    assert signed_in.status_code == 200
     assert (await client.get("/api/v1/preferences")).status_code == 401  # token-gated
     ok = await client.get("/api/v1/preferences", headers={"Authorization": "Bearer secret"})
     assert ok.status_code == 200 and ok.json()["currency"] == get_settings().default_currency

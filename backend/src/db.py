@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
@@ -29,6 +30,15 @@ SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency that yields a database session."""
+    """FastAPI dependency that yields a database session.
+
+    Request sessions get a statement timeout, scoped to the request's transaction so it never
+    leaks onto a pooled connection that a background job picks up next.
+    """
     async with SessionLocal() as session:
+        timeout = get_settings().statement_timeout_ms
+        if timeout > 0:
+            await session.execute(
+                text("SELECT set_config('statement_timeout', :ms, true)"), {"ms": str(timeout)}
+            )
         yield session

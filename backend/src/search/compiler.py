@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime
 import operator
+import re
 from collections.abc import Callable
 
 from sqlalchemy import Float, and_, cast, exists, func, not_, or_, select, union_all
@@ -43,9 +44,26 @@ def _like_escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+# A regex runs once per row inside Postgres, so its cost is the caller's to choose unless bounded.
+MAX_REGEX_LENGTH = 256
+_BACKREFERENCE = re.compile(r"(?<!\\)(?:\\\\)*\\[1-9]")
+
+
+def _checked_regex(term: Term) -> str:
+    pattern = term.value
+    if len(pattern) > MAX_REGEX_LENGTH:
+        raise SearchError(
+            f"That regular expression is too long ({MAX_REGEX_LENGTH} characters max)."
+        )
+    if _BACKREFERENCE.search(pattern):
+        # Back-references make matching exponential; nothing in card text needs them.
+        raise SearchError("Back-references (\\1, \\2, …) are not supported in regular expressions.")
+    return pattern
+
+
 def _text_match(col, term: Term) -> ColumnElement:
     if term.regex:
-        return col.op("~*")(term.value)
+        return col.op("~*")(_checked_regex(term))
     return col.ilike(f"%{_like_escape(term.value)}%", escape="\\")
 
 

@@ -30,6 +30,14 @@ def _guard_writable() -> None:
         raise HTTPException(status_code=403, detail="This instance is read-only.")
 
 
+_MB = 1024 * 1024
+
+
+def _max_restore_bytes() -> int:
+    """Largest restore upload held in memory. A public demo only previews, so it gets far less."""
+    return (8 if get_settings().read_only else 256) * _MB
+
+
 @router.get("/backup", response_class=HTMLResponse)
 async def backup_page(request: Request) -> HTMLResponse:
     settings = get_settings()
@@ -72,8 +80,14 @@ async def restore(
     if applying and get_settings().read_only:
         raise HTTPException(status_code=403, detail="This instance is read-only.")
 
+    limit = _max_restore_bytes()
+    raw = await file.read(limit + 1)
+    if len(raw) > limit:
+        raise HTTPException(
+            status_code=413, detail=f"That backup is too large ({limit // _MB} MB max)."
+        )
     try:
-        data = json.loads((await file.read()).decode("utf-8"))
+        data = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
         result = None
         error = "Couldn't read that file — it isn't valid JSON."

@@ -76,9 +76,34 @@ class Settings(BaseSettings):
     # If set, on-disk/scheduled backups are encrypted with this passphrase (restore needs it too).
     backup_passphrase: str = ""
 
-    # JSON API: when set, every /api/* request must send this token (Authorization: Bearer <token>
-    # or X-API-Key). Empty = open (fine for a single-user localhost instance).
+    # Access token. When set it protects the whole app: /api/* requests must send it
+    # (Authorization: Bearer <token> or X-API-Key), and the web UI asks for it once at /login and
+    # then keeps a session cookie. Public share links, /health and static assets stay open.
+    # Empty = open (fine for a single-user instance nobody else can reach).
     api_token: str = ""
+
+    # Hostnames this instance answers to, comma-separated (``scryme.example.com,*.home.lan``).
+    # IP addresses, ``localhost`` and ``*.local`` are always accepted. Leave empty to accept any
+    # hostname; set it when the instance has a DNS name, to stop DNS-rebinding attacks. The desktop
+    # build always enforces it.
+    allowed_hosts: str = ""
+
+    # Rate limits, in requests per minute per client address (0 disables that limit). "Heavy"
+    # covers AI calls, backups, exports, uploads and bulk imports. Loopback clients are exempt
+    # unless ``client_ip_header`` is set.
+    rate_limit_enabled: bool = True
+    rate_limit_default: int = 600
+    rate_limit_heavy: int = 30
+    rate_limit_login: int = 10
+    # Longest a single SQL statement may run inside a web request, in milliseconds (0 = no limit).
+    # A search with a pathological regex would otherwise occupy a database backend until it
+    # finished, long after the client gave up. Background jobs (ingest, backups) are not limited.
+    statement_timeout_ms: int = 30000
+
+    # Header carrying the real client address when a trusted proxy sits in front and cannot be
+    # handled by uvicorn's --forwarded-allow-ips (e.g. ``CF-Connecting-IP`` behind Cloudflare).
+    # Only set this when every request really comes through that proxy.
+    client_ip_header: str = ""
 
     # Desktop LAN sharing. When true (the desktop app sets SCRYME_LAN_GUARD=1 and binds 0.0.0.0),
     # non-loopback requests are blocked unless LAN sharing is enabled — and then optionally gated by

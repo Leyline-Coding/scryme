@@ -60,10 +60,12 @@
       }
     })();
   </script>
-  <!-- Tailwind via CDN keeps the app a single pure-Python service; swap for a build step later. -->
-  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src=" https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js "></script>
+  <!-- Front-end libraries are vendored (static/vendor/NOTICE.md): nothing loads from a third party,
+       so the app works offline and the Content-Security-Policy can pin scripts to 'self'.
+       Tailwind is still the in-browser build; a compiled stylesheet would need a build step. -->
+  <script src="/static/vendor/tailwind/tailwind-3.4.17-typography-0.5.16.js"></script>
+  <script src="/static/vendor/chartjs/chart-4.6.2.umd.min.js"></script>
+  <script src="/static/vendor/chartjs/chartjs-plugin-datalabels-2.2.0.min.js"></script>
   <script>
     // Map Tailwind color utilities to the semantic CSS-variable tokens defined in app.css.
     tailwind.config = {
@@ -104,9 +106,7 @@
     }
   }
   </script>
-  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"
-          integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
-          crossorigin="anonymous" defer></script>
+  <script src="/static/vendor/htmx/htmx-2.0.4.min.js" defer></script>
   <script>
     // htmx does not swap non-2xx responses. A 409 from a concurrent-edit conflict (#207) carries
     // the panel's current state as its body — the whole point is to show the editor what the row
@@ -118,11 +118,9 @@
       }
     });
   </script>
-  <script src="https://unpkg.com/alpinejs@3.15.12/dist/cdn.min.js"
-          integrity="sha384-pb6hrQvo4s23cEUFtj0CZkzGE3jyK3pj26RIupXXxhSrrcUA/Cn0lZgcCrGH0t6L"
-          crossorigin="anonymous" defer></script>
+  <script src="/static/vendor/alpine/alpine-3.15.12.min.js" defer></script>
   <!-- MTG symbol fonts (Mana = mana pips, Keyrune = set symbols); see static/vendor/*/NOTICE. -->
   <link rel="stylesheet" href="/static/vendor/mana/mana.css" />
   <link rel="stylesheet" href="/static/vendor/keyrune/keyrune.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="/static/vendor/fontawesome/css/all.min.css" />
   <link rel="stylesheet" href="/static/app.css" />

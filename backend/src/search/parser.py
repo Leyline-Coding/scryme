@@ -157,8 +157,13 @@ class _Parser:
         raise SearchError("Unexpected token in query.")
 
 
+MAX_QUERY_LENGTH = 2000
+
+
 def parse(query: str) -> Node | None:
     """Parse a query string into an AST, or None if the query is empty."""
+    if len(query) > MAX_QUERY_LENGTH:
+        raise SearchError(f"That search is too long ({MAX_QUERY_LENGTH} characters max).")
     tokens = tokenize(query)
     if not tokens:
         return None

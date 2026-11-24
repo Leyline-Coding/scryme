@@ -19,6 +19,11 @@ _TOKEN = re.compile(r"\{([^}]+)\}")
 # Tokens whose Mana class name isn't just the lowercased token with slashes removed.
 _SPECIAL = {"T": "tap", "Q": "untap", "½": "half", "∞": "infinity"}
 
+# A class-name fragment the Mana font could plausibly define, after normalisation: short and
+# purely lowercase ASCII alphanumerics ({W/U/P} -> wup, {1000000} -> 1000000, {T} -> tap).
+# Anything else is never written into the ``class`` attribute.
+_SAFE_CLASS = re.compile(r"[a-z0-9]{1,16}")
+
 _RARITIES = {"common", "uncommon", "rare", "mythic", "special", "timeshifted"}
 
 
@@ -40,9 +45,15 @@ def mana_symbols(text: str | None) -> Markup:
         parts.append(str(escape(text[last : m.start()])))
         cls = _mana_class(m.group(1))
         label = escape(m.group(0))
-        parts.append(
-            f'<i class="ms ms-{cls} ms-cost" role="img" aria-label="{label}" title="{label}"></i>'
-        )
+        if _SAFE_CLASS.fullmatch(cls):
+            parts.append(
+                f'<i class="ms ms-{cls} ms-cost" role="img" aria-label="{label}" '
+                f'title="{label}"></i>'
+            )
+        else:
+            # Not something that can name a Mana-font glyph (and not safe inside an attribute):
+            # show the braces and their contents as the literal text they are.
+            parts.append(str(label))
         last = m.end()
     parts.append(str(escape(text[last:])))
     return Markup("".join(parts))

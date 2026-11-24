@@ -41,6 +41,23 @@ def test_set_symbol_rarity_and_unknown():
     assert "ss-bogus" not in str(set_symbol("MH2", "bogus"))
 
 
+def test_mana_token_cannot_break_out_of_the_class_attribute():
+    hostile = '{W"><img src=x onerror=alert(1)>}'
+    out = str(mana_symbols(hostile))
+    # No element is opened by the token, and the class attribute is never written for it…
+    assert "<img" not in out and "<i " not in out and 'class="' not in out
+    # …it is shown as the literal (escaped) text instead.
+    assert out == "{W&#34;&gt;&lt;img src=x onerror=alert(1)&gt;}"
+
+
+def test_mana_only_real_symbol_shapes_become_icons():
+    for token, cls in (("{W/U/P}", "wup"), ("{1000000}", "1000000"), ("{CHAOS}", "chaos"),
+                       ("{½}", "half"), ("{∞}", "infinity"), ("{ X }", "x")):
+        assert f'class="ms ms-{cls} ms-cost"' in str(mana_symbols(token)), token
+    for token in ("{not a symbol}", "{a b}", "{w onmouseover=x}", "{" + "w" * 40 + "}", "{-}"):
+        assert str(mana_symbols(token)) == token, token
+
+
 def test_set_symbol_empty():
     assert str(set_symbol("")) == ""
     assert str(set_symbol(None)) == ""

@@ -7,7 +7,8 @@ services:
       POSTGRES_PASSWORD: scryme
       POSTGRES_DB: scryme
     ports:
-      - "5432:5432"
+      # Loopback only: this is a superuser account with a well-known password.
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres-data-dev:/var/lib/postgresql/data
     healthcheck:
@@ -27,7 +28,8 @@ services:
       SCRYME_DATA_DIR: /data
       SCRYME_IMAGE_CACHE_DIR: /data/images
     ports:
-      - "8000:8000"
+      # Loopback only: the dev server runs with debug on and no login.
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./backend:/app
       - scryme-data-dev:/data

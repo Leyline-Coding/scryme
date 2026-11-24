@@ -42,5 +42,12 @@ deploy/k8s/**/secret.yaml
 /building_standard_decks.txt
 /wiki_deck_types.txt
 /mtg_comprehensive_rules.txt
+
+# Local configuration and secrets (docker compose reads ./.env; the backend reads backend/.env).
+# Never commit these -- they hold POSTGRES_PASSWORD, SCRYME_API_TOKEN and provider keys.
+.env
+.env.*
+.env-*
+!.env.example
 backend/.env
 backend/.env-test

@@ -1,9 +1,19 @@
 # Production / self-host stack. `docker compose up -d` brings up the full app.
+#
+# Settings come from your shell environment or a `.env` file next to this one. Before exposing the
+# stack to anything but your own machine, read docs.scryme.app/getting-started/self-hosting/ --
+# in short: set POSTGRES_PASSWORD (new installs), SCRYME_API_TOKEN (if anyone else can reach the
+# port) and SCRYME_ALLOWED_HOSTS (if you use a domain name), or set SCRYME_BIND=127.0.0.1.
 services:
   postgres:
-    image: postgres:16-alpine
+    # Stay on major 16: a data volume initialised by 16 will not start under 17+ without a
+    # dump/restore or pg_upgrade. Minor bumps (16.x) are drop-in.
+    image: postgres:16.16-alpine
     environment:
       POSTGRES_USER: scryme
+      # Only read when the data volume is first initialised. The default exists so installs that
+      # predate this note keep working; set your own for a new install. Changing it later needs an
+      # ALTER USER as well -- see the self-hosting docs.
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-scryme}
       POSTGRES_DB: scryme
     volumes:
@@ -29,6 +39,22 @@ services:
       SCRYME_DATA_DIR: /data
       SCRYME_IMAGE_CACHE_DIR: /data/images
       SCRYME_READ_ONLY: ${SCRYME_READ_ONLY:-false}
+      # Whose X-Forwarded-For the backend believes (see backend/docker-entrypoint.sh). `*` = any
+      # peer, which is safe HERE and only here: this service publishes no port, so the only things
+      # that can connect are the other containers on scryme-network, and the one that does (nginx)
+      # overwrites the header with the address it saw. The network's subnet is assigned by Docker
+      # and differs per host, so it cannot be named in advance. If you publish the backend port
+      # yourself, or attach other containers to this network, set this to the proxy's address.
+      SCRYME_FORWARDED_ALLOW_IPS: ${SCRYME_FORWARDED_ALLOW_IPS:-*}
+      # Optional settings, passed through only when set in your environment / .env (a key with no
+      # value means "copy it from the host if it exists"). See the Configuration docs.
+      SCRYME_API_TOKEN:              # password for the web UI and API; unset = open to all
+      SCRYME_ALLOWED_HOSTS:          # comma-separated hostnames; set when using a domain
+      SCRYME_CLIENT_IP_HEADER:       # e.g. CF-Connecting-IP when everything arrives via Cloudflare
+      SCRYME_RATE_LIMIT_DEFAULT:     # requests/minute per client
+      SCRYME_RATE_LIMIT_HEAVY:
+      SCRYME_RATE_LIMIT_LOGIN:
+      SCRYME_STATEMENT_TIMEOUT_MS:   # per-statement DB timeout for web requests
     volumes:
       - scryme-data:/data
     depends_on:
@@ -37,9 +63,12 @@ services:
     networks: [scryme-network]
 
   nginx:
-    image: nginx:alpine
+    image: nginx:1.30-alpine
     ports:
-      - "${SCRYME_PORT:-8080}:80"
+      # Listens on every interface by default (unchanged, so existing installs keep working).
+      # Set SCRYME_BIND=127.0.0.1 to accept connections from this machine only, e.g. when a
+      # reverse proxy on the host fronts it.
+      - "${SCRYME_BIND:-0.0.0.0}:${SCRYME_PORT:-8080}:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - scryme-data:/data:ro

@@ -187,13 +187,13 @@ def _install_prefs_loader(app: FastAPI) -> None:
         return await call_next(request)
 
 
-async def _check_has_pending_migrations(alembic_ini_path: str = "alembic.ini") -> bool:
-    from alembic.config import Config
+async def _check_has_pending_migrations() -> bool:
     from alembic.runtime.migration import MigrationContext
     from alembic.script import ScriptDirectory
 
-    alembic_cfg = Config(alembic_ini_path)
-    script = ScriptDirectory.from_config(alembic_cfg)
+    from src.migrations import alembic_config
+
+    script = ScriptDirectory.from_config(alembic_config())
     head_revs = set(script.get_heads())
 
     from src.db import SessionLocal

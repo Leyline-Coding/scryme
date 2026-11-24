@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -47,7 +48,16 @@ from src.importers.base import UnknownFormatError
 from src.importers.merge import MergeStrategy
 from src.importers.service import confirm_upload, stage_upload
 from src.llm import ChatClient, get_config, nl_to_query
-from src.models import Card, Checklist, ChecklistItem, CollectionCard, Deck, DeckCard, SavedSearch
+from src.models import (
+    Card,
+    Checklist,
+    ChecklistItem,
+    CollectionCard,
+    Deck,
+    DeckCard,
+    SavedSearch,
+    ScanBatch,
+)
 from src.preferences import get_preferences, update_preferences
 from src.prices import (
     CHART_RANGES,
@@ -61,6 +71,8 @@ from src.prices import (
 from src.routes.preferences import PreferencesOut, PreferencesUpdateIn
 from src.routes.saved import delete_saved_by_id, upsert_saved
 from src.saved_alerts import clear_new
+from src.scan import MAX_ROWS as MAX_SCAN_ROWS
+from src.scan import ingest_scan, to_import_row
 from src.scryfall.mapping import image_url
 from src.search import SearchError, SearchScope
 from src.search.engine import DEFAULT_SORT, SORT_KEYS, run_search
@@ -1222,6 +1234,132 @@ async def api_import_confirm(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return ImportResultOut(strategy=summary.strategy.value, inserted=summary.inserted,
                            updated=summary.updated, total_quantity=summary.total_quantity)
+
+
+# --- Batch scan ingest (#164) --------------------------------------------------------------------
+
+class ScanRowIn(BaseModel):
+    """One scanned card. Identify it by ``scryfall_id``, or by ``set`` + ``collector_number``.
+
+    ``name`` is accepted but is the weakest signal — a scanner that can read the collector number
+    should send it, because a name alone resolves to *some* printing rather than the one in hand.
+    """
+
+    scryfall_id: str | None = None
+    set: str | None = None
+    collector_number: str | None = None
+    name: str | None = None
+    quantity: int = 1
+    finish: str | None = None
+    condition: str | None = None
+    language: str | None = None
+
+
+class ScanIn(BaseModel):
+    rows: list[ScanRowIn]
+    # Where these cards physically went. Applied to every row in the batch — a scan session is
+    # "I am filling Box A", not a per-card decision.
+    location: str | None = None
+
+
+class ScanRowOut(BaseModel):
+    index: int
+    matched: bool
+    method: str
+    quantity: int
+    scryfall_id: str | None = None
+    name: str | None = None
+    set: str | None = None
+    collector_number: str | None = None
+
+
+class ScanOut(BaseModel):
+    ok: bool = True
+    # True when this response is the stored answer to a batch that was already applied.
+    replayed: bool = False
+    idempotency_key: str | None = None
+    total_rows: int
+    matched: int
+    unmatched: int
+    inserted: int
+    updated: int
+    total_quantity: int
+    location: str | None = None
+    rows: list[ScanRowOut]
+
+
+def _scan_out(report, *, key: str | None) -> ScanOut:
+    """Shape a fresh ingest as a response. A *replay* is rebuilt from the stored dict instead."""
+    return ScanOut(
+        replayed=False, idempotency_key=key,
+        total_rows=report.total_rows, matched=report.matched, unmatched=report.unmatched,
+        inserted=report.inserted, updated=report.updated,
+        total_quantity=report.total_quantity, location=report.location,
+        rows=[ScanRowOut(index=r.index, matched=r.matched, method=r.method, quantity=r.quantity,
+                         scryfall_id=r.scryfall_id, name=r.name, set=r.set_code,
+                         collector_number=r.collector_number)
+              for r in report.rows],
+    )
+
+
+@router.post("/scan", response_model=ScanOut)
+async def api_scan(
+    body: ScanIn, request: Request, session: AsyncSession = Depends(get_session)
+) -> ScanOut:
+    """Ingest a batch of scanned cards straight into the collection (#164).
+
+    Send an ``Idempotency-Key`` header. The scanner is a phone on a home network with an offline
+    queue, so the same batch *will* arrive twice; with a key, the second arrival returns the first
+    one's answer (``replayed: true``) instead of adding the cards again. Without one the batch is
+    applied as given, which is the caller's choice to make.
+    """
+    _guard_writable()
+    if not body.rows:
+        raise HTTPException(status_code=400, detail="No rows to ingest.")
+    if len(body.rows) > MAX_SCAN_ROWS:
+        raise HTTPException(
+            status_code=413,
+            detail=f"A batch may hold at most {MAX_SCAN_ROWS} rows; send several batches.",
+        )
+
+    key = (request.headers.get("Idempotency-Key") or "").strip()[:128]
+    if key:
+        prior = await session.scalar(
+            select(ScanBatch).where(ScanBatch.idempotency_key == key)
+        )
+        if prior is not None:
+            return ScanOut(**{**prior.response, "replayed": True})
+
+    rows = [
+        to_import_row(
+            name=r.name, quantity=r.quantity, set_code=r.set,
+            collector_number=r.collector_number, scryfall_id=r.scryfall_id,
+            finish=r.finish, condition=r.condition, language=r.language,
+        )
+        for r in body.rows
+    ]
+
+    if not key:
+        return _scan_out(await ingest_scan(session, rows, location=body.location), key=None)
+
+    # The merge and the record of having done it are one transaction. Checking for the key first
+    # (above) is only a fast path: two retries that race past that check both reach this commit,
+    # where the unique index lets exactly one through and rolls the other's increments back with
+    # it. Applying the batch and then discovering the key was taken would need the rows un-applied
+    # afterwards, and a compensating decrement is not something to get wrong in someone's
+    # collection.
+    report = await ingest_scan(session, rows, location=body.location, commit=False)
+    out = _scan_out(report, key=key)
+    session.add(ScanBatch(idempotency_key=key, response=out.model_dump()))
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        prior = await session.scalar(select(ScanBatch).where(ScanBatch.idempotency_key == key))
+        if prior is None:  # pragma: no cover - the index is the only source of this error
+            raise
+        return ScanOut(**{**prior.response, "replayed": True})
+    return out
 
 
 # --- Preferences (#203) — same data as the browser /prefs router, for external clients ----------

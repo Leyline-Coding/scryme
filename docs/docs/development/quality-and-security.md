@@ -33,9 +33,13 @@ Published container images are additionally scanned:
 
 - **Pinned dependencies** — `requirements.txt` pins exact versions; the container image builds from
   those pins for reproducibility.
-- **Dependabot** — opens weekly, grouped update PRs for the backend (pip), the docs toolchain, the
-  desktop app (npm), and the GitHub Actions themselves, and opens **security updates** promptly when
-  an advisory affects a pinned dependency.
+- **Dependabot** — opens weekly update PRs for the backend (pip), the docs toolchain, the
+  desktop app (npm), the GitHub Actions themselves, and container images (Dockerfiles, Compose
+  files and the demo's Kubernetes manifests), and opens **security updates** promptly when an
+  advisory affects a pinned dependency.
+- **Pinned GitHub Actions** — every action is referenced by full commit SHA (with the release in a
+  trailing comment), so a retagged or compromised action release cannot change what CI runs.
+  Workflows default to a read-only token; only the jobs that publish get write access.
 - **pip-audit gate** — because the audit runs in CI (above), a vulnerable dependency blocks the
   merge rather than shipping silently.
 
@@ -55,8 +59,11 @@ Jenkins and complements — it does not replace — the required GitHub Actions 
 
 ## Runtime & data safety
 
-- **Read-only mode** — `SCRYME_READ_ONLY=true` disables all mutations (used for the public demo), so
-  a publicly reachable instance can't be modified.
+- **Read-only mode** — `SCRYME_READ_ONLY=true` refuses all mutations and disables the AI features
+  (used for the public demo), so a publicly reachable instance can't be modified.
+- **Access control** — scryme has no accounts; `SCRYME_API_TOKEN` protects the web UI and API when
+  set. See [Securing your install](../getting-started/self-hosting.md#securing-your-install) and the
+  threat model in [`SECURITY.md`](https://github.com/Leyline-Coding/scryme/blob/main/SECURITY.md).
 - **Scryfall API compliance** — the ingestion client sends a descriptive `User-Agent`/`Accept`,
   stays under Scryfall's rate limit, backs off on `429`, and uses cached bulk downloads (see
   [Architecture](architecture.md)).
@@ -66,6 +73,7 @@ Jenkins and complements — it does not replace — the required GitHub Actions 
 
 ## Reporting a vulnerability
 
-If you believe you've found a security issue, please open a
-[GitHub issue](https://github.com/Leyline-Coding/scryme/issues) (or, for sensitive reports, a
-private security advisory) rather than disclosing it publicly.
+If you believe you've found a security issue, please report it privately through the repository's
+**Security → Advisories → Report a vulnerability** form (GitHub Private Vulnerability Reporting)
+rather than opening a public issue. Details are in
+[`SECURITY.md`](https://github.com/Leyline-Coding/scryme/blob/main/SECURITY.md).

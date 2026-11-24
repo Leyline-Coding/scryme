@@ -1,11 +1,28 @@
-# Auto-deploy: poll GHCR for a new :latest image digest and roll the demo when it changes.
+# Auto-deploy: poll GHCR for the digest behind :latest and pin the demo to it when it changes.
 #
-# The demo runs on a homelab k3s behind cloudflared, so GitHub can't reach the cluster API. Instead
-# of pushing from CI, this CronJob pulls: every few minutes it asks GHCR for the current digest of
-# ghcr.io/leyline-coding/scryme:latest (reusing the ghcr-pull secret for auth), compares it to the
-# last one it rolled out (kept in a ConfigMap), and runs `kubectl rollout restart` when they differ.
-# Outbound-only — nothing needs to be exposed. A release → publish-image.yml pushes a new :latest,
-# and this picks it up within a poll interval.
+# The demo runs on a k3s cluster behind cloudflared, so GitHub can't reach the cluster API. Instead
+# of pushing from CI, this CronJob pulls: every few minutes it asks GHCR which digest
+# ghcr.io/leyline-coding/scryme:latest currently points to (reusing the ghcr-pull secret for auth)
+# and, if the Deployment is not already running exactly that digest, runs
+# `kubectl set image ...@sha256:<digest>` on both of its containers. Outbound-only — nothing needs
+# to be exposed. A release → publish-image.yml pushes a new :latest, and this picks it up within a
+# poll interval.
+#
+# Deploy-by-digest, not "restart and re-pull :latest": the Deployment always names one immutable
+# image, so `kubectl get deploy scryme-demo -o wide` says exactly what is running, the init
+# container and the app can never end up on different builds, and a pod that restarts on its own
+# (node reboot, OOM) comes back on the same image rather than on whatever :latest is by then.
+# The Deployment's own spec is the record of what was deployed, so no state ConfigMap is needed
+# and this job can do nothing in the cluster except read and patch that one Deployment.
+#
+# Notes for operators:
+#   * `kubectl apply -k .` resets the image to the :latest tag from backend.yaml; the next poll
+#     pins it again. Expect two short restarts after a manual apply.
+#   * To hold the demo on a version (or roll back), suspend this job first, then set the image:
+#       kubectl -n scryme-demo patch cronjob scryme-demo-autodeploy -p '{"spec":{"suspend":true}}'
+#   * Earlier versions kept a `scryme-demo-autodeploy-state` ConfigMap. It is no longer read or
+#     written (and this job can no longer touch ConfigMaps); delete it once:
+#       kubectl -n scryme-demo delete configmap scryme-demo-autodeploy-state
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -18,14 +35,13 @@ metadata:
   name: scryme-demo-autodeploy
   namespace: scryme-demo
 rules:
-  # Roll the demo deployment (rollout restart patches the pod-template annotations).
+  # Read and patch the image of ONE Deployment. `kubectl set image deployment/<name>` is a GET by
+  # name followed by a PATCH, both of which resourceNames can restrict (list/watch/create cannot
+  # be, which is why the script never lists and never creates anything).
   - apiGroups: ["apps"]
     resources: ["deployments"]
+    resourceNames: ["scryme-demo"]
     verbs: ["get", "patch"]
-  # Remember the last-deployed digest between runs.
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["get", "create", "patch", "update"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -61,22 +77,41 @@ spec:
       # 2026-08-02, when ghcr.io was unreachable for ~15 minutes and three polls failed.
       ttlSecondsAfterFinished: 3600
       template:
+        metadata:
+          labels:
+            app: scryme-demo-autodeploy   # selected by networkpolicy.yaml
         spec:
           serviceAccountName: scryme-demo-autodeploy
+          # This pod is the one workload here that does need its API token.
+          automountServiceAccountToken: true
           restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534     # nobody; the image's default user is root
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
           containers:
             - name: autodeploy
-              # Toolbox image with kubectl + curl + jq + bash (Docker Hub, public — no pull secret).
-              image: alpine/k8s:1.29.4
+              # Toolbox image that already contains kubectl, curl, jq and bash, so nothing is
+              # installed at run time (Docker Hub, public — no pull secret). Pinned by digest: this
+              # container holds credentials that can change what the demo runs, so the tag alone
+              # is not enough. The digest is the multi-arch index for alpine/k8s:1.29.4; bump the
+              # tag and digest together (Dependabot's docker ecosystem does both).
+              image: alpine/k8s:1.29.4@sha256:ed410d899e43e9df9eb70595ea42967bb3230676adf70a97a849ac965e4389fc
+              env:
+                # Read-only root filesystem: kubectl wants a writable HOME for its discovery cache.
+                - name: HOME
+                  value: /tmp
               command: ["/bin/bash", "-c"]
               args:
                 - |
                   set -euo pipefail
-                  command -v jq >/dev/null && command -v curl >/dev/null || apk add --no-cache jq curl >/dev/null
                   NS=scryme-demo
+                  DEPLOY=scryme-demo
                   REPO=leyline-coding/scryme
+                  IMAGE="ghcr.io/${REPO}"
                   TAG=latest
-                  STATE=scryme-demo-autodeploy-state
 
                   # Registry auth from the same secret the kubelet uses to pull the image.
                   AUTH=$(jq -r '(.auths["ghcr.io"] // .auths["https://ghcr.io"])
@@ -90,39 +125,54 @@ spec:
                   TOKEN=$(curl -fsSL ${CURL_OPTS} -H "Authorization: Basic ${AUTH}" \
                     "https://ghcr.io/token?service=ghcr.io&scope=repository:${REPO}:pull" | jq -r .token)
 
-                  # The digest the :latest tag currently points to (the manifest-list/index digest).
+                  # The digest the :latest tag currently points to (the manifest-list/index digest,
+                  # so each node pulls the image for its own architecture).
                   DIGEST=$(curl -fsSL ${CURL_OPTS} -D - -o /dev/null -H "Authorization: Bearer ${TOKEN}" \
                     -H "Accept: application/vnd.oci.image.index.v1+json" \
                     -H "Accept: application/vnd.docker.distribution.manifest.list.v2+json" \
                     -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
                     "https://ghcr.io/v2/${REPO}/manifests/${TAG}" \
-                    | tr -d '\r' | awk -F': ' 'tolower($1)=="docker-content-digest"{print $2}')
-                  if [ -z "${DIGEST}" ]; then echo "ERROR: could not resolve :latest digest"; exit 1; fi
+                    | tr -d '\r' | awk -F': ' 'tolower($1)=="docker-content-digest"{print $2}' | tail -n 1)
+                  # The value goes into the Deployment spec, so accept nothing but a sha256 digest.
+                  if ! [[ "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+                    echo "ERROR: could not resolve the :${TAG} digest (got '${DIGEST}')"; exit 1
+                  fi
+                  WANT="${IMAGE}@${DIGEST}"
 
-                  LAST=$(kubectl -n "${NS}" get configmap "${STATE}" \
-                    -o jsonpath='{.data.last-digest}' 2>/dev/null || true)
-                  echo "remote :latest = ${DIGEST}"
-                  echo "last deployed  = ${LAST:-<none>}"
-                  if [ "${DIGEST}" = "${LAST}" ]; then
+                  # What the Deployment is set to run now, for the app and for the init container.
+                  APP_IMAGE=$(kubectl -n "${NS}" get deployment "${DEPLOY}" \
+                    -o jsonpath='{.spec.template.spec.containers[?(@.name=="scryme")].image}')
+                  INIT_IMAGE=$(kubectl -n "${NS}" get deployment "${DEPLOY}" \
+                    -o jsonpath='{.spec.template.spec.initContainers[?(@.name=="ingest-and-seed")].image}')
+                  echo "remote :${TAG}  = ${WANT}"
+                  echo "deployed (app)  = ${APP_IMAGE}"
+                  echo "deployed (init) = ${INIT_IMAGE}"
+                  if [ "${APP_IMAGE}" = "${WANT}" ] && [ "${INIT_IMAGE}" = "${WANT}" ]; then
                     echo "already up to date; nothing to do"
                     exit 0
                   fi
 
-                  echo "new image detected — rolling deployment/scryme-demo"
-                  kubectl -n "${NS}" rollout restart deployment/scryme-demo
-                  kubectl -n "${NS}" create configmap "${STATE}" \
-                    --from-literal=last-digest="${DIGEST}" \
-                    --dry-run=client -o yaml | kubectl -n "${NS}" apply -f -
-                  echo "rolled to ${DIGEST}"
+                  echo "pinning deployment/${DEPLOY} to ${DIGEST}"
+                  kubectl -n "${NS}" set image "deployment/${DEPLOY}" \
+                    "scryme=${WANT}" "ingest-and-seed=${WANT}"
+                  echo "rolled to ${WANT}"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
               volumeMounts:
                 - name: ghcr
                   mountPath: /ghcr
                   readOnly: true
+                - name: tmp
+                  mountPath: /tmp
               resources:
                 requests:
                   cpu: 25m
                   memory: 32Mi
                 limits:
+                  cpu: 250m
                   memory: 128Mi
           volumes:
             - name: ghcr
@@ -131,3 +181,6 @@ spec:
                 items:
                   - key: .dockerconfigjson
                     path: .dockerconfigjson
+            - name: tmp
+              emptyDir:
+                sizeLimit: 32Mi

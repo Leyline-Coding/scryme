@@ -13,8 +13,22 @@ bundled with kustomize.
 - An **init container** that, on first boot, waits for Postgres, runs migrations, ingests the
   Scryfall bulk file, and seeds a sample collection (`alembic upgrade` → `ingest` → `seed-demo`).
   Persistent Postgres + the 24h cache guard make later restarts fast.
-- The backend runs with `SCRYME_READ_ONLY=true`, so uploads and admin mutations are disabled and
-  the demo banner is shown.
+- The backend runs with `SCRYME_READ_ONLY=true`, so every write is refused, the AI features are
+  off, and the demo banner is shown. The ConfigMap also sets `SCRYME_ALLOWED_HOSTS=demo.scryme.app`,
+  `SCRYME_CLIENT_IP_HEADER=CF-Connecting-IP` (per-visitor rate limiting behind Cloudflare) and a
+  5-second `SCRYME_STATEMENT_TIMEOUT_MS` — see [Configuration](configuration.md#security-and-network-variables).
+- **NetworkPolicies** — default-deny for the namespace, then: cloudflared → app, app → Postgres,
+  app → public HTTPS, and DNS.
+- An **auto-deploy CronJob** that polls the registry and pins the Deployment to the image digest
+  the `latest` tag currently resolves to.
+
+!!! warning "Hosting your own copy? Change two things first"
+    - `SCRYME_ALLOWED_HOSTS` in `backend.yaml` must be **your** hostname, or every request gets
+      `400`.
+    - `networkpolicy.yaml` assumes cloudflared runs in a namespace named `cloudflared`. If yours
+      is elsewhere (or you use an ingress controller instead), edit the `scryme-demo-allow-cloudflared`
+      rule, or nothing will be able to reach the app. If you expose the Service any other way,
+      also remove `SCRYME_CLIENT_IP_HEADER`.
 
 ## Prerequisites
 
@@ -43,10 +57,12 @@ kubectl apply -k deploy/k8s/demo             # use -k (kustomize), not -f
 kubectl -n scryme-demo logs -f deploy/scryme-demo -c ingest-and-seed
 ```
 
-!!! note "Pod runs as non-root"
-    The Deployment sets `securityContext.fsGroup: 1000` so the non-root container can write the
-    `/data` PVC. The DB password is supplied as a discrete part (`SCRYME_DB_PASSWORD`), so it may
-    contain any characters — see [Configuration](configuration.md).
+!!! note "Pods are locked down"
+    Both pods run as non-root (uid 1000 for the app, 70 for Postgres) with a read-only root
+    filesystem, all capabilities dropped, the default seccomp profile, and no Kubernetes API token;
+    `/tmp` is an `emptyDir`. `fsGroup` lets the app write the `/data` PVC. The DB password is
+    supplied as a discrete part (`SCRYME_DB_PASSWORD`), so it may contain any characters — see
+    [Configuration](configuration.md).
 
 ## Expose with Cloudflare Tunnel
 
@@ -67,12 +83,14 @@ Cloudflare terminates TLS at the edge, so the tunnel targets the Service over pl
 
 ## Pin a version
 
-`kustomization.yaml` tracks the `latest` tag. To pin a release, set `newTag`:
+`kustomization.yaml` starts from the `latest` tag, and the auto-deploy CronJob then keeps the
+Deployment pinned to whatever digest `latest` points at. To stay on one release instead, remove
+`autodeploy.yaml` from `kustomization.yaml` (or suspend the CronJob) and set `newTag`:
 
 ```yaml
 images:
   - name: ghcr.io/leyline-coding/scryme
-    newTag: v0.1.0
+    newTag: v0.28.0
 ```
 
 See the [deploy README](https://github.com/Leyline-Coding/scryme/blob/main/deploy/k8s/demo/README.md)

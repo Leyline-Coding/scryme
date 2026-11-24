@@ -29,10 +29,20 @@ spec:
       labels:
         app: scryme-demo
     spec:
-      # The image runs as non-root uid 1000; fsGroup makes the freshly-provisioned /data PVC
-      # group-writable so ingest can download the bulk file and cache images.
+      # The app never talks to the Kubernetes API, so it gets no API credentials.
+      automountServiceAccountToken: false
+      # The image runs as non-root uid 1000 (`useradd --uid 1000 scryme` in backend/Dockerfile);
+      # stating it here makes the kubelet refuse to start the pod as anything else. fsGroup makes a
+      # freshly-provisioned /data PVC group-writable so ingest can download the bulk file and cache
+      # images (OnRootMismatch skips the recursive chown on later starts, once it is right).
       securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
         fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       # Pull the private GHCR image. Create this secret first (see README); harmless/ignored if
       # the package is public.
       imagePullSecrets:
@@ -41,6 +51,8 @@ spec:
       # bulk file, and seed a sample collection. The 24h guard + persistent DB make reruns cheap.
       initContainers:
         - name: ingest-and-seed
+          # The autodeploy CronJob (autodeploy.yaml) replaces this tag with the digest that
+          # :latest resolves to, on both containers, so what runs is always a specific image.
           image: ghcr.io/leyline-coding/scryme:latest
           imagePullPolicy: Always
           workingDir: /app
@@ -73,14 +85,25 @@ spec:
                 secretKeyRef:
                   name: scryme-demo-secrets
                   key: POSTGRES_PASSWORD
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           volumeMounts:
             - name: data
               mountPath: /data
+            # The root filesystem is read-only. The app writes only under /data (bulk file, image
+            # cache, key files) and the system temp dir (upload spooling, tempfile downloads).
+            - name: tmp
+              mountPath: /tmp
           resources:
             requests:
               cpu: 250m
               memory: 512Mi
             limits:
+              # The first-boot ingest is CPU-bound; this bounds it without making it crawl.
+              cpu: "2"
               memory: 1Gi
       containers:
         - name: scryme
@@ -89,6 +112,13 @@ spec:
           # Override the image entrypoint to run 2 uvicorn workers. Migrations already ran in the
           # initContainer; re-running is idempotent and harmless. Safe on the demo because the
           # in-process scheduler is skipped under SCRYME_READ_ONLY (no duplicate jobs per worker).
+          #
+          # No --forwarded-allow-ips here, on purpose. The peer is cloudflared, and Cloudflare
+          # APPENDS the visitor's address to whatever X-Forwarded-For the visitor sent, so that
+          # header's first entry is attacker-controlled; uvicorn's default (trust loopback only)
+          # ignores it. The real client address comes from CF-Connecting-IP instead, which
+          # Cloudflare always overwrites -- see SCRYME_CLIENT_IP_HEADER in the ConfigMap, and the
+          # NetworkPolicy that makes cloudflared the only way in.
           command: ["sh", "-c"]
           args:
             - |
@@ -105,9 +135,16 @@ spec:
                   key: POSTGRES_PASSWORD
           ports:
             - containerPort: 8000
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: tmp
+              mountPath: /tmp
           readinessProbe:
             httpGet:
               path: /health
@@ -125,11 +162,17 @@ spec:
               cpu: 250m
               memory: 256Mi
             limits:
+              # One core per uvicorn worker. Stops a burst of expensive searches from taking the
+              # node's other workloads down with it.
+              cpu: "2"
               memory: 768Mi
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: scryme-demo-data
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -140,11 +183,25 @@ data:
   SCRYME_ENVIRONMENT: "production"
   SCRYME_DATA_DIR: "/data"
   SCRYME_IMAGE_CACHE_DIR: "/data/images"
+  # Read-only: every write is refused centrally and the AI features are switched off. Do not add
+  # SCRYME_LLM_* settings here -- the public demo must not be able to spend anyone's API quota.
   SCRYME_READ_ONLY: "true"
   SCRYME_DB_HOST: "scryme-demo-postgres"
   SCRYME_DB_PORT: "5432"
   SCRYME_DB_USER: "scryme"
   SCRYME_DB_NAME: "scryme"
+  # The only name this instance answers to (IP literals -- the kubelet's probes -- are always
+  # allowed). Stops DNS rebinding and stray Host headers. Change it if you host your own copy under
+  # another name, or the app will answer 400 to every visitor.
+  SCRYME_ALLOWED_HOSTS: "demo.scryme.app"
+  # Every request arrives through Cloudflare (cloudflared -> this pod), so the TCP peer is always
+  # cloudflared. Rate-limit per real visitor using the header Cloudflare sets and overwrites.
+  # Only safe because nothing else can reach the pod (see networkpolicy.yaml); remove it if you
+  # expose the Service any other way, or clients could pick their own rate-limit bucket.
+  SCRYME_CLIENT_IP_HEADER: "CF-Connecting-IP"
+  # A public instance should not let one pathological regex hold a database backend for long.
+  # Applies to web requests only; the init container's migrations and ingest are not limited.
+  SCRYME_STATEMENT_TIMEOUT_MS: "5000"
 ---
 apiVersion: v1
 kind: Service

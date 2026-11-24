@@ -51,7 +51,9 @@ updates:
       - dependencies
       - area:ci
 
-  # The GitHub Actions used by our workflows (keeps the Node runtime current, etc.).
+  # The GitHub Actions used by our workflows. They are pinned to full commit SHAs with the release
+  # in a trailing comment (`uses: owner/action@<sha> # v1.2.3`); Dependabot bumps both together,
+  # so keep that exact comment form when adding an action.
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -61,6 +63,45 @@ updates:
       actions-all:
         patterns:
           - "*"
+    labels:
+      - dependencies
+      - area:ci
+
+  # Base images in the Dockerfiles (backend/Dockerfile, backend/Dockerfile.dev,
+  # desktop/backend.Dockerfile) and the image tags/digests in the demo's Kubernetes manifests.
+  - package-ecosystem: docker
+    directories:
+      - /backend
+      - /desktop
+      - /deploy/k8s/demo
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    ignore:
+      # The Python minor version is a deliberate choice shared with CI, the desktop build and
+      # sonar-project.properties -- bump it by hand, everywhere at once.
+      - dependency-name: python
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      # A PostgreSQL major upgrade needs a dump/restore of the data volume; never automatic.
+      - dependency-name: postgres
+        update-types:
+          - version-update:semver-major
+    labels:
+      - dependencies
+      - area:ci
+
+  # Image tags in docker-compose.yml / docker-compose.dev.yml (postgres, nginx).
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: postgres
+        update-types:
+          - version-update:semver-major
     labels:
       - dependencies
       - area:ci

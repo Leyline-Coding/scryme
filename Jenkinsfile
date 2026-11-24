@@ -1,29 +1,33 @@
-// Jenkins pipeline (split agents): backend tests + coverage on the unRAID Docker agents,
-// then a SonarQube quality-gate analysis in-cluster. COMPLEMENTS the GitHub Actions PR
-// gate (lint + pytest + image build) — GitHub Actions stays required; this adds the
-// SonarQube code-quality/coverage view and the quality gate.
+// Jenkins pipeline (split agents): backend tests + coverage on Docker-capable agents, then a
+// SonarQube quality-gate analysis in a Kubernetes pod. COMPLEMENTS the GitHub Actions PR gate
+// (lint + pytest + image build) — GitHub Actions stays required; this adds the SonarQube
+// code-quality/coverage view and the quality gate.
 //
-// Why the split (mirrors the uvdesk-docker job):
-//   * Backend tests are the heavy part (full pytest suite + Postgres + coverage), so they
-//     run on the permanent unRAID VMs (label `docker` = unraid-docker / unraid-docker-02),
-//     keeping the k3s cluster free. Each tool runs in a throwaway container against the
-//     VM's LOCAL Docker daemon via the docker-workflow plugin, with a Postgres sidecar.
-//   * The SonarQube stage runs IN-CLUSTER: the off-cluster unRAID agents cannot reach
-//     SonarQube (the public URL sits behind Cloudflare Access + a cert-hostname mismatch),
-//     but an in-cluster pod reaches it on the internal service URL that the 'SonarQube'
-//     server installation (JCasC) points at. coverage.xml is handed over via stash/unstash.
+// Why two agents:
+//   * Backend tests are the heavy part (full pytest suite + Postgres + coverage), so they run
+//     on agents labelled `docker`. Each tool runs in a throwaway container against the agent's
+//     local Docker daemon via the docker-workflow plugin, with a Postgres sidecar.
+//   * The SonarQube stage runs in a pod next to SonarQube, because the `docker` agents are not
+//     assumed to have a network route to it. coverage.xml is handed over via stash/unstash.
 //
-// The scan runs in a glibc node:20 container (NOT the Alpine/musl sonar-scanner-cli image,
-// which ships Node 18 and fails the SonarJS analyzer bridge — scryme analyzes desktop/src
-// JS, so the bridge must start). `npx @sonar/scan` auto-provisions a JRE + scanner engine
-// from the SonarQube server.
+// The scan runs in a glibc node:24 container (NOT the Alpine/musl sonar-scanner-cli image, whose
+// bundled Node is too old for the SonarJS analyzer bridge — scryme analyzes desktop/src JS, so
+// the bridge must start). `npx @sonar/scan` auto-provisions a JRE + scanner engine from the
+// SonarQube server; it is pinned to a version below (it needs Node >= 22.12) so a new scanner
+// release cannot change the build unannounced. Bump the pin deliberately.
 //
-// Prerequisites (already in the urza-helm jenkins values.yaml / JCasC):
-//   - docker-workflow plugin + the two `docker`-labelled permanent nodes, each with a
-//     working local Docker daemon.
-//   - SonarQube server installation named 'SonarQube' -> internal service URL, credential
-//     'sonarqube-token'.
-//   - SonarQube webhook -> https://jenkins.taylorcohron.me/sonarqube-webhook/ (Quality Gate).
+// What the Jenkins controller must provide (nothing here is specific to one installation):
+//   - docker-workflow plugin + at least one agent labelled `docker` with a working local Docker
+//     daemon; the Kubernetes plugin for the SonarQube stage.
+//   - A SonarQube server installation named 'SonarQube' (Manage Jenkins > System) with its
+//     server URL and token credential. withSonarQubeEnv() reads both from there — no SonarQube
+//     or Jenkins address is written in this file.
+//   - A webhook IN SONARQUBE (Administration > Configuration > Webhooks) pointing back at this
+//     controller: <your Jenkins URL>/sonarqube-webhook/ — i.e. the controller's `JENKINS_URL`
+//     ("Jenkins URL" under Manage Jenkins > System) followed by `sonarqube-webhook/`. That is
+//     how waitForQualityGate learns the result. It is configured on the SonarQube side only;
+//     this pipeline never reads the address. Without it the stage does not pass silently: it
+//     waits out the 5-minute timeout below and fails the build.
 
 def sonarPodYaml = '''
 apiVersion: v1
@@ -31,17 +35,17 @@ kind: Pod
 spec:
   containers:
     - name: node
-      image: node:20
+      image: node:24
       command: ["sleep"]
       args: ["infinity"]
 '''
 
 pipeline {
-  // No global agent: each stage picks its own (unRAID Docker vs in-cluster pod).
+  // No global agent: each stage picks its own (Docker agent vs Kubernetes pod).
   agent none
 
   options {
-    // Headroom for the unRAID VMs, which run the suite slower than the GitHub
+    // Headroom for self-hosted agents, which may run the suite slower than the GitHub
     // Actions runners. Still bounded so a genuine hang can't run forever.
     timeout(time: 45, unit: 'MINUTES')
   }
@@ -54,14 +58,14 @@ pipeline {
 
   stages {
     stage('Backend tests + coverage') {
-      // Heavy stage -> unRAID VMs. Jenkins load-balances across unraid-docker / -02.
+      // Heavy stage -> any agent labelled `docker`.
       agent { label 'docker' }
       steps {
         script {
           // Ephemeral Postgres sidecar; torn down automatically when the closure exits.
           // fsync/synchronous_commit/full_page_writes OFF: this DB is thrown away at the
           // end of the build, so durability is worthless — and turning it off removes the
-          // per-commit disk-flush that dominated runtime on the VM's storage (the suite is
+          // per-commit disk-flush that dominated runtime on the agent's storage (the suite is
           // very DB-write heavy). The second withRun arg is the container command; the
           // postgres image prepends `postgres` when it starts with `-`.
           docker.image('postgres:16-alpine').withRun(
@@ -91,8 +95,8 @@ PY
                 # await that crosses the greenlet boundary, under-reporting every async
                 # route/service. Needed for accurate coverage in the SonarQube report.
                 COVERAGE_CORE=sysmon pytest tests/   # pyproject addopts emit coverage.xml (Cobertura)
-                # The Sonar scan runs on a SEPARATE agent (in-cluster pod) whose workspace
-                # path differs from this VM's, and coverage.py bakes THIS VM's absolute path
+                # The Sonar scan runs on a SEPARATE agent (Kubernetes pod) whose workspace
+                # path differs from this agent's, and coverage.py bakes THIS agent's absolute path
                 # into the Cobertura <source>. Over there it resolves to nothing -> Sonar maps
                 # 0% coverage. Rewrite <source> so SonarPython resolves each file to
                 # backend/src/<...> (matching sonar.sources) against the scan's projectBaseDir.
@@ -119,14 +123,14 @@ PY
             }
           }
         }
-        // Hand the coverage report to the in-cluster Sonar stage (different agent).
+        // Hand the coverage report to the Sonar stage (different agent).
         stash name: 'coverage', includes: 'backend/coverage.xml'
       }
     }
 
     stage('SonarQube analysis') {
-      // In-cluster pod: reaches SonarQube on the internal service URL + provides Node 20
-      // for the SonarJS analyzer bridge.
+      // Kubernetes pod: can reach SonarQube, and provides a current Node LTS for the SonarJS
+      // analyzer bridge.
       agent {
         kubernetes {
           yaml sonarPodYaml
@@ -135,7 +139,7 @@ PY
       }
       steps {
         // Declarative checks out SCM on this agent (backend/src + desktop/src); bring the
-        // coverage.xml produced on the unRAID agent on top of it.
+        // coverage.xml produced on the Docker agent on top of it.
         unstash 'coverage'
         withSonarQubeEnv('SonarQube') {
           // @sonar/scan reads sonar-project.properties (repo root) plus the
@@ -147,12 +151,12 @@ PY
           sh '''
             VERSION=$(grep '__version__' backend/src/__init__.py | cut -d'"' -f2)
             echo "scryme version for analysis: ${VERSION:-unknown}"
-            npx --yes @sonar/scan -Dsonar.projectVersion="${VERSION:-0.0.0}"
+            npx --yes @sonar/scan@5.1.0 -Dsonar.projectVersion="${VERSION:-0.0.0}"
           '''
         }
-        // Runs on this in-cluster agent so it can reach SonarQube to poll the task status.
-        // Requires the SonarQube -> Jenkins webhook. For the very first run, before the
-        // webhook exists, set abortPipeline:false (or comment this out).
+        // Runs on this agent so it can reach SonarQube to poll the task status. Requires the
+        // SonarQube -> Jenkins webhook described at the top of this file. For the very first
+        // run, before the webhook exists, set abortPipeline:false (or comment this out).
         timeout(time: 5, unit: 'MINUTES') {
           waitForQualityGate abortPipeline: true
         }

@@ -10,23 +10,26 @@ on:
       - 'v*'
   workflow_dispatch:
 
+# Read-only by default; the job below asks for the write access it needs.
 permissions:
   contents: read
-  packages: write
-  security-events: write  # upload Trivy SARIF to the Security > Code scanning tab
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write         # push the image to GHCR
+      security-events: write  # upload Trivy SARIF to the Security > Code scanning tab
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # QEMU lets the amd64 runner cross-build the arm64 image (Raspberry Pi / Apple Silicon).
-      - uses: docker/setup-qemu-action@v4
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -35,7 +38,7 @@ jobs:
       # Multi-arch manifest tags (e.g. :latest, :v1.2.3, :<sha>) — `docker pull` auto-selects arch.
       - name: Derive image tags
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
@@ -46,7 +49,7 @@ jobs:
       # Per-arch convenience tags (e.g. :latest-amd64, :v1.2.3-arm64) for pulling a specific arch.
       - name: Derive amd64 tags
         id: meta-amd64
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/${{ github.repository }}
           flavor: |
@@ -59,7 +62,7 @@ jobs:
 
       - name: Derive arm64 tags
         id: meta-arm64
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/${{ github.repository }}
           flavor: |
@@ -71,7 +74,7 @@ jobs:
             type=sha,format=short
 
       - name: Build and push (multi-arch manifest)
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ./backend
           file: ./backend/Dockerfile
@@ -83,7 +86,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push (amd64 tags)
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ./backend
           file: ./backend/Dockerfile
@@ -94,7 +97,7 @@ jobs:
           cache-from: type=gha
 
       - name: Build and push (arm64 tags)
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ./backend
           file: ./backend/Dockerfile
@@ -115,7 +118,7 @@ jobs:
       # finding nor a scan hiccup fails the publish (the image is already pushed by this point).
       - name: Scan image (Trivy)
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ steps.imageref.outputs.ref }}
           format: sarif
@@ -127,7 +130,7 @@ jobs:
       - name: Upload Trivy results to code scanning
         if: ${{ hashFiles('trivy-results.sarif') != '' }}
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           sarif_file: trivy-results.sarif
           category: trivy-image

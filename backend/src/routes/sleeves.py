@@ -170,11 +170,15 @@ async def serve_sleeve_image(
     if not sleeve or not sleeve.image:
         raise HTTPException(status_code=404, detail="Sleeve not found.")
     path = (base_path / Path(sleeve.image)).resolve()
-    # Only ever serve a known raster type, and say exactly which one: a file stored before
-    # uploads were validated may be HTML/SVG, and guessing its type from the name would run it
-    # in this origin. Those are refused rather than served.
-    media_type = _MEDIA_TYPES.get(path.suffix.lower())
-    if media_type is None or not path.is_relative_to(base_path) or not path.is_file():
+    if not path.is_relative_to(base_path) or not path.is_file():
+        raise HTTPException(status_code=404, detail="Sleeve image not found.")
+    # Only ever serve a known raster type, and say exactly which one. The type comes from the
+    # file's own first bytes, not its name: a file stored before uploads were validated may be
+    # HTML or SVG under any extension (guessing from the name would run it in this origin), while
+    # a genuine image saved back then as ``.jpeg`` or ``.JPG`` must keep working.
+    with path.open("rb") as fh:
+        media_type = _sniff_image(fh.read(16))
+    if media_type is None:
         raise HTTPException(status_code=404, detail="Sleeve image not found.")
     return FileResponse(
         path, media_type=media_type, headers={"X-Content-Type-Options": "nosniff"}

@@ -211,6 +211,35 @@ async def test_a_previously_stored_non_image_sleeve_file_is_not_served(client, s
         (directory / name).unlink()
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name,body,served", [
+    ("old.jpeg", b"\xff\xd8\xff\xe0" + b"0" * 32, "image/jpeg"),   # real image, old extension
+    ("old.JPG", b"\xff\xd8\xff\xe0" + b"0" * 32, "image/jpeg"),
+    ("fake.png", b"<html><script>alert(1)</script></html>", None),     # HTML under an image name
+    ("old.svg", b"<svg onload='alert(1)' xmlns='http://www.w3.org/2000/svg'/>", None),
+])
+async def test_stored_sleeve_files_are_served_by_content_not_by_name(
+    client, session, name, body, served
+):
+    directory = Path(get_settings().data_dir) / "sleeves"
+    directory.mkdir(parents=True, exist_ok=True)
+    stored = f"{uuid.uuid4().hex}-{name}"
+    (directory / stored).write_bytes(body)
+    sleeve = Sleeve(name="old", image=stored)
+    session.add(sleeve)
+    await session.commit()
+    try:
+        resp = await client.get(f"/sleeves/{sleeve.id}/image")
+        if served is None:
+            assert resp.status_code == 404
+        else:
+            assert resp.status_code == 200
+            assert resp.headers["content-type"] == served
+            assert resp.headers["x-content-type-options"] == "nosniff"
+    finally:
+        (directory / stored).unlink()
+
+
 # --- 3. sleeve colour ----------------------------------------------------------------------------
 
 @pytest.mark.asyncio

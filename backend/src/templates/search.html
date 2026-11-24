@@ -2,7 +2,7 @@
 {% block title %}Search · scryme{% endblock %}
 {% block content %}
 
-<div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6" x-data="{ ai: {{ 'true' if nl else 'false' }}, dir: '{{dir}}', scope: '{{scope}}', sidebarOpen: false}">
+<div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6" x-data="{ ai: {{ (true if nl else false) | tojson | forceescape }}, dir: {{ dir | tojson | forceescape }}, scope: {{ scope | tojson | forceescape }}, sidebarOpen: false}">
   <header class="flex flex-wrap items-center gap-3 mb-4">
     {% include "_brand.html" %}
     <a href="/search?scope=all" class="text-sm text-muted hover:text-fg shrink-0" id="all-cards-link">All Cards</a>

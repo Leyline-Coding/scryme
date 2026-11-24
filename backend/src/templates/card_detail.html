@@ -118,7 +118,7 @@
 
       {# Price history (#233): recorded USD snapshots, shown in a chosen currency. The header holds a
          currency dropdown; the first non-USD pick confirms a one-time historical-rate download. #}
-      <section class="rounded-lg bg-surface border border-edge p-4 mb-8" x-data="histCurrency('{{ hist_currency }}')">
+      <section class="rounded-lg bg-surface border border-edge p-4 mb-8" x-data="histCurrency({{ hist_currency | tojson | forceescape }})">
         <div class="flex items-baseline justify-between gap-3 flex-wrap mb-3">
           <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">
             Value over time</h2>

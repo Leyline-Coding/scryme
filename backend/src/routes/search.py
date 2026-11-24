@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -198,21 +198,25 @@ async def advanced(
 async def search_nl_status(
     nl: str = "",
     session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
-    """Check if an NL query has been processed and return the resolved query."""
+) -> PlainTextResponse:
+    """Check if an NL query has been processed and return the resolved query.
+
+    Always ``text/plain``: the resolved query is model output, and the poller only ever reads it
+    as ``responseText``, so it must never be served as a document a browser would render.
+    """
     if not nl:
-        return HTMLResponse(status_code=400, content="No NL query provided")
+        return PlainTextResponse(status_code=400, content="No NL query provided")
     # Check if there's a cached result
     matching_nl_to_q = (await session.execute(
         select(NLQCache)
         .where(func.lower(NLQCache.nl_text) == func.lower(nl))
     )).scalars().first()
     if not matching_nl_to_q:
-        return HTMLResponse(status_code=404, content="No NL query being processed.")
+        return PlainTextResponse(status_code=404, content="No NL query being processed.")
     if matching_nl_to_q and matching_nl_to_q.q_text:
-        return HTMLResponse(status_code=200, content=matching_nl_to_q.q_text)
+        return PlainTextResponse(status_code=200, content=matching_nl_to_q.q_text)
     else:
-        return HTMLResponse(status_code=202, content="Processing...")
+        return PlainTextResponse(status_code=202, content="Processing...")
 
 
 @router.get("/search/nl/suggestions")
@@ -311,7 +315,9 @@ async def search(
     universal = dp.search_filter.strip()
     effective_q = _apply_universal(q, universal)
 
-    ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir,
+    ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort,
+                  # Normalised: the template emits this into an Alpine expression.
+                  "dir": "desc" if descending else "asc",
                   "read_only": get_settings().read_only, "view": view, "nl": nl,
                   "nl_from_cache_and_preloaded": nl_from_cache_and_preloaded,
                   "universal": universal, "page_sizes": PAGE_SIZES, "page_size": page_size,

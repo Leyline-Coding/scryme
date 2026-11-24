@@ -1,0 +1,54 @@
+# Build context for backend/Dockerfile and backend/Dockerfile.dev (context = this directory).
+# Both end in `COPY . .`, so anything not listed here is baked into the image -- and the
+# production image is published. Keep secrets, local state and test-only files out.
+#
+# Must stay IN the context: src/, alembic/, alembic.ini, requirements*.txt, pyproject.toml and
+# docker-entrypoint*.sh (the Dockerfiles and entrypoints use them).
+
+# Secrets / local configuration. The app reads `.env` from its working directory, so a developer's
+# backend/.env would otherwise ship inside the image. Configure containers through real
+# environment variables (docker-compose.yml `environment:` / the root .env) instead.
+.env
+.env.*
+.env-*
+*.pem
+*.key
+
+# Virtualenvs and Python build/cache output
+.venv/
+venv/
+**/__pycache__/
+**/*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Tests and their output (the dev stack bind-mounts ./backend, so tests are still there in dev)
+tests/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.scannerwork/
+*.log
+
+# Local data that must never be published (collection exports, downloaded bulk data).
+# .dockerignore patterns are anchored to the context root, so these match backend/data and
+# backend/*.csv only -- NOT src/data/, which the app needs.
+data/
+image-cache/
+*.dlens
+*.csv
+
+# Not needed inside the image
+Dockerfile
+Dockerfile.dev
+.dockerignore
+.git
+.gitignore
+.idea/
+.vscode/
+.DS_Store
+*.swp

@@ -1,0 +1,42 @@
+# Build context for builds run from the repository root. Today that is only
+# desktop/backend.Dockerfile (see desktop/scripts/build-backend.sh), which copies `backend/` and
+# `desktop/backend.spec` and nothing else.
+#
+# backend/Dockerfile uses ./backend as its context and is governed by backend/.dockerignore, not
+# by this file.
+#
+# This is an allow-list: everything is excluded, then the paths a root-context Dockerfile actually
+# copies are let back in. That keeps .git, deploy/, docs/, desktop/release, desktop/dist,
+# desktop/node_modules, *.AppImage, any .env and any personal collection export out of the build
+# context without having to enumerate them -- and a new file at the repo root is excluded by
+# default. If you add a COPY of a new path to a root-context Dockerfile, allow it here.
+*
+
+!backend
+!desktop/backend.spec
+
+# Within the allowed paths, still exclude secrets, local state and test-only files.
+# (A `!` rule above re-includes the whole directory, so these must come after it.)
+**/.env
+**/.env.*
+**/.env-*
+**/.venv
+**/venv
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/*.egg-info
+backend/tests
+backend/.coverage
+backend/.coverage.*
+backend/coverage.xml
+backend/htmlcov
+backend/data
+backend/image-cache
+backend/*.csv
+backend/*.dlens
+backend/*.log
+**/tests/fixtures/*_full.csv
+**/.DS_Store

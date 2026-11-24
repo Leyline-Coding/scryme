@@ -2,22 +2,22 @@ fastapi==0.165.0
 # starlette is a FastAPI dependency; pinned explicitly to stay on a version without the
 # advisories flagged by pip-audit (see the CI security scan). Keep compatible with fastapi.
 starlette==1.10.0
-uvicorn[standard]==0.52.4
-sqlalchemy==2.0.53
-asyncpg==0.31.0
-alembic==1.19.1
-pydantic==2.13.5
-pydantic-settings==2.15.0
+uvicorn[standard]==0.54.0
+sqlalchemy==2.1.9
+asyncpg==0.32.0
+alembic==1.20.1
+pydantic==2.14.4
+pydantic-settings==2.16.3
 jinja2==3.1.6
-python-multipart==0.0.32
+python-multipart==0.0.34
 httpx==0.28.1
 aiofiles==25.1.0
-ijson==3.5.1
+ijson==3.6.0
 apscheduler==3.11.3
 structlog==26.1.0
-cryptography==50.0.1
+cryptography==50.0.2
 qrcode==8.2
-nh3==0.3.7
+nh3==0.3.8
 markdown==3.11.3
 pyahocorasick==2.3.1
 babel==2.18.0

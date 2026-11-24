@@ -2,15 +2,24 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <!-- Electron needs JIT + writable/executable memory. -->
+  <!-- Hardened-runtime exceptions. These only take effect on a signed build (the current releases
+       are unsigned), and the file is also inherited by every nested binary (entitlementsInherit).
+
+       Electron (V8) needs JIT, and allow-jit is all it needs: @electron/osx-sign's own default
+       entitlements grant nothing else from the cs.* family. Deliberately NOT granted:
+         - allow-unsigned-executable-memory: writable+executable memory without MAP_JIT, a wider
+           exception that current Electron does not require;
+         - allow-dyld-environment-variables: would let DYLD_INSERT_LIBRARIES and friends inject code
+           into the app. Neither the PyInstaller backend nor the bundled PostgreSQL relies on DYLD_*
+           variables (both locate their libraries by @rpath / @loader_path).
+       If a signed build ever shows the frozen Python backend failing on executable memory (ctypes /
+       cffi callbacks), re-add allow-unsigned-executable-memory rather than disabling the runtime. -->
   <key>com.apple.security.cs.allow-jit</key>
   <true/>
-  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-  <true/>
-  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
-  <true/>
-  <!-- The bundled PostgreSQL + PyInstaller backend are unsigned child binaries; under hardened
-       runtime they only launch if library validation is disabled for this app. -->
+  <!-- Kept: the bundled PostgreSQL and the PyInstaller backend are third-party prebuilt binaries
+       that load their own dylibs / extension modules. Library validation would require every one
+       of those to carry the app's Team ID; until that is verified on a real signed build, the
+       child processes only launch reliably with it disabled. -->
   <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
 </dict>

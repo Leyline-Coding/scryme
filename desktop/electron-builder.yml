@@ -24,12 +24,43 @@ extraResources:
   - from: dist/scryme-backend
     to: backend
 
-# Disable asar: embedded-postgres resolves its native PG binaries relative to its own __dirname and
-# stat/chmod/spawns them. Inside an asar that path isn't a real file (chmod → ENOTDIR), and
-# asarUnpack doesn't help because the library still computes the in-archive path. With asar off the
-# whole app is a plain directory tree (matching dev), so the binaries run from disk. The heavy
-# backend is already shipped unpacked via extraResources, and the app's own JS is tiny.
-asar: false
+# The app's own code ships in app.asar (and, with the fuses below, is the only place Electron will
+# load it from). embedded-postgres is the exception: it resolves its native PG binaries relative to
+# its own location and spawns them, and a path inside an asar is not a real file. So that library,
+# the platform binary package and their (pure-JS) dependencies are unpacked to app.asar.unpacked/,
+# and src/main.js imports the library from there by absolute path — that way the path it computes
+# for the binaries is a real on-disk path. test/unit/packaging.test.js checks this list covers the
+# library's whole dependency closure (an import from the unpacked tree cannot reach into the asar).
+asar: true
+asarUnpack:
+  - "node_modules/embedded-postgres/**"
+  - "node_modules/@embedded-postgres/**"
+  - "node_modules/async-exit-hook/**"
+  - "node_modules/pg/**"
+  - "node_modules/pg-*/**"
+  - "node_modules/pgpass/**"
+  - "node_modules/postgres-*/**"
+  - "node_modules/split2/**"
+  - "node_modules/xtend/**"
+
+# Electron fuses, flipped in the packaged binary (names per @electron/fuses / electron-builder 26).
+electronFuses:
+  # ELECTRON_RUN_AS_NODE would turn the app binary into a general-purpose Node interpreter.
+  runAsNode: false
+  # Ignore NODE_OPTIONS / NODE_EXTRA_CA_CERTS and --inspect*: no code injection or debugger
+  # attachment into the main process through the environment or command line.
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  # Load the app only from app.asar (not a loose app/ directory dropped next to it)…
+  onlyLoadAppFromAsar: true
+  # …and validate app.asar against the hash embedded in the binary. Enforced by Electron on macOS
+  # and Windows; there is no such check on Linux, where the fuse is inert.
+  enableEmbeddedAsarIntegrityValidation: true
+  # No page is ever served from file:// (the window only shows the local backend).
+  grantFileProtocolExtraPrivileges: false
+  # Flipping fuses invalidates the ad-hoc signature every arm64 macOS binary must carry; re-apply it
+  # so unsigned builds still launch. A real signing identity, when configured, signs over it.
+  resetAdHocDarwinSignature: true
 
 files:
   - "src/**"
@@ -63,11 +94,21 @@ linux:
   # windows with the launcher (taskbar/dock grouping). (electron-builder 26 dropped the old string
   # `desktopName` key; `syncDesktopName` is the supported option and needs no separate name.)
   syncDesktopName: true
-  # AppImage only — it's the universal, distro-agnostic Linux format (no packaging/fpm step, runs
-  # everywhere). We deliberately don't ship a .deb.
+  # AppImage is the universal, distro-agnostic format. The .deb exists for Ubuntu 24.04+ and other
+  # AppArmor distros that restrict unprivileged user namespaces: an AppImage has no fixed path to
+  # attach an AppArmor profile to, so there it can only start with Chromium's sandbox switched off
+  # (see src/main.js). The .deb installs to /opt/scryme and its postinst loads an AppArmor profile
+  # (/etc/apparmor.d/scryme: `profile "scryme" "/opt/scryme/scryme" flags=(unconfined) { userns, }`
+  # — electron-builder's built-in deb template, shipped as resources/apparmor-profile), so the
+  # sandbox stays on.
   target:
     - AppImage
+    - deb
   icon: build/icon.png
+
+deb:
+  # Named per architecture so it never collides with the AppImage assets on the release.
+  artifactName: "${productName}-${version}-${arch}.${ext}"
 
 nsis:
   oneClick: false

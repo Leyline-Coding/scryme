@@ -646,6 +646,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#security-and-network-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security and network variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ai-assistant-variables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1944,6 +1955,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#security-and-network-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security and network variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ai-assistant-variables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2009,8 +2031,12 @@
 
 <h1 id="configuration">Configuration</h1>
 <p>scryme is configured through environment variables. Compose-level variables (<code>POSTGRES_PASSWORD</code>,
-<code>SCRYME_PORT</code>) are read by <code>docker-compose.yml</code>; the rest are read by the backend and are prefixed
-with <code>SCRYME_</code>.</p>
+<code>SCRYME_PORT</code>, <code>SCRYME_BIND</code>) are read by <code>docker-compose.yml</code>; the rest are read by the backend and
+are prefixed with <code>SCRYME_</code>.</p>
+<p>With the bundled Compose stack, put them in a <code>.env</code> file next to <code>docker-compose.yml</code> (or export
+them in your shell) and run <code>docker compose up -d</code>. The compose file passes the variables on this
+page marked <em>(compose)</em> through to the backend; for any other backend variable, add it to the
+<code>backend</code> service's <code>environment:</code> block.</p>
 <h2 id="common-variables">Common variables</h2>
 <table>
 <thead>
@@ -2024,7 +2050,7 @@ with <code>SCRYME_</code>.</p>
 <tr>
 <td><code>POSTGRES_PASSWORD</code></td>
 <td><code>scryme</code></td>
-<td>PostgreSQL password</td>
+<td>PostgreSQL password. Set your own for a new install; it is only applied when the database volume is first created — see <a href="../self-hosting/#change-the-database-password">changing it later</a></td>
 </tr>
 <tr>
 <td><code>SCRYME_PORT</code></td>
@@ -2032,9 +2058,14 @@ with <code>SCRYME_</code>.</p>
 <td>Host port for the web UI (nginx)</td>
 </tr>
 <tr>
+<td><code>SCRYME_BIND</code></td>
+<td><code>0.0.0.0</code></td>
+<td>Host address the web UI port is published on. <code>127.0.0.1</code> accepts connections from the same machine only</td>
+</tr>
+<tr>
 <td><code>SCRYME_READ_ONLY</code></td>
 <td><code>false</code></td>
-<td>Demo mode — disables uploads/admin mutations and shows a banner</td>
+<td>Demo mode <em>(compose)</em> — refuses every write, disables the AI features, and shows a banner</td>
 </tr>
 <tr>
 <td><code>SCRYME_DEFAULT_CURRENCY</code></td>
@@ -2064,7 +2095,57 @@ with <code>SCRYME_</code>.</p>
 <tr>
 <td><code>SCRYME_API_TOKEN</code></td>
 <td><em>(unset)</em></td>
-<td>If set, the <a href="../../development/api/">JSON API</a> requires this shared token (<code>Authorization: Bearer …</code> / <code>X-API-Key</code>). Empty = open, unless you've issued <a href="../../development/api/#device-tokens-recommended">device tokens</a> under Settings → Devices</td>
+<td>Password for the whole instance <em>(compose)</em>. If set, the web UI asks for it once on a <code>/login</code> page and the <a href="../../development/api/">JSON API</a> requires it (<code>Authorization: Bearer …</code> / <code>X-API-Key</code>). Unset = anyone who can reach the port has full access. <a href="../../development/api/#device-tokens-recommended">Device tokens</a> issued under Settings → Devices also gate the API</td>
+</tr>
+</tbody>
+</table>
+<h2 id="security-and-network-variables">Security and network variables</h2>
+<p>scryme has no user accounts. These settings decide who can reach an instance and how much load a
+single client can put on it; see <a href="../self-hosting/#securing-your-install">Securing your install</a>
+for when to set them. All are optional and passed through by the bundled compose file <em>(compose)</em>.</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SCRYME_ALLOWED_HOSTS</code></td>
+<td><em>(unset)</em></td>
+<td>Comma-separated hostnames this instance answers to (e.g. <code>scryme.example.com</code>). Unset = any hostname. IP addresses and <code>localhost</code> are always accepted. Set it whenever the instance has a DNS name, to stop DNS-rebinding attacks; requests for any other name get <code>400</code></td>
+</tr>
+<tr>
+<td><code>SCRYME_CLIENT_IP_HEADER</code></td>
+<td><em>(unset)</em></td>
+<td>Header carrying the real client address when a trusted proxy that is not the bundled nginx sits in front, e.g. <code>CF-Connecting-IP</code> behind Cloudflare. Used for rate limiting. Only set it when <strong>every</strong> request arrives through that proxy — otherwise clients can forge it</td>
+</tr>
+<tr>
+<td><code>SCRYME_RATE_LIMIT_DEFAULT</code></td>
+<td><code>600</code></td>
+<td>Requests per minute allowed per client address</td>
+</tr>
+<tr>
+<td><code>SCRYME_RATE_LIMIT_HEAVY</code></td>
+<td><code>30</code></td>
+<td>Requests per minute per client for expensive routes (AI calls, backups, exports, uploads, bulk imports)</td>
+</tr>
+<tr>
+<td><code>SCRYME_RATE_LIMIT_LOGIN</code></td>
+<td><code>10</code></td>
+<td>Login attempts per minute per client</td>
+</tr>
+<tr>
+<td><code>SCRYME_STATEMENT_TIMEOUT_MS</code></td>
+<td><code>30000</code></td>
+<td>Longest a single SQL statement may run inside a web request, in milliseconds. Lower it on a public instance so a pathological search can't tie up the database (the public demo uses <code>5000</code>). Background jobs such as ingest are not limited</td>
+</tr>
+<tr>
+<td><code>SCRYME_FORWARDED_ALLOW_IPS</code></td>
+<td><code>127.0.0.1</code> (<code>*</code> in compose)</td>
+<td>Which peers the backend believes when they send <code>X-Forwarded-For</code>: a comma-separated list of IPs/CIDRs, or <code>*</code>. Read by the container entrypoint. The compose default is <code>*</code> because there the backend port is not published and the only peer is the bundled nginx, which overwrites the header. If you run the image on its own behind a different proxy, set it to that proxy's address</td>
 </tr>
 </tbody>
 </table>
@@ -2238,7 +2319,7 @@ locks API access for ~30 seconds; scryme backs off automatically.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="August 21, 2026 19:04:02 UTC">August 21, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 22:44:14 UTC">November 24, 2026</span>
   </span>
 
     

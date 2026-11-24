@@ -2020,9 +2020,26 @@ bundled with kustomize.</p>
 <li>An <strong>init container</strong> that, on first boot, waits for Postgres, runs migrations, ingests the
   Scryfall bulk file, and seeds a sample collection (<code>alembic upgrade</code> → <code>ingest</code> → <code>seed-demo</code>).
   Persistent Postgres + the 24h cache guard make later restarts fast.</li>
-<li>The backend runs with <code>SCRYME_READ_ONLY=true</code>, so uploads and admin mutations are disabled and
-  the demo banner is shown.</li>
+<li>The backend runs with <code>SCRYME_READ_ONLY=true</code>, so every write is refused, the AI features are
+  off, and the demo banner is shown. The ConfigMap also sets <code>SCRYME_ALLOWED_HOSTS=demo.scryme.app</code>,
+  <code>SCRYME_CLIENT_IP_HEADER=CF-Connecting-IP</code> (per-visitor rate limiting behind Cloudflare) and a
+  5-second <code>SCRYME_STATEMENT_TIMEOUT_MS</code> — see <a href="../configuration/#security-and-network-variables">Configuration</a>.</li>
+<li><strong>NetworkPolicies</strong> — default-deny for the namespace, then: cloudflared → app, app → Postgres,
+  app → public HTTPS, and DNS.</li>
+<li>An <strong>auto-deploy CronJob</strong> that polls the registry and pins the Deployment to the image digest
+  the <code>latest</code> tag currently resolves to.</li>
 </ul>
+<div class="admonition warning">
+<p class="admonition-title">Hosting your own copy? Change two things first</p>
+<ul>
+<li><code>SCRYME_ALLOWED_HOSTS</code> in <code>backend.yaml</code> must be <strong>your</strong> hostname, or every request gets
+  <code>400</code>.</li>
+<li><code>networkpolicy.yaml</code> assumes cloudflared runs in a namespace named <code>cloudflared</code>. If yours
+  is elsewhere (or you use an ingress controller instead), edit the <code>scryme-demo-allow-cloudflared</code>
+  rule, or nothing will be able to reach the app. If you expose the Service any other way,
+  also remove <code>SCRYME_CLIENT_IP_HEADER</code>.</li>
+</ul>
+</div>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li>A default StorageClass supporting <code>ReadWriteOnce</code> (k3s <code>local-path</code> works).</li>
@@ -2048,10 +2065,12 @@ bundled with kustomize.</p>
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>scryme-demo<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>deploy/scryme-demo<span class="w"> </span>-c<span class="w"> </span>ingest-and-seed
 </code></pre></div>
 <div class="admonition note">
-<p class="admonition-title">Pod runs as non-root</p>
-<p>The Deployment sets <code>securityContext.fsGroup: 1000</code> so the non-root container can write the
-<code>/data</code> PVC. The DB password is supplied as a discrete part (<code>SCRYME_DB_PASSWORD</code>), so it may
-contain any characters — see <a href="../configuration/">Configuration</a>.</p>
+<p class="admonition-title">Pods are locked down</p>
+<p>Both pods run as non-root (uid 1000 for the app, 70 for Postgres) with a read-only root
+filesystem, all capabilities dropped, the default seccomp profile, and no Kubernetes API token;
+<code>/tmp</code> is an <code>emptyDir</code>. <code>fsGroup</code> lets the app write the <code>/data</code> PVC. The DB password is
+supplied as a discrete part (<code>SCRYME_DB_PASSWORD</code>), so it may contain any characters — see
+<a href="../configuration/">Configuration</a>.</p>
 </div>
 <h2 id="expose-with-cloudflare-tunnel">Expose with Cloudflare Tunnel</h2>
 <p>Add an ingress rule pointing at the Service, then publish the DNS route:</p>
@@ -2064,10 +2083,12 @@ contain any characters — see <a href="../configuration/">Configuration</a>.</p
 </code></pre></div>
 <p>Cloudflare terminates TLS at the edge, so the tunnel targets the Service over plain HTTP.</p>
 <h2 id="pin-a-version">Pin a version</h2>
-<p><code>kustomization.yaml</code> tracks the <code>latest</code> tag. To pin a release, set <code>newTag</code>:</p>
+<p><code>kustomization.yaml</code> starts from the <code>latest</code> tag, and the auto-deploy CronJob then keeps the
+Deployment pinned to whatever digest <code>latest</code> points at. To stay on one release instead, remove
+<code>autodeploy.yaml</code> from <code>kustomization.yaml</code> (or suspend the CronJob) and set <code>newTag</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">images</span><span class="p">:</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/leyline-coding/scryme</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="nt">newTag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v0.1.0</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="nt">newTag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v0.28.0</span>
 </code></pre></div>
 <p>See the <a href="https://github.com/Leyline-Coding/scryme/blob/main/deploy/k8s/demo/README.md">deploy README</a>
 for troubleshooting (including resetting the database volume).</p>
@@ -2093,7 +2114,7 @@ for troubleshooting (including resetting the database volume).</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="June 26, 2026 16:36:51 UTC">June 26, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="November 24, 2026 22:44:14 UTC">November 24, 2026</span>
   </span>
 
     

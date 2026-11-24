@@ -29,9 +29,25 @@ spec:
       labels:
         app: scryme-demo-postgres
     spec:
+      automountServiceAccountToken: false
+      # Run directly as the image's `postgres` user (uid/gid 70 in the Alpine image; the Debian
+      # image uses 999 -- change these if you switch variants). Without this the entrypoint starts
+      # as root, chowns the data directory and then drops to postgres, which needs the CHOWN /
+      # SETUID / SETGID capabilities dropped below. A data directory initialised that way is
+      # already owned by uid 70, so an existing volume keeps working.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgres
-          image: postgres:16-alpine
+          # Pinned to a minor release. Stay on major 16: the data volume will not start under a
+          # newer major without a dump/restore.
+          image: postgres:16.16-alpine
           # Tuned for the demo's read-heavy trigram/regex search + facets/stats over ~115k cards.
           # Stock defaults (shared_buffers=128MB, work_mem=4MB) thrash the PVC because almost
           # nothing stays cached; these let the hot indexes/table pages stay resident in the 2Gi
@@ -62,9 +78,19 @@ spec:
               value: /var/lib/postgresql/data/pgdata
           ports:
             - containerPort: 5432
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+            # Read-only root filesystem: Postgres still needs its socket/lock directory and /tmp.
+            - name: run
+              mountPath: /var/run/postgresql
+            - name: tmp
+              mountPath: /tmp
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "scryme"]
@@ -74,13 +100,23 @@ spec:
             requests:
               cpu: 250m
               memory: 512Mi
-            # No CPU limit: let Postgres burst on heavy searches (nodes have ample headroom).
             limits:
+              # Generous, so heavy searches can still burst, but bounded: the demo is public, and
+              # an unlimited Postgres lets a visitor's regex storm starve everything else on the
+              # node. Raise it if searches feel slow and the node has cores to spare.
+              cpu: "2"
+              # Sized for the tuning above (shared_buffers=512MB plus per-query work_mem).
               memory: 2Gi
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: scryme-demo-postgres-data
+        - name: run
+          emptyDir:
+            sizeLimit: 16Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
 ---
 apiVersion: v1
 kind: Service

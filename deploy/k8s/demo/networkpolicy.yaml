@@ -1,0 +1,166 @@
+# Network policy for the demo namespace: deny everything, then allow only the paths the demo uses.
+#
+#   visitor -> Cloudflare -> cloudflared pod --8000--> scryme-demo --5432--> scryme-demo-postgres
+#                                                      scryme-demo --443---> internet (Scryfall etc.)
+#   autodeploy CronJob --443/6443--> ghcr.io and the Kubernetes API
+#
+# These only have an effect if the cluster enforces NetworkPolicy. k3s does out of the box (its
+# embedded kube-router controller), unless it was started with --disable-network-policy.
+#
+# !! REVIEW BEFORE APPLYING !!  Two things here depend on YOUR cluster, not on this repository:
+#
+#   1. Where cloudflared runs. The cloudflared deployment is not part of these manifests, so the
+#      rule `scryme-demo-allow-cloudflared` ASSUMES it runs in a namespace named `cloudflared` and
+#      allows any pod in that namespace. If yours lives elsewhere the demo will go dark the moment
+#      this is applied (Cloudflare shows error 502/1033). Check first:
+#          kubectl get pods -A --show-labels | grep -i cloudflared
+#      and edit the namespaceSelector (and add a podSelector) to match.
+#   2. Cluster DNS. `scryme-demo-allow-dns` assumes CoreDNS runs in kube-system with the standard
+#      `k8s-app: kube-dns` label (true for k3s and most distributions). With NodeLocal DNSCache,
+#      or a differently-labelled DNS, adjust it — without DNS the app cannot find Postgres.
+#
+# Kubelet health probes come from the node itself and are not subject to these policies.
+# IPv4 only: on a dual-stack cluster, add matching IPv6 ipBlocks.
+
+# 1. Default deny: every pod in the namespace, both directions.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: scryme-demo-default-deny
+  namespace: scryme-demo
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# 2. DNS for the pods that resolve names (the app and the autodeploy job; Postgres needs none).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: scryme-demo-allow-dns
+  namespace: scryme-demo
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: ["scryme-demo", "scryme-demo-autodeploy"]
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# 3. The app accepts connections only from cloudflared. This is also what makes
+#    SCRYME_CLIENT_IP_HEADER=CF-Connecting-IP trustworthy: nothing else in the cluster can reach
+#    the pod and forge that header.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: scryme-demo-allow-cloudflared
+  namespace: scryme-demo
+spec:
+  podSelector:
+    matchLabels:
+      app: scryme-demo
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # ASSUMPTION — see the note at the top of this file.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cloudflared
+      ports:
+        - protocol: TCP
+          port: 8000
+---
+# 4. The app (and its init container: same pod) may reach Postgres, and the public internet over
+#    HTTPS — the init container downloads the Scryfall bulk file, and the app can fetch card
+#    images and price data. Private, link-local and CGNAT ranges are carved out, so a server-side request
+#    cannot be pointed at the home network, other cluster services or a cloud metadata endpoint.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: scryme-demo-app-egress
+  namespace: scryme-demo
+spec:
+  podSelector:
+    matchLabels:
+      app: scryme-demo
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: scryme-demo-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+              - 100.64.0.0/10
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# 5. Postgres accepts connections only from the app, and (by the default deny) makes none itself.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: scryme-demo-postgres-ingress
+  namespace: scryme-demo
+spec:
+  podSelector:
+    matchLabels:
+      app: scryme-demo-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: scryme-demo
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+# 6. The autodeploy job talks to ghcr.io (443) and to the Kubernetes API. The API is reached via
+#    the `kubernetes` Service on 443, which the node rewrites to the API server's own address and
+#    port (6443 on k3s) before policy is evaluated — and that address is a node IP that cannot be
+#    known here — so both ports are open to any destination, private ranges included.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: scryme-demo-autodeploy-egress
+  namespace: scryme-demo
+spec:
+  podSelector:
+    matchLabels:
+      app: scryme-demo-autodeploy
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443

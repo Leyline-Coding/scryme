@@ -9,7 +9,12 @@ resources:
   - postgres.yaml
   - backend.yaml
   - autodeploy.yaml
+  # Default-deny + allow-list. Read the note at the top of the file before the first apply: it
+  # assumes where cloudflared runs, and a wrong guess takes the demo offline.
+  - networkpolicy.yaml
 
+# The tag the manifests start from. Once running, the autodeploy CronJob replaces it on the live
+# Deployment with the digest this tag resolves to (see autodeploy.yaml).
 images:
   - name: ghcr.io/leyline-coding/scryme
     newTag: latest

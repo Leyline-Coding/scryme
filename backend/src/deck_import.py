@@ -29,19 +29,43 @@ class DeckImportError(Exception):
     """A URL couldn't be fetched or parsed into a deck."""
 
 
-_MOXFIELD = re.compile(r"moxfield\.com/decks/([A-Za-z0-9_-]+)")
-_ARCHIDEKT = re.compile(r"archidekt\.com/decks/(\d+)")
-_TAPPEDOUT = re.compile(r"tappedout\.net/mtg-decks/([A-Za-z0-9_-]+)")
+# Anchored at the start of the string and matched with ``.match``: the host has to *be* the
+# provider, not merely appear somewhere in the text. Unanchored, ``file:///x/moxfield.com/decks/a``
+# and ``javascript:…//moxfield.com/decks/a`` both passed as Moxfield URLs — and the string is
+# stored and later rendered as a link. The scheme is optional so a pasted ``moxfield.com/decks/…``
+# keeps working; :func:`normalize_deck_url` is what turns any accepted form into ``https://…``.
+_ORIGIN = r"(?:https?://)?(?:www\.)?"
+_MOXFIELD = re.compile(_ORIGIN + r"moxfield\.com/decks/([A-Za-z0-9_-]+)", re.IGNORECASE)
+_ARCHIDEKT = re.compile(_ORIGIN + r"archidekt\.com/decks/(\d+)", re.IGNORECASE)
+_TAPPEDOUT = re.compile(_ORIGIN + r"tappedout\.net/mtg-decks/([A-Za-z0-9_-]+)", re.IGNORECASE)
+_SCHEME = re.compile(r"https?://", re.IGNORECASE)
+_MAX_URL_LEN = 2048
 
 
 def detect_host(url: str) -> str | None:
-    if _MOXFIELD.search(url):
+    if _MOXFIELD.match(url):
         return MOXFIELD
-    if _ARCHIDEKT.search(url):
+    if _ARCHIDEKT.match(url):
         return ARCHIDEKT
-    if _TAPPEDOUT.search(url):
+    if _TAPPEDOUT.match(url):
         return TAPPEDOUT
     return None
+
+
+def normalize_deck_url(url: str) -> str | None:
+    """The ``https://`` form of a supported deck URL, or None if *url* is not one.
+
+    This is the only thing that may be stored as a deck's ``source_url``: it is rendered as a link
+    and re-fetched on re-sync, so it must be a real https URL on a supported host and nothing else.
+    """
+    candidate = (url or "").strip()
+    if not candidate or len(candidate) > _MAX_URL_LEN:
+        return None
+    if any(ch.isspace() or not ch.isprintable() for ch in candidate):
+        return None
+    if detect_host(candidate) is None:
+        return None
+    return "https://" + _SCHEME.sub("", candidate, count=1)
 
 
 @dataclass
@@ -250,17 +274,17 @@ async def fetch_deck_from_url(
     client = client or httpx.AsyncClient(timeout=_TIMEOUT, headers=headers, follow_redirects=True)
     try:
         if host == MOXFIELD:
-            deck_id = _MOXFIELD.search(url).group(1)
+            deck_id = _MOXFIELD.match(url).group(1)
             resp = await client.get(f"https://api.moxfield.com/v2/decks/all/{deck_id}")
             resp.raise_for_status()
             return parse_moxfield(resp.json())
         if host == ARCHIDEKT:
-            deck_id = _ARCHIDEKT.search(url).group(1)
+            deck_id = _ARCHIDEKT.match(url).group(1)
             resp = await client.get(f"https://archidekt.com/api/decks/{deck_id}/")
             resp.raise_for_status()
             return parse_archidekt(resp.json())
         # tappedout: the ?fmt=txt export is already a plain decklist.
-        slug = _TAPPEDOUT.search(url).group(1)
+        slug = _TAPPEDOUT.match(url).group(1)
         resp = await client.get(f"https://tappedout.net/mtg-decks/{slug}/", params={"fmt": "txt"})
         resp.raise_for_status()
         text = resp.text.strip()

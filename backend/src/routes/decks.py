@@ -29,6 +29,7 @@ from src.deck_import import (
     detect_profile,
     fetch_deck_from_url,
     fetch_profile_decks,
+    normalize_deck_url,
 )
 from src.deck_suggest import suggest_owned_upgrades
 from src.deck_sync import sync_printing, sync_quantity
@@ -58,7 +59,7 @@ from src.models import Card, CollectionCard, Deck, DeckCard, DeckVersion, Locati
 from src.pricing import get_price_source, resolve_prices
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
-from src.share import DECK, links_for, revoke_links_for
+from src.share import DECK, just_minted_token, links_for, revoke_links_for
 from src.templating import templates
 from src.wishlist import add_deck_missing
 
@@ -152,9 +153,10 @@ async def import_url(
         return templates.TemplateResponse(
             request, _DECK_NEW_TMPL, {"supported": SUPPORTED, "error": str(exc), "url": url},
         )
-    # Remember where it came from so its printings can be re-synced from the source later.
+    # Remember where it came from so its printings can be re-synced from the source later —
+    # as the normalised https URL, never the raw form value (it is rendered as a link).
     return await _finish_import(request, session, name, decklist, ownership,
-                                source_url=url.strip())
+                                source_url=normalize_deck_url(url) or "")
 
 
 @router.post("/decks/import-profile", response_class=HTMLResponse)
@@ -359,7 +361,7 @@ async def view_deck(
             "share_kind": DECK,
             "share_target": deck.id,
             "share_links": await links_for(session, DECK, deck.id),
-            "share_new": shared,
+            "share_new": await just_minted_token(session, DECK, deck.id, shared),
             "ai_ready": (await get_config(session)).ready,
             "locations": locations,
             "sort_by": sort_by,
@@ -615,13 +617,20 @@ async def resync_deck_printings(
     deck = await session.get(Deck, deck_id)
     if deck is None:
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
-    if url.strip():
-        deck.source_url = url.strip()
-        await session.commit()
-    if not deck.source_url:
+    # Validate before anything is stored: the URL is rendered as the deck's "Source" link, so a
+    # ``javascript:``/``file:`` value must never reach the row — not even on the way to a 502.
+    source = normalize_deck_url(url) if url.strip() else normalize_deck_url(deck.source_url or "")
+    if source is None:
+        if url.strip() or deck.source_url:
+            raise HTTPException(
+                status_code=400, detail=f"Unsupported source URL. Supported: {SUPPORTED}.")
         raise HTTPException(status_code=400, detail="Give this deck a source URL to re-sync from.")
+    if url.strip():
+        # A validated URL is kept even if the fetch below fails (the provider may just be down).
+        deck.source_url = source
+        await session.commit()
     try:
-        _name, decklist = await fetch_deck_from_url(deck.source_url)
+        _name, decklist = await fetch_deck_from_url(source)
     except DeckImportError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     await resync_printings(session, deck, decklist)
@@ -861,13 +870,14 @@ async def deck_add_owned(
 async def update_deck_name(
     request: Request, deck_id: int, name: str = Form(""),
     session: AsyncSession = Depends(get_session)
-) -> PlainTextResponse:
+) -> HTMLResponse:
     _guard_writable()
     deck = await session.get(Deck, deck_id)
     if deck is None:
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     new_deck_name = await rename_deck(session, deck, name)
-    return PlainTextResponse(new_deck_name)
+    # htmx swaps this into the heading with innerHTML, so it is an HTML fragment: escape it.
+    return HTMLResponse(html.escape(new_deck_name))
 
 
 @router.post("/decks/{deck_id}/checkout")
@@ -937,15 +947,18 @@ async def update_deck_description(
     deck_id: int,
     description: str = Form(""),
     session: AsyncSession = Depends(get_session)
-) -> str | None:
+) -> str:
     """Update the description for a deck."""
     _guard_writable()
     deck = await session.get(Deck, deck_id)
     if deck is None:
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
-    deck.description = html.escape(description) if description else None
+    # Stored as the text the user typed. Escaping belongs to whoever renders it: the page
+    # template autoescapes, and the fragment returned here (swapped in with innerHTML) is escaped
+    # on the way out. Escaping on write as well showed ``&amp;`` on the next page load.
+    deck.description = description or None
     await session.commit()
-    return deck.description
+    return html.escape(deck.description or "")
 
 
 

@@ -259,8 +259,8 @@ async def test_the_devices_tab_lists_and_revokes(client, session):
 
 @pytest.mark.asyncio
 async def test_the_settings_page_opens_on_the_requested_tab(client):
-    assert "tab: 'devices'" in (await client.get("/settings?tab=devices")).text
-    assert "tab: 'collection'" in (await client.get("/settings?tab=nonsense")).text
+    assert "tab: &#34;devices&#34;" in (await client.get("/settings?tab=devices")).text
+    assert "tab: &#34;collection&#34;" in (await client.get("/settings?tab=nonsense")).text
 
 
 @pytest.mark.asyncio

@@ -7,10 +7,11 @@ column.
 
 from __future__ import annotations
 
+import html
 from dataclasses import dataclass
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.binder_service import (
@@ -25,7 +26,7 @@ from src.db import get_session
 from src.models import Binder, Card
 from src.routes._safe import local_redirect
 from src.scryfall.images import ImageCache
-from src.share import BINDER, links_for, revoke_links_for
+from src.share import BINDER, just_minted_token, links_for, revoke_links_for
 from src.templating import templates
 
 router = APIRouter(tags=["binders"])
@@ -74,7 +75,7 @@ async def binder_view(
          "read_only": get_settings().read_only,
          "share_kind": BINDER, "share_target": binder.id,
          "share_links": await links_for(session, BINDER, binder.id),
-         "share_new": shared},
+         "share_new": await just_minted_token(session, BINDER, binder.id, shared)},
     )
 
 
@@ -90,13 +91,14 @@ async def new_binder(
 @router.post("/binders/{binder_id}/rename")
 async def rename_binder_route(
     binder_id: int, name: str = Form(""), session: AsyncSession = Depends(get_session)
-) -> PlainTextResponse:
+) -> HTMLResponse:
     _guard_writable()
     binder = await session.get(Binder, binder_id)
     if binder is None:
         raise HTTPException(status_code=404, detail=_BINDER_NOT_FOUND)
     new_binder_name = await rename_binder(session, binder, name)
-    return PlainTextResponse(new_binder_name)
+    # htmx swaps this into the heading with innerHTML, so it is an HTML fragment: escape it.
+    return HTMLResponse(html.escape(new_binder_name))
 
 
 @router.post("/binders/{binder_id}/delete")

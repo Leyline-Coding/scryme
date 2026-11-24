@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.client_tokens import hash_token
 from src.models import Binder, Deck, ShareLink
 from src.models.share_link import BINDER, DECK, KINDS
+from src.sanitize import urlsafe_token
 
 _TOKEN_BYTES = 24   # ~32 url-safe chars; unguessable, but still fits in a pasted link
 # How stale ``last_viewed_at`` may get before a view refreshes it — see src.client_tokens.
@@ -82,6 +83,32 @@ async def resolve_share_link(session: AsyncSession, token: str) -> ShareLink | N
     return row
 
 
+async def just_minted_token(
+    session: AsyncSession, kind: str, target_id: int, token: str
+) -> str | None:
+    """*token* if it really is a live link to this target, else None.
+
+    The owner pages take the freshly minted token back as a ``?shared=`` query value so it can be
+    shown once. A query value is attacker-controllable, so it is only echoed when it has the shape
+    of a token *and* hashes to a live link for exactly this deck/binder — anything else (a crafted
+    link, a stale or revoked token, another target's token) renders as if it were absent. Unlike
+    :func:`resolve_share_link` this does not count as a view.
+    """
+    if urlsafe_token(token) is None:
+        return None
+    row = (
+        await session.execute(
+            select(ShareLink).where(
+                ShareLink.token_hash == hash_token(token),
+                ShareLink.kind == kind,
+                ShareLink.target_id == target_id,
+                ShareLink.revoked_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    return token if row is not None else None
+
+
 async def links_for(session: AsyncSession, kind: str, target_id: int) -> list[ShareLink]:
     """Every link ever minted for one target, live first, newest first."""
     return list(
@@ -121,6 +148,7 @@ async def revoke_links_for(session: AsyncSession, kind: str, target_id: int) -> 
 
 
 __all__ = [
-    "BINDER", "DECK", "create_share_link", "links_for", "resolve_share_link",
+    "BINDER", "DECK", "create_share_link", "just_minted_token", "links_for",
+    "resolve_share_link",
     "revoke_links_for", "revoke_share_link",
 ]

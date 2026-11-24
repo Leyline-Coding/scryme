@@ -1,8 +1,9 @@
 """Storage boxes (#160): a registry of physical boxes over ``collection_card.location``.
 
-A box's "membership" is just the set of stacks whose ``location`` equals the box's location, so ``loc:``
-search and the location column keep working. This module manages the registry (create / rename /
-delete, including empty boxes) and keeps the denormalized location strings in sync on rename/delete.
+A box's "membership" is just the set of stacks whose ``location`` equals the box's location, so
+``loc:`` search and the location column keep working. This module manages the registry (create /
+rename / delete, including empty boxes) and keeps the denormalized location strings in sync on
+rename/delete.
 """
 
 from __future__ import annotations
@@ -11,7 +12,6 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Box, CollectionCard, Location
-
 
 
 async def all_boxes(session: AsyncSession) -> list[Box]:
@@ -40,9 +40,15 @@ async def rename_box(session: AsyncSession, box: Box, name: str) -> str:
 async def delete_box(session: AsyncSession, box_id: int) -> None:
     """Delete the registry entry and unfile its stacks (clear their location)."""
     box = await session.get(Box, box_id)
-    if not box: return
-    location = (await session.execute(select(Location).where(Location.type=="box", Location.foreign_id==box.id))).scalars().first()
-    if not location: return
+    if not box:
+        return
+    location = (
+        await session.execute(
+            select(Location).where(Location.type=="box", Location.foreign_id==box.id)
+        )
+    ).scalars().first()
+    if not location:
+        return
     await session.execute(
         update(CollectionCard)
         .where(CollectionCard.location == location.id)

@@ -8,11 +8,10 @@ import uuid
 import httpx
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import func, select
 from src.config import get_settings
 from src.decks import create_deck
 from src.llm import save_config
-from src.models import Card, CollectionCard, DeckChatMessage
+from src.models import Card, CollectionCard
 from src.routes import ai as ai_routes
 from src.scryfall.mapping import card_to_columns
 from starlette.requests import Request

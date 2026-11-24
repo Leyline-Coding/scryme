@@ -7,7 +7,6 @@ so merge strategies can increment quantities or replace stacks deterministically
 from __future__ import annotations
 
 import datetime
-import uuid
 
 from sqlalchemy import (
     DateTime,
@@ -19,7 +18,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db import Base
@@ -35,9 +34,10 @@ class CollectionCard(Stack, Base):
     ## Inheritied from Stack
     # scryfall_id: Mapped[uuid.UUID]
     # quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    # finish: Mapped[str] = mapped_column(String(16), nullable=False, default="normal")  # normal | foil | etched
+    # finish: Mapped[str] = mapped_column(String(16), nullable=False, default="normal")
+    #     normal | foil | etched
     # language: Mapped[str] = mapped_column(String(8), nullable=False, default="en")
-    
+
     condition: Mapped[str | None] = mapped_column(String(32))
     purchase_price: Mapped[float | None] = mapped_column(Float)
     source_format: Mapped[str | None] = mapped_column(String(32))  # manabox | dragonshield | delver
@@ -82,7 +82,7 @@ class CollectionCard(Stack, Base):
 
     def is_identical_to_stack(self, collection_card_2: CollectionCard) -> bool:
         """Check if two CollectionCards are identical (excluding id, source_format, and version).
-        
+
         Two cards are considered identical if they have the same:
         - scryfall_id
         - quantity
@@ -98,8 +98,10 @@ class CollectionCard(Stack, Base):
         - grade_photo
         - value_override
 
-        Use this function only for backend stack operations, such as cleaning up split stacks or recombining stacks.
-        Use Stack.get_unique_stack_key() instead for substituable identical printings, for example for deck coverage.
+        Use this function only for backend stack operations, such as cleaning up split stacks or
+        recombining stacks.
+        Use Stack.get_unique_stack_key() instead for substituable identical printings, for example
+        for deck coverage.
         """
         return (
             self.scryfall_id == collection_card_2.scryfall_id and

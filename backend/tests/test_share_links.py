@@ -46,10 +46,10 @@ async def _binder(session, name="Trades"):
     b = Binder(name=name)
     session.add(b)
     await session.flush()
-    l = Location(type='binder', foreign_id=b.id)
-    session.add(l)
+    loc = Location(type='binder', foreign_id=b.id)
+    session.add(loc)
     await session.flush()
-    card, cc = await _card(session, "Shock", cn="2", usd="1.25", location=l.id)
+    card, cc = await _card(session, "Shock", cn="2", usd="1.25", location=loc.id)
     await session.commit()
     return b
 

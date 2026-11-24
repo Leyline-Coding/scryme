@@ -22,18 +22,16 @@ Every mutation bumps ``version``, so an absolute edit notices a relative one tha
 
 from __future__ import annotations
 
-import re
+import ahocorasick
 import structlog
 from markupsafe import Markup, escape
-import ahocorasick
-
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 
 from src.db import SessionLocal
-from src.scryfall.images import ImageCache
-from src.scryfall.mapping import image_url as cdn_image_url
 from src.llm import get_config
 from src.models import Card
+from src.scryfall.images import ImageCache
+from src.scryfall.mapping import image_url as cdn_image_url
 
 log = structlog.get_logger()
 
@@ -49,13 +47,15 @@ def _image(card: Card, size: str = "normal") -> str:
 async def card_name_text_search_matcher() -> None:
 
     async with SessionLocal() as session:
-      if(not (await get_config(session)).ready): return None
+      if(not (await get_config(session)).ready):
+          return None
       items = (await session.execute(
           select(Card.name, Card.scryfall_id)
           .where(and_(Card.type_line != "Card", Card.type_line.not_ilike("%token%")))
           .distinct(Card.name)
         )).all()
-      if(len(items)==0): return None
+      if(len(items)==0):
+          return None
       automaton = ahocorasick.Automaton()
       for item in items:
           automaton.add_word(

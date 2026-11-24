@@ -36,7 +36,7 @@ async def _queue_backfill_images(size: str = "normal", limit: int | None = None)
     from src.background_service import queue_service
     from src.db import SessionLocal
     from src.models import Card, CollectionCard
-    
+
     # Get list of card IDs to download
     async with SessionLocal() as session:
         stmt = (
@@ -48,13 +48,13 @@ async def _queue_backfill_images(size: str = "normal", limit: int | None = None)
         if limit:
             stmt = stmt.limit(limit)
         cards = (await session.execute(stmt)).scalars().all()
-    
+
     card_ids = [str(card.scryfall_id) for card in cards]
-    
+
     # Generate a unique job ID
     import uuid
     job_id = f"image_download_{uuid.uuid4().hex[:8]}"
-    
+
     # Use existing queue_service with new job type
     queue_service(job_id, "backfill-image", card_ids, size=size)
     print(f"Queued {len(card_ids)} image downloads with job ID: {job_id}")
@@ -215,7 +215,9 @@ def main() -> None:
 
     sub.add_parser("backfill-images", help="Cache images for owned cards")
 
-    p_queue_images = sub.add_parser("queue-backfill-images", help="Queue image downloads for owned cards (concurrent)")
+    p_queue_images = sub.add_parser(
+        "queue-backfill-images", help="Queue image downloads for owned cards (concurrent)"
+    )
     p_queue_images.add_argument("--size", default="normal", help="Image size (default: normal)")
     p_queue_images.add_argument("--limit", type=int, help="Limit number of cards to process")
 

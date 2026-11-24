@@ -15,8 +15,6 @@ from src.collection_edit import move_stacks_location
 from src.models import Binder, CollectionCard, Location
 
 
-
-
 def _as_uuid(value) -> uuid.UUID:
     return value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))
 
@@ -46,7 +44,8 @@ async def rename_binder(session: AsyncSession, binder: Binder, name: str) -> str
 
 
 async def delete_binder(session: AsyncSession, binder_id: int) -> None:
-    ''' When a binder is deleted, all the cards that point to that location are moved to the parent object (unfiled is the root). '''
+    ''' When a binder is deleted, all the cards that point to that location are moved to the
+    parent object (unfiled is the root). '''
     binder = await session.get(Binder, binder_id)
     collection_cards = await get_all_binder_cards(session, binder_id)
     if binder:

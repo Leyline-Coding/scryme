@@ -271,8 +271,7 @@ class JsonlScryfallClient(FakeScryfallClient):
     async def download_to_file(self, url, dest: Path):
         self.downloaded.append(url)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        cards = json.loads(Path(self._source).read_text())
-        dest.write_bytes(gzip.compress(_jsonl(cards)))
+        dest.write_bytes(gzip.compress(Path(self._source).read_bytes()))
         return dest
 
 
@@ -283,7 +282,10 @@ async def test_ingest_default_cards_from_json_lines_catalog(session):
     result = await ingest_default_cards(force=True, client=client)
     assert client.downloaded == [url]
     assert result.skipped is False
-    expected = sum(1 for c in json.loads(SAMPLE.read_text()) if _is_paper(c))
+    expected = sum(
+        1 for line in SAMPLE.read_text().splitlines()
+        if line.strip() and _is_paper(json.loads(line))
+    )
     assert result.card_count == expected > 0
     assert get_ingest_progress()["phase"] == "done"
 

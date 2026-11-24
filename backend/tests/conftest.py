@@ -54,6 +54,9 @@ async def _clean_tables():
     yield
     from src import perfcache
     perfcache.clear()  # the read-only TTL cache is process-global; reset it between tests
+    # A test that runs the lifespan as production does the real Alembic check against this
+    # metadata-built schema, which always reports migrations pending; don't let that leak.
+    app.state.pending_migrations = False
     async with engine.begin() as conn:
         await conn.execute(text("TRUNCATE collection_card RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE saved_search RESTART IDENTITY CASCADE"))
@@ -69,6 +72,7 @@ async def _clean_tables():
         await conn.execute(text("TRUNCATE rules_chunk RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE binder RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE box RESTART IDENTITY CASCADE"))
+        await conn.execute(text("TRUNCATE location RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE set_release RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE fx_rate_history RESTART IDENTITY CASCADE"))
         await conn.execute(text("TRUNCATE trade_pool RESTART IDENTITY CASCADE"))

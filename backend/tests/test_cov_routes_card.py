@@ -3,10 +3,10 @@
 import uuid
 
 import pytest
+from src.card import _cache
 from src.models import Card, CardEmbedding, CollectionCard
 from src.routes import card as card_route
 from src.scryfall.mapping import card_to_columns
-from src.card import _cache
 
 
 async def _card(session, *, oracle=None, name="Lightning Bolt", n=1, **extra):

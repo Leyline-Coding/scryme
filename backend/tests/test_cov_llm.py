@@ -9,7 +9,6 @@ import httpx
 import pytest
 from src import llm
 from src.deck_synergy import deck_themes
-from src.decks import create_deck
 from src.llm import (
     ChatClient,
     LLMConfig,

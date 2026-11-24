@@ -54,7 +54,7 @@ async def test_snapshot_and_undo_restores_prior_state(session):
     assert rows[0].scryfall_id == card.scryfall_id
     assert rows[0].quantity == 2
     assert rows[0].purchase_price == 1.50
-    assert rows[0].location == None
+    assert rows[0].location is None
     # The snapshot is consumed by the undo.
     assert await snapshot_count(session) == 0
 

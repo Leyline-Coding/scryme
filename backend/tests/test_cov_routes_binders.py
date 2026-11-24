@@ -33,7 +33,9 @@ async def _own(session, name="Sol Ring", owned=True, source_location_name=None):
     session.add(c)
     await session.flush()
     if owned:
-        cc = CollectionCard(scryfall_id=c.scryfall_id, quantity=1, source_location_name=source_location_name)
+        cc = CollectionCard(
+            scryfall_id=c.scryfall_id, quantity=1, source_location_name=source_location_name
+        )
         session.add(cc)
     await session.commit()
     return c, cc
@@ -50,12 +52,12 @@ async def test_binder_view_and_404(session):
     b = await create_binder(session, "Ramp")
     c, cc = await _own(session, "Swords to Plowshares")
     assert b is not None
-    
-    l = Location(type='binder', foreign_id=b.id)
-    session.add(l)
+
+    loc = Location(type='binder', foreign_id=b.id)
+    session.add(loc)
     await session.commit()
-    await move_stack_location(session, cc.id, l.id)
-    
+    await move_stack_location(session, cc.id, loc.id)
+
     view = await R.binder_view(_request(f"/binders/view/{b.id}"), b.id, session)
     assert view.status_code == 200 and b"Swords to Plowshares" in view.body
 

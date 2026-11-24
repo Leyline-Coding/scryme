@@ -137,7 +137,9 @@ async def export(
                 .limit(MAX_EXPORT)
             )
         ).all()
-        content = _manabox_stream([(r[0], r[1], (await get_location_name(session, r[2]))) for r in rows])
+        content = _manabox_stream(
+            [(r[0], r[1], (await get_location_name(session, r[2]))) for r in rows]
+        )
     else:
         cards = list(
             (

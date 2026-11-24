@@ -23,13 +23,13 @@ async def _seed(session):
     b = await create_binder(session, "Reds")
     assert b is not None
 
-    l = Location(type='binder', foreign_id=b.id)
-    session.add(l)
+    loc = Location(type='binder', foreign_id=b.id)
+    session.add(loc)
     await session.flush()
-    
+
     session.add(CollectionCard(
         scryfall_id=owned_card.scryfall_id, quantity=3, finish="foil",
-        condition="near_mint", language="en", location=l.id, purchase_price=2.5))
+        condition="near_mint", language="en", location=loc.id, purchase_price=2.5))
     await session.commit()
     return owned_card
 

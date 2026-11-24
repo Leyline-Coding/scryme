@@ -37,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.collection_edit import add_or_increment
 from src.importers.base import ImportRow
 from src.importers.matching import MatchedRow, match_rows
+from src.locations import find_or_create_location_by_name
 from src.models import Card, CollectionCard
 
 # A scanner batch is a person holding a stack of cards, not a collection dump. The cap is a
@@ -151,6 +152,7 @@ async def ingest_scan(
     """
     matched = await match_rows(session, rows)
     cards = await _display_names(session, matched)
+    location_id = await find_or_create_location_by_name(session, location)
 
     # Which stacks existed before this batch, so the report can distinguish a stack the scan
     # created from one it grew. Comparing ids against a snapshot keeps the stack-key logic in
@@ -172,7 +174,7 @@ async def ingest_scan(
         stack = await add_or_increment(
             session, m.scryfall_id, row.quantity,
             finish=row.finish, condition=row.condition, language=row.language,
-            location=location, commit=False,
+            location=location_id, commit=False,
         )
         if stack is None:
             # The resolver saw this printing but it is gone now — `prune-digital` or a re-ingest

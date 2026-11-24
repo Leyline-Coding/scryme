@@ -138,7 +138,7 @@ Where to look when working on an area. Each module's docstring names the issue i
 | Collection | `/collection` (`routes/mycollection.py`), `/collection/*` edits (`routes/collection.py`), `/upload`, `/export`, `/stats` | `collection_edit.py`, `importers/`, `import_undo.py`, `tags.py`, `stats.py` |
 | Decks | `/decks` | `decks.py`, `deck_builder.py`, `deck_import.py`, `deck_export.py`, `deck_sync.py`, `deck_versions.py`, `deck_suggest.py`, `brackets.py` |
 | Pricing | `/prices`, `/watch`, `/alerts`, `/sell`, `/valuation` | `prices.py`, `pricing.py`, `market_prices.py`, `price_watch.py`, `currency.py`, `fx.py`, `valuation.py`, `sell.py` |
-| Physical organization | `/binders`, `/sets`, `/calendar`, `/checklists`, `/trade` | `binder_service.py`, `box_service.py`, `sets.py`, `set_calendar.py`, `checklists.py`, `grading.py`, `trade.py` |
+| Physical organization | `/binders`, `/box`, `/sleeves`, `/sets`, `/calendar`, `/checklists`, `/trade` | `locations.py`, `binder_service.py`, `box_service.py`, `sets.py`, `set_calendar.py`, `checklists.py`, `grading.py`, `trade.py` |
 | AI (optional) | `/ai`, `/decks/{id}/{analyze,suggest,chat,upgrade}` | `llm.py`, `rules_rag.py`, `embeddings.py` |
 | Platform | `/api/v1`, `/admin`, `/settings`, `/prefs`, `/backup`, `/health` | `api.py`, `preferences.py`, `backup.py`, `cryptobackup.py`, `scheduler.py`, `perfcache.py`, `admin_stats.py`, `lan.py` |
 | Cross-app (scanner) | `POST /api/v1/scan`, `/pair` | `scan.py`, `routes/pair.py`, `client_tokens.py`, `lan.py` |
@@ -153,12 +153,27 @@ fake and never hit the network.
 **JSON API:** versioned at `/api/v1` (`src/routes/api.py`), OpenAPI at `/docs`, optional
 `SCRYME_API_TOKEN`.
 
+## Locations
+
+A stack (`collection_card`) is filed in at most one place. `collection_card.location` references a
+`location` row, which points at a **binder, box or deck** (`location.type` + `foreign_id`). A
+binder is therefore a physical place, not a list: the same printing is in a binder *and* a box only
+when there are two stacks of it. `location` rows are created on first use
+(`locations.find_or_create_locations`); anything that receives a place by **name** — the scan API,
+a pre-location backup — goes through `locations.find_or_create_location_by_name`, which makes a
+box for an unknown name. `collection_card.source_location_name` is the binder name a CSV import
+reported, kept for reference only.
+
+The migration chain has two revisions numbered `0036` because main and a community fork were
+merged (#385); they run `0036_scan_batch` → `0036_add_facet_row_cap_to_pref`. Revision ids are
+never renamed — deployed databases have them recorded.
+
 ## Status
 
 **Six of the eight milestones are closed**: #7 (Decks & EDH tooling), #8 (Collection & physical
 organization), #9 (Platform: API & AI), #10 (UX, mobile & polish), #13 (Collection Pricing, Selling
-& Grading) and #14 (Trade Function). Current release line is **0.26.x**; migrations through
-`0036_scan_batch`.
+& Grading) and #14 (Trade Function). Current release line is **0.27.x**; migrations through
+`0047_repair_fork_databases`.
 
 In flight:
 - **Milestone #11 — Cross-app integration.** Started. Batch scan-ingest (#164) and QR device

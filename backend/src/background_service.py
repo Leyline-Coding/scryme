@@ -1,14 +1,14 @@
-"""General Background task system 
+"""General Background task system
 """
 
 import asyncio
+
 import structlog
-from contextlib import asynccontextmanager
 
 from src.db import SessionLocal
-from src.scryfall.images import ImageCache
+from src.models import Card
 from src.scryfall.client import ScryfallClient
-from src.models import Card, CollectionCard
+from src.scryfall.images import ImageCache
 
 log = structlog.get_logger()
 
@@ -26,7 +26,7 @@ def init_download_semaphore(max_concurrent: int = 5):
         download_semaphore = asyncio.Semaphore(max_concurrent)
 
 def queue_service(job_id:str, job_type:str, *args, **kwargs):
-    
+
     jobs[job_id] = {"status": "queued", "result": None}
     log.info("scryme.job_queued", key=job_id)
     # Start task in the background immediately
@@ -38,36 +38,38 @@ async def _download_worker(job_id: str, card_scryfall_ids: list[str], size: str)
     """Worker that processes the download queue."""
     jobs[job_id]["total_cards"] = len(card_scryfall_ids)
     jobs[job_id]["processed_cards"] = 0
-    
+
     # Use semaphore to limit concurrent downloads
-    if download_semaphore is None: init_download_semaphore()
-    if download_semaphore is None: raise Exception('Failed to init semaphore')
-    
+    if download_semaphore is None:
+        init_download_semaphore()
+    if download_semaphore is None:
+        raise Exception('Failed to init semaphore')
+
     async with SessionLocal() as session:
         cache = ImageCache()
-        
+
         # Process cards sequentially but with concurrent downloads (through semaphore)
         for scryfall_id in card_scryfall_ids:
             async with download_semaphore:  # Acquire semaphore
                 try:
                     # Get card from database
                     card = await session.get(Card, scryfall_id)
-                    
+
                     if card and not cache.is_cached(scryfall_id, size):
                         async with ScryfallClient() as client:
                             status = await cache.ensure(card, client, size)
-                            
+
                             # Update card image_status in DB
                             if card is not None:
                                 card.image_status = status
                                 await session.commit()
-                                
+
                     jobs[job_id]["processed_cards"] += 1
-                    
+
                 except Exception as e:
                     log.error("Error downloading image for card", scryfall_id, str(e))
                     # Continue with other cards instead of failing the whole batch
-                    
+
     return f"Processed {jobs[job_id]['processed_cards']} cards"
 
 async def worker(job_id: str, job_type: str, *args, **kwargs):
@@ -90,17 +92,23 @@ async def worker(job_id: str, job_type: str, *args, **kwargs):
               size = kwargs.get('size', 'normal')
               await _download_worker(job_id, card_scryfall_ids, size)
               # For backfill-image jobs, we set result based on what was processed
-              processed = jobs[job_id].get('processed_cards', 0) if 'processed_cards' in jobs[job_id] else 0
+              processed = (
+                  jobs[job_id].get('processed_cards', 0)
+                  if 'processed_cards' in jobs[job_id] else 0
+              )
               result = f"Processed {processed} cards"
 
           # Save result and mark complete
           jobs[job_id]["status"] = "completed"
-          jobs[job_id]["result"] = f"Processed: "+result
+          jobs[job_id]["result"] = "Processed: "+result
       except Exception as e:
           jobs[job_id]["status"] = "failed"
           jobs[job_id]["result"] = str(e)
 
-      log.info("scryme.job_finished", key=job_id, status=jobs[job_id]['status'], result=jobs[job_id]['result'])
+      log.info(
+          "scryme.job_finished", key=job_id, status=jobs[job_id]['status'],
+          result=jobs[job_id]['result']
+      )
 
 def get_job_status(job_id: str) -> dict | None:
     """Get status of a queued job."""

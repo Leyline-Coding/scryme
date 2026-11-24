@@ -4,15 +4,11 @@ import uuid
 
 import pytest
 from sqlalchemy import select
-from src.binder_service import create_binder
 from src.box_service import (
     create_box,
-    delete_box,
-    rename_box,
 )
 from src.models import Card, CollectionCard, Deck, Location
 from src.scryfall.mapping import card_to_columns
-from src.tags import modify_stack_tag, tag_summaries
 
 
 async def _own(session, name="Sol Ring", rarity="rare", location=None):
@@ -33,15 +29,17 @@ async def test_locate_stack_into_box_binder_deck(client, session):
     stack_id = await session.scalar(select(CollectionCard.id))
     box = await create_box(session, "Bulk")
     assert box is not None
-    
-    
+
+
     deck = Deck(name="Atraxa")
     session.add(deck)
     await session.commit()
-    location_id = await session.scalar(select(Location.id).where((Location.type == "box") & (Location.foreign_id == box.id)))
-    
+    location_id = await session.scalar(
+        select(Location.id).where((Location.type == "box") & (Location.foreign_id == box.id))
+    )
+
     # Box -> sets the stack's physical location.
-    await client.post(f"/collection/bulk",
+    await client.post("/collection/bulk",
                       data={"bulk_action": "location",
                             "stack_ids": [stack_id],
                             "bulk_location_id": location_id

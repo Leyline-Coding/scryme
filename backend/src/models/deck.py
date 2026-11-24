@@ -8,26 +8,25 @@ their text with null ids.
 
 from __future__ import annotations
 
-from typing import Optional
-from typing import TYPE_CHECKING
 import datetime
-import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Integer, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from src.db import Base
 from src.models.location import Location
 from src.models.sleeve import Sleeve
 
-if TYPE_CHECKING: from src.models.deck_card import DeckCard
+if TYPE_CHECKING:
+    from src.models.deck_card import DeckCard
 
 class Deck(Base):
     __tablename__ = "deck"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(256))
-    description: Mapped[Optional[str]] = mapped_column(Text, default=None, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, default=None, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -45,7 +44,7 @@ class Deck(Base):
     # ID of the commander card in this deck (if any)
     commander_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    cards: Mapped[list['DeckCard']] = relationship(
+    cards: Mapped[list[DeckCard]] = relationship(
         back_populates="deck", cascade="all, delete-orphan", lazy="selectin"
     )
     sleeves: Mapped[list[Sleeve]] = relationship(

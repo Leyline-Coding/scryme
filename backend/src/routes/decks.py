@@ -5,19 +5,19 @@ Mutations are blocked in read-only (demo) mode, mirroring uploads.
 
 from __future__ import annotations
 
-import uuid
 import datetime
 import html
+import uuid
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.brackets import BRACKET_LABELS, estimate_bracket, normalize_bracket
 from src.collection_edit import add_or_increment
 from src.config import get_settings
-from src.currency import get_currency, fx, info
+from src.currency import fx, get_currency, info, unit_price
 from src.db import get_session
 from src.deck_builder import BuildError, build_commander_deck, owned_commanders
 from src.deck_card import quickswap_deck_card
@@ -53,7 +53,7 @@ from src.decks import (
     resync_printings,
 )
 from src.llm import get_config
-from src.locations import find_or_create_locations, find_or_create_grouped_locations
+from src.locations import find_or_create_grouped_locations, find_or_create_locations
 from src.models import Card, CollectionCard, Deck, DeckCard, DeckVersion, Location, Sleeve
 from src.pricing import get_price_source, resolve_prices
 from src.scryfall.images import ImageCache
@@ -61,7 +61,6 @@ from src.scryfall.mapping import image_url as cdn_image_url
 from src.share import DECK, links_for, revoke_links_for
 from src.templating import templates
 from src.wishlist import add_deck_missing
-from src.currency import unit_price
 
 router = APIRouter(tags=["decks"])
 
@@ -288,14 +287,14 @@ async def view_deck(
     source = get_price_source(request)
     coverage = await deck_coverage(session, deck, fmt=format or None, currency=currency,
                                     source=source)
-    
+
     # Get locations for the location picker
     locations = await find_or_create_locations(session, binders=True, boxes=True, decks=True)
-    
+
     # Normalize sort parameters
     sort_by = sort_by.lower() if sort_by else "name"
     sort_dir = sort_dir.lower() if sort_dir else "asc"
-    
+
     # Apply sorting to the deck cards
     if sort_by == "quantity":
         # Sort by quantity (descending by default)
@@ -307,9 +306,14 @@ async def view_deck(
         # Sort by price (descending by default)
         def _get_card_price(card_row):
             if card_row.scryfall_card and card_row.scryfall_card.prices:
-                return unit_price(resolve_prices(card_row.scryfall_card.prices, card_row.scryfall_card.market_prices, source), card_row.finish, currency)
+                return unit_price(
+                    resolve_prices(
+                        card_row.scryfall_card.prices, card_row.scryfall_card.market_prices, source
+                    ),
+                    card_row.finish, currency
+                )
             return 0.0
-        
+
         coverage.main.sort(key=lambda x: _get_card_price(x), reverse=(sort_dir == "desc"))
         coverage.side.sort(key=lambda x: _get_card_price(x), reverse=(sort_dir == "desc"))
         coverage.main_combined.sort(key=lambda x: _get_card_price(x), reverse=(sort_dir == "desc"))
@@ -320,7 +324,7 @@ async def view_deck(
         coverage.side.sort(key=lambda x: x.name.lower(), reverse=(sort_dir == "desc"))
         coverage.main_combined.sort(key=lambda x: x.name.lower(), reverse=(sort_dir == "desc"))
         coverage.side_combined.sort(key=lambda x: x.name.lower(), reverse=(sort_dir == "desc"))
-    
+
     # Check if this is an HTMX request for just the deck boards partial
     is_htmx = request.headers.get("HX-Request") == "true"
     if is_htmx:
@@ -336,7 +340,7 @@ async def view_deck(
                 "fx_rate": fx.rate(currency)
             },
         )
-    
+
     return templates.TemplateResponse(
         request,
         "deck_detail.html",
@@ -447,7 +451,8 @@ async def update_deck_card(
     )
     # Mirror a printing change into the collection for an owned deck card (#298).
     deck = await session.get(Deck, deck_id)
-    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     await sync_printing(session, deck, dc, old_sid, dc.quantity)
     url = f"/decks/{deck_id}" + (f"?format={format}" if format in LEGALITY_FORMATS else "")
     # HTMX form post -> refresh the whole deck page (coverage + legality change).
@@ -474,8 +479,9 @@ async def change_deck_card_qty(
     session: AsyncSession = Depends(get_session),
 ) -> Response:
     """Nudge a deck line's quantity by ±1 (#298); mirror it to the collection for an owned card.
-    
-    If all quanitites of this card are located in the deck, delta of these cards will be moved to unfiled.
+
+    If all quanitites of this card are located in the deck, delta of these cards will be moved to
+    unfiled.
     """
     _guard_writable()
     ## Modify deck_card
@@ -485,31 +491,42 @@ async def change_deck_card_qty(
     applied = new_qty - dc.quantity  # 0 when already at the floor of 1
     dc.quantity = new_qty
     deck_card_unique_stack_key = dc.get_unique_stack_key()
-    
+
     ## Modify collection_card if the new quantity is less than what's in the deck
     if(delta < 0 and dc.scryfall_id):
-      location = (await session.scalars(select(Location).where(Location.type == 'deck', Location.foreign_id==deck_id))).first()
-      matches = await match_deck_cards_in_deck_collection_cards(session, source_cards=[dc], source_location=location.id if location else None)
+      location = (
+          await session.scalars(
+              select(Location).where(Location.type == 'deck', Location.foreign_id==deck_id)
+          )
+      ).first()
+      matches = await match_deck_cards_in_deck_collection_cards(
+          session, source_cards=[dc], source_location=location.id if location else None
+      )
       matching_collection_cards = matches[deck_card_unique_stack_key]
-      
+
       # Calculate how many cards need to be moved back to unfiled
       current_in_deck = sum([c.quantity for c in matching_collection_cards])
       if(current_in_deck > new_qty):
           # We need to move excess quantity back to unfiled
           quantity_to_move_back = current_in_deck - new_qty
-          
+
           # Move the maximum possible quantity from deck cards back to unfiled
           # Start with the largest stacks first
-          sorted_collection_cards = sorted(matching_collection_cards, key=lambda x: x.quantity, reverse=True)
+          sorted_collection_cards = sorted(
+              matching_collection_cards, key=lambda x: x.quantity, reverse=True
+          )
           remaining_to_move = quantity_to_move_back
-          
+
           for collection_card in sorted_collection_cards:
               if remaining_to_move <= 0:
                   break
-              
+
               move_qty = min(remaining_to_move, collection_card.quantity)
               if move_qty > 0:
-                  await move_qty_from_existing_stack(session, collection_card=collection_card, quantity=move_qty, new_location_id=None)
+                  await move_qty_from_existing_stack(
+                      session, collection_card=collection_card, quantity=move_qty,
+                      new_location_id=None
+                  )
                   remaining_to_move -= move_qty
 
     ## Remove from deck entirely if the new qty is zero
@@ -613,7 +630,8 @@ async def resync_deck_printings(
 
 @router.post("/decks/{deck_id}/replace-list")
 async def replace_deck_list(
-    deck_id: int, decklist_text: str = Form(""), backup_before_import: bool = Form(False), session: AsyncSession = Depends(get_session)
+    deck_id: int, decklist_text: str = Form(""), backup_before_import: bool = Form(False),
+    session: AsyncSession = Depends(get_session)
 ) -> RedirectResponse:
     """Replace the entire deck content with a new list from a textarea. """
     _guard_writable()
@@ -622,8 +640,14 @@ async def replace_deck_list(
         raise HTTPException(status_code=400, detail='Empty replace list.')
     if deck is None:
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
-    
-    from src.decks import _merge_lines, parse_decklist, _resolve_names, _resolve_exact, _printing_for
+
+    from src.decks import (
+        _merge_lines,
+        _printing_for,
+        _resolve_exact,
+        _resolve_names,
+        parse_decklist,
+    )
 
     parsed = _merge_lines(parse_decklist(decklist_text))
     owned_sids = set(await session.scalars(select(CollectionCard.scryfall_id)))
@@ -635,7 +659,10 @@ async def replace_deck_list(
 
     # Backup cards (if enabled)
     if(backup_before_import):
-        await save_version(session, deck, "Pre-import backup "+datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"))
+        await save_version(
+            session, deck,
+            "Pre-import backup "+datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d")
+        )
 
     # Clear existing cards
     for card in deck.cards:
@@ -651,9 +678,9 @@ async def replace_deck_list(
         )
 
     # Manually update the updated_at timestamp
-    
-    deck.updated_at = datetime.datetime.now(datetime.timezone.utc)
-    
+
+    deck.updated_at = datetime.datetime.now(datetime.UTC)
+
     await session.commit()
     return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
 
@@ -684,26 +711,26 @@ async def set_deck_sleeve(
     deck = await session.get(Deck, deck_id)
     if deck is None:
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
-    
+
     # Clear existing sleeves for this deck
     stmt = select(Sleeve).where(Sleeve.deck_id == deck_id)
     result = await session.execute(stmt)
     existing_sleeves = result.scalars().all()
     for sleeve in existing_sleeves:
         sleeve.deck_id = None
-    
+
     # If sleeve_id is provided, associate it with the deck
     if sleeve_id:
         # Ensure the sleeve exists and belongs to this deck (or has no deck association)
         sleeve = await session.get(Sleeve, sleeve_id)
         if sleeve is None:
             raise HTTPException(status_code=404, detail="Sleeve not found.")
-        
+
         # Set the sleeve for this deck
         sleeve.deck_id = deck_id
-            
+
     await session.commit()
-    
+
     # Redirect back to the deck detail page
     return Response(status_code=200, headers={})
 
@@ -802,7 +829,8 @@ async def deck_suggest_owned(
 ) -> HTMLResponse:
     """Heuristic owned-card upgrade suggestions by thin role (#181) — no LLM, read-only safe."""
     deck = await session.get(Deck, deck_id)
-    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     return await _render_owned_upgrades(request, deck, session)
 
 
@@ -814,7 +842,8 @@ async def deck_add_owned(
     """Add one owned suggestion to the deck and re-render the panel so the pick drops off."""
     _guard_writable()
     deck = await session.get(Deck, deck_id)
-    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     added = None
     try:
         sid = uuid.UUID(scryfall_id)
@@ -830,11 +859,13 @@ async def deck_add_owned(
 
 @router.post("/decks/{deck_id}/rename")
 async def update_deck_name(
-    request: Request, deck_id: int, name: str = Form(""), session: AsyncSession = Depends(get_session)
+    request: Request, deck_id: int, name: str = Form(""),
+    session: AsyncSession = Depends(get_session)
 ) -> PlainTextResponse:
     _guard_writable()
     deck = await session.get(Deck, deck_id)
-    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     new_deck_name = await rename_deck(session, deck, name)
     return PlainTextResponse(new_deck_name)
 
@@ -850,7 +881,8 @@ async def deck_checkout(
     """Checkout cards from a deck to the collection."""
     _guard_writable()
     deck = await session.get(Deck, deck_id)
-    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     await checkout_deck(session, deck, mainboard=mainboard, sideboard=sideboard)
     return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
 
@@ -865,8 +897,9 @@ async def deck_deconstruct(
     """Deconstruct a deck by moving its cards to a specific location."""
     _guard_writable()
     deck = await session.get(Deck, deck_id)
-    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
-    
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+
     # Call the deconstruct function with the specified location
     await deconstruct_deck(session, deck, location=location_id)
     return RedirectResponse(url=f"/decks/{deck.id}", status_code=303)
@@ -881,11 +914,14 @@ async def deconstruct_form(
     """Show the deconstruction form for a deck."""
     _guard_writable()
     deck = await session.get(Deck, deck_id)
-    if deck is None: raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
-    
+    if deck is None:
+        raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
+
     # Get locations for the location picker
-    grouped_locations = await find_or_create_grouped_locations(session, binders=True, boxes=True, decks=False)
-    
+    grouped_locations = await find_or_create_grouped_locations(
+        session, binders=True, boxes=True, decks=False
+    )
+
     return templates.TemplateResponse(
         request,
         "deck_deconstruct.html",
@@ -898,14 +934,14 @@ async def deconstruct_form(
 
 @router.post("/decks/{deck_id}/update-description", response_class=HTMLResponse)
 async def update_deck_description(
-    deck_id: int, 
-    description: str = Form(""), 
+    deck_id: int,
+    description: str = Form(""),
     session: AsyncSession = Depends(get_session)
 ) -> str | None:
     """Update the description for a deck."""
     _guard_writable()
     deck = await session.get(Deck, deck_id)
-    if deck is None: 
+    if deck is None:
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
     deck.description = html.escape(description) if description else None
     await session.commit()
@@ -916,7 +952,7 @@ async def update_deck_description(
 
 @router.post("/decks/{deck_id}/set-commander")
 async def set_commander(
-    deck_id: int, 
+    deck_id: int,
     card_id: int = Form(...),
     session: AsyncSession = Depends(get_session),
 ) -> Response:
@@ -925,23 +961,23 @@ async def set_commander(
     deck = await session.get(Deck, deck_id)
     if deck is None:
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
-    
+
     # Get the deck card
     dc = await session.get(DeckCard, card_id)
     if dc is None or dc.deck_id != deck_id:
         raise HTTPException(status_code=404, detail="Card not found in this deck.")
-    
+
     # Check if this card is a legendary creature by examining its type_line
     card = await session.get(Card, dc.scryfall_id) if dc.scryfall_id else None
-    
+
     # Check for legendary creature
     if not card or not card.is_legendary_creature() or dc.quantity != 1 :
         raise HTTPException(status_code=400, detail="Only legendary creatures can be commanders.")
-    
+
     # Set this card as the commander
     deck.commander_id = dc.id
     await session.commit()
-    
+
     return Response(status_code=200, headers={"HX-Refresh": "true"})
 
 
@@ -953,21 +989,21 @@ async def add_card_to_deck_endpoint(
 ) -> Response:
     """Add a card to the deck by its scryfall_id."""
     _guard_writable()
-    
+
     # Get the deck
     deck = await session.get(Deck, deck_id)
     if deck is None:
         raise HTTPException(status_code=404, detail=_DECK_NOT_FOUND)
-    
+
     # Get the card
     card = await session.get(Card, scryfall_id)
     if card is None:
         raise HTTPException(status_code=404, detail="Card not found.")
-    
+
     # Add the card to the deck
     await add_card_to_deck(session, deck_id, card)
-    
-    # Refresh the deck boards partial 
+
+    # Refresh the deck boards partial
     return Response(status_code=200, headers={"HX-Refresh": "true"})
 
 
@@ -982,8 +1018,10 @@ async def search_cards(
     """Search for cards by name to suggest additions to a deck."""
     # If no query or empty query, return empty results
     if not q or q.strip() == "":
-        return templates.TemplateResponse(request, "_deck_search_suggestions.html", {"cards": [], "deck_id": deck_id})
-    
+        return templates.TemplateResponse(
+            request, "_deck_search_suggestions.html", {"cards": [], "deck_id": deck_id}
+        )
+
     # Search for card names that match the query (case insensitive)
     # Prioritize matches: exact match > starts with > contains anywhere
     stmt = select(Card.name, Card.scryfall_id).where(
@@ -997,14 +1035,14 @@ async def search_cards(
         # Then order by name for consistent sorting
         Card.name
     ).limit(limit * 3)  # Get more results to allow deduplication and ranking
-    
+
     results = await session.execute(stmt)
     cards = [{"name": row[0], "scryfall_id": str(row[1])} for row in results]
-    
+
     # Deduplicate by name, choosing the best version based on collection availability
     deduplicated_cards = []
     seen_names = set()
-    
+
     # First, let's group all cards by name to get all versions of each card
     cards_by_name = {}
     for card in cards:
@@ -1012,22 +1050,22 @@ async def search_cards(
         if name not in cards_by_name:
             cards_by_name[name] = []
         cards_by_name[name].append(card)
-    
+
     # For each unique name, select the best version according to our rules
     for name, matching_cards in cards_by_name.items():
         if name in seen_names:
             continue
-            
+
         # Select the best version based on quantity in collection
         best_card = await _select_best_card_version(session, matching_cards)
-        
+
         deduplicated_cards.append(best_card)
         seen_names.add(name)
-        
+
         # Limit to requested limit
         if len(deduplicated_cards) >= limit:
             break
-    
+
     # Add coverage information for each card
     cards_with_coverage = []
     for card in deduplicated_cards:
@@ -1036,20 +1074,23 @@ async def search_cards(
             select(Card).where(Card.scryfall_id == card["scryfall_id"])
         )
         card_obj = card_details.scalars().first()
-        
+
         if card_obj:
             # Calculate coverage - we need to get deck coverage info for this specific card
             # This is a simplified version that gets the basic coverage data
             coverage_info = await _get_card_coverage(session, deck_id, card_obj)
             card["coverage"] = coverage_info
             cards_with_coverage.append(card)
-    
-    return templates.TemplateResponse(request, "_deck_search_suggestions.html", {"cards": cards_with_coverage, "deck_id": deck_id, "q": html.escape(q)})
+
+    return templates.TemplateResponse(
+        request, "_deck_search_suggestions.html",
+        {"cards": cards_with_coverage, "deck_id": deck_id, "q": html.escape(q)}
+    )
 
 
 async def _select_best_card_version(session: AsyncSession, matching_cards: list[dict]) -> dict:
     """Select the best card version based on quantity in collection.
-    
+
     Rules:
     1. Choose first item with > 0 quantity in non-deck location
     2. If no matches in non-deck locations, choose first item with > 0 quantity in deck location
@@ -1057,51 +1098,55 @@ async def _select_best_card_version(session: AsyncSession, matching_cards: list[
     """
     # Get all unique scryfall_ids for these matching cards
     scryfall_ids = [c["scryfall_id"] for c in matching_cards]
-    
+
     # First, check collection cards that are NOT in a deck location (first preference)
     stmt = select(CollectionCard).where(
         CollectionCard.scryfall_id.in_(scryfall_ids)
     ).outerjoin(Location, CollectionCard.location == Location.id).where(
         (Location.type != "deck") | (Location.id.is_(None))
     )
-    
+
     collection_cards_non_deck = (await session.execute(stmt)).scalars().all()
-    
+
     # Group by scryfall_id for easy lookup
     collection_by_sid_non_deck = {}
     for cc in collection_cards_non_deck:
         if str(cc.scryfall_id) not in collection_by_sid_non_deck:
             collection_by_sid_non_deck[str(cc.scryfall_id)] = []
         collection_by_sid_non_deck[str(cc.scryfall_id)].append(cc)
-    
+
     # Try to find a card with quantity > 0 in non-deck location
     for card in matching_cards:
         scryfall_id = card["scryfall_id"]
-        if scryfall_id in collection_by_sid_non_deck and any(cc.quantity > 0 for cc in collection_by_sid_non_deck[scryfall_id]):
+        if scryfall_id in collection_by_sid_non_deck and any(
+            cc.quantity > 0 for cc in collection_by_sid_non_deck[scryfall_id]
+        ):
             return card
-    
+
     # If no matches in non-deck locations, check deck locations (second preference)
     stmt = select(CollectionCard).where(
         CollectionCard.scryfall_id.in_(scryfall_ids)
     ).join(Location, CollectionCard.location == Location.id).where(
         Location.type == "deck"
     )
-    
+
     collection_cards_deck = (await session.execute(stmt)).scalars().all()
-    
+
     # Group by scryfall_id for easy lookup
     collection_by_sid_deck = {}
     for cc in collection_cards_deck:
         if str(cc.scryfall_id) not in collection_by_sid_deck:
             collection_by_sid_deck[str(cc.scryfall_id)] = []
         collection_by_sid_deck[str(cc.scryfall_id)].append(cc)
-    
+
     # Try to find a card with quantity > 0 in deck location
     for card in matching_cards:
         scryfall_id = card["scryfall_id"]
-        if scryfall_id in collection_by_sid_deck and any(cc.quantity > 0 for cc in collection_by_sid_deck[scryfall_id]):
+        if scryfall_id in collection_by_sid_deck and any(
+            cc.quantity > 0 for cc in collection_by_sid_deck[scryfall_id]
+        ):
             return card
-    
+
     # If no matches anywhere, just pick the first one
     return matching_cards[0]
 
@@ -1110,38 +1155,29 @@ async def _get_card_coverage(session: AsyncSession, deck_id: int, card: Card) ->
     """Calculate coverage information for a card in the context of a specific deck."""
     # This is simplified - in reality, this would involve more complex logic
     # to determine how many copies are in deck vs. available elsewhere
-    
+
     # Get all collection cards for this scryfall_id that are NOT in a deck location
     stmt = select(CollectionCard).where(
         CollectionCard.scryfall_id == card.scryfall_id
     ).outerjoin(Location, CollectionCard.location == Location.id).where(
         (Location.type != "deck") | (Location.id.is_(None))
     )
-    
+
     collection_cards_non_deck = (await session.execute(stmt)).scalars().all()
-    
-    # Get all collection cards for this scryfall_id that ARE in a deck location
-    stmt = select(CollectionCard).where(
-        CollectionCard.scryfall_id == card.scryfall_id
-    ).join(Location, CollectionCard.location == Location.id).where(
-        Location.type == "deck"
-    )
-    
-    collection_cards_deck = (await session.execute(stmt)).scalars().all()
-    
+
     # Get deck cards for this scryfall_id
     stmt = select(DeckCard).where(
         DeckCard.scryfall_id == card.scryfall_id,
         DeckCard.deck_id == deck_id
     )
-    
+
     deck_cards = (await session.execute(stmt)).scalars().all()
-    
+
     # Calculate quantities
     in_deck = sum(dc.quantity for dc in deck_cards)
     available_non_deck = sum(cc.quantity for cc in collection_cards_non_deck)
     swappable = sum(cc.quantity for cc in collection_cards_non_deck)  # Simplified for now
-    
+
     return {
         "in_deck": in_deck,
         "available": available_non_deck,

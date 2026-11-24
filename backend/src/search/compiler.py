@@ -11,10 +11,10 @@ import datetime
 import operator
 from collections.abc import Callable
 
-from sqlalchemy import Float, and_, cast, func, not_, or_, select, exists, union_all
+from sqlalchemy import Float, and_, cast, exists, func, not_, or_, select, union_all
 from sqlalchemy.sql.elements import ColumnElement
 
-from src.locations import _find_location, LOCATION_TYPES
+from src.locations import LOCATION_TYPES, _find_location
 from src.models import Card, CollectionCard, Location
 from src.search.ast import And, Node, Not, Or, Term
 from src.search.colors import ColorParseError, parse_colors

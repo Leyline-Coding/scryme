@@ -8,19 +8,18 @@ column.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.binder_service import (
-    get_all_binder_cards,
     create_binder,
     delete_binder,
+    get_all_binder_cards,
     rename_binder,
 )
-from src.collection_edit import move_stack_location, _STACK_NOT_FOUND
+from src.collection_edit import _STACK_NOT_FOUND, move_stack_location
 from src.config import get_settings
 from src.db import get_session
 from src.models import Binder, Card
@@ -70,7 +69,7 @@ async def binder_view(
     cards = await get_all_binder_cards(session, binder_id)
     return templates.TemplateResponse(
         request, "binder_view.html",
-        {"binder": binder, 
+        {"binder": binder,
          "cards": cards,
          "read_only": get_settings().read_only,
          "share_kind": BINDER, "share_target": binder.id,
@@ -94,7 +93,8 @@ async def rename_binder_route(
 ) -> PlainTextResponse:
     _guard_writable()
     binder = await session.get(Binder, binder_id)
-    if binder is None: raise HTTPException(status_code=404, detail=_BINDER_NOT_FOUND)
+    if binder is None:
+        raise HTTPException(status_code=404, detail=_BINDER_NOT_FOUND)
     new_binder_name = await rename_binder(session, binder, name)
     return PlainTextResponse(new_binder_name)
 
@@ -113,13 +113,14 @@ async def delete_binder_route(
 
 @router.post("/binders/{binder_id}/stack/{stack_id}/locate")
 async def locate_binder_stack(
-    binder_id: int, 
+    binder_id: int,
     stack_id: int,
     location_id: int = Form(None),
     session: AsyncSession = Depends(get_session),
 ) -> RedirectResponse:
     _guard_writable()
     sid = await move_stack_location(session, stack_id, location_id)
-    if(not sid): raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
+    if(not sid):
+        raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     return local_redirect(f"/binders/view/{binder_id}")
 

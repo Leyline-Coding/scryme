@@ -1,7 +1,7 @@
 """Add facet_row_cap to preferences
 
 Revision ID: 0036_add_facet_row_cap_to_pref
-Revises: 0035_share_link
+Revises: 0036_scan_batch
 Create Date: 2026-10-29 23:39:14.947608
 
 """
@@ -15,7 +15,7 @@ from sqlalchemy.dialects import postgresql
 # branch_labels / depends_on globals (for Alembic branching) are omitted — Alembic defaults them to
 # None, and leaving them out avoids GitHub Code Quality's "unused global" false positive.
 revision: str = '0036_add_facet_row_cap_to_pref'
-down_revision: Union[str, None] = '0035_share_link'
+down_revision: Union[str, None] = '0036_scan_batch'
 
 
 def upgrade() -> None:

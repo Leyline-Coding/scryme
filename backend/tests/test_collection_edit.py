@@ -38,7 +38,9 @@ async def test_add_then_increment_same_stack(session):
     box = await create_box(session, "Box")
     await session.commit()
     assert box is not None
-    location_id = await session.scalar(select(Location.id).where((Location.type == "box") & (Location.foreign_id == box.id)))
+    location_id = await session.scalar(
+        select(Location.id).where((Location.type == "box") & (Location.foreign_id == box.id))
+    )
 
     s1 = await add_or_increment(session, c.scryfall_id, 2, finish="foil", location=location_id)
     assert s1 is not None
@@ -101,11 +103,19 @@ async def test_bulk_add_and_tag(session):
     assert added == 2
     assert await _count(session, a.scryfall_id) == 1
 
-    collection_card_ids = (await session.execute(select(CollectionCard.id).where(CollectionCard.scryfall_id.in_((a.scryfall_id,b.scryfall_id))))).scalars().all()
+    collection_card_ids = (
+        await session.execute(
+            select(CollectionCard.id).where(
+                CollectionCard.scryfall_id.in_((a.scryfall_id,b.scryfall_id))
+            )
+        )
+    ).scalars().all()
 
     tagged = await modify_stacks_tag(session, collection_card_ids, "Trade")
     assert tagged == 2
-    tags = await session.scalar(select(CollectionCard.tags).where(CollectionCard.scryfall_id == a.scryfall_id))
+    tags = await session.scalar(
+        select(CollectionCard.tags).where(CollectionCard.scryfall_id == a.scryfall_id)
+    )
     assert tags == ["trade"]
 
     untagged = await modify_stacks_tag(session, collection_card_ids, "Trade", remove=True)

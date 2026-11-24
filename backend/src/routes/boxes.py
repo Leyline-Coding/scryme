@@ -1,9 +1,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from urllib.parse import quote
-
 from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +27,8 @@ async def rename_box_route(
 ) -> PlainTextResponse:
     _guard_writable()
     box = await session.get(Box, box_id)
-    if box is None: raise HTTPException(status_code=404, detail=_BOX_NOT_FOUND)
+    if box is None:
+        raise HTTPException(status_code=404, detail=_BOX_NOT_FOUND)
     new_box_name = await rename_box(session, box, name)
     return PlainTextResponse(new_box_name)
 

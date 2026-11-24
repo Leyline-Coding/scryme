@@ -11,7 +11,7 @@ from src.db import get_session
 from src.scryfall.images import ImageCache
 from src.scryfall.mapping import image_url as cdn_image_url
 from src.templating import templates
-from src.wishlist import add_to_wishlist, remove_from_wishlist, adjust_wishlist_quantity
+from src.wishlist import add_to_wishlist, adjust_wishlist_quantity, remove_from_wishlist
 
 router = APIRouter(tags=["wishlist"])
 _cache = ImageCache()
@@ -67,7 +67,7 @@ async def adjust(
 ) -> HTMLResponse:
     _guard_writable()
     await adjust_wishlist_quantity(session, scryfall_id, delta)
-    # Return a redirect to reload the entire wishlist page 
+    # Return a redirect to reload the entire wishlist page
     return RedirectResponse(url="/collection/wishlist", status_code=303)
 
 

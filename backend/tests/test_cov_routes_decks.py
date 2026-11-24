@@ -9,10 +9,10 @@ records them. Every call still asserts the real response / side effect.
 import uuid
 
 import pytest
-from src.main import templates 
 from fastapi import HTTPException
 from src.config import get_settings
 from src.decks import create_deck
+from src.main import templates
 from src.models import Card, CollectionCard, Deck
 from src.routes import decks as R
 from src.scryfall.mapping import card_to_columns
@@ -73,14 +73,16 @@ async def test_new_deck_and_readonly(monkeypatch):
 @pytest.mark.asyncio
 async def test_create_and_view(session, monkeypatch):
     monkeypatch.setitem(templates.env.globals, "currency", "$")
-  
+
     await _add(session, _raw("Lightning Bolt"), owned=1)
     redirect = await R.create(_request("/decks"), name="Burn", decklist="4 Lightning Bolt",
                               session=session)
     assert redirect.status_code == 303
     deck_id = int(redirect.headers["location"].split("/")[-1])
 
-    view = await R.view_deck(_request(f"/decks/{deck_id}"), deck_id=deck_id, format="modern", session=session)
+    view = await R.view_deck(
+        _request(f"/decks/{deck_id}"), deck_id=deck_id, format="modern", session=session
+    )
     assert view.status_code == 200
 
     with pytest.raises(HTTPException) as e:
@@ -93,10 +95,12 @@ async def test_deck_page_includes_goldfish(session, monkeypatch):
     """The deck page embeds the client-side sample-hand tester with the mainboard as its
     library JSON (#180)."""
     monkeypatch.setitem(templates.env.globals, "currency", "$")
-    
+
     await _add(session, _raw("Lightning Bolt"))
     deck = await create_deck(session, "Burn", "4 Lightning Bolt")
-    body = (await R.view_deck(_request(f"/decks/{deck.id}"), deck_id=deck.id, format="", session=session)).body.decode()
+    body = (await R.view_deck(
+        _request(f"/decks/{deck.id}"), deck_id=deck.id, format="", session=session
+    )).body.decode()
     # The x-data attr must be SINGLE-quoted: tojson emits double-quoted JSON, so a double-quoted
     # attribute would be closed by the first `"` and break Alpine.
     assert "x-data='goldfish(" in body and "Test hand" in body

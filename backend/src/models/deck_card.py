@@ -8,7 +8,6 @@ their text with null ids.
 
 from __future__ import annotations
 
-import datetime
 import uuid
 
 from sqlalchemy import Boolean, ForeignKey, Integer, String, false
@@ -28,13 +27,16 @@ class DeckCard(Stack, Base):
         ForeignKey("deck.id", ondelete="CASCADE"), index=True
     )
 
-    #Stack also defined scryfall_id: Mapped[uuid.UUID] with one subtle difference: DeckCard's scryfall_id is allowed to be nullable
+    #Stack also defined scryfall_id: Mapped[uuid.UUID] with one subtle difference: DeckCard's
+    # scryfall_id is allowed to be nullable
     scryfall_id: Mapped[uuid.UUID| None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("cards.scryfall_id", ondelete="CASCADE"), index=True, nullable=True
+        UUID(as_uuid=True), ForeignKey("cards.scryfall_id", ondelete="CASCADE"), index=True,
+        nullable=True
     )
     ## Inheritied from Stack
     # quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    # finish: Mapped[str] = mapped_column(String(16), nullable=False, default="normal")  # normal | foil | etched
+    # finish: Mapped[str] = mapped_column(String(16), nullable=False, default="normal")
+    #     normal | foil | etched
     # language: Mapped[str] = mapped_column(String(8), nullable=False, default="en")
 
     name: Mapped[str] = mapped_column(String(512))

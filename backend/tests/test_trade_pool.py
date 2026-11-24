@@ -16,9 +16,9 @@ from src.trade_pool import (
     pool_view,
     remove_item,
     stage_printing,
+    stage_stack,
     trade_pool_in,
     trade_pool_out,
-    stage_stack,
     update_item,
     update_pool,
 )
@@ -434,11 +434,14 @@ async def test_bulk_staging_from_the_results_grid(client, session):
     card = await _card(session, "Spare")
     stack = await _stack(session, card, qty=3)
     await session.flush()
-    
+
     for action, direction, expected in (("trade_out", "out", 1), ("trade_in", "in", 1)):
         resp = await client.post("/collection/bulk", data={
             "bulk_action": action, "pool_id": str(pool.id), "scope": "collection",
-            **({"scryfall_ids": [str(card.scryfall_id)]} if direction=="in" else {"stack_ids": [stack.id]}),
+            **(
+                {"scryfall_ids": [str(card.scryfall_id)]} if direction=="in"
+                else {"stack_ids": [stack.id]}
+            ),
         })
         assert resp.status_code == 303
         items = (await session.execute(

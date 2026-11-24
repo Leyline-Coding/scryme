@@ -3,11 +3,9 @@
 import uuid
 
 import pytest
-from sqlalchemy import select
 from src.box_service import (
     all_boxes,
     create_box,
-    delete_box,
     rename_box,
 )
 from src.models import Card, CollectionCard
@@ -40,7 +38,7 @@ async def test_create_and_summaries(session):
 async def test_rename_guards_and_cascade(session):
     box = await create_box(session, "Bulk")
     assert box is not None
-    
+
     # Guard branch: missing box, blank name, and same-name are all no-ops.
     await rename_box(session, box, "New")  # Pass the box object, not the ID
     await rename_box(session, box, "   ")

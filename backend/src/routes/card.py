@@ -90,25 +90,37 @@ def _price_rows(request: Request, card: Card) -> dict[str, dict[str, dict[str, f
             del market_prices[source][key]
             new_key = '❖ etched' if 'etched' in key else '✦ foil' if 'foil' in key else 'normal'
             ## Check collision on new key
-            if(new_key in prices.keys()): new_key+='_'+key
+            if(new_key in prices.keys()):
+                new_key+='_'+key
             try:
                 # Convert to user's currency if not already in USD/EUR (which are native)
                 if currency != "usd":
                     fx_rate = fx.rate(currency)
                     if fx_rate:
-                        market_prices[source][new_key] = {'amount': price_value * fx_rate, 'currency_symbol': currency_symbol}
+                        market_prices[source][new_key] = {
+                            'amount': price_value * fx_rate, 'currency_symbol': currency_symbol
+                        }
                     else:
-                        market_prices[source][new_key] = {'amount': float(price_value), 'currency_symbol': default_currency_symbol}
+                        market_prices[source][new_key] = {
+                            'amount': float(price_value), 'currency_symbol': default_currency_symbol
+                        }
                 else:
-                    market_prices[source][new_key] = {'amount': float(price_value), 'currency_symbol': default_currency_symbol}
-                    
-            except (ValueError, TypeError):
-                market_prices[source][new_key] = {'amount': float(price_value), 'currency_symbol': default_currency_symbol}
-            
+                    market_prices[source][new_key] = {
+                        'amount': float(price_value), 'currency_symbol': default_currency_symbol
+                    }
 
-    # Get TIX prices from the card's raw prices (not market_prices) since TIX is a native Scryfall field
+            except (ValueError, TypeError):
+                market_prices[source][new_key] = {
+                    'amount': float(price_value), 'currency_symbol': default_currency_symbol
+                }
+
+
+    # Get TIX prices from the card's raw prices (not market_prices) since TIX is a native Scryfall
+    # field
     tix_amount = (getattr(card, "prices", None) or {}).get("tix", None)
-    market_prices['TIX'] = {'': {'amount': None if tix_amount is None else float(tix_amount), 'currency_symbol': ''}}
+    market_prices['TIX'] = {
+        '': {'amount': None if tix_amount is None else float(tix_amount), 'currency_symbol': ''}
+    }
     return market_prices
 
 
@@ -147,15 +159,15 @@ async def card_detail(
     chart_range: str = Query(DEFAULT_RANGE, alias="range"),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
-    
+
     try:
         card_uuid = uuid.UUID(scryfall_id)
     except ValueError:
-        raise HTTPException(status_code=404, detail="Card not found.")
-        
+        raise HTTPException(status_code=404, detail="Card not found.") from None
+
     collection_partial_data = await _collection_partial_generator(request, session, card_uuid)
     card = collection_partial_data['card']
-    
+
     legalities = card.legalities or {}
     legality_rows = [(fmt, legalities.get(fmt, "not_legal")) for fmt in LEGALITY_FORMATS]
 
@@ -229,7 +241,8 @@ async def card_image(
     lets the browser cache the image.
     """
     card = await session.get(Card, scryfall_id)
-    if(card is None): raise HTTPException(status_code=404, detail="Card not found.")
+    if(card is None):
+        raise HTTPException(status_code=404, detail="Card not found.")
     target = _image(card, "normal")
     if not target:
         raise HTTPException(status_code=404, detail="No image.")
@@ -244,7 +257,8 @@ async def card_similar(
 ) -> HTMLResponse:
     """Lazily-loaded 'Similar cards' grid: nearest owned cards by oracle-text embedding (#176)."""
     card = await session.get(Card, scryfall_id)
-    if(card is None): raise HTTPException(status_code=404, detail="Card not found.")
+    if(card is None):
+        raise HTTPException(status_code=404, detail="Card not found.")
     items: list[tuple[Card, str]] = []
     if card.oracle_id is not None:
         scored = await similar_to_oracle(session, card.oracle_id, limit=8, scope="owned")
@@ -286,7 +300,8 @@ async def card_rulings(
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     card = await session.get(Card, scryfall_id)
-    if(card is None): raise HTTPException(status_code=404, detail="Card not found.")
+    if(card is None):
+        raise HTTPException(status_code=404, detail="Card not found.")
     rulings = await fetch_rulings(scryfall_id, card)
     return templates.TemplateResponse(
         request, "_card_rulings.html", {"rulings": rulings}

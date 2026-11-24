@@ -25,7 +25,10 @@ async def test_page_size_controls_and_infinite_append(client, session):
     await _seed_owned(session)
     # Page-size selector + infinite toggle render on the full page.
     page = await client.get("/search?scope=all&q=Lightning")
-    assert 'id="page-size"' in page.text and '<i class="fa-solid fa-infinity"></i> scroll' in page.text
+    assert (
+        'id="page-size"' in page.text
+        and '<i class="fa-solid fa-infinity"></i> scroll' in page.text
+    )
     # The infinite-scroll "load more" request returns a minimal fragment (cards, no page header).
     frag = await client.get("/search?scope=all&q=Lightning&page=1&append=1",
                             headers={"HX-Request": "true"})

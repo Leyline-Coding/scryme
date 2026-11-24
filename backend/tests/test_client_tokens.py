@@ -9,8 +9,8 @@ The rules being pinned here, because both are security-relevant and neither is o
 """
 
 import datetime
-
 import sys
+
 import pytest
 from sqlalchemy import select
 from src.client_tokens import (

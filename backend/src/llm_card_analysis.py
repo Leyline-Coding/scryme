@@ -1,20 +1,16 @@
 
 from __future__ import annotations
 
-import re
 from collections import Counter
 from dataclasses import dataclass, field
 
-import httpx
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import __version__
 from src.deck_builder import classify_role
-from src.deck_synergy import  deck_themes, deck_tribes
+from src.deck_synergy import deck_themes, deck_tribes
 from src.decks import DeckCoverage, deck_coverage, deck_stats
 from src.models import Card, CollectionCard, Deck, Location
-
 
 # Commander text is joined onto one line so the grounding block stays line-oriented.
 _COMMANDER_TEXT = " / "
@@ -74,8 +70,14 @@ class DeckContext:
                 "and legal in its format — never cards of other colors.")
 
     def decklist_text(self):
-        if not self.deck_coverage: return ""
-        lines = [f"{r.quantity} {r.name}" for r in (self.deck_coverage.main_combined if self.useCombined else self.deck_coverage.main)]
+        if not self.deck_coverage:
+            return ""
+        lines = [
+            f"{r.quantity} {r.name}"
+            for r in (
+                self.deck_coverage.main_combined if self.useCombined else self.deck_coverage.main
+            )
+        ]
         return "\n".join(lines)
 
 
@@ -127,7 +129,9 @@ def _scan_deck_cards(info: dict) -> _DeckScan:
 
 
 
-async def deck_ai_context(session: AsyncSession, deck: Deck, useCombined: bool = True) -> DeckContext:
+async def deck_ai_context(
+    session: AsyncSession, deck: Deck, useCombined: bool = True
+) -> DeckContext:
     """Rich grounded context for the AI deck features: identity, commander, themes, key cards."""
     stats = await deck_stats(session, deck)
     curve = ", ".join(f"{b.label}:{b.count}" for b in stats.mana_curve)
@@ -188,7 +192,8 @@ class CollectionContext:
 
 
     def cardlist_text(self):
-        if not self.cardlist: return ""
+        if not self.cardlist:
+            return ""
         lines = [f"{r.name}" for r in self.cardlist]
         return "\n".join(lines)
 
@@ -222,14 +227,18 @@ def _snippet(oracle_text: str | None) -> str:
 
 async def collection_ai_context(session: AsyncSession) -> CollectionContext:
     """The owned, in-identity candidate pool, annotated and scored for deck fit (#294/#295)."""
-    
-    
+
+
     rows = (await session.execute(
         select(Card.name, Card.oracle_id, Card.scryfall_id, Card.color_identity,
                 Card.type_line, Card.oracle_text, Card.keywords)
         .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
         .outerjoin(Location, CollectionCard.location == Location.id)
-        .where(CollectionCard.quantity>0, Card.oracle_id.is_not(None), (Location.type != "deck") | (Location.id.is_(None)), and_(Card.type_line != "Card", Card.type_line.not_ilike("%token%")))
+        .where(
+            CollectionCard.quantity>0, Card.oracle_id.is_not(None),
+            (Location.type != "deck") | (Location.id.is_(None)),
+            and_(Card.type_line != "Card", Card.type_line.not_ilike("%token%"))
+        )
         .distinct(Card.oracle_id)
         .order_by(Card.oracle_id, Card.released_at.desc().nulls_last())
     )).all()
@@ -247,7 +256,7 @@ async def collection_ai_context(session: AsyncSession) -> CollectionContext:
     profile = DeckProfile()
     seen: set[str] = set()
     pool: list[_PoolCard] = []
-    for name, oracle_id, sid, ci, type_line, oracle_text, keywords in rows:
+    for name, _oracle_id, sid, _ci, type_line, oracle_text, _keywords in rows:
         if oracle_id in deck_oracles or name.lower() in seen:
             continue
         if identity and not set(ci or []).issubset(identity):
@@ -264,7 +273,7 @@ async def collection_ai_context(session: AsyncSession) -> CollectionContext:
     '''
 
     pool: list[CardScan] = []
-    for name, oracle_id, sid, ci, type_line, oracle_text, keywords in rows:
+    for name, _oracle_id, sid, _ci, type_line, oracle_text, _keywords in rows:
         pool.append(CardScan(
             name=name,
             scryfall_id=str(sid),

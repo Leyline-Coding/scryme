@@ -1,8 +1,8 @@
 """Coverage for src/admin_stats.py — the image-cache disk walk (count / bytes / OSError)."""
 
 import os
-import pytest
 
+import pytest
 from src.admin_stats import image_cache_disk
 
 

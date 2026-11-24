@@ -8,12 +8,10 @@ to the Scryfall CDN otherwise, so results never show broken images before the ca
 from __future__ import annotations
 
 from dataclasses import dataclass
-from urllib.parse import quote
 
-import httpx
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.background_service import queue_service
@@ -22,12 +20,11 @@ from src.box_service import (
     all_boxes,
 )
 from src.config import get_settings
-from src.models import Deck
 from src.db import get_session
 from src.facets import compute_facets
-from src.locations import find_or_create_grouped_locations
 from src.llm import get_config
-from src.models import Card, NLQCache
+from src.locations import find_or_create_grouped_locations
+from src.models import Card, Deck, NLQCache
 from src.perfcache import memoize
 from src.prices import biggest_movers
 from src.routes.saved import list_saved
@@ -131,16 +128,16 @@ def _apply_universal(q: str, universal: str) -> str:
 
 def _to_views(result) -> list[CardView]:
     views = []
-    
+
     for card in result.cards:
         sid = str(card.scryfall_id)
-        
+
         # Get the languages for this specific card in the collection
         # result.owned_languages is a dict of sid -> "en,fr"
         card_langs = result.owned_languages.get(sid, "en")
 
         views.append(
-            
+
             CardView(
                 card=card,
                 quantity=result.quantities.get(sid, 0),
@@ -156,26 +153,30 @@ def _to_views(result) -> list[CardView]:
 
 
 @router.get("/advanced", response_class=HTMLResponse)
-async def advanced(request: Request, q: str = "", session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+async def advanced(
+    request: Request, q: str = "", session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
     """Form-based query builder for users who don't know Scryfall syntax.
 
     The form assembles a Scryfall query string client-side (Alpine) and navigates to /search, so
     there's a single search-engine path and the generated query is visible/editable afterward.
-    
-    If a query parameter 'q' is provided, this will prefill the appropriate fields in the advanced form.
+
+    If a query parameter 'q' is provided, this will prefill the appropriate fields in the advanced
+    form.
     """
     from src.locations import find_or_create_grouped_locations
-    grouped_locations = await find_or_create_grouped_locations(session, binders=True, boxes=True, decks=True)
-    
+    grouped_locations = await find_or_create_grouped_locations(
+        session, binders=True, boxes=True, decks=True
+    )
+
     # Parse the query to prefill the form fields if present
     prefilled_data = {}
-    
+
     if q:
         try:
             # Import here to avoid circular dependencies
             from src.search.parser import parse
-            from src.search.ast import Term
-            
+
             ast = parse(q)
             if ast is not None:
                 prefilled_data = _extract_prefill_data(ast)
@@ -199,15 +200,19 @@ async def search_nl_status(
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     """Check if an NL query has been processed and return the resolved query."""
-    if not nl: return HTMLResponse(status_code=400, content="No NL query provided")
+    if not nl:
+        return HTMLResponse(status_code=400, content="No NL query provided")
     # Check if there's a cached result
     matching_nl_to_q = (await session.execute(
         select(NLQCache)
         .where(func.lower(NLQCache.nl_text) == func.lower(nl))
     )).scalars().first()
-    if not matching_nl_to_q: return HTMLResponse(status_code=404, content="No NL query being processed.")
-    if matching_nl_to_q and matching_nl_to_q.q_text: return HTMLResponse(status_code=200, content=matching_nl_to_q.q_text)
-    else: return HTMLResponse(status_code=202, content="Processing...")
+    if not matching_nl_to_q:
+        return HTMLResponse(status_code=404, content="No NL query being processed.")
+    if matching_nl_to_q and matching_nl_to_q.q_text:
+        return HTMLResponse(status_code=200, content=matching_nl_to_q.q_text)
+    else:
+        return HTMLResponse(status_code=202, content="Processing...")
 
 
 @router.get("/search/nl/suggestions")
@@ -233,7 +238,9 @@ async def search_nl_suggestions(
             .limit(5)
         )
 
-    return templates.TemplateResponse(request, "_search_nl_suggestions.html", {"nl":nl, "rows": result.scalars().all()})
+    return templates.TemplateResponse(
+        request, "_search_nl_suggestions.html", {"nl":nl, "rows": result.scalars().all()}
+    )
 
 
 async def _run_into_ctx(
@@ -273,17 +280,24 @@ async def search(
     nl_from_cache_and_preloaded = False
     if(nl!=""):
       # If it has already been processed and cached, simply load that cache and inject into q
-      matching_nl_to_q = (await session.execute(select(NLQCache).where(func.lower(NLQCache.nl_text) == func.lower(nl)))).scalars().first()
-      if(matching_nl_to_q and matching_nl_to_q.q_text!=None):
+      matching_nl_to_q = (
+          await session.execute(
+              select(NLQCache).where(func.lower(NLQCache.nl_text) == func.lower(nl))
+          )
+      ).scalars().first()
+      if(matching_nl_to_q and matching_nl_to_q.q_text is not None):
           q = matching_nl_to_q.q_text
           nl_from_cache_and_preloaded = True
-      # If this is a new search query, add it to the queue, start a background process, then initialize the front end when it is ready
+      # If this is a new search query, add it to the queue, start a background process, then
+      # initialize the front end when it is ready
       elif(not matching_nl_to_q):
           new_matching_nl_to_q = NLQCache(nl_text = nl.strip(), q_text=None)
           session.add(new_matching_nl_to_q)
           await session.commit()
           # Start background processing task for the AI nl to q
-          queue_service(f"nl_to_q_{new_matching_nl_to_q.id}", 'nl_to_q', nlqcache_id=new_matching_nl_to_q.id)
+          queue_service(
+              f"nl_to_q_{new_matching_nl_to_q.id}", 'nl_to_q', nlqcache_id=new_matching_nl_to_q.id
+          )
 
     scope_enum = SearchScope.ALL if scope == SearchScope.ALL.value else SearchScope.COLLECTION
     sort = sort if sort in SORT_KEYS else DEFAULT_SORT
@@ -296,8 +310,10 @@ async def search(
     effective_q = _apply_universal(q, universal)
 
     ctx: dict = {"q": q, "scope": scope_enum.value, "sort": sort, "dir": dir,
-                  "read_only": get_settings().read_only, "view": view, "nl": nl, "nl_from_cache_and_preloaded": nl_from_cache_and_preloaded,
-                  "universal": universal, "page_sizes": PAGE_SIZES, "page_size": page_size, "infinite": infinite,
+                  "read_only": get_settings().read_only, "view": view, "nl": nl,
+                  "nl_from_cache_and_preloaded": nl_from_cache_and_preloaded,
+                  "universal": universal, "page_sizes": PAGE_SIZES, "page_size": page_size,
+                  "infinite": infinite,
                   "prefs": dp, "ai_error": ai_error}
 
     try:
@@ -312,7 +328,8 @@ async def search(
             try:
                 await _run_into_ctx(
                     ctx, session, q, scope_enum, page, sort, descending,
-                    with_facets=False, page_size=page_size, facet_row_cap=ctx["prefs"].facet_row_cap,
+                    with_facets=False, page_size=page_size,
+                    facet_row_cap=ctx["prefs"].facet_row_cap,
                 )
                 ctx["universal_error"] = True
             except SearchError:
@@ -351,14 +368,14 @@ def _extract_prefill_data(ast) -> dict:
     """Extract prefilled data from parsed AST for advanced search form."""
     from src.search.ast import Term
     from src.search.parser import FIELD_ALIASES
-    
+
     prefilled = {}
-    
+
     def _traverse(node):
         if isinstance(node, Term):
             field_name = FIELD_ALIASES.get(node.field, node.field)
             value = node.value
-            
+
             # Handle different field types and map them to form fields
             if field_name == "name":
                 prefilled["name"] = value
@@ -458,6 +475,6 @@ def _extract_prefill_data(ast) -> dict:
             if hasattr(node, 'operands'):
                 for operand in node.operands:
                     _traverse(operand)
-    
+
     _traverse(ast)
     return prefilled

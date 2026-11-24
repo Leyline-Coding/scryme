@@ -9,11 +9,10 @@ their text with null ids.
 from __future__ import annotations
 
 import datetime
-import uuid
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, false, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
+from sqlalchemy.orm import Mapped, mapped_column
 
 from src.db import Base
 

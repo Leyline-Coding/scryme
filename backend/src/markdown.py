@@ -1,6 +1,7 @@
-import markdown
 import nh3
 from markupsafe import Markup
+
+import markdown
 
 
 # 1. Define the filter function

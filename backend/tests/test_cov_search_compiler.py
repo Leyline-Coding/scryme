@@ -63,14 +63,14 @@ async def seeded(session):
     b = Box(name="Box A")
     session.add(b)
     await session.flush()
-    l = Location(type='box', foreign_id=b.id)
-    session.add(l)
+    loc = Location(type='box', foreign_id=b.id)
+    session.add(loc)
     await session.flush()
     for raw in _RAW:
         session.add(Card(**card_to_columns(raw)))
     # Owned stacks: a foil Bolt with a tag + location; a graded Niv.
     session.add(CollectionCard(scryfall_id=BOLT, quantity=1, finish="foil",
-                               tags=["for-trade"], location=l.id))
+                               tags=["for-trade"], location=loc.id))
     session.add(CollectionCard(scryfall_id=NIV, quantity=1, finish="normal",
                                grade_company="PSA", grade="10"))
     await session.commit()

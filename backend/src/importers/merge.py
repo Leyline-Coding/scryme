@@ -45,7 +45,9 @@ class Stack:
 
     @property
     def key(self) -> StackKey:
-        return (self.scryfall_id, self.finish, self.condition, self.language, self.source_location_name)
+        return (
+            self.scryfall_id, self.finish, self.condition, self.language, self.source_location_name
+        )
 
 
 @dataclass
@@ -115,7 +117,9 @@ class MergeSummary:
     total_quantity: int
 
 
-def _insert(session: AsyncSession, stack: Stack, source_format: str | None, location: int | None = None) -> None:
+def _insert(
+    session: AsyncSession, stack: Stack, source_format: str | None, location: int | None = None
+) -> None:
     session.add(
         CollectionCard(
             scryfall_id=stack.scryfall_id,
@@ -131,7 +135,9 @@ def _insert(session: AsyncSession, stack: Stack, source_format: str | None, loca
     )
 
 
-def _merge_stack(session, key, stack, existing, strategy, decision_for, source_format, location=None):
+def _merge_stack(
+    session, key, stack, existing, strategy, decision_for, source_format, location=None
+):
     """Insert or update one aggregated stack; return (inserted_delta, updated_delta)."""
     if key not in existing:
         _insert(session, stack, source_format, location)
@@ -176,7 +182,8 @@ async def apply_merge(
     inserted = 0
     updated = 0
     for key, stack in stacks.items():
-        # Check if there's a default location from import preview or form, and for new stacks apply it.
+        # Check if there's a default location from import preview or form, and for new stacks apply
+        # it.
         # For existing stacks, preserve their existing location (unless overridden).
         if key not in existing:
             # This is a brand-new stack - we should use the given location
@@ -193,8 +200,10 @@ async def apply_merge(
                     stack.location = int(stack.location)
                 except (ValueError, TypeError):
                     stack.location = None  # Invalid location, set to None
-                    
-        di, du = _merge_stack(session, key, stack, existing, strategy, decision_for, source_format, stack.location)
+
+        di, du = _merge_stack(
+            session, key, stack, existing, strategy, decision_for, source_format, stack.location
+        )
         inserted += di
         updated += du
 

@@ -9,13 +9,10 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from src.config import get_settings
 from src.db import get_session
-from src.models import Card, Sleeve
-from src.templating import templates
-
+from src.models import Sleeve
 
 router = APIRouter(tags=["sleeves"])
 
@@ -35,7 +32,7 @@ def _save_image(file: UploadFile, filename: str) -> None:
     """Save an uploaded file to the sleeves directory."""
     path = _upload_path()
     path.mkdir(parents=True, exist_ok=True)
-    
+
     # Read and write in chunks to handle large files properly
     with open(path / filename, "wb") as f:
         while chunk := file.file.read(8192):
@@ -53,7 +50,7 @@ async def create_sleeve(
 ) -> HTMLResponse:
     """Add a new sleeve to the collection."""
     _guard_writable()
-    
+
     # Handle image upload or color selection
     filename = ""
     if image and image.filename and hasattr(image, 'file'):
@@ -61,20 +58,20 @@ async def create_sleeve(
         ext = os.path.splitext(image.filename)[1]
         filename = f"{uuid.uuid4().hex}{ext}"
         _save_image(image, filename)
-    
+
     # Create sleeve entry - use either image or color
     deck_id_int = int(deck_id) if deck_id.isdigit() else None
-    
+
     sleeve = Sleeve(
         deck_id=deck_id_int,
         name=name.strip() if name else None,
         image=filename if filename else None,
         color=color if color else None,
     )
-    
+
     session.add(sleeve)
     await session.commit()
-    
+
     # Redirect back to collection sleeves tab
     return RedirectResponse(url="/collection/sleeves", status_code=303)
 
@@ -88,9 +85,9 @@ async def remove_deck_sleeve(
     _guard_writable()
     sleeve = await session.get(Sleeve, sleeve_id)
     sleeve.deck_id = None
-            
+
     await session.commit()
-    
+
     # Redirect back to the sleeves tab
     return Response(status_code=200, headers={})
 
@@ -104,20 +101,20 @@ async def delete_sleeve(
 ) -> RedirectResponse:
     """Delete a sleeve."""
     _guard_writable()
-    
+
     sleeve = await session.get(Sleeve, sleeve_id)
     if not sleeve:
         raise HTTPException(status_code=404, detail="Sleeve not found.")
-    
+
     # Remove image file if exists
     if sleeve.image:
         path = _upload_path() / sleeve.image
         if path.exists():
             path.unlink()
-            
+
     await session.delete(sleeve)
     await session.commit()
-    
+
     return RedirectResponse(url="/collection/sleeves", status_code=303)
 
 

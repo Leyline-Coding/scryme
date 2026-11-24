@@ -1,10 +1,8 @@
 """Coverage tests for src/collection_edit.py: update_stack, edit merges, organize, summaries."""
 
 import uuid
-from typing import Any
 
 import pytest
-from sqlalchemy import select
 from src.collection_edit import (
     add_or_increment,
     adjust_quantity,
@@ -50,7 +48,7 @@ async def test_adjust_quantity_and_delete_at_zero(session):
     c = await _card(session)
     s = await add_or_increment(session, c.scryfall_id, 2)
     assert s is not None
-    
+
     assert str(await adjust_quantity(session, s.id, 1)) == str(c.scryfall_id)
     await session.refresh(s)
     assert s.quantity == 3
@@ -74,7 +72,7 @@ async def test_update_stack_all_fields(session):
     c = await _card(session)
     s = await add_or_increment(session, c.scryfall_id, 2)
     assert s is not None
-    
+
     out = await update_stack(session, s.id, quantity=0, finish="foil", language="",
                              condition="NM", location=None, tags=["a"])
     assert out is not None

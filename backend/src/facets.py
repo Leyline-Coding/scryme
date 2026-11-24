@@ -179,7 +179,7 @@ async def compute_facets(
     ).scalars().all()
 
     tally = _tally_facets(rows)
-  
+
     # Finish facets count printings you own in that finish (matching the is:foil / is:etched
     # filter), not merely printings that *can* be foil/etched — so the count agrees with what
     # clicking the facet returns.
@@ -188,7 +188,9 @@ async def compute_facets(
             func.lower(CollectionCard.finish) == finish
         )
         return select(func.count()).select_from(
-            base.where(Card.scryfall_id.in_(owned)).limit(min(facet_row_cap, FACET_ROW_CAP_HARD_MAX)).subquery()
+            base.where(Card.scryfall_id.in_(owned))
+            .limit(min(facet_row_cap, FACET_ROW_CAP_HARD_MAX))
+            .subquery()
         )
 
     foil_count = await session.scalar(_finish_count("foil")) or 0

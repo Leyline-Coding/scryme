@@ -8,7 +8,6 @@ see what a candidate *does*, and was shown an essentially arbitrary slice of the
 import uuid
 
 import pytest
-from src.deck_synergy import DeckProfile
 from src.decks import create_deck
 from src.llm import deck_ai_context
 from src.llm_card_analysis import _snippet

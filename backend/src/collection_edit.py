@@ -22,15 +22,14 @@ Every mutation bumps ``version``, so an absolute edit notices a relative one tha
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Card, CollectionCard, DeckCard, Location
-
 
 _STACK_NOT_FOUND = "Stack not found."
 _CONDITION_CODES = [
@@ -46,7 +45,8 @@ def _as_uuid(value) -> uuid.UUID:
 
 def _clean(value: str | None) -> str | None:
     """Trim a free-text field; empty -> None (so it matches the NULLable stack key)."""
-    if value is None: return None 
+    if value is None:
+        return None
     v = (value or "").strip()
     return v or None
 
@@ -203,7 +203,8 @@ async def delete_stack(session: AsyncSession, stack_id: int, expected_version: i
     destructive way to lose their edit.
     """
     stack = await session.get(CollectionCard, stack_id)
-    if stack is None: return None
+    if stack is None:
+        return None
     _guard_version(stack, expected_version)
     sid = stack.scryfall_id
     await session.delete(stack)
@@ -212,15 +213,20 @@ async def delete_stack(session: AsyncSession, stack_id: int, expected_version: i
 
 
 
-async def move_stacks_location(session: AsyncSession, stack_ids: list[int], location_id: int | None = None) -> list[int]:
+async def move_stacks_location(
+    session: AsyncSession, stack_ids: list[int], location_id: int | None = None
+) -> list[int]:
     """Move stacks to a new location. Returns a list of scryfall_ids (or None if it didn't exist).
-    
+
     If a target location already has an identical collection card, the source card's quantity
     will be added to the existing card and the source card will be deleted.
     """
-    stacks_to_move = (await session.scalars(select(CollectionCard).where(CollectionCard.id.in_(stack_ids)))).all()
-    
-    # Preload any OTHER CollectionCard witch both a matching target location and with a matching scryfall_id. _cards_are_identical will perform the fine-grained match
+    stacks_to_move = (
+        await session.scalars(select(CollectionCard).where(CollectionCard.id.in_(stack_ids)))
+    ).all()
+
+    # Preload any OTHER CollectionCard witch both a matching target location and with a matching
+    # scryfall_id. _cards_are_identical will perform the fine-grained match
     existing_stacks_preloaded = (await session.scalars(
         select(CollectionCard).where(
             CollectionCard.id.not_in([card.id for card in stacks_to_move]),
@@ -229,14 +235,17 @@ async def move_stacks_location(session: AsyncSession, stack_ids: list[int], loca
         )
     )).all()
     location = await session.get(Location, location_id)
-    
+
     sids = []
     # Process each stack one by one
     for stack_to_move in stacks_to_move:
-          
+
         # Finely check the coarsely preload CollectionCard matches using _cards_are_identical()
         identical_existing = next(
-            (existing_stack for existing_stack in existing_stacks_preloaded if stack_to_move.is_identical_to_stack(existing_stack)),
+            (
+                existing_stack for existing_stack in existing_stacks_preloaded
+                if stack_to_move.is_identical_to_stack(existing_stack)
+            ),
             None
         )
 
@@ -263,14 +272,17 @@ async def move_stacks_location(session: AsyncSession, stack_ids: list[int], loca
                 scryfall_id=stack_to_move.card.scryfall_id
             )
             session.add(new_deck_card)
-            ## TODO: A more complex algorythm should try to fill existing, vacant deck_cards by their quantity first
+            ## TODO: A more complex algorythm should try to fill existing, vacant deck_cards by
+            ## their quantity first
 
     await session.commit()
     return sids
 
 
 
-async def move_stack_location(session: AsyncSession, stack_id: int, location_id: int | None = None) -> int | None:
+async def move_stack_location(
+    session: AsyncSession, stack_id: int, location_id: int | None = None
+) -> int | None:
     """Move a single stack to a new location. Returns its scryfall_id (or None if it didn't exist).
     """
     result = await move_stacks_location(session, [stack_id], location_id)
@@ -433,20 +445,24 @@ class LocationSummary:
     quantity: int
 
 
-async def pull_stack_from_existing_stack(session: AsyncSession, stack_id: int, num_cards: int = 1, new_location_id: int | None = None, expected_version: int | None = None) -> uuid.UUID | None:
+async def pull_stack_from_existing_stack(
+    session: AsyncSession, stack_id: int, num_cards: int = 1, new_location_id: int | None = None,
+    expected_version: int | None = None
+) -> uuid.UUID | None:
     """Pull num_cards card(s) from an existing stack into a new stack with all the same attributes.
-    
+
     Returns the scryfall_id of the card that was pulled, or None if the operation failed.
     """
     original_stack = await session.get(CollectionCard, stack_id)
     if original_stack is None:
         return None
-    
+
     _guard_version(original_stack, expected_version)
-    
+
     # If we can't reduce quantity, or the old stack will be 0, nothing to do
-    if original_stack.quantity <= num_cards: return None
-        
+    if original_stack.quantity <= num_cards:
+        return None
+
     # Create a new stack with all the same attributes but quantity of num_cards
     new_stack = CollectionCard(
         scryfall_id=original_stack.scryfall_id,
@@ -460,33 +476,39 @@ async def pull_stack_from_existing_stack(session: AsyncSession, stack_id: int, n
         added_at=original_stack.added_at,
         tags=original_stack.tags
     )
-    
+
     session.add(new_stack)
     await session.flush()  # Get the ID for version update
-    
+
     # Update original stack quantity
     original_stack.quantity -= num_cards
     original_stack.version += 1
-    
+
     await session.commit()
     await session.refresh(new_stack)
-    
+
     return new_stack.scryfall_id
 
 
 
 
-async def move_qty_from_existing_stack(session: AsyncSession, collection_card: CollectionCard, quantity: int, new_location_id: int | None) -> int:
-    """ Move arbitrary qty of cards in CollectionCard to the specified location. 
-    
-    Will attempt to move up to but no more than collection_card.quantity. Returns the number of cards in the new location, thus the number of cards actualyl moved.
+async def move_qty_from_existing_stack(
+    session: AsyncSession, collection_card: CollectionCard, quantity: int,
+    new_location_id: int | None
+) -> int:
+    """ Move arbitrary qty of cards in CollectionCard to the specified location.
+
+    Will attempt to move up to but no more than collection_card.quantity. Returns the number of
+    cards in the new location, thus the number of cards actualyl moved.
     """
     # If the stack has more cards than we need, split it into the new location
     if(collection_card.quantity > quantity):
-        await pull_stack_from_existing_stack(session, stack_id=collection_card.id, num_cards=quantity, new_location_id=new_location_id)
+        await pull_stack_from_existing_stack(
+            session, stack_id=collection_card.id, num_cards=quantity,
+            new_location_id=new_location_id
+        )
         return quantity
     # If the stack has as many or fewer cards than we need, move the whole stack
     else:
-        remainder = collection_card.quantity - quantity
         await move_stack_location(session, collection_card.id, location_id=new_location_id)
         return collection_card.quantity

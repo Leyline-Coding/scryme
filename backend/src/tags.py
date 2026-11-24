@@ -59,12 +59,16 @@ async def card_tags(session: AsyncSession, scryfall_id: uuid.UUID) -> list[str]:
     return sorted(out)
 
 
-async def modify_stacks_tag(session: AsyncSession, stack_ids: list[int], tag: str, remove: bool = False) -> int:
+async def modify_stacks_tag(
+    session: AsyncSession, stack_ids: list[int], tag: str, remove: bool = False
+) -> int:
     """Add a tag to every owned stack. Returns how many printings were tagged."""
     tag = normalize_tag(tag)
     tagged = 0
     if tag:
-        stacks = (await session.execute(select(CollectionCard).where(CollectionCard.id.in_(stack_ids)))).scalars().all()
+        stacks = (
+            await session.execute(select(CollectionCard).where(CollectionCard.id.in_(stack_ids)))
+        ).scalars().all()
         for stack in stacks:
             current_tags = list(stack.tags or [])
             if tag not in current_tags:
@@ -76,7 +80,9 @@ async def modify_stacks_tag(session: AsyncSession, stack_ids: list[int], tag: st
     return tagged
 
 
-async def modify_stack_tag(session: AsyncSession, stack_id: int, tag: str, remove: bool = False) -> int:
+async def modify_stack_tag(
+    session: AsyncSession, stack_id: int, tag: str, remove: bool = False
+) -> int:
     """Add a normalized tag to every owned stack of this printing. Returns the new tag set."""
     return await modify_stacks_tag(session, [stack_id], tag=tag, remove=remove)
 

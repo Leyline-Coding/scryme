@@ -566,7 +566,9 @@ async def plan_upgrades(
 # --- deck coaching chat (#172) ------------------------------------------------------------------
 
 
-async def _deck_chat_history(session: AsyncSession, deck_id: int) -> tuple[DeckChatMessage | None, list[DeckChatMessage]]:
+async def _deck_chat_history(
+    session: AsyncSession, deck_id: int
+) -> tuple[DeckChatMessage | None, list[DeckChatMessage]]:
     deck_messages = list((await session.execute(
         select(DeckChatMessage).where(DeckChatMessage.deck_id == deck_id)
         .order_by(DeckChatMessage.id)
@@ -575,7 +577,7 @@ async def _deck_chat_history(session: AsyncSession, deck_id: int) -> tuple[DeckC
     if deck_messages and hasattr(deck_messages[-1], "role") and deck_messages[-1].role=="user":
         last_user_message = deck_messages.pop()
         return (last_user_message, deck_messages)
-    
+
     return (None, deck_messages)
 
 
@@ -590,25 +592,43 @@ async def deck_chat(
 ) -> str:
     """One turn of a coaching conversation, grounded in the deck's list, identity, and themes."""
     system = (
-        "You are a friendly, concise Magic: The Gathering (MTG) coach. Give specific, actionable advice relevant to MTG cards, rules of the game, deckbuilding, and the like. At any time, only reference real MTG cards. Keep replies short.\n\n"
+        "You are a friendly, concise Magic: The Gathering (MTG) coach. Give specific, actionable "
+        "advice relevant to MTG cards, rules of the game, deckbuilding, and the like. At any time, "
+        "only reference real MTG cards. Keep replies short.\n\n"
     )
-    if(interfaceContext == 'deck_building'): 
-        system += "The user is examining or building a deck, so provide advice that is relevant for MTG deck building in general or about the composition of the deck specifically or, if the user asks, suggestions of relevant replacements which further the theme or winning strategy of desk while respecting relevant format rules. If suggesting replacements, rank by how well each card advances THIS deck's plan, not by how strong it is in the abstract, and idenitfy the card that it should replace:\n"
-        "1. Cards that interact with the commander's specific ability, if there is a commander.\n"
-        "2. Cards that support the deck's stated themes and creature types.\n"
-        "3. Only then, cards that fill a thin role (ramp, draw, removal, win conditions).\n"
-        "Do NOT suggest generic staples that do not advance the plan, however powerful. Each suggested card must name the SPECIFIC interaction (which ability, which theme) — not 'good card' or 'solid value'."
+    if(interfaceContext == 'deck_building'):
+        system += (
+            "The user is examining or building a deck, so provide advice that is relevant for MTG "
+            "deck building in general or about the composition of the deck specifically or, if the "
+            "user asks, suggestions of relevant replacements which further the theme or winning "
+            "strategy of desk while respecting relevant format rules. If suggesting replacements, "
+            "rank by how well each card advances THIS deck's plan, not by how strong it is in the "
+            "abstract, and identify the card that it should replace:\n"
+            "1. Cards that interact with the commander's specific ability, if there is a "
+            "commander.\n"
+            "2. Cards that support the deck's stated themes and creature types.\n"
+            "3. Only then, cards that fill a thin role (ramp, draw, removal, win conditions).\n"
+            "Do NOT suggest generic staples that do not advance the plan, however powerful. Each "
+            "suggested card must name the SPECIFIC interaction (which ability, which theme) — not "
+            "'good card' or 'solid value'.\n\n"
+        )
         system += _DECKBUILD_GUIDE + "\n\n"
     if(deck):
         deck_context = await deck_ai_context(session, deck)
         system += " "+deck_context.identity_rule()
-        system += "The user has opted to share the exact details of their deck as it looks right now. "
+        system += (
+            "The user has opted to share the exact details of their deck as it looks right now. "
+        )
         system += " "+deck_context.block()+"\n\n"
     if(collection_cards):
         collection_context = await collection_ai_context(session)
-        system += "The user has specifically shared the following list of MTG cards in their collection. These cards are presumably available for use, for deck construction for example. If the user has asked for recommended cards, only suggest cards from this list."
+        system += (
+            "The user has specifically shared the following list of MTG cards in their collection. "
+            "These cards are presumably available for use, for deck construction for example. If "
+            "the user has asked for recommended cards, only suggest cards from this list."
+        )
         system += " "+collection_context.block()+"\n\n"
-    
+
 
     messages = [{"role": "system", "content": system}]
     messages += [{"role": m["role"], "content": m["content"]} for m in history]
@@ -663,10 +683,12 @@ async def ai_deck_chat_response_worker(
 ) -> int | None:
     """Start a background task to process the AI response for a user message."""
     deck = await session.get(Deck, deck_id)
-    if deck is None: return None
+    if deck is None:
+        return None
     cfg = await get_config(session)
     last_user_message, prior = await _deck_chat_history(session, deck_id)
-    if not last_user_message: return False
+    if not last_user_message:
+        return False
     history = [{"role": m.role, "content": m.content} for m in prior]
     try:
         reply = await deck_chat(
@@ -695,7 +717,8 @@ async def nlq_worker(
 ) -> int | None:
     """Start a background task to Translate a plain-English request to a Scryfall query (#171)."""
     matching_nl_to_q = await session.get(NLQCache, nlqcache_id)
-    if(not matching_nl_to_q): return None
+    if(not matching_nl_to_q):
+        return None
     cfg = await get_config(session)
     if cfg.ready and matching_nl_to_q.nl_text:
         try:
@@ -708,9 +731,11 @@ async def nlq_worker(
             if e.response.status_code == 404:
                 # For a 404 error, let the user know the AI endpoint might be misconfigured
                 # But still fallback gracefully to raw search as before
-                raise Exception("AI service not found (404) - please check your LLM configuration.")
+                raise Exception(
+                    "AI service not found (404) - please check your LLM configuration."
+                ) from e
             else:
-                raise Exception(f"Unexpected AI service error ({e.response.status_code}).")
-        except:
-            raise Exception(f"Unexpected AI service error.")
-    raise Exception(f"Unexpected AI service error. cfg.ready or matching_nl_to_q.nl_text")
+                raise Exception(f"Unexpected AI service error ({e.response.status_code}).") from e
+        except Exception as e:
+            raise Exception("Unexpected AI service error.") from e
+    raise Exception("Unexpected AI service error. cfg.ready or matching_nl_to_q.nl_text")

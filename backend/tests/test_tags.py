@@ -8,7 +8,7 @@ from src.models import Card, CollectionCard
 from src.scryfall.mapping import card_to_columns
 from src.search import SearchScope
 from src.search.engine import run_search
-from src.tags import modify_stack_tag, card_tags, normalize_tag
+from src.tags import card_tags, modify_stack_tag, normalize_tag
 
 
 def _card(name, n):
@@ -52,7 +52,7 @@ async def test_add_and_remove_tag_spans_all_stacks(session):
     stored = (await session.execute(
         select(CollectionCard).where(CollectionCard.scryfall_id == c.scryfall_id)
     )).scalars().all()
-    assert stored[0].tags == None
+    assert stored[0].tags is None
     assert stored[1].tags == ["for trade"]
 
     await modify_stack_tag(session, cc.id, "for trade")  # idempotent
@@ -81,10 +81,19 @@ async def test_tag_routes(client, session):
     card, cc = await _own(session, _card("Aaa", 1), finish="normal")
     sid = str(card.scryfall_id)
 
-    add = await client.post(f"/collection/bulk", data={"scryfall_ids": [sid], "bulk_action": "tag", "tag": "Deck:Goblins", "refresh":True})
+    add = await client.post(
+        "/collection/bulk",
+        data={"scryfall_ids": [sid], "bulk_action": "tag", "tag": "Deck:Goblins", "refresh":True}
+    )
     assert add.status_code == 200
 
-    rm = await client.post(f"/collection/bulk", data={"scryfall_ids": [sid], "bulk_action": "tag-remove", "tag": "deck:goblins", "refresh":True})
+    rm = await client.post(
+        "/collection/bulk",
+        data={
+            "scryfall_ids": [sid], "bulk_action": "tag-remove", "tag": "deck:goblins",
+            "refresh":True
+        }
+    )
     assert rm.status_code == 200
 
 
@@ -94,5 +103,8 @@ async def test_tag_routes_blocked_when_read_only(client, session, monkeypatch):
     settings = get_settings()
     monkeypatch.setattr(settings, "read_only", True)
     card, cc = await _own(session, _card("Aaa", 1), finish="normal")
-    resp = await client.post(f"/collection/bulk", data={"scryfall_ids": [card.scryfall_id], "bulk_action": "tag", "tag": "x"})
+    resp = await client.post(
+        "/collection/bulk",
+        data={"scryfall_ids": [card.scryfall_id], "bulk_action": "tag", "tag": "x"}
+    )
     assert resp.status_code == 403

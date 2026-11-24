@@ -26,7 +26,8 @@ from src.pricing import normalize_source
 _DEFAULTS: dict[str, Any] = {
     "search_filter": "", "movers": False, "view": "grid", "page_size": 60, "infinite": False,
     "hist_currency": None, "mode": "dark", "palette": "trop-orange", "accent": "",
-    "foil_speed": 6, "spin": True, "spin_speed": 6, "card_size": 5, "facet_row_cap": 4000, "lang": "en",
+    "foil_speed": 6, "spin": True, "spin_speed": 6, "card_size": 5, "facet_row_cap": 4000,
+    "lang": "en",
 }
 
 
@@ -162,7 +163,7 @@ def _apply_cookies(prefs: Prefs, cookies: dict) -> Prefs:
 
 def resolve(row: PreferencesRow | None, cookies: dict, *, writable: bool) -> Prefs:
     """Effective per-request preferences.
-    
+
     Precedence: when the instance is writable AND a saved singleton row exists, the singleton is
     authoritative (a synced device sees the account's choice). Otherwise — a fresh instance with no
     row yet, or the read-only demo — a device's own cookie wins so per-visitor choices still work.
@@ -175,12 +176,14 @@ def resolve(row: PreferencesRow | None, cookies: dict, *, writable: bool) -> Pre
     return _apply_cookies(base, cookies or {})
 
 
-def sync_cookie_prefs_to_db(session: AsyncSession, row: PreferencesRow, cookies: dict) -> dict[str, Any]:
+def sync_cookie_prefs_to_db(
+    session: AsyncSession, row: PreferencesRow, cookies: dict
+) -> dict[str, Any]:
     """Check cookie preferences against database values and return fields that need updating.
-    
+
     This function is used by middleware to synchronize specific cookie preferences to the database
     when they differ from stored values.
-    
+
     Returns a dict of field_name: new_value pairs for preferences that have changed.
     """
     # Define which cookie preferences should be synchronized to DB
@@ -189,9 +192,9 @@ def sync_cookie_prefs_to_db(session: AsyncSession, row: PreferencesRow, cookies:
         "infinite": ("scryme_infinite", lambda x: x == "1"),
         "view": ("scryme_view", str),
     }
-    
+
     update_fields = {}
-    
+
     # Check each preference for changes
     for pref_name, (cookie_key, converter) in cookie_pref_mapping.items():
         try:
@@ -204,5 +207,5 @@ def sync_cookie_prefs_to_db(session: AsyncSession, row: PreferencesRow, cookies:
         except (ValueError, TypeError):
             # If conversion fails, skip this preference
             continue
-    
+
     return update_fields

@@ -58,7 +58,9 @@ def test_parse_decklist_skips_comments_and_headers():
 
 def test_parse_decklist_handles_sideboard_comments():
     # Test that // Sideboard marks sideboard section and other // comments are ignored
-    rows = parse_decklist("// Mainboard cards\n2 Forest\n// Sideboard\n1 Duress\n// Maybeboard\n3 Island")
+    rows = parse_decklist(
+        "// Mainboard cards\n2 Forest\n// Sideboard\n1 Duress\n// Maybeboard\n3 Island"
+    )
     assert (rows[0].name, rows[0].board) == ("Forest", "main")
     assert (rows[1].name, rows[1].board) == ("Duress", "side")
     assert (rows[2].name, rows[2].board) == ("Island", "side")

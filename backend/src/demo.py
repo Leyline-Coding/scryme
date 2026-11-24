@@ -24,7 +24,16 @@ from sqlalchemy import Float, and_, cast, func, or_, select, text, update
 from src.checklists import create_checklist
 from src.db import SessionLocal
 from src.decks import create_deck
-from src.models import Box, Card, CardPricePoint, Checklist, CollectionCard, Deck, Location, PriceSnapshot
+from src.models import (
+    Box,
+    Card,
+    CardPricePoint,
+    Checklist,
+    CollectionCard,
+    Deck,
+    Location,
+    PriceSnapshot,
+)
 from src.wishlist import add_to_wishlist
 
 log = structlog.get_logger()
@@ -372,8 +381,13 @@ async def seed_demo() -> int:
                 await session.flush()
             else:
                 box = (await session.scalars(select(Box).where(Box.name == name))).first()
-                if(box is None): continue
-                ls[name] = (await session.scalars(select(Location).where(Location.type == 'box', Location.foreign_id==box.id))).first()
+                if(box is None):
+                    continue
+                ls[name] = (
+                    await session.scalars(
+                        select(Location).where(Location.type == 'box', Location.foreign_id==box.id)
+                    )
+                ).first()
         for box_name, rarities in [("Rares & Mythics", ["rare", "mythic"]),
                                    ("Bulk Box", ["common", "uncommon"])]:
             await session.execute(

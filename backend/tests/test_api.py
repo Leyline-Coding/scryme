@@ -156,7 +156,9 @@ async def test_api_deck_card_edit_and_legality(client, session):
         session.add(Card(**card_to_columns(raw)))
     await session.commit()
 
-    deck = (await client.post("/api/v1/decks", json={"name": "C", "decklist": "1 Sol Ring (CMM)"})).json()
+    deck = (await client.post(
+        "/api/v1/decks", json={"name": "C", "decklist": "1 Sol Ring (CMM)"}
+    )).json()
     # Resolved to the tournament-legal printing, and legal in commander (judged by oracle).
     detail = (await client.get(f"/api/v1/decks/{deck['id']}?format=commander")).json()
     assert detail["fmt"] == "commander"
@@ -187,7 +189,7 @@ async def test_api_collection_list_update_delete(client, session):
 
     row_id = listing["items"][0]["id"]
     up = await client.patch(f"/api/v1/collection/{row_id}", json={"quantity": 5, "location": 10})
-    
+
     assert up.status_code == 200
     assert up.json()["quantity"] == 5 and up.json()["location"] == 10
 

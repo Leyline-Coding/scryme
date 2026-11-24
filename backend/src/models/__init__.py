@@ -25,8 +25,8 @@ from src.models.saved_search import SavedSearch
 from src.models.scan_batch import ScanBatch
 from src.models.set_release import SetRelease
 from src.models.share_link import ShareLink
-from src.models.staging import ImportStaging
 from src.models.sleeve import Sleeve
+from src.models.staging import ImportStaging
 from src.models.trade_pool import TradePool, TradePoolItem
 from src.models.wishlist import WishlistItem
 

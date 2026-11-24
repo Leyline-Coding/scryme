@@ -107,16 +107,19 @@ async def _owned_quantities(session: AsyncSession, ids: list) -> dict[str, int]:
 
 async def _owned_languages(session: AsyncSession, ids: list) -> dict[str, str]:
     """Get the aggregate languages for cards in collection.
-    
+
     For a given card with multiple language entries (e.g., one English, one French),
     returns comma-separated values like "en,fr".
     """
     if not ids:
         return {}
-    
+
     # Get all distinct languages for each scryfall_id
     rows = await session.execute(
-        select(CollectionCard.scryfall_id, func.string_agg(CollectionCard.language.distinct(), ",").label("languages"))
+        select(
+            CollectionCard.scryfall_id,
+            func.string_agg(CollectionCard.language.distinct(), ",").label("languages")
+        )
         .where(CollectionCard.scryfall_id.in_(ids))
         .group_by(CollectionCard.scryfall_id)
     )

@@ -5,10 +5,7 @@ import uuid
 import pytest
 from sqlalchemy import select
 from src.binder_service import create_binder
-from src.box_service import create_box
-from src.decks import create_deck
 from src.models import Card, CollectionCard
-from src.routes import collection as coll_route
 from src.scryfall.mapping import card_to_columns
 
 
@@ -244,7 +241,7 @@ async def test_box_new_rename_delete(client, session):
                             follow_redirects=False)
     assert new.status_code == 303
     box_id = await session.scalar(select(Box.id).where(Box.name == "New Box"))
-    
+
     dele = await client.post(f"/collection/boxes/{box_id}/delete", follow_redirects=False)
     assert dele.status_code == 303
 

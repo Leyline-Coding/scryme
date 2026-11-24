@@ -3,15 +3,12 @@
 import uuid
 
 import pytest
-from sqlalchemy import select
 from src.collection_edit import (
     add_or_increment,
     color_identity_group,
 )
 from src.models import Card, CollectionCard
 from src.scryfall.mapping import card_to_columns
-from src.search import SearchScope
-from src.search.engine import run_search
 
 
 def test_color_identity_group():

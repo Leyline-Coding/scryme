@@ -73,7 +73,7 @@ def image_url(raw: dict, size: str = "normal") -> str | None:
     if(hasattr(raw, 'id')):
         from src.background_service import queue_service
         queue_service(f"image_download_{raw['id'][:8]}", "backfill-image", [raw['id']])
-            
+
     uris = raw.get("image_uris")
     if uris and uris.get(size):
         return uris[size]

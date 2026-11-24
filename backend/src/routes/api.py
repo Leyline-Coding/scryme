@@ -17,7 +17,7 @@ import uuid
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,7 +43,7 @@ from src.config import get_settings
 from src.currency import normalize as normalize_currency
 from src.db import get_session
 from src.deck_export import EXPORT_FORMATS, collect_export_cards, render_deck
-from src.decks import apply_deck_card_edit, create_deck, deck_coverage, StackCoverage
+from src.decks import StackCoverage, apply_deck_card_edit, create_deck, deck_coverage
 from src.embeddings import similar_to_oracle
 from src.importers.base import UnknownFormatError
 from src.importers.merge import MergeStrategy
@@ -79,7 +79,7 @@ from src.search import SearchError, SearchScope
 from src.search.engine import DEFAULT_SORT, SORT_KEYS, run_search
 from src.sets import set_detail, set_progress
 from src.stats import collection_stats
-from src.tags import modify_stack_tag, card_tags
+from src.tags import card_tags, modify_stack_tag
 from src.wishlist import add_to_wishlist, list_wishlist, remove_from_wishlist
 
 
@@ -467,7 +467,8 @@ async def api_decks(session: AsyncSession = Depends(get_session)) -> list[DeckSu
 
 def _deck_card_out(r) -> DeckCardOut:
     return DeckCardOut(
-        id=r.card_id, name=r.name, scryfall_id=str(getattr(r.scryfall_card, 'scryfall_id', '')), board=r.board, quantity=r.quantity, 
+        id=r.card_id, name=r.name, scryfall_id=str(getattr(r.scryfall_card, 'scryfall_id', '')),
+        board=r.board, quantity=r.quantity,
         stack_coverage=r.stack_coverage, matched=r.matched, legality=r.legality,
         proxy=r.proxy, special=r.special, language=r.language, finish=r.finish,
     )

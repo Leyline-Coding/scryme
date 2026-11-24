@@ -10,7 +10,6 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
 from src.binder_service import all_binders
 from src.box_service import all_boxes
 from src.config import get_settings
@@ -19,7 +18,7 @@ from src.importers.base import UnknownFormatError
 from src.importers.mapping import MAP_FIELDS, csv_headers, guess_mapping
 from src.importers.merge import MergeStrategy
 from src.importers.service import confirm_upload, stage_mapped_upload, stage_upload
-from src.models import Binder, Box, Location
+from src.models import Location
 from src.templating import templates
 
 router = APIRouter(tags=["upload"])
@@ -88,7 +87,7 @@ async def upload_preview(
     # Get the corresponding Location IDs for each box and binder
     box_locations = {}
     binder_locations = {}
-    
+
     if boxes:
         box_results = await session.execute(
             select(Location.id, Location.foreign_id)
@@ -99,7 +98,7 @@ async def upload_preview(
         )
         for loc_id, foreign_id in box_results:
             box_locations[foreign_id] = loc_id
-    
+
     if binders:
         binder_results = await session.execute(
             select(Location.id, Location.foreign_id)
@@ -112,8 +111,8 @@ async def upload_preview(
             binder_locations[foreign_id] = loc_id
 
     return templates.TemplateResponse(
-        request, 
-        "upload_preview.html", 
+        request,
+        "upload_preview.html",
         {
             "preview": preview,
             "boxes": boxes,
@@ -171,11 +170,11 @@ async def upload_confirm(
         for k, v in form.items()
         if k.startswith("decision_")
     }
-    
+
     # Parse the location choice and prepare it for merging
     selected_location = None
     if location_choice is not None and location_choice != "":
-        # The location_choice now contains the actual Location ID (integer) 
+        # The location_choice now contains the actual Location ID (integer)
         # from the dropdown, so we can use it directly
         try:
             selected_location = int(location_choice)

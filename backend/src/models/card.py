@@ -88,13 +88,14 @@ class Card(Base):
             )
         )
 
-    
+
     def rotate_cw(self) -> bool:
-        """ Battles read by turning the card clockwise; planes/aftermath turn counter-clockwise (#11).
+        """ Battles read by turning the card clockwise; planes/aftermath turn counter-clockwise
+        (#11).
         """
         keywords = [k.lower() for k in (self.keywords or [])]
         return (
-            "battle" in (self.type_line or "").lower() 
+            "battle" in (self.type_line or "").lower()
             or "aftermath" in keywords
         )
 
@@ -117,12 +118,13 @@ class Card(Base):
 
         # If we don't have a cached image, and this is the first time accessing it,
         # trigger background download of the image
-        
+
         return cdn_image_url(self.raw)
 
 
     def back_face_image(self) -> str | None:
-        """Return back-face image URL for a double-faced card (both faces must have their own image)."""
+        """Return back-face image URL for a double-faced card (both faces must have their own
+        image)."""
         faces = self.raw.get("card_faces") or []
         uris = [f.get("image_uris") or {} for f in faces]
         if len(uris) < 2:
@@ -141,6 +143,8 @@ class Card(Base):
 
 
     def simple_price(self) -> float | None:
-        if(self.prices and self.prices['usd']): return float(self.prices['usd'])
-        else: return None
+        if(self.prices and self.prices['usd']):
+            return float(self.prices['usd'])
+        else:
+            return None
 

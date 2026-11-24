@@ -6,7 +6,6 @@ redirect back to the same search.
 """
 
 from __future__ import annotations
-from typing import Optional
 
 import uuid
 from urllib.parse import urlencode
@@ -22,8 +21,9 @@ from src.box_service import (
 )
 from src.card import _image
 from src.collection_edit import (
-    StaleStackError,
     _CONDITION_CODES,
+    _STACK_NOT_FOUND,
+    StaleStackError,
     add_or_increment,
     adjust_quantity,
     bulk_add_to_collection,
@@ -31,21 +31,20 @@ from src.collection_edit import (
     move_stack_location,
     move_stacks_location,
     owned_for_oracle,
-    remove_copies,
     pull_stack_from_existing_stack,
+    remove_copies,
     scryfall_ids_to_stack_ids,
-    _STACK_NOT_FOUND,
 )
 from src.config import get_settings
-from src.decks import DECK_LANGUAGES
 from src.db import get_session
+from src.decks import DECK_LANGUAGES
 from src.grading import clear_grade, safe_photo_path, save_grade_photo, set_grade
 from src.locations import find_or_create_grouped_locations
 from src.models import Card, CollectionCard
 from src.routes.validators import ValidCondition, ValidFinish, ValidLanguage
 from src.tags import modify_stacks_tag
 from src.templating import templates
-from src.trade_pool import open_pools, trade_pool_out, trade_pool_in, stage_stack
+from src.trade_pool import open_pools, stage_stack, trade_pool_in, trade_pool_out
 from src.wishlist import add_to_wishlist
 
 router = APIRouter(tags=["collection"])
@@ -62,7 +61,8 @@ async def _collection_partial_generator(
     request: Request, session: AsyncSession, scryfall_id: uuid.UUID, conflict: bool = False
 ) -> dict:
     card = await session.get(Card, scryfall_id)
-    if(card is None): raise HTTPException(status_code=404, detail="Card not found.")
+    if(card is None):
+        raise HTTPException(status_code=404, detail="Card not found.")
     owned = list(
         (
             await session.execute(
@@ -113,7 +113,9 @@ async def _collection_partial_generator(
                     .join(Card, CollectionCard.scryfall_id==Card.scryfall_id)
                     .where(CollectionCard.scryfall_id != card.scryfall_id)
                     .where(Card.oracle_id == card.oracle_id)
-                    .where(CollectionCard.scryfall_id.not_in([c.scryfall_id for c in owned_other_printing]))
+                    .where(CollectionCard.scryfall_id.not_in(
+                        [c.scryfall_id for c in owned_other_printing]
+                    ))
                     .order_by(CollectionCard.finish, CollectionCard.language)
                 )
             )
@@ -144,7 +146,7 @@ async def _collection_partial_generator(
 async def _collection_partial(
     request: Request, session: AsyncSession, scryfall_id: uuid.UUID, conflict: bool = False
 ) -> HTMLResponse:
-    
+
 
     return templates.TemplateResponse(
         request,
@@ -165,7 +167,7 @@ async def add(
     finish: str = Form("normal"),
     condition: str = Form(""),
     language: str = Form("en"),
-    location: Optional[int] = Form(None),
+    location: int | None = Form(None),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     _guard_writable()
@@ -282,7 +284,8 @@ async def locate_collection_stack(
     """Unified location picker (#160): file a stack into a box, binder, or deck. """
     _guard_writable()
     stack = await session.get(CollectionCard, stack_id)
-    if stack is None: raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
+    if stack is None:
+        raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     scryfall_id = stack.scryfall_id
     if(stack and condition):
         stack.condition = condition
@@ -295,7 +298,8 @@ async def locate_collection_stack(
     await session.commit()
     if(location_moved):
       new_stack_id = await move_stack_location(session, stack_id, location_id)
-      if(not new_stack_id): raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
+      if(not new_stack_id):
+          raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     return await _collection_partial(request, session, scryfall_id)
 
 
@@ -314,7 +318,8 @@ async def stage_stack_for_trade(
     """
     _guard_writable()
     stack = await session.get(CollectionCard, stack_id)
-    if stack is None: raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
+    if stack is None:
+        raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
     if pool_id.strip().isdigit():
         await stage_stack(session, int(pool_id), stack_id, quantity)
     return await _collection_partial(request, session, stack.scryfall_id)
@@ -372,16 +377,18 @@ async def pull_stack(
     stack = await session.get(CollectionCard, stack_id)
     if stack is None:
         raise HTTPException(status_code=404, detail=_STACK_NOT_FOUND)
-    
+
     try:
         # Call the pull function from collection_edit
-        card_sid = await pull_stack_from_existing_stack(session, stack_id, expected_version=_expected(version))
+        card_sid = await pull_stack_from_existing_stack(
+            session, stack_id, expected_version=_expected(version)
+        )
     except StaleStackError:
         return await _conflict(request, session, stack.scryfall_id)
-    
+
     if card_sid is None:
         raise HTTPException(status_code=404, detail="Failed to pull stack.")
-        
+
     return await _collection_partial(request, session, card_sid)
 
 
@@ -409,7 +416,9 @@ async def bulk(
     session: AsyncSession = Depends(get_session),
 ) -> RedirectResponse:
     _guard_writable()
-    ## When scryfall_ids are passed, convert these to stack ids first. The difference betwee a scryfall_id and a stack ID is that scryfall_id can match multiple stacks with the same scryfall_id but other different prooperties, such as finish, location, etc.
+    ## When scryfall_ids are passed, convert these to stack ids first. The difference betwee a
+    ## scryfall_id and a stack ID is that scryfall_id can match multiple stacks with the same
+    ## scryfall_id but other different prooperties, such as finish, location, etc.
     if scryfall_ids:
         if bulk_action == "add":
             await bulk_add_to_collection(session, scryfall_ids, 1)
@@ -426,10 +435,13 @@ async def bulk(
         elif bulk_action == "tag-remove" and tag.strip():
             await modify_stacks_tag(session, stack_ids=stack_ids, tag=tag, remove=True)
         elif (bulk_action == "location") and bulk_location_id:
-            await move_stacks_location(session, stack_ids=stack_ids, location_id=int(bulk_location_id))
+            await move_stacks_location(
+                session, stack_ids=stack_ids, location_id=int(bulk_location_id)
+            )
         elif bulk_action == "trade_out" and pool_id.strip().isdigit():
             await trade_pool_out(session, int(pool_id), stack_ids=stack_ids)
-    if(refresh): return Response(status_code=200, headers={"HX-Refresh": "true"})
+    if(refresh):
+        return Response(status_code=200, headers={"HX-Refresh": "true"})
     params = urlencode({"q": q, "scope": scope, "sort": sort, "dir": dir})
     return RedirectResponse(url=f"/search?{params}", status_code=303)
 

@@ -1,15 +1,15 @@
 """First-class custom binders (#206).
 
-Binders are a location type (like boxes and decks) that have some special rules with regards to how cards are displayed.
+Binders are a location type (like boxes and decks) that have some special rules with regards to
+how cards are displayed.
 """
 
 from __future__ import annotations
 
 import datetime
-import uuid
 
 from sqlalchemy import DateTime, Integer, String, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship, foreign
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from src.db import Base
 from src.models.location import Location

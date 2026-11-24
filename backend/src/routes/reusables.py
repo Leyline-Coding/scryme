@@ -7,8 +7,6 @@ from Scryfall (HTMX) so the page renders instantly and stays useful offline if t
 
 from __future__ import annotations
 
-import uuid
-
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 
@@ -25,7 +23,8 @@ async def edit_name_form(
 ) -> HTMLResponse:
     """Return the form for editing the binder name."""
     return templates.TemplateResponse(
-        request, "forms/edit_name.html", {"placeholder": placeholder, "action": action, "target": target}
+        request, "forms/edit_name.html",
+        {"placeholder": placeholder, "action": action, "target": target}
     )
 
 
@@ -39,5 +38,6 @@ async def edit_description_form(
     """Return the form for editing the deck description."""
     # We need to pass the deck ID to the template
     return templates.TemplateResponse(
-        request, "forms/edit_description.html", {"placeholder": placeholder, "action": action, "target": target}
+        request, "forms/edit_description.html",
+        {"placeholder": placeholder, "action": action, "target": target}
     )

@@ -68,16 +68,16 @@ async def _seed(session):
     oc = Card(**card_to_columns(owned))
     session.add(oc)
     session.add(Card(**card_to_columns(unowned)))
-    
+
     b = await create_binder(session, name='Reds')
     assert b is not None
-    l = Location(type='binder', foreign_id=b.id)
-    session.add(l)
+    loc = Location(type='binder', foreign_id=b.id)
+    session.add(loc)
     await session.commit()
     await session.flush()
     session.add(CollectionCard(scryfall_id=oc.scryfall_id, quantity=3, finish="foil",
-                               condition="near_mint", language="en", 
-                               source_location_name="Reds", location=l.id,
+                               condition="near_mint", language="en",
+                               source_location_name="Reds", location=loc.id,
                                purchase_price=2.5))
     await session.commit()
     return oc

@@ -61,7 +61,7 @@ class Preferences(Base):
     lang: Mapped[str] = mapped_column(String(8), default="en", server_default="en")
 
     facet_row_cap: Mapped[int] = mapped_column(Integer, default=4000, server_default=text("4000"))
-    
+
     # Forward-compat bucket for future toggles so we don't migrate per checkbox.
     extra: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
 

@@ -18,10 +18,18 @@ async def _seed(session):
               binder = Binder(name=binder_name)
               session.add(binder)
               await session.commit()  # Commit to ensure the binder is saved so that it gets an ID
-            location_id = await session.scalar(select(Location.id).where((Location.type == "binder") & (Location.foreign_id == binder.id)))
+            location_id = await session.scalar(
+                select(Location.id).where(
+                    (Location.type == "binder") & (Location.foreign_id == binder.id)
+                )
+            )
         else:
             # For cards with no binder, they should go into unfiled location
-            location_id = await session.scalar(select(Location.id).where((Location.type == "unfiled") & (Location.foreign_id.is_(None))))
+            location_id = await session.scalar(
+                select(Location.id).where(
+                    (Location.type == "unfiled") & (Location.foreign_id.is_(None))
+                )
+            )
         raw = {"id": str(uuid.uuid4()), "oracle_id": str(uuid.uuid4()), "name": name,
                "set": "TST", "collector_number": str(i), "rarity": "common", "cmc": 1,
                "type_line": "Creature", "colors": ["R"], "color_identity": ["R"]}

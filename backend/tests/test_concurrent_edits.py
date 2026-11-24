@@ -169,7 +169,7 @@ async def test_a_stale_delete_returns_409_and_keeps_the_stack(client, session):
                              data={"version": str(stale)})
     assert resp.status_code == 409
     assert await session.get(CollectionCard, stack.id) is not None
-    
+
 
 @pytest.mark.asyncio
 async def test_deleting_a_missing_stack_is_still_404(client, session):

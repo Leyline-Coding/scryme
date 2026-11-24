@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 import uuid
+from collections.abc import Sequence
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,8 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models import Card, CollectionCard, DeckCard, Location
 
 
-async def find_swappable_deck_card_in_collection_card(session: AsyncSession, oracle_id: uuid.UUID | None) -> Sequence[CollectionCard]:
-    if not oracle_id: return []
+async def find_swappable_deck_card_in_collection_card(
+    session: AsyncSession, oracle_id: uuid.UUID | None
+) -> Sequence[CollectionCard]:
+    if not oracle_id:
+        return []
     return (await session.execute(
         select(CollectionCard)
         .join(Card, CollectionCard.scryfall_id==Card.scryfall_id)
@@ -30,5 +33,5 @@ async def quickswap_deck_card(session: AsyncSession, dc: DeckCard) -> uuid.UUID 
         dc.scryfall_id = result[0].scryfall_id
         await session.commit()
         return result[0].scryfall_id
-    else: 
+    else:
         return None

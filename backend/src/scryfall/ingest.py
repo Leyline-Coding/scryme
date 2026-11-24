@@ -1,8 +1,12 @@
 """Ingest the Scryfall *Default Cards* bulk file into the ``cards`` table.
 
 Flow: check the 24h refresh guard, resolve the ``default_cards`` download URI, stream the gzip
-file to disk, then stream-parse it with ijson and upsert in batches. Memory stays flat because
-neither the download nor the parse holds the whole (~2GB uncompressed) document at once.
+file to disk, then stream-parse it and upsert in batches. Memory stays flat because neither the
+download nor the parse holds the whole (~2GB uncompressed) document at once.
+
+Scryfall now publishes bulk files as gzipped JSON Lines (``jsonl_download_uri``, one card object
+per line) where it used to publish a single JSON array (``download_uri``). Both are accepted, so
+an already-downloaded array file and older catalog responses keep working (#366).
 """
 
 from __future__ import annotations
@@ -10,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import gzip
+import json
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,13 +73,45 @@ def _is_paper(raw: dict) -> bool:
     return not games or "paper" in games
 
 
+def bulk_download_uri(entry: dict) -> str:
+    """The file URL of a bulk-data catalog entry: JSON Lines when offered, else the JSON array."""
+    uri = entry.get("jsonl_download_uri") or entry.get("download_uri")
+    if not uri:
+        raise RuntimeError(
+            f"Scryfall bulk entry {entry.get('type')!r} has no download URI "
+            f"(fields: {sorted(entry)})"
+        )
+    return uri
+
+
+def _is_json_array(fh) -> bool:
+    """True when the stream's first non-blank byte opens a JSON array. Rewinds the stream."""
+    first = b""
+    while chunk := fh.read(4096):
+        first = chunk.lstrip()[:1]
+        if first:
+            break
+    fh.seek(0)
+    return first == b"["
+
+
+def _iter_objects(fh) -> Iterator[dict]:
+    """Stream the card objects out of a bulk file, whichever of the two formats it is."""
+    if _is_json_array(fh):
+        # use_float keeps numbers as float (not Decimal), so raw is JSON-serializable for JSONB.
+        yield from ijson.items(fh, "item", use_float=True)
+        return
+    for line in fh:
+        if line.strip():
+            yield json.loads(line)
+
+
 def _read_batches(path: Path, batch_size: int = BATCH_SIZE) -> Iterator[list[dict]]:
-    """Yield lists of raw card dicts from a (gzip or plain) JSON array file (paper cards only)."""
+    """Yield lists of raw card dicts from a (gzip or plain) bulk file (paper cards only)."""
     opener = gzip.open if _is_gzip(path) else open
     with opener(path, "rb") as fh:
         batch: list[dict] = []
-        # use_float keeps numbers as float (not Decimal), so raw is JSON-serializable for JSONB.
-        for obj in ijson.items(fh, "item", use_float=True):
+        for obj in _iter_objects(fh):
             if not _is_paper(obj):
                 continue
             batch.append(obj)
@@ -184,11 +221,17 @@ async def ingest_default_cards(
                 reason="cached",
             )
 
+        try:
+            url = bulk_download_uri(entry)
+        except RuntimeError as exc:
+            _set_progress(phase="error", error=str(exc))
+            raise
         await _set_status("running")
         _set_progress(phase="downloading", ingested=0, total=ESTIMATED_TOTAL, error=None)
+        # The name is historical: the parser sniffs the format, so it holds either one.
         dest = settings.data_dir / "default_cards.json.gz"
-        log.info("scryfall.ingest.download", url=entry["download_uri"], dest=str(dest))
-        await sc.download_to_file(entry["download_uri"], dest)
+        log.info("scryfall.ingest.download", url=url, dest=str(dest))
+        await sc.download_to_file(url, dest)
 
     try:
         _set_progress(phase="ingesting", total=ESTIMATED_TOTAL)

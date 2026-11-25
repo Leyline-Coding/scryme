@@ -306,3 +306,18 @@ async def test_read_only_blocks_deck_mutations(client, monkeypatch):
     assert create.status_code == 403
     assert (await client.get("/decks/new")).status_code == 403
     assert (await client.post("/decks/1/delete")).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_deck_type_pie_takes_its_colours_from_the_theme(client, session):
+    """#409: the pie has no fixed ramp; it asks the theme palette script for its slice colours."""
+    await _seed_cards(session)
+    await client.post("/decks", data={"name": "D", "decklist": "4 Lightning Bolt"})
+    deck_id = await session.scalar(select(Deck.id))
+    page = (await client.get(f"/decks/{deck_id}")).text
+    assert '<script src="/static/chart-palette.js"></script>' in page
+    assert "scrymeChartPalette.fromTheme(" in page and 'id="card-type-pie-chart-legend"' in page
+    assert "#6366f1" not in page and "#9a6b2f" not in page   # the two old hard-coded ramps
+
+    script = await client.get("/static/chart-palette.js")
+    assert script.status_code == 200 and "scrymeChartPalette" in script.text

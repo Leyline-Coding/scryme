@@ -48,16 +48,18 @@ def _guard_writable() -> None:
 
 
 @router.get("/trade")
-async def trade_page(keep: int = 1) -> RedirectResponse:
+async def trade_page(keep: int = 1, exclude_decks: bool = False) -> RedirectResponse:
     # The trade binder is now the Trade tab of /collection.
-    return local_redirect(f"{_TRADE_TAB}?keep={keep}", status_code=307)
+    query = f"keep={keep}" + ("&exclude_decks=1" if exclude_decks else "")
+    return local_redirect(f"{_TRADE_TAB}?{query}", status_code=307)
 
 
 @router.get("/trade/export")
 async def trade_export(
-    fmt: str = "txt", keep: int = 1, session: AsyncSession = Depends(get_session)
+    fmt: str = "txt", keep: int = 1, exclude_decks: bool = False,
+    session: AsyncSession = Depends(get_session),
 ):
-    binder = await trade_binder(session, "usd", keep=keep)
+    binder = await trade_binder(session, "usd", keep=keep, exclude_decks=exclude_decks)
     if fmt == "csv":
         buf = io.StringIO()
         writer = csv.writer(buf)

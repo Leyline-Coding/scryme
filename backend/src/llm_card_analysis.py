@@ -225,9 +225,9 @@ def _snippet(oracle_text: str | None) -> str:
 
 
 
-async def collection_ai_context(session: AsyncSession) -> CollectionContext:
+async def collection_ai_context(session: AsyncSession, collection_cards_filter: str) -> CollectionContext:
     """The owned, in-identity candidate pool, annotated and scored for deck fit (#294/#295)."""
-
+   
 
     rows = (await session.execute(
         select(Card.name, Card.oracle_id, Card.scryfall_id, Card.color_identity,

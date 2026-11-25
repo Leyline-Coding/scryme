@@ -214,6 +214,7 @@ async def deck_ai_modal_chat(
     message: str = Form(""),
     include_deck: bool = Form(True),
     include_collection: bool = Form(False),
+    collection_cards_filter: str = Form(""),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     """Handle chat messages in the Deck AI modal."""
@@ -241,7 +242,7 @@ async def deck_ai_modal_chat(
     # We pass the text as a unique identifier for this task
     queue_service(
         f"deck_{deck.id}_chat_{new_message.id}", 'ai_chat', deck.id, include_deck,
-        include_collection
+        include_collection, collection_cards_filter=collection_cards_filter
     )
 
     # Return updated chat log with user message and temporary assistant message

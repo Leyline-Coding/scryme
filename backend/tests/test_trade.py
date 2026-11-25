@@ -3,7 +3,7 @@
 import uuid
 
 import pytest
-from src.models import Card, CollectionCard
+from src.models import Card, CollectionCard, Location
 from src.scryfall.mapping import card_to_columns
 from src.trade import trade_binder
 
@@ -63,3 +63,63 @@ async def test_trade_routes(client, session):
 
     csv_resp = await client.get("/trade/export?fmt=csv")
     assert "Quantity,Name,Set" in csv_resp.text
+
+
+async def _put_in_deck(session, card, qty, tags=None):
+    """A second stack of `card` that physically sits in a deck."""
+    loc = Location(type="deck", foreign_id=1)
+    session.add(loc)
+    await session.flush()
+    session.add(CollectionCard(scryfall_id=card.scryfall_id, quantity=qty, location=loc.id,
+                               tags=tags))
+    await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_exclude_decks_ignores_copies_in_a_deck(session):
+    """#408: a copy sleeved up in a deck is not a spare."""
+    card = await _own(session, "Staple", 1, qty=2)      # 2 loose
+    await _put_in_deck(session, card, qty=2)            # 2 in a deck
+    only_in_deck = await _own(session, "Decked", 2, qty=0)
+    await _put_in_deck(session, only_in_deck, qty=3)
+
+    counted = {c.name: c for c in (await trade_binder(session, "usd", keep=1)).cards}
+    assert counted["Staple"].tradeable == 3 and counted["Decked"].tradeable == 2
+
+    binder = await trade_binder(session, "usd", keep=1, exclude_decks=True)
+    assert binder.exclude_decks
+    spared = {c.name: c for c in binder.cards}
+    assert spared["Staple"].owned == 2 and spared["Staple"].tradeable == 1
+    assert "Decked" not in spared
+
+
+@pytest.mark.asyncio
+async def test_exclude_decks_keeps_non_deck_locations_and_trade_tags(session):
+    boxed = await _own(session, "Boxed", 1, qty=1)
+    box = Location(type="box", foreign_id=1)
+    session.add(box)
+    await session.flush()
+    session.add(CollectionCard(scryfall_id=boxed.scryfall_id, quantity=2, location=box.id))
+    flagged = await _own(session, "Flagged", 2, qty=0)
+    await _put_in_deck(session, flagged, qty=1, tags=["for-trade"])
+
+    binder = await trade_binder(session, "usd", keep=1, exclude_decks=True)
+    cards = {c.name: c for c in binder.cards}
+    assert cards["Boxed"].tradeable == 2           # a box is not a deck
+    assert cards["Flagged"].tradeable == 1         # tagged for trade wins, even in a deck
+
+
+@pytest.mark.asyncio
+async def test_exclude_decks_routes(client, session):
+    card = await _own(session, "Staple", 1, qty=1)
+    await _put_in_deck(session, card, qty=1)
+
+    page = await client.get("/collection/trade")
+    assert "Staple" in page.text and "exclude_decks=1" not in page.text
+    page = await client.get("/collection/trade?exclude_decks=1")
+    assert page.status_code == 200 and "Staple" not in page.text
+
+    assert "Staple" in (await client.get("/trade/export?fmt=txt")).text
+    assert "Staple" not in (await client.get("/trade/export?fmt=txt&exclude_decks=1")).text
+    redirect = await client.get("/trade?keep=2&exclude_decks=1", follow_redirects=False)
+    assert redirect.headers["location"] == "/collection/trade?keep=2&exclude_decks=1"

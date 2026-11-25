@@ -62,6 +62,7 @@ async def collection(
     sort_by: str = "name",
     sort_dir: str = "asc",
     keep: int = 1,
+    exclude_decks: bool = False,
     chart_range: str = Query(DEFAULT_RANGE, alias="range"),
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
@@ -259,7 +260,9 @@ async def collection(
         )
         ctx["checklists"] = [(c, n) for c, n in rows.all()]
     elif tab == "trade":
-        ctx["binder"] = await trade_binder(session, currency, keep=keep, source=source)
+        ctx["binder"] = await trade_binder(
+            session, currency, keep=keep, source=source, exclude_decks=exclude_decks
+        )
         ctx["pools"] = await pool_summaries(session)
     elif tab == "sell":
         ctx["sell"] = await sell_list(session, currency, source)
@@ -328,9 +331,12 @@ async def collection_checklists_redirect(
 
 @router.get("/collection/trade", response_class=HTMLResponse)
 async def collection_trade_redirect(
-    request: Request, keep: int = 1, session: AsyncSession = Depends(get_session)
+    request: Request, keep: int = 1, exclude_decks: bool = False,
+    session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
-    return await collection(request, tab="trade", keep=keep, session=session)
+    return await collection(
+        request, tab="trade", keep=keep, exclude_decks=exclude_decks, session=session
+    )
 
 @router.get("/collection/sell", response_class=HTMLResponse)
 async def collection_sell_redirect(

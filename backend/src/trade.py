@@ -2,17 +2,20 @@
 
 A printing is "tradeable" when you own more than `keep` copies (the spares beyond a set you keep)
 or when any of its stacks is tagged for trade. Values use the active display currency.
+
+Optionally, stacks that sit in a deck are left out of the count (#408): nobody takes a deck apart
+to meet a surplus quota. A stack explicitly tagged for trade still counts wherever it is.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.currency import unit_price
-from src.models import Card, CollectionCard
+from src.models import Card, CollectionCard, Location
 from src.pricing import resolve_prices
 
 # Tags (normalized) that mark a card for trade regardless of quantity.
@@ -41,6 +44,7 @@ class TradeCard:
 class TradeBinder:
     cards: list[TradeCard] = field(default_factory=list)
     keep: int = 1
+    exclude_decks: bool = False
 
     @property
     def total_value(self) -> float:
@@ -52,23 +56,33 @@ class TradeBinder:
 
 
 async def trade_binder(
-    session: AsyncSession, currency: str = "usd", keep: int = 1, source: str = "tcgplayer"
+    session: AsyncSession, currency: str = "usd", keep: int = 1, source: str = "tcgplayer",
+    exclude_decks: bool = False,
 ) -> TradeBinder:
-    """Cards owned in more than `keep` copies, plus any tagged for trade. Most valuable first."""
+    """Cards owned in more than `keep` copies, plus any tagged for trade. Most valuable first.
+
+    With `exclude_decks`, copies stored in a deck don't count towards what you own, so only the
+    copies outside decks can be spare. Stacks tagged for trade are counted regardless.
+    """
     keep = max(0, keep)
-    flagged = func.coalesce(func.bool_or(CollectionCard.tags.op("&&")(TRADE_TAGS)), False)
-    rows = (
-        await session.execute(
-            select(
-                Card.scryfall_id, Card.name, Card.set_code, Card.set_name, Card.rarity,
-                Card.collector_number, Card.prices, Card.market_prices,
-                func.sum(CollectionCard.quantity).label("owned"),
-                flagged.label("for_trade"),
-            )
-            .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
-            .group_by(Card.scryfall_id)
+    tagged = func.coalesce(CollectionCard.tags.op("&&")(TRADE_TAGS), False)
+    flagged = func.coalesce(func.bool_or(tagged), False)
+    query = (
+        select(
+            Card.scryfall_id, Card.name, Card.set_code, Card.set_name, Card.rarity,
+            Card.collector_number, Card.prices, Card.market_prices,
+            func.sum(CollectionCard.quantity).label("owned"),
+            flagged.label("for_trade"),
         )
-    ).all()
+        .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
+        .group_by(Card.scryfall_id)
+    )
+    if exclude_decks:
+        in_deck = select(Location.id).where(Location.type == "deck")
+        query = query.where(
+            or_(CollectionCard.location.is_(None), CollectionCard.location.not_in(in_deck), tagged)
+        )
+    rows = (await session.execute(query)).all()
 
     cards: list[TradeCard] = []
     for sid, name, set_code, set_name, rarity, cn, prices, market_prices, owned, for_trade in rows:
@@ -86,4 +100,4 @@ async def trade_binder(
             )
         )
     cards.sort(key=lambda c: (c.value, c.owned), reverse=True)
-    return TradeBinder(cards=cards, keep=keep)
+    return TradeBinder(cards=cards, keep=keep, exclude_decks=exclude_decks)

@@ -50,7 +50,7 @@
 
 <h2 class="text-sm font-semibold mb-1">Surplus binder</h2>
 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-  <form method="get" action="/collection" class="flex items-center gap-2 text-sm">
+  <form method="get" action="/collection" class="flex flex-wrap items-center gap-2 text-sm">
     <input type="hidden" name="tab" value="trade" />
     <label class="text-muted" for="trade-keep">Keep</label>
     <select name="keep" id="trade-keep" onchange="this.form.submit()"
@@ -60,13 +60,18 @@
       {% endfor %}
     </select>
     <span class="text-muted">copies — show the spares beyond that (plus cards tagged for trade).</span>
+    <label class="flex items-center gap-1.5 basis-full text-muted">
+      <input type="checkbox" name="exclude_decks" value="1" onchange="this.form.submit()"
+             {% if binder.exclude_decks %}checked{% endif %} />
+      Don't count copies that are in a deck
+    </label>
   </form>
   {% if binder.cards %}
   <div class="flex items-center gap-3 text-sm">
     <span class="text-muted">{{ '{:,}'.format(binder.total_cards) }} cards ·
       <b>{{ binder.total_value | currency_filter(currency) }}</b></span>
-    <a href="/trade/export?fmt=txt&keep={{ binder.keep }}" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.txt</a>
-    <a href="/trade/export?fmt=csv&keep={{ binder.keep }}" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.csv</a>
+    <a href="/trade/export?fmt=txt&keep={{ binder.keep }}{{ '&exclude_decks=1' if binder.exclude_decks }}" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.txt</a>
+    <a href="/trade/export?fmt=csv&keep={{ binder.keep }}{{ '&exclude_decks=1' if binder.exclude_decks }}" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.csv</a>
   </div>
   {% endif %}
 </div>

@@ -45,6 +45,11 @@ EXAMPLE_DECKS = {
     "Goblins (Duel Decks)": "goblins.txt",
 }
 
+# The two showcase storage boxes (#160) and the rarities filed in each.
+RARES_BOX = "Rares & Mythics"
+BULK_BOX = "Bulk Box"
+DEMO_BOXES = {RARES_BOX: ("rare", "mythic"), BULK_BOX: ("common", "uncommon")}
+
 # Collection shape (~12,000 cards).
 MONO_COLORS = {"W": 2000, "U": 2000, "B": 2000, "R": 2000, "G": 2000}
 COLORLESS_TARGET = 1000
@@ -385,7 +390,7 @@ async def seed_demo() -> int:
         # Showcase storage boxes (#160): two physical boxes, filed by rarity (idempotent).
         existing_boxes = set(await session.scalars(select(Box.name)))
         ls = {}
-        for name in ("Rares & Mythics", "Bulk Box"):
+        for name in DEMO_BOXES:
             if name not in existing_boxes:
                 b = Box(name=name)
                 session.add(b)
@@ -402,8 +407,7 @@ async def seed_demo() -> int:
                         select(Location).where(Location.type == 'box', Location.foreign_id==box.id)
                     )
                 ).first()
-        for box_name, rarities in [("Rares & Mythics", ["rare", "mythic"]),
-                                   ("Bulk Box", ["common", "uncommon"])]:
+        for box_name, rarities in DEMO_BOXES.items():
             await session.execute(
                 update(CollectionCard)
                 .where(CollectionCard.scryfall_id.in_(
@@ -459,8 +463,7 @@ def _featured_added_at(released: datetime.date | None, rng: random.Random) -> da
 async def _demo_box_locations(session) -> dict[str, int]:
     """Location id per rarity for the two showcase boxes, when the base seed has created them."""
     out: dict[str, int] = {}
-    for name, rarities in (("Rares & Mythics", ("rare", "mythic")),
-                           ("Bulk Box", ("common", "uncommon"))):
+    for name, rarities in DEMO_BOXES.items():
         location_id = await session.scalar(
             select(Location.id).join(Box, Box.id == Location.foreign_id)
             .where(Location.type == "box", Box.name == name)
@@ -488,21 +491,12 @@ async def _seed_featured_set(session, code: str, boxes: dict[str, int]) -> int:
         .join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
         .where(Card.set_code == code)
     ))
-    # One printing per distinct card (a set lists the same card again as showcase / borderless).
-    distinct: dict = {}
-    for row in rows:
-        key = row.oracle_id or row.scryfall_id
-        if row.scryfall_id in owned_ids or key not in distinct:
-            distinct[key] = row
-    have = sum(1 for row in distinct.values() if row.scryfall_id in owned_ids)
+    distinct = _distinct_printings(rows, owned_ids)
+    have = sum(1 for row in distinct if row.scryfall_id in owned_ids)
     need = int(len(distinct) * _FEATURED_FRACTION + 0.5) - have
-    rng = random.Random(f"{IMPORT_YEAR}-{code}")  # noqa: S311 - demo data, not security
-    added = 0
-    for row in distinct.values():
-        if added >= need:
-            break
-        if row.scryfall_id in owned_ids:
-            continue
+    rng = random.Random(f"{IMPORT_YEAR}-{code}")
+    picks = [row for row in distinct if row.scryfall_id not in owned_ids][:max(need, 0)]
+    for row in picks:
         usd = float(row.usd) if row.usd else 0.0
         session.add(CollectionCard(
             scryfall_id=row.scryfall_id, quantity=1, source_format="demo",
@@ -511,8 +505,18 @@ async def _seed_featured_set(session, code: str, boxes: dict[str, int]) -> int:
             purchase_price=round(usd * rng.uniform(0.4, 1.1), 2) if usd else None,
             location=boxes.get(row.rarity or ""),
         ))
-        added += 1
-    return added
+    return len(picks)
+
+
+def _distinct_printings(rows, owned_ids: set) -> list:
+    """One printing per distinct card, preferring one already owned (a set lists the same card
+    again as showcase / borderless). Keeps the order of ``rows``."""
+    distinct: dict = {}
+    for row in rows:
+        key = row.oracle_id or row.scryfall_id
+        if row.scryfall_id in owned_ids or key not in distinct:
+            distinct[key] = row
+    return list(distinct.values())
 
 
 async def seed_demo_featured_sets() -> dict[str, int]:

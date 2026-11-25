@@ -56,6 +56,70 @@ async def test_card_detail_eur_currency_price_rows(client, session):
     assert resp.status_code == 200
 
 
+def _req(**cookies):
+    """A bare request carrying only cookies (no prefs middleware), as the helpers accept."""
+    from starlette.requests import Request
+    header = "; ".join(f"{k}={v}" for k, v in cookies.items()).encode()
+    return Request({"type": "http", "headers": [(b"cookie", header)] if cookies else []})
+
+
+@pytest.mark.asyncio
+async def test_price_rows_name_every_source_and_flag_the_preferred_one(session, monkeypatch):
+    """#410: the charted TCGplayer price is always listed, beside the preferred marketplace's."""
+    c = await _card(session)
+    c.market_prices = {"manapool": {"usd": "1.84", "usd_foil": "25.00"}}
+    before = {"manapool": dict(c.market_prices["manapool"])}
+
+    rows = card_route._price_rows(_req(scryme_price_source="manapool"), c)
+    assert [(r["label"], r["preferred"]) for r in rows] == [("ManaPool", True),
+                                                             ("TCGplayer", False)]
+    assert rows[0]["prices"] == [{"label": "normal", "amount": 1.84, "currency": "usd"},
+                                 {"label": "✦ foil", "amount": 25.0, "currency": "usd"}]
+    assert rows[1]["prices"][0] == {"label": "normal", "amount": 2.5, "currency": "usd"}
+    assert c.market_prices == before          # building the rows must not rewrite the card
+    assert "ManaPool" in card_route._chart_source_note(_req(), rows)
+
+    # With TCGplayer preferred the chips and the chart agree, so there is nothing to explain.
+    rows = card_route._price_rows(_req(), c)
+    assert rows[0]["code"] == "tcgplayer" and rows[0]["preferred"]
+    assert card_route._chart_source_note(_req(), rows) is None
+
+    # A converted currency converts every source; without a rate the amount stays, honestly, USD.
+    monkeypatch.setitem(card_route.fx.FX_RATES, "cad", 1.4)
+    cad = card_route._price_rows(_req(scryme_currency="cad"), c)
+    assert cad[0]["prices"][0] == {"label": "normal", "amount": pytest.approx(3.5),
+                                   "currency": "cad"}
+    monkeypatch.delitem(card_route.fx.FX_RATES, "cad")
+    unconverted = card_route._price_rows(_req(scryme_currency="cad"), c)
+    assert unconverted[0]["prices"][0] == {"label": "normal", "amount": 2.5, "currency": "usd"}
+
+
+@pytest.mark.asyncio
+async def test_price_rows_in_euro_lead_with_cardmarket(session):
+    c = await _card(session)
+    rows = card_route._price_rows(_req(scryme_currency="eur"), c)
+    assert rows[0]["label"] == "Cardmarket" and rows[0]["preferred"]
+    assert rows[0]["prices"] == [{"label": "normal", "amount": 2.0, "currency": "eur"}]
+    assert rows[1]["label"] == "TCGplayer" and rows[1]["prices"][0]["currency"] == "usd"
+
+
+@pytest.mark.asyncio
+async def test_card_detail_labels_price_sources_and_the_chart(client, session):
+    c = await _card(session)
+    c.market_prices = {"manapool": {"usd": "1.84"}}
+    await session.commit()
+    page = (await client.get(f"/card/{c.scryfall_id}",
+                             cookies={"scryme_price_source": "manapool"})).text
+    assert "ManaPool" in page and "$1.84" in page and "$2.50" in page
+    assert "TCGplayer market price for the non-foil printing" in page
+    assert "history is only recorded from TCGplayer" in page
+    # Tix are event tickets, not dollars.
+    assert "<b>0.10</b> tix" in page and "$0.10" not in page
+
+    plain = (await client.get(f"/card/{c.scryfall_id}")).text
+    assert "history is only recorded from" not in plain
+
+
 @pytest.mark.asyncio
 async def test_card_detail_404(client):
     assert (await client.get("/card/not-a-uuid")).status_code == 404

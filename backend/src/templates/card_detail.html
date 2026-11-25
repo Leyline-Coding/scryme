@@ -98,21 +98,28 @@
         {% if card.released_at %}<div><dt class="text-muted">Released</dt><dd><a href="/search?scope=all&q={{ ('year:' ~ card.released_at.year) | urlencode }}" class="hover:text-accent">{{ card.released_at }}</a></dd></div>{% endif %}
       </dl>
 
-      {# Prices #}
-      {% if price_rows %}
+      {# Prices: one group per marketplace, each chip naming where its price comes from (#410). #}
+      {% if price_rows or tix %}
       <div class="flex flex-wrap gap-2">
-        {% for source_label in price_rows.keys() %}
-          {% for price_type_label in price_rows[source_label].keys() %}
-          <span class="rounded-lg border border-edge bg-surface px-3 py-1 text-sm min-w-12">
-            <div class="inline-flex flex-col relative">
-              <span class="text-xs text-gray-500 absolute top-0 left-0 -mt-1">{{ source_label }}</span>
-              <span class="mt-2">
-                {{ price_type_label }} <b>{% if price_rows[source_label][price_type_label]['amount']==None %}--{%else%}{{ price_rows[source_label][price_type_label]['amount'] | currency_filter(currency) }}{%endif%}</b>
-              </span>
-            </div>
+        {% for row in price_rows %}
+          {% for price in row.prices %}
+          <span class="rounded-lg border bg-surface px-3 py-1 text-sm min-w-12
+                       {% if row.preferred %}border-accent{% else %}border-edge{% endif %}"
+                title="{{ row.label }}{% if row.note %} — {{ row.note }}{% endif %}{% if row.preferred %} (your price source){% endif %}">
+            <span class="block text-xs text-muted">{{ row.label }}{% if row.preferred %}
+              <span class="text-accent" aria-hidden="true">★</span><span class="sr-only">(your price source)</span>{% endif %}</span>
+            <span>{{ price.label }} <b>{{ price.amount | currency_filter(price.currency) }}</b></span>
           </span>
           {% endfor %}
         {% endfor %}
+        {% if tix %}
+        {# Tix are Magic Online event tickets, not money: shown as a count, never as a currency. #}
+        <span class="rounded-lg border border-edge bg-surface px-3 py-1 text-sm min-w-12"
+              title="Magic Online price, in event tickets (Scryfall)">
+          <span class="block text-xs text-muted">MTGO</span>
+          <span><b>{{ '{:,.2f}'.format(tix) }}</b> tix</span>
+        </span>
+        {% endif %}
       </div>
       {% endif %}
 
@@ -124,6 +131,11 @@
             Value over time</h2>
           <a href="/prices" class="text-xs text-muted hover:text-fg">All prices →</a>
         </div>
+        {# Say which price the line is (#410): it is not necessarily the one on the chips above. #}
+        <p class="text-xs text-muted -mt-2 mb-3">
+          {{ chart_source }} market price for the non-foil printing, recorded at each price snapshot.
+          {% if chart_source_note %}{{ chart_source_note }}{% endif %}
+        </p>
         {% if has_card_history %}
         {% import "_value_chart.html" as vc %}
         {{ vc.chart(price_chart, chart_ranges, chart_range,

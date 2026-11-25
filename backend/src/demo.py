@@ -448,10 +448,12 @@ def _featured_finish(raw: dict | None, rng: random.Random) -> str:
 
 def _featured_added_at(released: datetime.date | None, rng: random.Random) -> datetime.datetime:
     """Acquired some days after release (as the base seed does), never in the future."""
-    today = datetime.date.today()
-    day = min((released or today) + datetime.timedelta(days=rng.randint(1, 320)), today)
-    return datetime.datetime(day.year, day.month, day.day, rng.randint(0, 23),
+    now = datetime.datetime.now(datetime.UTC)
+    day = (released or now.date()) + datetime.timedelta(days=rng.randint(1, 320))
+    when = datetime.datetime(day.year, day.month, day.day, rng.randint(0, 23),
                              rng.randint(0, 59), tzinfo=datetime.UTC)
+    # Capped on the full timestamp, not the date: a random time later today is still the future.
+    return min(when, now)
 
 
 async def _demo_box_locations(session) -> dict[str, int]:

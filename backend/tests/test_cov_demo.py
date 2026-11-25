@@ -177,6 +177,18 @@ async def test_featured_sets_add_half_of_each_set_including_sub_sets(session):
     assert await session.scalar(select(func.count()).select_from(PriceSnapshot)) == 1
 
 
+def test_featured_acquisition_time_is_never_in_the_future():
+    # Released today: any random time-of-day later than now must be pulled back to now.
+    from src.demo import _featured_added_at
+
+    today = datetime.datetime.now(datetime.UTC).date()
+    for seed in range(200):
+        when = _featured_added_at(today, random.Random(seed))
+        assert when <= datetime.datetime.now(datetime.UTC)
+    old = _featured_added_at(datetime.date(2020, 1, 1), random.Random(1))
+    assert datetime.date(2020, 1, 1) < old.date() <= datetime.date(2020, 11, 17)
+
+
 @pytest.mark.asyncio
 async def test_featured_sets_are_idempotent_and_top_up_after_a_later_ingest(session):
     from src.demo import seed_demo_featured_sets

@@ -9,12 +9,12 @@
 #
 # !! REVIEW BEFORE APPLYING !!  Two things here depend on YOUR cluster, not on this repository:
 #
-#   1. Where cloudflared runs. The cloudflared deployment is not part of these manifests, so the
-#      rule `scryme-demo-allow-cloudflared` ASSUMES it runs in a namespace named `cloudflared` and
-#      allows any pod in that namespace. If yours lives elsewhere the demo will go dark the moment
-#      this is applied (Cloudflare shows error 502/1033). Check first:
-#          kubectl get pods -A --show-labels | grep -i cloudflared
-#      and edit the namespaceSelector (and add a podSelector) to match.
+#   1. Where cloudflared runs. The cloudflared deployment is not part of these manifests. The rule
+#      `scryme-demo-allow-cloudflared` matches the project's own cluster: pods labelled
+#      `app: cloudflare` in the `cloudflare-tunnel` namespace. If yours differs, the demo goes
+#      dark the moment this is applied (Cloudflare shows error 502/1033). Check first:
+#          kubectl get pods -A --show-labels | grep -i cloudflare
+#      and edit the namespaceSelector and podSelector to match.
 #   2. Cluster DNS. `scryme-demo-allow-dns` assumes CoreDNS runs in kube-system with the standard
 #      `k8s-app: kube-dns` label (true for k3s and most distributions). With NodeLocal DNSCache,
 #      or a differently-labelled DNS, adjust it — without DNS the app cannot find Postgres.
@@ -78,10 +78,14 @@ spec:
     - Ingress
   ingress:
     - from:
-        # ASSUMPTION — see the note at the top of this file.
+        # Cluster-specific — see the note at the top of this file. One list item with both
+        # selectors means "pods with this label IN that namespace" (two items would mean OR).
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: cloudflared
+              kubernetes.io/metadata.name: cloudflare-tunnel
+          podSelector:
+            matchLabels:
+              app: cloudflare
       ports:
         - protocol: TCP
           port: 8000

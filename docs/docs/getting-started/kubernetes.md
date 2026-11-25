@@ -25,7 +25,8 @@ bundled with kustomize.
 !!! warning "Hosting your own copy? Change two things first"
     - `SCRYME_ALLOWED_HOSTS` in `backend.yaml` must be **your** hostname, or every request gets
       `400`.
-    - `networkpolicy.yaml` assumes cloudflared runs in a namespace named `cloudflared`. If yours
+    - `networkpolicy.yaml` allows pods labelled `app: cloudflare` in the `cloudflare-tunnel`
+      namespace. If yours
       is elsewhere (or you use an ingress controller instead), edit the `scryme-demo-allow-cloudflared`
       rule, or nothing will be able to reach the app. If you expose the Service any other way,
       also remove `SCRYME_CLIENT_IP_HEADER`.

@@ -31,9 +31,9 @@ data volume are persistent, so restarts are fast (the 24h cache guard skips re-d
   capabilities dropped, `RuntimeDefault` seccomp, no service-account token, CPU and memory limits.
 - **Network**: `networkpolicy.yaml` denies everything in the namespace and then allows
   cloudflared → app:8000, app → Postgres:5432, app → public internet on 443 (not private ranges),
-  DNS, and the autodeploy job → 443/6443. **It assumes cloudflared runs in a namespace named
-  `cloudflared`** and that cluster DNS is `k8s-app: kube-dns` in `kube-system`. Check with
-  `kubectl get pods -A --show-labels | grep -i cloudflared` and edit the file if not — a wrong
+  DNS, and the autodeploy job → 443/6443. **It allows pods labelled `app: cloudflare` in the
+  `cloudflare-tunnel` namespace** and that cluster DNS is `k8s-app: kube-dns` in `kube-system`. Check with
+  `kubectl get pods -A --show-labels | grep -i cloudflare` and edit the file if not — a wrong
   guess makes the demo unreachable. Anything else that connects to the app in-cluster (for example
   a Prometheus scraping `/metrics`) needs its own allow rule.
 - **App settings** (ConfigMap in `backend.yaml`): `SCRYME_ALLOWED_HOSTS=demo.scryme.app` (requests

@@ -148,10 +148,27 @@ PY
           // Tag each analysis with the app version (from backend/src/__init__.py) so the
           // SonarQube Activity view is versioned and the "Previous version" New Code model
           // (if selected) uses each release as a fresh new-code baseline.
+          //
+          // Branch / pull-request analysis: SonarQube Community Build has ONE branch per project,
+          // so by default every build (main, feature branches, PRs) overwrites the same record
+          // and one PR's new issue turns the quality gate red for every build after it. Once the
+          // server can analyse branches (Developer Edition, or the community branch plugin at a
+          // version matching the server), set SONAR_BRANCH_ANALYSIS=true on the Jenkins
+          // controller or job and each PR/branch gets its own analysis and gate. Leave it unset
+          // until then: a Community server REJECTS these parameters and the scan fails.
           sh '''
             VERSION=$(grep '__version__' backend/src/__init__.py | cut -d'"' -f2)
             echo "scryme version for analysis: ${VERSION:-unknown}"
-            npx --yes @sonar/scan@5.1.0 -Dsonar.projectVersion="${VERSION:-0.0.0}"
+            SCOPE=""
+            if [ "${SONAR_BRANCH_ANALYSIS:-false}" = "true" ]; then
+              if [ -n "${CHANGE_ID:-}" ]; then
+                SCOPE="-Dsonar.pullrequest.key=${CHANGE_ID} -Dsonar.pullrequest.branch=${CHANGE_BRANCH} -Dsonar.pullrequest.base=${CHANGE_TARGET}"
+              elif [ "${BRANCH_NAME:-main}" != "main" ]; then
+                SCOPE="-Dsonar.branch.name=${BRANCH_NAME}"
+              fi
+            fi
+            echo "analysis scope: ${SCOPE:-main branch}"
+            npx --yes @sonar/scan@5.1.0 -Dsonar.projectVersion="${VERSION:-0.0.0}" ${SCOPE}
           '''
         }
         // Runs on this agent so it can reach SonarQube to poll the task status. Requires the

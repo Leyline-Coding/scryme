@@ -19,7 +19,7 @@ import random
 from pathlib import Path
 
 import structlog
-from sqlalchemy import Float, and_, cast, func, or_, select, text, update
+from sqlalchemy import Float, String, and_, cast, func, or_, select, text, update
 
 from src.checklists import create_checklist
 from src.db import SessionLocal
@@ -86,6 +86,20 @@ _DEMO_CHECKLISTS = {
         "Scrubland\nVolcanic Island\nBayou\nPlateau\nTropical Island"
     ),
 }
+
+
+# Recent sets the demo should always have a good slice of, whatever the random base selection
+# picked: each release with the sub-sets that hold real cards (Commander / Eternal decks, promos,
+# masterpieces). Token, art-series and digital-only sub-sets are left out on purpose. Codes are
+# Scryfall set codes; a code the card database does not have yet is skipped, so this is safe to
+# run before those cards are ingested and picks them up on the next run after they are.
+FEATURED_SETS: dict[str, tuple[str, ...]] = {
+    "The Hobbit": ("hob", "hoc"),
+    "Reality Fracture": ("fra", "frc", "pfra"),
+    "Mystery Booster Commander Edition": ("mbc",),
+    "Star Trek": ("trk", "trc", "sds"),
+}
+_FEATURED_FRACTION = 0.5  # own about half of each featured set's distinct cards
 
 
 def _collect_rows(rows, limit: int, used: set, out: list) -> int:
@@ -420,3 +434,109 @@ async def seed_demo_decks() -> int:
             created += 1
     log.info("demo.decks_seeded", created=created)
     return created
+
+
+def _featured_finish(raw: dict | None, rng: random.Random) -> str:
+    """A finish the printing really comes in, with the same foil / etched mix as the base seed."""
+    finishes = (raw or {}).get("finishes") or []
+    if "etched" in finishes and rng.random() < _ETCHED_FRACTION:
+        return "etched"
+    if "foil" in finishes and ("nonfoil" not in finishes or rng.random() < _FOIL_FRACTION):
+        return "foil"
+    return "normal"
+
+
+def _featured_added_at(released: datetime.date | None, rng: random.Random) -> datetime.datetime:
+    """Acquired some days after release (as the base seed does), never in the future."""
+    now = datetime.datetime.now(datetime.UTC)
+    day = (released or now.date()) + datetime.timedelta(days=rng.randint(1, 320))
+    when = datetime.datetime(day.year, day.month, day.day, rng.randint(0, 23),
+                             rng.randint(0, 59), tzinfo=datetime.UTC)
+    # Capped on the full timestamp, not the date: a random time later today is still the future.
+    return min(when, now)
+
+
+async def _demo_box_locations(session) -> dict[str, int]:
+    """Location id per rarity for the two showcase boxes, when the base seed has created them."""
+    out: dict[str, int] = {}
+    for name, rarities in (("Rares & Mythics", ("rare", "mythic")),
+                           ("Bulk Box", ("common", "uncommon"))):
+        location_id = await session.scalar(
+            select(Location.id).join(Box, Box.id == Location.foreign_id)
+            .where(Location.type == "box", Box.name == name)
+        )
+        if location_id is not None:
+            out.update(dict.fromkeys(rarities, location_id))
+    return out
+
+
+async def _seed_featured_set(session, code: str, boxes: dict[str, int]) -> int:
+    """Bring the demo's holdings of one set up to ``_FEATURED_FRACTION`` of its distinct cards."""
+    rows = (
+        await session.execute(
+            select(Card.scryfall_id, Card.oracle_id, _USD.label("usd"), Card.rarity,
+                   Card.released_at, Card.raw)
+            .where(Card.set_code == code, _RELEASED)
+            # A stable pseudo-random order, so every run picks the same cards.
+            .order_by(func.md5(cast(Card.scryfall_id, String)))
+        )
+    ).all()
+    if not rows:
+        return 0
+    owned_ids = set(await session.scalars(
+        select(CollectionCard.scryfall_id)
+        .join(Card, Card.scryfall_id == CollectionCard.scryfall_id)
+        .where(Card.set_code == code)
+    ))
+    # One printing per distinct card (a set lists the same card again as showcase / borderless).
+    distinct: dict = {}
+    for row in rows:
+        key = row.oracle_id or row.scryfall_id
+        if row.scryfall_id in owned_ids or key not in distinct:
+            distinct[key] = row
+    have = sum(1 for row in distinct.values() if row.scryfall_id in owned_ids)
+    need = int(len(distinct) * _FEATURED_FRACTION + 0.5) - have
+    rng = random.Random(f"{IMPORT_YEAR}-{code}")  # noqa: S311 - demo data, not security
+    added = 0
+    for row in distinct.values():
+        if added >= need:
+            break
+        if row.scryfall_id in owned_ids:
+            continue
+        usd = float(row.usd) if row.usd else 0.0
+        session.add(CollectionCard(
+            scryfall_id=row.scryfall_id, quantity=1, source_format="demo",
+            finish=_featured_finish(row.raw, rng),
+            added_at=_featured_added_at(row.released_at, rng),
+            purchase_price=round(usd * rng.uniform(0.4, 1.1), 2) if usd else None,
+            location=boxes.get(row.rarity or ""),
+        ))
+        added += 1
+    return added
+
+
+async def seed_demo_featured_sets() -> dict[str, int]:
+    """Make sure the demo owns a good slice of each set in ``FEATURED_SETS``.
+
+    Separate from ``seed_demo`` because that one stops once the base collection exists; this runs
+    on every start and tops each set up to its target, adding nothing once it is there. Returns the
+    number of cards added per featured release.
+    """
+    from src.prices import snapshot_prices
+
+    added: dict[str, int] = {}
+    async with SessionLocal() as session:
+        boxes = await _demo_box_locations(session)
+        for name, codes in FEATURED_SETS.items():
+            count = 0
+            for code in codes:
+                count += await _seed_featured_set(session, code, boxes)
+            added[name] = count
+        await session.commit()
+        if any(added.values()):
+            # The scheduler does not run in a read-only demo, so record the new total here;
+            # otherwise the value chart's last point would lag behind the collection.
+            await snapshot_prices(session)
+            await session.commit()
+    log.info("demo.featured_sets_seeded", **{k: v for k, v in added.items() if v})
+    return added

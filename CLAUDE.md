@@ -72,7 +72,8 @@ cd backend && alembic revision --autogenerate -m "msg" && alembic upgrade head
 
 ```bash
 # Card data
-python -m src.cli ingest [--force]          # Scryfall bulk file (24h cache guard; --force overrides)
+python -m src.cli ingest [--force]          # Scryfall bulk file (24h cache guard; --force overrides;
+                                            # --min-age-days N: only when data is N+ days old)
 python -m src.cli backfill-images           # cache images for owned cards
 python -m src.cli prune-digital             # drop digital-only (Arena/MTGO) cards
 python -m src.cli refresh-sets              # sync the set-release calendar
@@ -92,7 +93,8 @@ python -m src.cli backfill-rules            # chunk the comprehensive rules for 
 # Data
 python -m src.cli backup [--dir DIR]        # JSON backup of user data
 python -m src.cli restore FILE [--apply]    # restore (dry-run without --apply)
-python -m src.cli seed-demo                 # sample collection for the demo
+python -m src.cli seed-demo                 # sample collection for the demo; also tops up the
+                                            # recent sets listed in FEATURED_SETS (src/demo.py)
 python -m src.cli organize-locations        # set each card's location to its color-identity group
 
 # or via HTTP:  POST /admin/ingest   GET /admin/status

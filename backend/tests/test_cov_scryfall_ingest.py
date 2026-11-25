@@ -300,3 +300,36 @@ async def test_ingest_default_cards_without_any_uri_fails_cleanly(session):
     assert progress["phase"] == "error" and "no download URI" in progress["error"]
     state = await session.get(IngestState, "default_cards")
     assert state is None or state.status != "running"  # never left stuck mid-run
+
+
+@pytest.mark.asyncio
+async def test_failed_download_does_not_leave_the_state_running(session):
+    # A download that failed used to leave status="running" for good (seen on the public demo).
+    from src.scryfall.ingest import ingest_default_cards
+
+    class FailingClient(FakeScryfallClient):
+        async def download_to_file(self, url, dest: Path):
+            raise RuntimeError("connection reset")
+
+    await _clear_ingest_state(session)
+    with pytest.raises(RuntimeError):
+        await ingest_default_cards(force=True, client=FailingClient())
+    session.expire_all()
+    assert (await session.get(IngestState, "default_cards")).status == "error"
+
+
+@pytest.mark.asyncio
+async def test_last_ingest_age_days(session):
+    import datetime
+
+    from src.scryfall.ingest import last_ingest_age_days
+
+    await _clear_ingest_state(session)
+    assert await last_ingest_age_days() is None
+    session.add(IngestState(
+        bulk_type="default_cards",
+        last_downloaded_at=datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=10),
+    ))
+    await session.commit()
+    assert 9.9 < await last_ingest_age_days() < 10.1
+    await _clear_ingest_state(session)

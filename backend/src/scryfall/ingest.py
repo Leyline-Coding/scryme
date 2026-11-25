@@ -231,7 +231,13 @@ async def ingest_default_cards(
         # The name is historical: the parser sniffs the format, so it holds either one.
         dest = settings.data_dir / "default_cards.json.gz"
         log.info("scryfall.ingest.download", url=url, dest=str(dest))
-        await sc.download_to_file(url, dest)
+        try:
+            await sc.download_to_file(url, dest)
+        except Exception as exc:
+            # Without this the state stayed "running" forever after a failed download.
+            await _set_status("error")
+            _set_progress(phase="error", error=str(exc))
+            raise
 
     try:
         _set_progress(phase="ingesting", total=ESTIMATED_TOTAL)
@@ -268,6 +274,16 @@ async def _record_success(source_updated: datetime.datetime | None, count: int) 
         state.card_count = count
         state.status = "idle"
         await s.commit()
+
+
+async def last_ingest_age_days() -> float | None:
+    """Days since the bulk file was last downloaded and ingested, or None if it never was."""
+    async with SessionLocal() as s:
+        state = await s.get(IngestState, BULK_TYPE)
+    if state is None or state.last_downloaded_at is None:
+        return None
+    age = datetime.datetime.now(datetime.UTC) - state.last_downloaded_at
+    return age.total_seconds() / 86400
 
 
 async def current_card_count() -> int:

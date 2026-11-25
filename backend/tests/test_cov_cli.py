@@ -39,6 +39,40 @@ def test_ingest_reports_and_skipped(monkeypatch, capsys):
     assert "Skipped (cached); 9 cards" in capsys.readouterr().out
 
 
+def test_ingest_min_age_skips_fresh_data_and_refreshes_stale_data(monkeypatch, capsys):
+    from src.scryfall.ingest import IngestResult
+
+    calls = []
+
+    async def fake_ingest(force=False):
+        calls.append(force)
+        return IngestResult(skipped=False, card_count=3, source_updated_at=None)
+
+    monkeypatch.setattr(cli, "ingest_default_cards", fake_ingest)
+
+    async def fresh():
+        return 3.0
+
+    monkeypatch.setattr(cli, "last_ingest_age_days", fresh)
+    _run(monkeypatch, ["ingest", "--min-age-days", "14"])
+    assert "skipping ingest" in capsys.readouterr().out and calls == []
+
+    async def stale():
+        return 150.0
+
+    monkeypatch.setattr(cli, "last_ingest_age_days", stale)
+    _run(monkeypatch, ["ingest", "--min-age-days", "14"])
+    # Forced: the 24h guard must not turn a stale-data refresh into a skip.
+    assert calls == [True] and "Ingested 3 cards" in capsys.readouterr().out
+
+    async def never():
+        return None
+
+    monkeypatch.setattr(cli, "last_ingest_age_days", never)
+    _run(monkeypatch, ["ingest", "--min-age-days", "14"])
+    assert calls == [True, True]
+
+
 def test_backfill_images(monkeypatch, capsys):
     async def fake_backfill(self, *a, **k):
         return 2
@@ -56,10 +90,15 @@ def test_seed_demo(monkeypatch, capsys):
         return 1
 
     monkeypatch.setattr(cli, "seed_demo", fake_seed)
+    async def fake_featured():
+        return {"Star Trek": 12, "The Hobbit": 0}
+
     monkeypatch.setattr(cli, "seed_demo_decks", fake_decks)
+    monkeypatch.setattr(cli, "seed_demo_featured_sets", fake_featured)
     _run(monkeypatch, ["seed-demo"])
     out = capsys.readouterr().out
     assert "Added 4 cards" in out and "Created 1 example deck" in out
+    assert "Added 12 cards from Star Trek." in out and "The Hobbit" not in out
 
 
 def test_snapshot_prices_reports(monkeypatch, capsys):

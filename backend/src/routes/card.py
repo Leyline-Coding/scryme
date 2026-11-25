@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src import currency, fx
 from src.card import _image
 from src.config import get_settings
-from src.currency import CURRENCIES, get_currency
+from src.currency import get_currency
 from src.db import get_session
 from src.embeddings import similar_to_oracle
 from src.llm import get_config
@@ -31,6 +31,7 @@ from src.prices import (
     earliest_snapshot_date,
     range_days,
 )
+from src.pricing import SOURCES, get_price_source
 from src.routes.collection import _collection_partial_generator
 from src.scryfall.client import ScryfallClient, ScryfallError
 from src.scryfall.images import ImageCache
@@ -75,53 +76,77 @@ def _hist_currencies() -> list[dict]:
     ]
 
 
-def _price_rows(request: Request, card: Card) -> dict[str, dict[str, dict[str, float]]]:
-    """Non-empty (label, price) rows, led by the visitor's chosen currency and price source."""
-    # Use market_prices directly instead of effective_prices
-    market_prices = getattr(card, "market_prices", None) or {}
-    currency = get_currency(request) ## User's chosen currency
-    currency_symbol = CURRENCIES[currency]['symbol']
-    default_currency_symbol = CURRENCIES['usd']['symbol']
-
-    # Convert each source's prices to user's currency and relabel
-    for source, prices in market_prices.items():
-        for key in list(prices.keys()):
-            price_value = float(market_prices[source][key])
-            del market_prices[source][key]
-            new_key = '❖ etched' if 'etched' in key else '✦ foil' if 'foil' in key else 'normal'
-            ## Check collision on new key
-            if(new_key in prices.keys()):
-                new_key+='_'+key
-            try:
-                # Convert to user's currency if not already in USD/EUR (which are native)
-                if currency != "usd":
-                    fx_rate = fx.rate(currency)
-                    if fx_rate:
-                        market_prices[source][new_key] = {
-                            'amount': price_value * fx_rate, 'currency_symbol': currency_symbol
-                        }
-                    else:
-                        market_prices[source][new_key] = {
-                            'amount': float(price_value), 'currency_symbol': default_currency_symbol
-                        }
-                else:
-                    market_prices[source][new_key] = {
-                        'amount': float(price_value), 'currency_symbol': default_currency_symbol
-                    }
-
-            except (ValueError, TypeError):
-                market_prices[source][new_key] = {
-                    'amount': float(price_value), 'currency_symbol': default_currency_symbol
-                }
+# Scryfall-style price keys -> the finish label shown on a price chip.
+_FINISH_KEYS = (("usd", "normal"), ("usd_foil", "✦ foil"), ("usd_etched", "❖ etched"))
+_EUR_KEYS = (("eur", "normal"), ("eur_foil", "✦ foil"), ("eur_etched", "❖ etched"))
+# The per-card history chart is built from snapshots of Scryfall's ``usd`` — TCGplayer's market
+# price for the non-foil printing — whatever source the visitor prefers (see ``snapshot_prices``).
+CHART_SOURCE = "tcgplayer"
 
 
-    # Get TIX prices from the card's raw prices (not market_prices) since TIX is a native Scryfall
-    # field
-    tix_amount = (getattr(card, "prices", None) or {}).get("tix", None)
-    market_prices['TIX'] = {
-        '': {'amount': None if tix_amount is None else float(tix_amount), 'currency_symbol': ''}
-    }
-    return market_prices
+def _amount(raw) -> float | None:
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
+
+def _chips(prices: dict, keys: tuple, code: str, rate: float | None = None) -> list[dict]:
+    """One chip per finish that has a price. ``currency`` is the currency the amount is really in,
+    so a price that could not be converted is labelled with what it is rather than the wish."""
+    chips = []
+    for key, label in keys:
+        amount = _amount(prices.get(key))
+        if amount is not None:
+            chips.append({"label": label, "amount": amount * rate if rate else amount,
+                          "currency": code})
+    return chips
+
+
+def _price_rows(request: Request, card: Card) -> list[dict]:
+    """The card's current prices, one row per marketplace that has one (#410).
+
+    Every row names its marketplace, so a price is never shown without saying where it came from;
+    the visitor's preferred source is flagged and listed first. Amounts are in the display currency
+    where a rate is known, else in USD (and labelled as such). TCGplayer is always included when
+    Scryfall has a price for it, because it is also what the history chart below records.
+    """
+    code = get_currency(request)
+    preferred = get_price_source(request)
+    convert = currency.info(code).get("convert")
+    rate = fx.rate(code) if convert else None
+    shown = code if rate else "usd"
+
+    by_source = {"tcgplayer": card.prices or {}, **(card.market_prices or {})}
+    rows = []
+    for source, prices in by_source.items():
+        chips = _chips(prices or {}, _FINISH_KEYS, shown, rate)
+        if chips:
+            meta = SOURCES.get(source, {})
+            rows.append({"code": source, "label": meta.get("label", source),
+                         "note": meta.get("note", ""), "preferred": source == preferred,
+                         "prices": chips})
+    if code == "eur":
+        # Euro prices are Cardmarket's own (Scryfall ``eur``), not a conversion — and they are what
+        # every euro total in the app uses, whichever USD marketplace is preferred.
+        chips = _chips(card.prices or {}, _EUR_KEYS, "eur")
+        if chips:
+            for row in rows:
+                row["preferred"] = False
+            rows.append({"code": "cardmarket", "label": "Cardmarket",
+                         "note": "Trend price (Scryfall)", "preferred": True, "prices": chips})
+    rows.sort(key=lambda row: not row["preferred"])
+    return rows
+
+
+def _chart_source_note(request: Request, rows: list[dict]) -> str | None:
+    """Why the chart may not end on the price shown above it, when that is the case (#410)."""
+    preferred = next((row for row in rows if row["preferred"]), None)
+    if preferred is None or preferred["code"] == CHART_SOURCE:
+        return None
+    return (f"Your prices come from {preferred['label']}, but history is only recorded from "
+            f"{SOURCES[CHART_SOURCE]['label']}, so this line can differ from the price above.")
 
 
 async def _price_history_ctx(request: Request, session: AsyncSession, card: Card,
@@ -186,6 +211,8 @@ async def card_detail(
     )
 
 
+    price_rows = _price_rows(request, card)
+
     return templates.TemplateResponse(
         request,
         "card_detail.html",
@@ -202,7 +229,10 @@ async def card_detail(
             "card_usd": float((card.prices or {}).get("usd") or 0.0),
             "show_similar": show_similar,
             "ai_ready": (await get_config(session)).ready,
-            "price_rows": _price_rows(request, card),
+            "price_rows": price_rows,
+            "tix": _amount((card.prices or {}).get("tix")),
+            "chart_source": SOURCES[CHART_SOURCE]["label"],
+            "chart_source_note": _chart_source_note(request, price_rows),
             **(await _price_history_ctx(request, session, card, chart_range)),
             **collection_partial_data
         },

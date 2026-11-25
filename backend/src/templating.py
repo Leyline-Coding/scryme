@@ -41,7 +41,8 @@ def _inject_prefs(request) -> dict:
 def currency_filter(value:float, currency="USD", locale="en_US"):
     if value is None:
         return ""
-    return format_currency(value, currency, locale=locale)
+    # Babel only knows upper-case ISO codes; ours are stored lower-case ("usd", "cad").
+    return format_currency(value, str(currency).upper(), locale=locale)
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR), context_processors=[_inject_prefs])
 

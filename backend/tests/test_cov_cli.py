@@ -55,7 +55,8 @@ def test_ingest_min_age_skips_fresh_data_and_refreshes_stale_data(monkeypatch, c
 
     monkeypatch.setattr(cli, "last_ingest_age_days", fresh)
     _run(monkeypatch, ["ingest", "--min-age-days", "14"])
-    assert "skipping ingest" in capsys.readouterr().out and calls == []
+    assert "skipping ingest" in capsys.readouterr().out
+    assert calls == []
 
     async def stale():
         return 150.0
@@ -63,7 +64,8 @@ def test_ingest_min_age_skips_fresh_data_and_refreshes_stale_data(monkeypatch, c
     monkeypatch.setattr(cli, "last_ingest_age_days", stale)
     _run(monkeypatch, ["ingest", "--min-age-days", "14"])
     # Forced: the 24h guard must not turn a stale-data refresh into a skip.
-    assert calls == [True] and "Ingested 3 cards" in capsys.readouterr().out
+    assert calls == [True]
+    assert "Ingested 3 cards" in capsys.readouterr().out
 
     async def never():
         return None
@@ -97,8 +99,10 @@ def test_seed_demo(monkeypatch, capsys):
     monkeypatch.setattr(cli, "seed_demo_featured_sets", fake_featured)
     _run(monkeypatch, ["seed-demo"])
     out = capsys.readouterr().out
-    assert "Added 4 cards" in out and "Created 1 example deck" in out
-    assert "Added 12 cards from Star Trek." in out and "The Hobbit" not in out
+    assert "Added 4 cards" in out
+    assert "Created 1 example deck" in out
+    assert "Added 12 cards from Star Trek." in out
+    assert "The Hobbit" not in out
 
 
 def test_snapshot_prices_reports(monkeypatch, capsys):

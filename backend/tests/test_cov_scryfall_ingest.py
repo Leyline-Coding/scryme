@@ -312,8 +312,9 @@ async def test_failed_download_does_not_leave_the_state_running(session):
             raise RuntimeError("connection reset")
 
     await _clear_ingest_state(session)
+    failing = FailingClient()
     with pytest.raises(RuntimeError):
-        await ingest_default_cards(force=True, client=FailingClient())
+        await ingest_default_cards(force=True, client=failing)
     session.expire_all()
     assert (await session.get(IngestState, "default_cards")).status == "error"
 

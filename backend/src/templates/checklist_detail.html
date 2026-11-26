@@ -16,8 +16,8 @@
       </div>
       {% if not read_only and cov.missing_matched %}
       <form method="post" action="/checklists/{{ cov.checklist.id }}/wishlist">
-        <button type="submit" class="text-xs rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">
-          ☆ Add {{ cov.missing_matched }} missing to wishlist
+        <button type="submit" class="rounded-full inline-flex items-center gap-1 bg-surface-2 border border-edge hover:border-accent px-3 py-1.5 text-sm">
+          <i class="fa-regular fa-heart"></i> Add {{ cov.missing_matched }} to wishlist
         </button>
       </form>
       {% endif %}
@@ -47,11 +47,13 @@
         {% elif not r.owned %}<span class="text-xs text-muted shrink-0">missing</span>{% endif %}
         {% if not read_only %}
         <button type="button" title="Rename / change card" @click="editing = !editing"
-                class="shrink-0 text-xs text-muted hover:text-accent tap"><i class="fa-solid fa-pen"></i></button>
-        <form method="post" action="/checklists/{{ cov.checklist.id }}/items/{{ r.item_id }}/delete"
-              class="shrink-0">
-          <button type="submit" title="Remove from checklist" class="text-xs text-muted hover:text-rose-500 tap">✕</button>
-        </form>
+                class="shrink-0 text-xs text-muted hover:text-accent tap">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        <button type="button" title="Remove from checklist" class="shrink-0 text-xs text-muted hover:text-rose-500 tap"
+            hx-post="/checklists/{{ cov.checklist.id }}/items/{{ r.item_id }}/delete" hx-swap="none">
+          <i class="fa-solid fa-trash"></i>
+        </button>
         {% endif %}
       </div>
       {% if not read_only %}
@@ -73,7 +75,10 @@
     <div class="mt-1 flex gap-2">
       <textarea id="add-cards" name="cards" rows="2" placeholder="One card name per line"
                 class="flex-1 rounded-lg bg-surface border border-edge px-3 py-2 font-mono text-sm"></textarea>
-      <button type="submit" class="self-start rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:opacity-90">Add</button>
+      <button type="submit" class="self-start rounded-full bg-accent text-accent-fg px-4 
+          py-2 text-sm font-medium hover:opacity-90">
+        <i class="fa-solid fa-plus"></i> Add
+      </button>
     </div>
   </form>
   {% endif %}

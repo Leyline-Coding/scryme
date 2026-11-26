@@ -20,7 +20,7 @@
         {{ '{:,}'.format(view_obj.total_cards) }} card{{ '' if view_obj.total_cards == 1 else 's' }}
         across {{ rows | length }} printing{{ '' if rows | length == 1 else 's' }}
       </p>
-      <p class="text-sm">Est. cost <span class="font-bold">{{ cur.symbol }}{{ '{:,.2f}'.format(view_obj.total_cost) }}</span></p>
+      <p class="text-sm">Est. cost <span class="font-bold">{{ view_obj.total_cost | currency_filter(currency) }}</span></p>
     </div>
   </div>
 

@@ -127,14 +127,14 @@
   <div class="flex items-baseline justify-between mb-3">
     <h2 class="text-sm font-semibold text-muted uppercase tracking-wide">Collection growth</h2>
     <span class="text-xs text-muted">{{ '{:,}'.format(growth.total_added) }} cards
-      · {{ cur.symbol }}{{ '{:,.2f}'.format(growth.total_value) }} added</span>
+      · {{ growth.total_value | currency_filter(currency) }} added</span>
   </div>
   {% set m = growth.max_added or 1 %}
   <div class="flex items-end gap-1 h-32">
     {% for p in growth.points %}
     <div class="flex-1 bg-accent rounded-t hover:opacity-80 min-h-[2px]"
          style="height: {{ (p.added / m * 100) | round(1) }}%"
-         title="{{ p.label }} · +{{ '{:,}'.format(p.added) }} cards · {{ cur.symbol }}{{ '{:,.2f}'.format(p.value) }}"></div>
+         title="{{ p.label }} · +{{ '{:,}'.format(p.added) }} cards · {{ p.value | currency_filter(currency) }}"></div>
     {% endfor %}
   </div>
   <div class="mt-1 flex justify-between text-xs text-muted">
@@ -177,7 +177,7 @@
         <a href="/card/{{ v.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">
           {{ v.name }} <span class="text-muted uppercase text-xs">{{ v.set_code }}</span>
         </a>
-        <span class="text-right text-muted tabular-nums">{{ cur.symbol }}{{ '{:,.2f}'.format(v.usd) }}</span>
+        <span class="text-right text-muted tabular-nums">{{ v.usd | currency_filter(currency) }}</span>
       </li>
       {% endfor %}
     </ol>

@@ -1,7 +1,7 @@
 {# Remove-from-collection modal: choose how many copies (and which printings) to remove. Loaded
    into #remove-modal by HTMX; a successful remove re-renders #card-collection (clearing this). #}
-<dialogue class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onclick="if (event.target === this) this.remove()" onkeydown="if(event.key==='Escape') this.remove()" >
-  <div class="bg-surface rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-edge">
+<dialogue class="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center p-4 z-50" onclick="if (event.target === this) this.remove()" onkeydown="if(event.key==='Escape') this.remove()" >
+  <div class="bg-surface my-auto rounded-xl w-full max-w-2xl flex flex-col border border-edge">
     <div class="flex items-center justify-between px-4 py-2 border-b border-edge">
       <h3 class="font-semibold text-lg">Remove from collection</h3>
       <div class="flex justify-end gap-2">

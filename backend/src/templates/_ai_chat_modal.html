@@ -1,6 +1,6 @@
 {# Deck coaching chat modal (#172). #}
-<dialogue class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onclick="if (event.target === this) this.remove()" onkeydown="if(event.key==='Escape') this.remove()" x-data="{ chat_thinking: {%if messages and (messages | last).role=='user' %}true{%else%}false{%endif%}, message: '' }">
-  <div class="bg-surface rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-edge">
+<dialogue class="fixed inset-0 overflow-y-auto bg-black/50 flex items-center justify-center p-4 z-50" onclick="if (event.target === this) this.remove()" onkeydown="if(event.key==='Escape') this.remove()" x-data="{ chat_thinking: {%if messages and (messages | last).role=='user' %}true{%else%}false{%endif%}, message: '' }">
+  <div class="bg-surface my-auto rounded-xl w-full max-w-2xl flex flex-col border border-edge">
     <div class="flex items-center justify-between px-4 py-2 border-b border-edge">
       <h3 class="font-semibold text-lg">{{title}}</h3>
       <form hx-post="/decks/{{ deck.id }}/ai/chat/clear" 
@@ -58,20 +58,30 @@
       </div>
 
 
-      <div class="text-muted px-5 pb-4 flex flex-wrap gap-x-2 items-center">
+      <div class="text-muted px-5 pb-4 flex flex-wrap gap-x-2 items-center text-sm" x-data="{include_deck: {{(include_deck or True) | tojson}},include_collection: {{(include_collection or False) | tojson}}, show_advanced_controls: false}">
         <span class="">Share:</span>
 
         <label class="inline-flex items-center cursor-pointer">
-          <input type="checkbox" name="include_deck" value="1" {% if include_deck %}checked{% endif %} class="sr-only peer">
+          <input type="checkbox" name="include_deck" x-model="include_deck" class="sr-only peer">
           <div class="relative w-9 h-5 rounded-full border border-edge hover:border-accent bg-surface-2 peer-checked:bg-accent peer-checked:after:translate-x-full peer-checked:after:border-buffer after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
-          <span class="select-none ml-1 text-sm font-medium text-heading" title="Give AI access to details about this deck including its description, card list, and any derived statistics about the cards.">This Deck Details & Cards</span>
+          <span class="select-none ml-1 font-medium text-heading" title="Give AI access to details about this deck including its description, card list, and any derived statistics about the cards.">This Deck Details & Cards</span>
         </label>
 
         <label class="inline-flex items-center cursor-pointer">
-          <input type="checkbox" name="include_collection" value="1" {% if include_collection %}checked{% endif %} class="sr-only peer">
+          <input type="checkbox" name="include_collection" x-model="include_collection" class="sr-only peer">
           <div class="relative w-9 h-5 rounded-full border border-edge hover:border-accent bg-surface-2 peer-checked:bg-accent peer-checked:after:translate-x-full peer-checked:after:border-buffer after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
-          <span class="select-none ml-1 text-sm font-medium text-heading" title="Give AI access to the list of ALL cards in the collection which are not currently in a Deck.">All cards available in collection</span>
+          <span class="select-none ml-1 font-medium text-heading" title="Give AI access to the list of ALL cards in the collection which are not currently in a Deck.">All cards available in collection</span>
+
         </label>
+
+        <a x-show="include_collection" x-cloak href="#" role="button" @click.prevent="show_advanced_controls = !show_advanced_controls" class="text-accent hover:underline" x-text="show_advanced_controls ? 'Hide Controls' : 'Advanced Controls'">Advanced Controls</a>
+
+        <div x-show="show_advanced_controls" x-cloak class="mt-2 w-full">
+          <input type="text" name="collection_cards_filter" 
+                placeholder="Optional: Narrow collection sharing using using Scryfall syntax" 
+                value="{{ collection_cards_filter or '' }}"
+                class="w-full mt-1 text-sm rounded-lg bg-surface-2 border border-edge px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-accent" />
+        </div>
 
       </div>
 

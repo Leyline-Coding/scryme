@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from collections import Counter
@@ -128,7 +127,6 @@ def _scan_deck_cards(info: dict) -> _DeckScan:
 
 
 
-
 async def deck_ai_context(
     session: AsyncSession, deck: Deck, useCombined: bool = True
 ) -> DeckContext:
@@ -167,8 +165,6 @@ async def deck_ai_context(
         tribes=sorted(tribes)[:6],
         key_cards=key_cards,
     )
-
-
 
 
 
@@ -225,52 +221,49 @@ def _snippet(oracle_text: str | None) -> str:
 
 
 
-async def collection_ai_context(session: AsyncSession) -> CollectionContext:
+async def collection_ai_context(
+    session: AsyncSession,
+    collection_cards_filter: str
+) -> CollectionContext:
     """The owned, in-identity candidate pool, annotated and scored for deck fit (#294/#295)."""
 
+    # Build the base query to get collection cards
+    base_query = select(Card.name, Card.oracle_id, Card.scryfall_id, Card.color_identity,
+                        Card.type_line, Card.oracle_text, Card.keywords)
 
-    rows = (await session.execute(
-        select(Card.name, Card.oracle_id, Card.scryfall_id, Card.color_identity,
-                Card.type_line, Card.oracle_text, Card.keywords)
-        .join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
-        .outerjoin(Location, CollectionCard.location == Location.id)
-        .where(
-            CollectionCard.quantity>0, Card.oracle_id.is_not(None),
-            (Location.type != "deck") | (Location.id.is_(None)),
-            and_(Card.type_line != "Card", Card.type_line.not_ilike("%token%"))
-        )
-        .distinct(Card.oracle_id)
-        .order_by(Card.oracle_id, Card.released_at.desc().nulls_last())
-    )).all()
+    # Add joins and filters for collection cards
+    base_query = base_query.join(CollectionCard, CollectionCard.scryfall_id == Card.scryfall_id)
+    base_query = base_query.outerjoin(Location, CollectionCard.location == Location.id)
+    base_query = base_query.where(
+        CollectionCard.quantity>0, Card.oracle_id.is_not(None),
+        (Location.type != "deck") | (Location.id.is_(None)),
+        and_(Card.type_line != "Card", Card.type_line.not_ilike("%token%"))
+    )
 
-    '''
-    deck_sids = [c.scryfall_id for c in deck.cards if c.scryfall_id]
-    deck_oracles = {c.oracle_id for c in deck.cards if c.oracle_id}
-    identity: set[str] = set()
-    if deck_sids:
-        for (ci,) in (await session.execute(
-            select(Card.color_identity).where(Card.scryfall_id.in_(deck_sids))
-        )).all():
-            identity.update(ci or [])
+    # Apply the filter if provided
+    if collection_cards_filter.strip():
+        try:
+            # Danger: circular imports
+            from src.search.compiler import compile_node
+            from src.search.parser import parse
 
-    profile = DeckProfile()
-    seen: set[str] = set()
-    pool: list[_PoolCard] = []
-    for name, _oracle_id, sid, _ci, type_line, oracle_text, _keywords in rows:
-        if oracle_id in deck_oracles or name.lower() in seen:
-            continue
-        if identity and not set(ci or []).issubset(identity):
-            continue
-        seen.add(name.lower())
-        score, _ = card_synergy(
-            profile, keywords=keywords, type_line=type_line, oracle_text=oracle_text
-        )
-        pool.append(_PoolCard(
-            name=name, scryfall_id=str(sid), role=classify_role(type_line, oracle_text),
-            keywords=[k for k in (keywords or []) if k in profile.themes],
-            snippet=_snippet(oracle_text), synergy=score,
-        ))
-    '''
+            # Parse the search query to get AST
+            node = parse(collection_cards_filter)
+            if node is not None:
+                # Compile the search AST into a SQLAlchemy condition
+                search_condition = compile_node(node)
+                # Add the compiled condition to our base query
+                base_query = base_query.where(search_condition)
+        except Exception:
+            # If parsing fails, just use the base query without additional filtering
+            pass
+
+    # Add distinct and ordering
+    base_query = base_query.distinct(Card.oracle_id).order_by(
+        Card.oracle_id, Card.released_at.desc().nulls_last()
+    )
+
+    rows = (await session.execute(base_query)).all()
 
     pool: list[CardScan] = []
     for name, _oracle_id, sid, _ci, type_line, oracle_text, _keywords in rows:
@@ -281,8 +274,6 @@ async def collection_ai_context(session: AsyncSession) -> CollectionContext:
             keywords=[],
             snippet=_snippet(oracle_text)
         ))
-
-
 
     return CollectionContext(
         cardlist=pool

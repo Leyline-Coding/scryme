@@ -636,6 +636,7 @@ async def deck_chat(
     user_message: str,
     deck: Deck | None,
     collection_cards: bool = False,
+    collection_cards_filter: str = '',
     interfaceContext: str = ''
 ) -> str:
     """One turn of a coaching conversation, grounded in the deck's list, identity, and themes."""
@@ -669,7 +670,7 @@ async def deck_chat(
         )
         system += " "+deck_context.block()+"\n\n"
     if(collection_cards):
-        collection_context = await collection_ai_context(session)
+        collection_context = await collection_ai_context(session, collection_cards_filter)
         system += (
             "The user has specifically shared the following list of MTG cards in their collection. "
             "These cards are presumably available for use, for deck construction for example. If "
@@ -728,6 +729,7 @@ async def ai_deck_chat_response_worker(
     deck_id: int,
     include_deck: bool,
     include_collection: bool,
+    collection_cards_filter: str = ''
 ) -> int | None:
     """Start a background task to process the AI response for a user message."""
     deck = await session.get(Deck, deck_id)
@@ -746,6 +748,7 @@ async def ai_deck_chat_response_worker(
             last_user_message.content,
             deck if include_deck else None,
             include_collection,
+            collection_cards_filter=collection_cards_filter,
             interfaceContext='deck_building'
         )
     except (httpx.HTTPError, KeyError, IndexError, ValueError):

@@ -22,11 +22,17 @@
   {% for deck, count, value, symbols, group_name, updated_at, sleeve in decks %}
   <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3 relative overflow-hidden">
     {% if show_sleeves %}
+    {% set commander_dc = deck.cards | selectattr("id", "equalto", deck.commander_id) | first | default(None) if deck.commander_id else None %}
+    {% set commander = commander_dc.card if commander_dc else None %}
+    {% if not commander %}
     <a href="/decks/{{ deck.id }}">
+    {% endif %}
       <div class="min-w-10 w-10 aspect-[5/7]">
         {% include "_deck_sleeve_display.html" %}
       </div>
+    {% if not commander %}
     </a>
+    {% endif %}
     {% endif %}
     <a href="/decks/{{ deck.id }}" class="flex-1 min-w-0">
       <div class="font-medium truncate hover:text-accent">{{ deck.name }}</div>

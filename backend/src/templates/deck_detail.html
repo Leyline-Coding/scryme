@@ -194,8 +194,8 @@
         {% set commander = commander_cov.scryfall_card if commander_cov else None %}
         
         {% set sleeve = deck.sleeves | last if deck.sleeves else None %}
-        <div class="flex items-center justify-center">
-          <div class="w-1/3 md:w-full gap-2 mb-2 aspect-[5/7] text-6xl">
+        <div class="flex items-center justify-center card-grid">
+          <div class="w-1/3 md:w-full gap-2 mb-2 aspect-[5/7] text-6xl ml-2 mr-2 relative group deck-details">
             {% include "_deck_sleeve_display.html" %}
           </div>
         </div>

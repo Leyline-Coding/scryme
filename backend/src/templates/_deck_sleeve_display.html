@@ -8,34 +8,51 @@
   When no commander is elected and no sleeve is assigned and the deck has no cards in it (draft state): Show a placeholder graphic
 #}
 
-{% if sleeve and commander%}
 
+<div class="w-full h-full" {% if sleeve and sleeve.color %}style="--sleeve-color: {{ sleeve.color | css_color }}; --sleeve-adaptive: oklch(from var(--sleeve-color) clamp(0.25, calc((0.15 - l) * 1000), 0.40) c h); --sleeve-adaptive-2: oklch(from var(--sleeve-color) clamp(0.25, calc((0.15 - l) * 1000), 0.10) c h) " {% endif %}>
 
-<img src="{{ commander.front_face_image() }}" 
-    alt="{{ commander.name }}" 
-    loading="lazy" 
-    class="" />
-
+{% if commander%}
+  <a href="/card/{{ commander.scryfall_id }}" class="group block rounded-lg 
+    overflow-hidden ring-1 ring-edge hover:ring-accent transition" x-data="{show_commander: true}">
+    <img src="{{ commander.front_face_image() }}" 
+      alt="{{ commander.name }}" 
+      loading="lazy" 
+      class="grid-card-img" 
+      x-show="show_commander"/>
+    {% if sleeve and (sleeve.image or sleeve.color) %}
+    {% if sleeve.image %}
+    <img src="/sleeves/{{ sleeve.id }}/image" alt="{{ sleeve.name or 'Sleeve' }}" loading="lazy" class="object-cover rounded border border-2 border-black" x-show="!show_commander" x-cloak>
+    {% else %}
+    <div class="w-full h-full object-cover rounded border group-[.deck-details]:border-4 border-black flex items-center justify-center bg-gradient-to-br from-[var(--sleeve-color)] to-[var(--sleeve-adaptive-2)] text-[var(--sleeve-adaptive)]" x-show="!show_commander" x-cloak><i class="fa-solid fa-dice-d20"></i></div>
+    {% endif %}
+    <span class="grid-flip-overlay absolute inset-0 z-10 flex items-center justify-center
+        opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+      <button type="button" title="Flip to the other face" aria-label="Flip card"
+              class="grid-flip-btn pointer-events-auto grid place-items-center w-4 group-[.deck-details]:w-10 
+              h-4 group-[.deck-details]:h-10 rounded-full bg-black/60 text-white group-[.deck-details]:text-xl leading-none 
+              hover:bg-black/80 shadow-lg" @click="show_commander = !show_commander">
+        <i class="fa-solid fa-arrow-rotate-left"></i>
+      </button>
+    </span>
+    {% endif %}
+  </a>
 
 {% elif sleeve and (sleeve.image or sleeve.color) %}
   {% if sleeve.image %}
-    <img src="/sleeves/{{ sleeve.id }}/image" alt="{{ sleeve.name or 'Sleeve' }}" loading="lazy" class="object-cover rounded border border-2 border-black">
+    <img src="/sleeves/{{ sleeve.id }}/image" alt="{{ sleeve.name or 'Sleeve' }}" loading="lazy" class="object-cover rounded border group-[.deck-details]:border-4 border-black">
   {% else %}
-    <div class="w-full h-full object-cover rounded border border-2 border-black" style="background-color: {{ sleeve.color | css_color }};"></div>
+    <div class="w-full h-full object-cover rounded border group-[.deck-details]:border-4 border-black flex items-center justify-center bg-gradient-to-br from-[var(--sleeve-color)] to-[var(--sleeve-adaptive-2)] text-[var(--sleeve-adaptive)]"><i class="fa-solid fa-dice-d20"></i></div>
   {% endif %}
-{% elif commander %}
-
-<img src="{{ commander.front_face_image() }}" 
-    alt="{{ commander.name }}" 
-    loading="lazy" 
-    class="" />
-
 {% else %}
   {# Show a placeholder for decks without sleeves #}
-  <div class="w-full h-full object-cover rounded border-2 border-black bg-gradient-to-br from-gray-200 to-gray-400 flex items-center justify-center">
-    <i class="fa-solid fa-dice-d20 text-gray-600"></i>
+  <div class="w-full h-full object-cover rounded group-[.deck-details]:border-4 border-black bg-gradient-to-br from-gray-200 to-gray-500 flex items-center justify-center group-[.deck-details]:p-2">
+    <div class="w-full h-full rounded-2xl group-[.deck-details]:border-4 border-dashed border-gray-500 flex items-center justify-center">
+      <i class="fa-solid fa-dice-d20 text-gray-500"></i>
+    </div>
   </div>
 {% endif %}
+</div>
+
 
 
 

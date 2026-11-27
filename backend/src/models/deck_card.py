@@ -15,6 +15,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db import Base
+from src.models.card import Card
 from src.models.deck import Deck
 from src.models.stack import Stack
 
@@ -54,3 +55,5 @@ class DeckCard(Stack, Base):
     owned: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
 
     deck: Mapped[Deck] = relationship(back_populates="cards")
+    ## Forward refference to the scryfall card
+    card: Mapped[Card] = relationship(lazy="joined")

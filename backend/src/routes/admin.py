@@ -5,7 +5,7 @@ auth. Mutating endpoints are disabled when the instance is in read-only (demo) m
 """
 
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -77,7 +77,7 @@ def execute_migrations():
 
 
 @router.post("/admin/migrations/apply")
-async def apply_pending_migrations(request: Request) -> dict:
+async def apply_pending_migrations(request: Request, response: Response) -> dict:
     """Apply pending migrations."""
     import asyncio
 
@@ -87,6 +87,7 @@ async def apply_pending_migrations(request: Request) -> dict:
         await asyncio.to_thread(execute_migrations)
         from src.main import _check_has_pending_migrations
         request.app.state.pending_migrations = await _check_has_pending_migrations()
+        response.headers["HX-Refresh"] = "true"
         return {"status": "success", "message": "Database upgraded to head."}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Migration failed: {str(exc)}") from exc

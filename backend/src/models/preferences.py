@@ -44,6 +44,7 @@ class Preferences(Base):
     page_size: Mapped[int] = mapped_column(Integer, default=60, server_default=text("60"))
     infinite: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false())
     hist_currency: Mapped[str | None] = mapped_column(String(8))  # NULL = inherit `currency`
+    show_sleeves: Mapped[bool] = mapped_column(Boolean, nullable=True, server_default=true())
 
     # Appearance preferences (localStorage-backed today; see base.html pre-paint / _settings.html).
     mode: Mapped[str] = mapped_column(String(8), default="dark", server_default="dark")

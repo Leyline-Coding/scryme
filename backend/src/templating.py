@@ -24,7 +24,7 @@ def _inject_prefs(request) -> dict:
     state = getattr(request, "state", None)
     prefs = getattr(state, "prefs", None)
     if prefs is None:
-        return {"theme_prefs": None, "prefs_writable": False, "theme_authoritative": False}
+        return {"theme_prefs": None, "prefs_writable": False, "theme_authoritative": False, 'currency': 'USD'}
     appearance = {
         "mode": prefs.mode, "palette": prefs.palette, "accent": prefs.accent,
         "foil_speed": prefs.foil_speed, "spin": prefs.spin, "spin_speed": prefs.spin_speed,

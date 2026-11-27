@@ -21,16 +21,12 @@
 <ul class="space-y-2">
   {% for deck, count, value, symbols, group_name, updated_at, sleeve in decks %}
   <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3 relative overflow-hidden">
-    {% if sleeve %}
-    <a href="/decks/{{ deck.id }}"" class="shrink-0">
-      {% if sleeve.image %}
-      <img src="/sleeves/{{ sleeve.id }}/image" alt="{{sleeve.name}}" loading="lazy" class="w-10 aspect-[5/7] object-cover rounded">
-      {% elif sleeve.color %}
-      <div class="w-10 aspect-[5/7] object-cover rounded" style="background-color: {{ sleeve.color | css_color }}"></div>
-      {% endif %}
+    {% if show_sleeves %}
+    <a href="/decks/{{ deck.id }}">
+      <div class="min-w-10 w-10 aspect-[5/7]">
+        {% include "_deck_sleeve_display.html" %}
+      </div>
     </a>
-    {% else %}
-    <span class="w-10 aspect-[5/7] object-cover rounded"></span>
     {% endif %}
     <a href="/decks/{{ deck.id }}" class="flex-1 min-w-0">
       <div class="font-medium truncate hover:text-accent">{{ deck.name }}</div>

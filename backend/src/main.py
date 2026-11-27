@@ -152,12 +152,12 @@ def _install_prefs_loader(app: FastAPI) -> None:
     from src.models import Preferences
     from src.preferences import resolve, sync_cookie_prefs_to_db, update_preferences
 
-    _skip = ("/static/", "/images/", "/api/")
+    _skip = ("/static/", "/images/", "/api/", "/health", "/metrics", "/alerts")
 
     @app.middleware("http")
     async def load_prefs(request, call_next):
         path = request.url.path
-        if not (path.startswith(_skip) or path in ("/health", "/metrics")):
+        if not (path.startswith(_skip)):
             try:
                 async with SessionLocal() as s:
                     row = await s.get(Preferences, 1)
@@ -177,7 +177,10 @@ def _install_prefs_loader(app: FastAPI) -> None:
                         row, request.cookies, writable=not get_settings().read_only
                     )
                     request.state.prefs_saved = row is not None  # a value has actually been saved
-            except SQLAlchemyError:
+            except SQLAlchemyError as exc:
+                # This return state dangerously returns no preferences silently, masking potential
+                # underlying issues with preferences. At least throw a warning in the console
+                log.warning("templating.no_prefs_available", exc=exc)
                 request.state.prefs = None
         return await call_next(request)
 

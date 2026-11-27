@@ -102,6 +102,7 @@ async def collection(
             .group_by(Deck.id)
         )
 
+        ctx["show_sleeves"] = request.state.prefs.show_sleeves
         ctx["decks"] = []
 
         for d, n in rows.all():

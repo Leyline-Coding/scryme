@@ -79,7 +79,8 @@ async def test_add_edit_remove_items(session):
     assert len(cl.items) == 1
 
     # Add cards (one per line); duplicates of existing items are skipped.
-    await R.add_items(_request("/checklists/{cl.id}/items"), cl.id, cards="Mox Sapphire\nBlack Lotus\nMox Emerald", session=session)
+    await R.add_items(_request("/checklists/{cl.id}/items"),
+                      cl.id, cards="Mox Sapphire\nBlack Lotus\nMox Emerald", session=session)
     await session.refresh(cl)
     names = {i.name for i in cl.items}
     assert names == {"Black Lotus", "Mox Sapphire", "Mox Emerald"}
@@ -89,25 +90,32 @@ async def test_add_edit_remove_items(session):
     assert emerald.scryfall_id is None          # not in the card DB
 
     # Rename an item -> re-resolves (Mox Emerald -> Mox Sapphire, which exists).
-    await R.edit_item(_request("/checklists/{cl.id}/items/{emerald.id}"), cl.id, emerald.id, name="Mox Sapphire", session=session)
+    await R.edit_item(_request("/checklists/{cl.id}/items/{emerald.id}"),
+                      cl.id, emerald.id, name="Mox Sapphire", session=session)
     renamed = await session.get(type(emerald), emerald.id)
     assert renamed.name == "Mox Sapphire" and renamed.scryfall_id is not None
 
     # Remove an item.
-    await R.delete_item(_request("/checklists/{cl.id}/items/{lotus.id}"), cl.id, lotus.id, session=session)
+    await R.delete_item(_request("/checklists/{cl.id}/items/{lotus.id}"),
+                        cl.id, lotus.id, session=session)
     await session.refresh(cl)
     assert "Black Lotus" not in {i.name for i in cl.items}
     # Adding only cards already present adds nothing; a blank/foreign rename is a no-op.
     before = len(cl.items)
-    await R.add_items(_request("/checklists/{cl.id}/items"), cl.id, cards="Mox Sapphire", session=session)
+    await R.add_items(_request("/checklists/{cl.id}/items"),
+                      cl.id, cards="Mox Sapphire", session=session)
     await session.refresh(cl)
     assert len(cl.items) == before
-    await R.edit_item(_request("/checklists/{cl.id}/items/999999"), cl.id, 999999, name="X", session=session)     # foreign item -> no-op
-    await R.edit_item(_request("/checklists/{cl.id}/items/{renamed.id}"), cl.id, renamed.id, name="   ", session=session)  # blank name -> no-op
+    await R.edit_item(_request("/checklists/{cl.id}/items/999999"),
+                      cl.id, 999999, name="X", session=session)     # foreign item -> no-op
+    await R.edit_item(_request("/checklists/{cl.id}/items/{renamed.id}"),
+                      cl.id, renamed.id, name="   ", session=session)  # blank name -> no-op
     # Missing checklist / foreign item are graceful.
     with pytest.raises(HTTPException):
-        await R.add_items(_request("/checklists/999999/items"), 999999, cards="X", session=session)
-    assert (await R.delete_item(_request("/checklists/{cl.id}/items/999999"), cl.id, 999999, session=session)).status_code == 303
+        await R.add_items(_request("/checklists/999999/items"),
+                          999999, cards="X", session=session)
+    assert (await R.delete_item(_request("/checklists/{cl.id}/items/999999"),
+                                cl.id, 999999, session=session)).status_code == 303
 
 
 @pytest.mark.asyncio

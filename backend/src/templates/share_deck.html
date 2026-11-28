@@ -12,7 +12,7 @@
       <span class="text-muted">{{ '{:,}'.format(cov.total_needed) }} cards</span>
       {% if show_prices and stats %}
       <span class="ml-auto text-muted">Total
-        <b class="text-fg">{{ cur.symbol }}{{ '{:,.2f}'.format(stats.total_value) }}</b></span>
+        <b class="text-fg">{{ stats.total_value | currency_filter(currency) }}</b></span>
       {% endif %}
     </div>
     <ul class="divide-y divide-edge">

@@ -14,7 +14,7 @@
         <span class="shrink-0 text-[10px] uppercase tracking-wide text-muted">{{ role }}</span>
         {# Why this card and not another legal one (#294) — an unexplained pick can't be argued with. #}
         {% if p.fit %}<span class="min-w-0 truncate text-xs text-accent" title="{{ p.fit }}">{{ p.fit }}</span>{% endif %}
-        <span class="ml-auto shrink-0 tabular-nums text-muted">{{ cur.symbol }}{{ '{:,.2f}'.format(p.price) }}</span>
+        <span class="ml-auto shrink-0 tabular-nums text-muted">{{ p.price | currency_filter(currency) }}</span>
         {% if not read_only %}
         <button hx-post="/decks/{{ deck.id }}/add-owned" hx-target="#owned-out" hx-swap="innerHTML"
                 hx-vals='{"scryfall_id": "{{ p.scryfall_id }}"}'

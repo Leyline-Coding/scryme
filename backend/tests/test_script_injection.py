@@ -366,8 +366,8 @@ async def test_box_name_is_data_for_the_delete_confirm_not_code(client, session)
     assert 'onsubmit="return confirm(this.dataset.confirm)"' in body
     assert _attr(body, "data-confirm") == f"Delete box {JS_BREAKOUT}? Its cards become unfiled."
     # The row's click-through is the same pattern: the URL is data, the handler is constant.
-    assert 'onclick="window.location.href = this.dataset.href"' in body
-    assert _attr(body, "data-href").startswith("/search?q=loc%3A%22box%3A")
+    assert '@click="window.location.href = url"' in body
+    assert _attr(body, "x-data").startswith("{url: '/search?q=loc%3A%22box%3A")
 
 
 def test_no_template_interpolates_into_a_confirm_call():

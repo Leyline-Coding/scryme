@@ -27,6 +27,7 @@ def _checked(action: str, target: str) -> tuple[str, str]:
     return action, target
 
 
+## Deprecating this route
 @router.post("/edit-name", response_class=HTMLResponse)
 async def edit_name_form(
     request: Request,
@@ -34,7 +35,7 @@ async def edit_name_form(
     action: str = Form(...),
     target: str = Form(...),
 ) -> HTMLResponse:
-    """Return the form for editing the binder name."""
+    """Return a form for editing a generic name."""
     action, target = _checked(action, target)
     return templates.TemplateResponse(
         request, "forms/edit_name.html",
@@ -42,6 +43,7 @@ async def edit_name_form(
     )
 
 
+## Deprecating this route
 @router.post("/edit-description", response_class=HTMLResponse)
 async def edit_description_form(
     request: Request,

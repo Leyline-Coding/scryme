@@ -7,7 +7,7 @@
   {% if sell.cards %}
   <div class="flex items-center gap-3 text-sm shrink-0">
     <span class="text-muted">{{ '{:,}'.format(sell.total_cards) }} cards ·
-      <b>{{ cur.symbol }}{{ '{:,.2f}'.format(sell.total_value) }}</b></span>
+      <b>{ sell.total_value | currency_filter(currency) }</b></span>
     <a href="/sell/export?fmt=txt" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.txt</a>
     <a href="/sell/export?fmt=csv" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.csv</a>
   </div>
@@ -35,8 +35,8 @@
         <td class="px-2 whitespace-nowrap">{{ set_symbol(c.set_code, c.rarity) }}
           <span class="text-muted uppercase text-xs">{{ c.set_code }}</span></td>
         <td class="px-2 text-right tabular-nums">{{ c.quantity }}</td>
-        <td class="px-2 text-right tabular-nums text-muted">{{ cur.symbol }}{{ '{:,.2f}'.format(c.unit) }}</td>
-        <td class="px-2 text-right tabular-nums">{{ cur.symbol }}{{ '{:,.2f}'.format(c.value) }}</td>
+        <td class="px-2 text-right tabular-nums text-muted">{{ c.unit | currency_filter(currency) }}</td>
+        <td class="px-2 text-right tabular-nums">{{ c.value | currency_filter(currency) }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -45,7 +45,7 @@
         <td class="py-2 px-2" colspan="2">Total</td>
         <td class="px-2 text-right tabular-nums">{{ '{:,}'.format(sell.total_cards) }}</td>
         <td></td>
-        <td class="px-2 text-right tabular-nums">{{ cur.symbol }}{{ '{:,.2f}'.format(sell.total_value) }}</td>
+        <td class="px-2 text-right tabular-nums">{{ sell.total_value | currency_filter(currency) }}</td>
       </tr>
     </tfoot>
   </table>

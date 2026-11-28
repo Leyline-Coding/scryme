@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.checklists import (
@@ -106,6 +106,28 @@ async def add_items(
     return _back(request, checklist.id)
 
 
+@router.get("/checklists/{checklist_id}/items/{item_id}/edit-name", response_class=HTMLResponse)
+async def edit_name_form(
+    request: Request,
+    checklist_id: int,
+    item_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Return a form for editing a checklist item."""
+    checklist = await session.get(Checklist, checklist_id)
+    if checklist is None:
+        raise HTTPException(status_code=404, detail="Checklist not found.")
+    item = next(obj for obj in checklist.items if obj.id == item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found.")
+    return templates.TemplateResponse(
+        request, "forms/edit_name.html",
+        {"placeholder": item.name,
+         "action": f"/checklists/{checklist.id}/items/{item.id}",
+         "target": f"#card-name-{item.id}"}
+    )
+
+
 @router.post("/checklists/{checklist_id}/items/{item_id}")
 async def edit_item(
     request: Request,
@@ -113,11 +135,11 @@ async def edit_item(
     item_id: int,
     name: str = Form(""),
     session: AsyncSession = Depends(get_session),
-):
+) -> PlainTextResponse:
     """Rename (and re-resolve) a checklist item (#297)."""
     _guard_writable()
     await rename_checklist_item(session, checklist_id, item_id, name)
-    return _back(request, checklist_id)
+    return PlainTextResponse(status_code=200, content=name)
 
 
 @router.post("/checklists/{checklist_id}/items/{item_id}/delete")

@@ -30,57 +30,66 @@
     {% endif %}
   </div>
 
-  <ul class="divide-y divide-edge rounded-xl bg-surface ring-1 ring-edge overflow-hidden">
+  {% if cov.rows %}
+  <ul class="divide-y divide-edge rounded-xl bg-surface ring-1 ring-edge overflow-hidden mb-6">
     {% for r in cov.rows %}
-    <li class="px-4 py-2 text-sm {% if not r.matched %}text-amber-500{% endif %}"
-        x-data="{ editing: false }">
+    <li class="px-4 py-2 text-sm {% if not r.matched %}text-amber-500{% endif %}{% if r.scryfall_id %} cursor-pointer"
+          @click="window.location.href = url"{% else %}"{% endif %} x-data="{ {% if r.scryfall_id %}url: '/card/{{ r.scryfall_id }}'{% endif %}}">
       <div class="flex items-center gap-3">
         <span class="w-5 shrink-0 text-center">
-          {% if r.owned %}<span class="text-emerald-500">✓</span>{% else %}<span class="text-muted">○</span>{% endif %}
+          {% if r.owned %}
+          <span class="text-emerald-500">
+            <i class="fa-regular fa-circle-check"></i>
+          </span>
+          {% else %}
+          <span class="text-muted">
+            <i class="fa-regular fa-circle"></i>
+          </span>
+          {% endif %}
         </span>
-        {% if r.scryfall_id %}
-        <a href="/card/{{ r.scryfall_id }}" class="flex-1 min-w-0 truncate hover:text-accent">{{ r.name }}</a>
-        {% else %}
-        <span class="flex-1 min-w-0 truncate" title="Not found in the card database">{{ r.name }}</span>
+        <span id="card-name-{{r.item_id}}" {% if not r.scryfall_id %}title="Not found in the card database"{% endif %}>{{ r.name }}</span>
+        {% if not read_only %}
+        <button type="button" 
+                hx-get="/checklists/{{ cov.checklist.id }}/items/{{ r.item_id }}/edit-name"
+                hx-target="#card-name-{{r.item_id}}"
+                hx-swap="innerHTML"
+                hx-trigger="click"
+                class="mr-auto text-muted hover:text-accent"
+                @click.stop>
+          <i class="fa-solid fa-pen"></i>
+        </button>
         {% endif %}
         {% if not r.matched %}<span class="text-xs shrink-0">unrecognized</span>
         {% elif not r.owned %}<span class="text-xs text-muted shrink-0">missing</span>{% endif %}
         {% if not read_only %}
-        <button type="button" title="Rename / change card" @click="editing = !editing"
-                class="shrink-0 text-xs text-muted hover:text-accent tap">
-          <i class="fa-solid fa-pen"></i>
-        </button>
         <button type="button" title="Remove from checklist" class="shrink-0 text-xs text-muted hover:text-rose-500 tap"
-            hx-post="/checklists/{{ cov.checklist.id }}/items/{{ r.item_id }}/delete" hx-swap="none">
+            hx-post="/checklists/{{ cov.checklist.id }}/items/{{ r.item_id }}/delete" hx-swap="none" @click.stop>
           <i class="fa-solid fa-trash"></i>
         </button>
         {% endif %}
       </div>
-      {% if not read_only %}
-      <form method="post" action="/checklists/{{ cov.checklist.id }}/items/{{ r.item_id }}"
-            x-show="editing" x-cloak class="mt-1.5 pl-8 flex gap-1">
-        <label class="sr-only" for="rename-{{ r.item_id }}">Card name</label>
-        <input id="rename-{{ r.item_id }}" type="text" name="name" value="{{ r.name }}"
-               class="flex-1 rounded bg-surface-2 border border-edge px-2 py-1 text-sm" />
-        <button type="submit" class="rounded bg-surface-2 hover:bg-surface-3 px-2 py-1 text-xs">Save</button>
-      </form>
-      {% endif %}
     </li>
     {% endfor %}
   </ul>
+  {% endif %}
 
   {% if not read_only %}
-  <form method="post" action="/checklists/{{ cov.checklist.id }}/items" class="mt-4">
-    <label class="text-sm text-muted" for="add-cards">Add cards</label>
-    <div class="mt-1 flex gap-2">
-      <textarea id="add-cards" name="cards" rows="2" placeholder="One card name per line"
-                class="flex-1 rounded-lg bg-surface border border-edge px-3 py-2 font-mono text-sm"></textarea>
-      <button type="submit" class="self-start rounded-full bg-accent text-accent-fg px-4 
-          py-2 text-sm font-medium hover:opacity-90">
+  <section class="rounded-xl bg-surface ring-1 ring-edge p-4 mb-6">
+    <div class="flex items-center justify-between cursor-pointer" @click="open = !open">
+      <h2 class="text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
+        Add cards
+      </h2>
+    </div>
+    <form method="post" action="/checklists/{{ cov.checklist.id }}/items" class="flex-col gap-1">
+      <textarea id="add-cards" name="cards" rows="4" placeholder="One card name per line"
+                  class="w-full rounded-lg bg-surface-2 border border-edge px-3 py-2 font-mono text-sm"></textarea>
+      <button type="submit" class="mt-2 self-start rounded-full bg-accent text-accent-fg px-3 
+            py-1.5 text-sm font-medium hover:opacity-90">
         <i class="fa-solid fa-plus"></i> Add
       </button>
-    </div>
-  </form>
+    </form>
+  </section>
   {% endif %}
+
 </div>
 {% endblock %}

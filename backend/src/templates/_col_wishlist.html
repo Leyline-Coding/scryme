@@ -37,11 +37,23 @@
           {{ set_symbol(item.card.set_code, item.card.rarity) }}
           <span class="text-xs text-muted uppercase">{{ item.card.set_code }}</span>
         </a>
-        {% if item.note %}<div class="text-xs text-muted truncate">{{ item.note }}</div>{% endif %}
+        <div class="text-xs text-muted truncate">
+        {% if item.note %}{{ item.note }} •{% endif %}
+        {% if view_obj.card_prices[item.id] %}
+        <span class="w-20 inline-block md:hidden">
+          {{ (view_obj.card_prices[item.id] | float) | currency_filter(currency) }} ea. •
+          {{ (item.quantity * (view_obj.card_prices[item.id] | float)) | currency_filter(currency) }} Total
+        </span>
+        {% endif %}
+        </div>
       </div>
 
       <div class="tabular-nums text-right text-sm text-muted shrink-0 flex flex-row items-center justify-end gap-4 ">
-        {% if view_obj.card_prices[item.id] %}<span class="w-16 inline-block">{{ (view_obj.card_prices[item.id] | float) | currency_filter(currency) }}</span>{% endif %}
+        {% if view_obj.card_prices[item.id] %}
+        <span class="w-20 inline-block hidden md:inline">
+          {{ (view_obj.card_prices[item.id] | float) | currency_filter(currency) }} ea.
+        </span>
+        {% endif %}
         <div class="inline-flex items-center rounded-full bg-surface-2 overflow-hidden">
           <form method="post" action="/wishlist/adjust" class="inline">
             <input type="hidden" name="scryfall_id" value="{{ item.scryfall_id }}" />
@@ -55,7 +67,12 @@
             <button type="submit" title="Add one" class="px-2 py-1.5 hover:bg-surface-3">+</button>
           </form>
         </div>
-        {% if view_obj.card_prices[item.id] %}<span class="w-16 inline-block">{{ (item.quantity * (view_obj.card_prices[item.id] | float)) | currency_filter(currency) }}</span>{% endif %}
+        <i class="fa-solid fa-equals hidden md:inline"></i>
+        {% if view_obj.card_prices[item.id] %}
+        <span class="w-16 inline-block hidden md:inline">
+          {{ (item.quantity * (view_obj.card_prices[item.id] | float)) | currency_filter(currency) }}
+        </span>
+        {% endif %}
       </div>
       {% if not read_only %}
       <form method="post" action="/wishlist/remove" class="shrink-0">

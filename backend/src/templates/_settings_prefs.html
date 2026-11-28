@@ -202,3 +202,11 @@
       <p class="mt-2 text-xs text-muted">How large cards appear in grid results on the search and
         collection pages. Saved in this browser.</p>
     </div>
+
+    <div>
+      <label class="flex items-center gap-2 mt-8 mb-2 text-sm">
+        <input type="checkbox" x-model="showSleevesOn" @change="setShowSleeves()"
+               class="w-4 h-4 accent-[color:var(--c-accent)]" />
+        <span>Show sleeve images in deck lists</span>
+      </label>
+    </div>

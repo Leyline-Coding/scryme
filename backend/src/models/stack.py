@@ -33,10 +33,10 @@ class Stack:
         not capture foil, etched, or language variants.
 
         This function generates, consistently, a unique string that truely uniquely identifies all
-        the caharchteristics of a card printing.
+        the charchteristics of a card printing.
 
         The primary use case for this is for exact card matching across stacks
-        (collecotr_card, deck_card)
+        (collection_card, deck_card)
         """
         return Stack._get_unique_stack_key(self.scryfall_id,self.finish,self.language)
 

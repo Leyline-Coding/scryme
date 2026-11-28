@@ -43,6 +43,7 @@ class Prefs:
     page_size: int = 60
     infinite: bool = False
     hist_currency: str | None = None
+    show_sleeves: bool = True
     mode: str = "dark"
     palette: str = "trop-orange"
     accent: str = ""

@@ -207,6 +207,7 @@
       spinSpeed: Number.parseInt(localStorage.getItem("scryme-spin-speed") || "6", 10),
       cardSize: Number.parseInt(localStorage.getItem("scryme-card-size") || "5", 10),
       moversOn: (document.cookie.match(/(?:^|; )scryme_movers=([^;]+)/) || [])[1] === "1",
+      showSleevesOn: (document.cookie.match(/(?:^|; )scryme_show_sleeves=([^;]+)/) || [])[1] === "1",
       lang: (document.cookie.match(/(?:^|; )scryme_lang=([^;]+)/) || [])[1] || "en",
       // id, name, dark/light swatch bg, and per-mode default accent (for the accent picker reset).
       palettes: [
@@ -296,6 +297,12 @@
                           ";path=/;max-age=31536000;samesite=lax";
         await this.savePref({ movers: this.moversOn });
         if (location.pathname === "/search") location.reload();
+      },
+      async setShowSleeves() {
+        document.cookie = "scryme_show_sleeves=" + (this.showSleevesOn ? "1" : "0") +
+                          ";path=/;max-age=31536000;samesite=lax";
+        await this.savePref({ show_sleeves: this.showSleevesOn });
+        if (location.pathname === "/collection/decks") location.reload();
       },
       applyFacetRowCap() {
         localStorage.setItem("scryme-facet-row-cap", this.facetRowCap);

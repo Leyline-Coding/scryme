@@ -33,6 +33,7 @@ class PreferencesOut(BaseModel):
     page_size: int
     infinite: bool
     hist_currency: str | None
+    show_sleeves: bool = True
     mode: str
     palette: str
     accent: str
@@ -56,6 +57,7 @@ class PreferencesUpdateIn(BaseModel):
     facet_row_cap: int | None = None
     infinite: bool | None = None
     hist_currency: str | None = None
+    show_sleeves: bool | None = None
     mode: str | None = None
     palette: str | None = None
     accent: str | None = None

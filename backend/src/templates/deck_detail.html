@@ -50,10 +50,10 @@
   </header>
 
 
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+  <div class="grid grid-cols-1 md:grid-cols-6 gap-6 mb-6">
 
     {# Coverage summary #}
-    <section class="md:col-span-3 rounded-xl bg-surface ring-1 ring-edge p-4">
+    <section class="md:col-span-5 rounded-xl bg-surface ring-1 ring-edge p-4">
       <div class="flex flex-row items-end justify-between gap-3 mb-2">
         <div>
           <div class="text-2xl font-bold">
@@ -134,13 +134,36 @@
         {% endfor %}
       </div>
 
-      <h2 class="mt-4 text-sm font-semibold text-muted mb-2 uppercase tracking-wide">Description</h2>
-      <form hx-post="/decks/{{ deck.id }}/update-description" hx-target="#deck-description" hx-swap="innerHTML" class="mt-2"
-      hx-on::before-request="document.getElementById('edit-description-btn').style.display = 'inline'">
-        <p class="text-sm text-muted" id="deck-description">{{ deck.description or "No description provided." }}</p>
-      </form>
       {% if not read_only %}
-      <div class="mt-2">
+      <div class="flex mt-3">
+        {# Checkout buttons #}
+        {% if cov.pct_in_deck < 100 %}
+        <form method="post" action="/decks/{{ cov.deck.id }}/checkout" class="mb-1">
+          <input type="hidden" name="mainboard" value="true">
+          <button type="submit" class="rounded-full bg-accent hover:bg-surface-3 px-2.5 py-1 text-xs mb-1">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Checkout Mainboard
+          </button>
+        </form>
+        {% if cov.side %}
+        <form method="post" action="/decks/{{ cov.deck.id }}/checkout" class="mb-1">
+          <input type="hidden" name="sideboard" value="true">
+          <button type="submit" class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs mb-1">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Checkout Sideboard
+          </button>
+        </form>
+        {% endif %}
+        {% endif %}
+        {% if cov.total_in_deck > 0 %}
+        <a href="/decks/{{ cov.deck.id }}/deconstruct" class="rounded-full bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs mb-1 block text-center">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i> Deconstruct Deck
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <h2 class="mt-3 text-sm font-semibold text-muted mb-2 uppercase tracking-wide">
+        Description
+        {% if not read_only %}
         <button type="button" 
                 id="edit-description-btn"
                 hx-post="/edit-description"
@@ -149,63 +172,36 @@
                 hx-swap="innerHTML"
                 hx-trigger="click"
                 hx-on::after-request="this.style.display = 'none'"
-                class="text-xs rounded-full bg-surface-2 text-muted border border-edge hover:border-accent px-2 py-1">
-          <i class="fa-solid fa-pen"></i> Edit Description
+                class="">
+          <i class="fa-solid fa-pen"></i>
         </button>
-      </div>
-      {% endif %}
+        {% endif %}
+      </h2> 
+      <form hx-post="/decks/{{ deck.id }}/update-description" hx-target="#deck-description" hx-swap="innerHTML" class="mt-2"
+      hx-on::before-request="document.getElementById('edit-description-btn').style.display = 'inline'">
+        <p class="text-sm text-muted" id="deck-description">{{ deck.description or "No description provided." }}</p>
+      </form>
+
+
     </section>
 
     {# Deck Construction #}
     <section class="md:col-span-1 rounded-xl bg-surface ring-1 ring-edge p-4">
-      <h2 class="text-xs font-semibold text-muted mb-2 uppercase tracking-wide">Deck Construction</h2>
-      
-      {# Sleeve info #}
-      {% if deck.sleeves %}
-        {% for sleeve in deck.sleeves %}
-          <div class="flex items-center gap-2 mb-2">
-            {% if sleeve.image %}
-              <img src="/sleeves/{{ sleeve.id }}/image" alt="{{ sleeve.name or 'Sleeve' }}" 
-                  loading="lazy" class="w-12 h-16 object-cover rounded border" />
-            {% else %}
-              <div style="background-color: {{ sleeve.color | css_color }}; width: 48px; height: 64px; 
-                        border: 1px solid black; border-radius: 4px; display: flex; align-items: center; 
-                        justify-content: center;" class="flex items-center justify-center">
-              </div>
-            {% endif %}
-            <div>
-              <div class="font-medium">{{ sleeve.name or 'Sleeve #' + sleeve.id | string }}</div>
-            </div>
-          </div>
-        {% endfor %}
-      {% else %}
-        <p class="text-sm text-muted">No sleeve associated with this deck. <a href="/collection/sleeves" class="text-accent hover:underline">Add a sleeve</a></p>
-      {% endif %}
 
-      {# Checkout buttons #}
-      <div class="mt-4">
-        {% if cov.pct_in_deck < 100 %}
-        <form method="post" action="/decks/{{ cov.deck.id }}/checkout" class="mb-1">
-          <input type="hidden" name="mainboard" value="true">
-          <button type="submit" class="w-full rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs mb-1">
-            <i class="fa-solid fa-arrow-right-to-bracket"></i> Checkout Mainboard
-          </button>
-        </form>
-        {% if cov.side %}
-        <form method="post" action="/decks/{{ cov.deck.id }}/checkout" class="mb-1">
-          <input type="hidden" name="sideboard" value="true">
-          <button type="submit" class="w-full rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs mb-1">
-            <i class="fa-solid fa-arrow-right-to-bracket"></i> Checkout Sideboard
-          </button>
-        </form>
-        {% endif %}
-        {% endif %}
-        {% if cov.total_in_deck > 0 %}
-        <a href="/decks/{{ cov.deck.id }}/deconstruct" class="w-full rounded-lg bg-surface-2 hover:bg-surface-3 px-2.5 py-1 text-xs mb-1 block text-center">
-          <i class="fa-solid fa-arrow-right-from-bracket"></i> Deconstruct Deck
-        </a>
-        {% endif %}
-      </div>
+
+        {# Include the sleeve display logic #}
+        {% set commander_cov = cov.main | selectattr("card_id", "equalto", deck.commander_id) | first | default(None) if deck.commander_id else None %}
+        {% set commander = commander_cov.scryfall_card if commander_cov else None %}
+        
+        {% set sleeve = deck.sleeves | last if deck.sleeves else None %}
+        <div class="flex items-center justify-center card-grid">
+          <div class="w-1/3 md:w-full gap-2 mb-2 aspect-[5/7] text-6xl ml-2 mr-2 relative group deck-details">
+            {% include "_deck_sleeve_display.html" %}
+          </div>
+        </div>
+        <a href="/collection/sleeves" class="text-sm text-muted hover:text-fg shrink-0">Manage sleeves →</a>
+
+
 
     </section>
   </div>

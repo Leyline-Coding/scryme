@@ -259,7 +259,7 @@ async def test_sleeve_colour_from_the_picker_is_stored(client, session):
                              follow_redirects=False)
     assert resp.status_code == 303
     assert (await _only_sleeve(session)).color == "#A1b2C3"
-    assert "background-color: #A1b2C3" in (await client.get("/collection/sleeves")).text
+    assert "--sleeve-color: #A1b2C3" in (await client.get("/collection/sleeves")).text
 
 
 @pytest.mark.asyncio
@@ -270,7 +270,7 @@ async def test_a_stored_non_colour_is_not_rendered_into_style(client, session):
     for url in ("/collection/sleeves", "/collection/decks", f"/decks/{deck.id}"):
         body = (await client.get(url)).text
         assert "red;x:y" not in body, url
-        assert "background-color: #000000" in body, url
+        assert "--sleeve-color: #000000" in body, url
 
 
 def test_colour_helpers():

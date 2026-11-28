@@ -28,14 +28,14 @@
 {% if sleeves %}
   <div class="card-grid">
     {% for sleeve in sleeves %}
-    <div class="relative">
+    <div class="relative" {% if sleeve and sleeve.color %}style="--sleeve-color: {{ sleeve.color | css_color }}; --sleeve-adaptive: oklch(from var(--sleeve-color) clamp(0.25, calc((0.15 - l) * 1000), 0.40) c h); --sleeve-adaptive-2: oklch(from var(--sleeve-color) clamp(0.25, calc((0.15 - l) * 1000), 0.10) c h)" {% endif %}>
       <div class="group relative block rounded-xl bg-surface ring-1 ring-edge
             hover:ring-accent transition ">
         {% if sleeve.image %}
-        <img src="/sleeves/{{ sleeve.id }}/image" alt="{% if sleeve.name %}{{ sleeve.name }}{% else %} Sleeve #{{ sleeve.id }}{% endif %}" loading="lazy" class="rounded-t-xl grid-card-img w-full aspect-[5/7] object-cover box-border border-8 border-black" />
+        <img src="/sleeves/{{ sleeve.id }}/image" alt="{% if sleeve.name %}{{ sleeve.name }}{% else %} Sleeve #{{ sleeve.id }}{% endif %}" loading="lazy" class="rounded-t-xl grid-card-img w-full aspect-[5/7] object-cover box-border border-4 border-black" />
         {% elif sleeve.color %}
-        <div class="w-full aspect-[5/7] rounded-t-xl flex items-center justify-center"
-             style="background-color: {{ sleeve.color | css_color }}; border: 8px solid black;">
+        <div class="w-full aspect-[5/7] rounded-t-xl flex items-center justify-center text-6xl border-4 border-black bg-gradient-to-br from-[var(--sleeve-color)] to-[var(--sleeve-adaptive-2)] text-[var(--sleeve-adaptive)]">
+          <i class="fa-solid fa-dice-d20"></i>
         </div>
         {% else %}
         <div class="bg-muted border-2 border-dashed rounded w-16 h-20 flex items-center justify-center">

@@ -43,7 +43,7 @@
           hx-target="#migration-details"
           hx-swap="innerHTML"
           hx-indicator="#migration-spinner"
-          hx-on::after-request="setTimeout(function(){ window.location.reload(); }, 1000)"
+          hx-on:htmx:response-error="alert('Migrations did not complete successfully: '+event.detail.xhr.responseText)"
           class="rounded-full bg-surface-2 border border-edge hover:border-accent px-3 py-1.5"
         >
           <span id="migration-spinner" class="htmx-indicator">

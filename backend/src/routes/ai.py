@@ -182,29 +182,6 @@ async def _deck_chat_history(request, session: AsyncSession, deck_id: int) -> li
 
 
 # --- deck AI modal  -----------------------------------------------------------------------
-'''
-
-
-@router.post("/decks/{deck_id}/ai/upgrade", response_class=HTMLResponse)
-async def deck_ai_upgrade(
-    request: Request, deck_id: int, budget: float = Form(50.0),
-    session: AsyncSession = Depends(get_session),
-) -> HTMLResponse:
-    """Plan upgrades via AI."""
-    deck = await _load_deck(session, deck_id)
-    cfg = await get_config(session)
-    if not cfg.ready:
-        return templates.TemplateResponse(
-            request, _DECK_AI_ERROR_TMPL, {"message": _NOT_CONFIGURED})
-    try:
-        plan = await plan_upgrades(session, deck, max(0.0, budget), ChatClient(cfg))
-    except (httpx.HTTPError, KeyError, IndexError, ValueError):
-        return templates.TemplateResponse(
-            request, _DECK_AI_ERROR_TMPL, {"message": _UNREACHABLE})
-    if plan.empty:
-        return templates.TemplateResponse(request, _DECK_AI_ERROR_TMPL, {"message": _EMPTY})
-    return templates.TemplateResponse(request, "_deck_upgrade.html", {"plan": plan})
-'''
 
 
 @router.post("/decks/{deck_id}/ai/chat", response_class=HTMLResponse)

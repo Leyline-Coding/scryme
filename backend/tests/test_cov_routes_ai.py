@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from src.config import get_settings
 from src.decks import create_deck
 from src.llm import save_config
+from src.main import templates
 from src.models import Card, CollectionCard
 from src.routes import ai as ai_routes
 from src.scryfall.mapping import card_to_columns
@@ -188,6 +189,7 @@ async def test_deck_upgrade_success(session, monkeypatch):
     deck = await create_deck(session, "D", "1 In Deck")
     await _seed(session, "Sol Ring", ci=(), usd="2.00", owned=False, type_line="Artifact")
     _fake_client(monkeypatch, FakeChat(reply="Sol Ring - ramp"))
+    monkeypatch.setitem(templates.env.globals, "currency", "$")
     resp = await ai_routes.deck_upgrade(_req(), deck.id, budget=25.0, session=session)
     assert resp.status_code == 200 and "Sol Ring" in _body(resp)
 

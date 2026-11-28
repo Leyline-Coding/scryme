@@ -6,11 +6,13 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
   {{ list_sorting.controls("/collection/checklists", sort_by, sort_dir) }}
   {% if not read_only %}
-  <div class="flex justify-start md:justify-end gap-2 mb-4">
-    <a href="/checklists/new" class="rounded-full bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:opacity-90 whitespace-nowrap">
-      <i class="fa-solid fa-plus"></i> New checklist
-    </a>
-  </div>
+  <form method="post" action="/checklists" class="flex justify-start md:justify-end gap-2 mb-4">
+    <input type="text" name="name" placeholder="Name (e.g. Power 9)" required
+           class="rounded-full bg-bg border border-edge px-3 py-2 text-sm" />
+    <button type="submit" class="rounded-full bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:opacity-90 whitespace-nowrap">
+      <i class="fa-solid fa-plus"></i> Create checklist
+    </button>
+  </form>
   {% endif %}
 </div>
 
@@ -37,20 +39,4 @@
 </ul>
 {% else %}
 <p class="text-muted mb-8">No checklists yet.</p>
-{% endif %}
-
-{% if not read_only %}
-<section class="rounded-xl bg-surface ring-1 ring-edge p-4">
-  <h2 class="text-sm font-semibold mb-2">New checklist</h2>
-  <form method="post" action="/checklists" class="space-y-2">
-    <input type="text" name="name" placeholder="Name (e.g. Power 9)" required
-           class="w-full rounded-lg bg-bg border border-edge px-3 py-2 text-sm" />
-    <textarea name="cards" rows="8" required
-              placeholder="One card per line, e.g.&#10;Black Lotus&#10;Mox Sapphire&#10;Ancestral Recall"
-              class="w-full rounded-lg bg-bg border border-edge px-3 py-2 text-sm font-mono"></textarea>
-    <button type="submit" class="rounded-lg bg-accent text-accent-fg px-4 py-2 text-sm font-medium">
-      Create checklist
-    </button>
-  </form>
-</section>
 {% endif %}

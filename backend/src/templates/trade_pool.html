@@ -25,12 +25,12 @@
   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
     <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
       <div class="text-xs text-muted">You give</div>
-      <div class="text-2xl font-bold tabular-nums">{{ cur.symbol }}{{ '{:,.2f}'.format(view.giving.value) }}</div>
+      <div class="text-2xl font-bold tabular-nums">{{ view.giving.value | currency_filter(currency) }}</div>
       <div class="text-xs text-muted">{{ '{:,}'.format(view.giving.cards) }} cards</div>
     </div>
     <div class="rounded-xl bg-surface ring-1 ring-edge p-4">
       <div class="text-xs text-muted">You get</div>
-      <div class="text-2xl font-bold tabular-nums">{{ cur.symbol }}{{ '{:,.2f}'.format(view.getting.value) }}</div>
+      <div class="text-2xl font-bold tabular-nums">{{ view.getting.value | currency_filter(currency) }}</div>
       <div class="text-xs text-muted">{{ '{:,}'.format(view.getting.cards) }} cards</div>
     </div>
     <div class="rounded-xl p-4 ring-1
@@ -41,7 +41,7 @@
       <div class="text-2xl font-bold tabular-nums
         {% if view.delta > 0 %}text-emerald-500{% elif view.delta < 0 %}text-rose-500{% endif %}">
         {# Sign outside the symbol: "-$5.00", not "$-5.00". #}
-        {% if view.delta > 0 %}+{% elif view.delta < 0 %}−{% endif %}{{ cur.symbol }}{{ '{:,.2f}'.format(view.delta|abs) }}
+        {% if view.delta > 0 %}+{% elif view.delta < 0 %}−{% endif %}{{ (view.delta|abs) | currency_filter(currency) }}
       </div>
       <div class="text-xs text-muted">
         {% if view.delta > 0 %}in your favour{% elif view.delta < 0 %}in theirs{% else %}even{% endif %}
@@ -97,14 +97,14 @@
               {{ set_symbol(r.set_code, r.rarity) }} {{ r.set_code }}·{{ r.collector_number }}
             </span>
             <span class="shrink-0 tabular-nums w-20 text-right">
-              {% if r.value %}{{ cur.symbol }}{{ '{:,.2f}'.format(r.value) }}{% endif %}
+              {% if r.value %}{{ r.value | currency_filter(currency) }}{% endif %}
             </span>
             {% if not read_only and pool.status != 'closed' %}
             <button type="button" @click="editing = !editing" title="Adjust this card"
                     class="shrink-0 text-xs text-muted hover:text-accent tap"><i class="fa-solid fa-pen"></i></button>
             <form method="post" action="/trade/pool/{{ pool.id }}/items/{{ r.item_id }}/delete"
                   class="shrink-0">
-              <button type="submit" title="Unstage" class="text-xs text-muted hover:text-rose-500 tap">✕</button>
+              <button type="submit" title="Unstage" class="text-xs text-muted hover:text-rose-500 tap"><i class="fa-solid fa-trash"></i></button>
             </form>
             {% endif %}
           </div>
@@ -115,7 +115,7 @@
             {% endif %}
             {% if r.condition %}<span>{{ r.condition }}</span>{% endif %}
             <span class="uppercase">{{ r.language }}</span>
-            {% if r.unit %}<span>· {{ cur.symbol }}{{ '{:,.2f}'.format(r.unit) }} ea</span>{% endif %}
+            {% if r.unit %}<span>· {{ r.unit | currency_filter(currency) }} ea.</span>{% endif %}
             {% if r.applied %}
             <span class="text-emerald-500" title="Already moved by a commit">
               · {{ r.applied }} moved{% if r.outstanding %}, {{ r.outstanding }} to go{% endif %}</span>

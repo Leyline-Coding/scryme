@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.checklists import (
@@ -61,7 +61,10 @@ async def view_checklist(
 
 
 @router.post("/checklists/{checklist_id}/delete")
-async def delete_checklist(checklist_id: int, session: AsyncSession = Depends(get_session)):
+async def delete_checklist(
+    checklist_id: int,
+    session: AsyncSession = Depends(get_session)
+):
     _guard_writable()
     checklist = await session.get(Checklist, checklist_id)
     if checklist is not None:
@@ -80,39 +83,73 @@ async def checklist_to_wishlist(checklist_id: int, session: AsyncSession = Depen
     return RedirectResponse(url="/wishlist", status_code=303)
 
 
-def _back(checklist_id: int) -> RedirectResponse:
+def _back(request: Request, checklist_id: int):
+    ## This should migrate towards partial responses for more responsive page rendering
+    if request.headers.get("HX-Request"):
+        return Response(status_code=200, headers={"HX-Refresh": "true"})
     return RedirectResponse(url=f"/checklists/{int(checklist_id)}", status_code=303)
 
 
 @router.post("/checklists/{checklist_id}/items")
 async def add_items(
-    checklist_id: int, cards: str = Form(""), session: AsyncSession = Depends(get_session)
-) -> RedirectResponse:
+    request: Request,
+    checklist_id: int,
+    cards: str = Form(""),
+    session: AsyncSession = Depends(get_session)
+):
     """Add one or more cards (pasted, one per line) to a checklist (#297)."""
     _guard_writable()
     checklist = await session.get(Checklist, checklist_id)
     if checklist is None:
         raise HTTPException(status_code=404, detail=_NOT_FOUND)
     await add_checklist_items(session, checklist, cards)
-    return _back(checklist.id)
+    return _back(request, checklist.id)
+
+
+@router.get("/checklists/{checklist_id}/items/{item_id}/edit-name", response_class=HTMLResponse)
+async def edit_name_form(
+    request: Request,
+    checklist_id: int,
+    item_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Return a form for editing a checklist item."""
+    checklist = await session.get(Checklist, checklist_id)
+    if checklist is None:
+        raise HTTPException(status_code=404, detail="Checklist not found.")
+    item = next(obj for obj in checklist.items if obj.id == item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found.")
+    return templates.TemplateResponse(
+        request, "forms/edit_name.html",
+        {"placeholder": item.name,
+         "action": f"/checklists/{checklist.id}/items/{item.id}",
+         "target": f"#card-name-{item.id}"}
+    )
 
 
 @router.post("/checklists/{checklist_id}/items/{item_id}")
 async def edit_item(
-    checklist_id: int, item_id: int, name: str = Form(""),
+    request: Request,
+    checklist_id: int,
+    item_id: int,
+    name: str = Form(""),
     session: AsyncSession = Depends(get_session),
-) -> RedirectResponse:
+) -> PlainTextResponse:
     """Rename (and re-resolve) a checklist item (#297)."""
     _guard_writable()
     await rename_checklist_item(session, checklist_id, item_id, name)
-    return _back(checklist_id)
+    return PlainTextResponse(status_code=200, content=name)
 
 
 @router.post("/checklists/{checklist_id}/items/{item_id}/delete")
 async def delete_item(
-    checklist_id: int, item_id: int, session: AsyncSession = Depends(get_session)
-) -> RedirectResponse:
+    request: Request,
+    checklist_id: int,
+    item_id: int,
+    session: AsyncSession = Depends(get_session),
+):
     """Remove one card from a checklist (#297)."""
     _guard_writable()
     await remove_checklist_item(session, checklist_id, item_id)
-    return _back(checklist_id)
+    return _back(request, checklist_id)

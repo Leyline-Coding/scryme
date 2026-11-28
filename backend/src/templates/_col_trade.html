@@ -1,29 +1,54 @@
 {# --- staged trades (#331): a chosen list per trading partner, unlike the derived binder below. #}
 <section class="mb-8">
-  <div class="flex flex-wrap items-center gap-3 mb-3">
-    <h2 class="text-sm font-semibold">Trades</h2>
-    <span class="text-xs text-muted">Stage what you're giving and getting, then settle up.</span>
+  <summary class="list-none [&amp;::-webkit-details-marker]:hidden cursor-pointer select-none">
+    <p class="text-sm text-muted mb-6">
+      <span>
+        Stage what you're giving and getting, then settle up.
+      </span>
+    </p>
+  </summary>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="flex flex-wrap items-center gap-3 mb-3">
+    </div>
+  
+    {% if not read_only %}
+    <form method="post" action="/trade/pools" class="flex justify-start md:justify-end gap-2 mb-4">
+      <input name="name" placeholder="Name, e.g. Friday night trade" required
+              class="flex-1 min-w-0 rounded-full bg-bg border border-edge px-3 py-2 w-40 min-w-40 text-sm hover:border-accent" /></label>
+      <input name="partner" placeholder="who (optional)"
+              class="flex-1 min-w-0 rounded-full bg-bg border border-edge px-3 py-2 w-40 min-w-40 text-sm hover:border-accent" /></label>
+      <button type="submit" class="rounded-full bg-accent text-accent-fg px-4 py-2 text-sm font-medium hover:opacity-90 whitespace-nowrap">
+        <i class="fa-solid fa-plus"></i> Start a trade
+      </button>
+    </form>
+    {% endif %}
   </div>
 
   {% if pools %}
   <ul class="space-y-2 mb-3">
     {% for p in pools %}
     <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3">
-      <a href="/trade/pool/{{ p.pool.id }}" class="flex-1 min-w-0 truncate font-medium hover:text-accent">
-        {{ p.pool.name }}{% if p.pool.partner %}<span class="text-muted font-normal"> · {{ p.pool.partner }}</span>{% endif %}
-      </a>
-      {% if p.pool.committed_at %}
-      <span class="rounded-full bg-emerald-500/15 text-emerald-500 text-xs px-2 py-0.5 shrink-0">settled</span>
-      {% elif p.pool.status == 'closed' %}
-      <span class="rounded-full bg-surface-2 text-muted text-xs px-2 py-0.5 shrink-0">closed</span>
-      {% endif %}
-      <span class="text-xs text-muted shrink-0 tabular-nums whitespace-nowrap">
-        −{{ '{:,}'.format(p.out_cards) }} / +{{ '{:,}'.format(p.in_cards) }}
-      </span>
+
+      <div class="flex-1">
+        <a href="/trade/pool/{{ p.pool.id }}" class="flex-1 min-w-0 truncate font-medium hover:text-accent">
+          {{ p.pool.name }}{% if p.pool.partner %}<span class="text-muted font-normal"> with {{ p.pool.partner }}</span>{% endif %}
+        </a>
+        <div class="text-xs text-muted">
+          {% if p.pool.committed_at %}
+          <span class="rounded-full bg-emerald-500/15 text-emerald-500 text-xs px-2 py-0.5 shrink-0">settled</span>
+          {% elif p.pool.status == 'closed' %}
+          <span class="rounded-full bg-surface-2 text-muted text-xs px-2 py-0.5 shrink-0">closed</span>
+          {% endif %}
+          <span class="text-xs text-muted shrink-0 tabular-nums whitespace-nowrap">
+          −{{ '{:,}'.format(p.out_cards) }} / +{{ '{:,}'.format(p.in_cards) }}
+          </span>
+        </div>
+      </div>
       {% if not read_only %}
       <form method="post" action="/trade/pool/{{ p.pool.id }}/delete" class="shrink-0"
             onsubmit="return confirm('Discard this trade? Your collection is not changed.')">
-        <button type="submit" class="text-muted hover:text-rose-500 tap" title="Discard">✕</button>
+        <button type="submit" class="text-muted hover:text-rose-500 tap" title="Discard"><i class="fa-solid fa-trash"></i></button>
       </form>
       {% endif %}
     </li>
@@ -33,19 +58,6 @@
   <p class="text-muted text-sm mb-3">No trades staged.</p>
   {% endif %}
 
-  {% if not read_only %}
-  <form method="post" action="/trade/pools" class="flex flex-wrap items-end gap-2 text-sm">
-    <label class="flex flex-col">Name
-      <input name="name" placeholder="Friday night trade" required
-             class="w-52 rounded-lg bg-surface border border-edge px-2.5 py-1.5" /></label>
-    <label class="flex flex-col">Trading with
-      <input name="partner" placeholder="who (optional)"
-             class="w-40 rounded-lg bg-surface border border-edge px-2.5 py-1.5" /></label>
-    <button type="submit" class="rounded-lg bg-accent text-accent-fg px-3 py-1.5 font-medium">
-      Start a trade
-    </button>
-  </form>
-  {% endif %}
 </section>
 
 <h2 class="text-sm font-semibold mb-1">Surplus binder</h2>
@@ -65,8 +77,12 @@
   <div class="flex items-center gap-3 text-sm">
     <span class="text-muted">{{ '{:,}'.format(binder.total_cards) }} cards ·
       <b>{{ binder.total_value | currency_filter(currency) }}</b></span>
-    <a href="/trade/export?fmt=txt&keep={{ binder.keep }}" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.txt</a>
-    <a href="/trade/export?fmt=csv&keep={{ binder.keep }}" class="rounded bg-surface-2 hover:bg-surface-3 px-2.5 py-1">.csv</a>
+    <a href="/trade/export?fmt=txt&keep={{ binder.keep }}" class="rounded-full bg-surface border border-edge px-4 py-2 text-sm font-medium hover:border-accent whitespace-nowrap">
+      <i class="fa-solid fa-file-export"></i> .txt
+    </a>
+    <a href="/trade/export?fmt=csv&keep={{ binder.keep }}" class="rounded-full bg-surface border border-edge px-4 py-2 text-sm font-medium hover:border-accent whitespace-nowrap">
+      <i class="fa-solid fa-file-export"></i> .csv
+    </a>
   </div>
   {% endif %}
 </div>
@@ -80,7 +96,7 @@
         <th class="px-2">Set</th>
         <th class="px-2 text-right">Own</th>
         <th class="px-2 text-right">Trade</th>
-        <th class="px-2 text-right">{{ cur.symbol }} ea</th>
+        <th class="px-2 text-right">{{ cur.symbol }} ea.</th>
         <th class="px-2 text-right">{{ cur.symbol }} total</th>
       </tr>
     </thead>

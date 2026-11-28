@@ -174,7 +174,7 @@
           <td class="px-2 text-right tabular-nums">{% if v.quantity %}{{ v.quantity }}{% endif %}</td>
           <td class="px-2 text-right tabular-nums text-muted">
             {%- set p = v.card.prices.get(currency.key) if v.card.prices else None -%}
-            {% if p %}{{ cur.symbol }}{{ '{:,.2f}'.format(p | float) }}{% endif %}
+            {% if p %}{{ (p | float) | currency_filter(currency) }}{% endif %}
           </td>
         </tr>
         {% endfor %}

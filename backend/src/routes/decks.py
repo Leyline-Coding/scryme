@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.brackets import BRACKET_LABELS, estimate_bracket, normalize_bracket
 from src.collection_edit import add_or_increment
 from src.config import get_settings
-from src.currency import fx, get_currency, info, unit_price
+from src.currency import fx, get_currency, unit_price
 from src.db import get_session
 from src.deck_builder import BuildError, build_commander_deck, owned_commanders
 from src.deck_card import quickswap_deck_card
@@ -827,7 +827,7 @@ async def _render_owned_upgrades(
     result = await suggest_owned_upgrades(session, deck, currency, source)
     return templates.TemplateResponse(
         request, "_deck_upgrade_owned.html",
-        {"result": result, "deck": deck, "cur": info(currency),
+        {"result": result, "deck": deck,
          "read_only": get_settings().read_only, "added": added},
     )
 

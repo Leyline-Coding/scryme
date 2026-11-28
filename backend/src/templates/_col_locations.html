@@ -52,11 +52,11 @@
   <ul class="space-y-2">
     {% for b in boxes %}
     <li class="flex items-center gap-3 rounded-xl bg-surface ring-1 ring-edge px-4 py-3 cursor-pointer" 
-      data-href="/search?q={{ ('loc:\"box:' ~ b.name ~ '\"') | urlencode }}&scope=collection"
-      onclick="window.location.href = this.dataset.href">
+      x-data="{url: '/search?q={{ ('loc:\"box:' ~ b.name ~ '\"') | urlencode }}&scope=collection'}"
+      @click="window.location.href = url">
       <div class="flex-1">
-        <div class="font-medium truncate">
-          <i class="fa-solid fa-box"></i> <span id="box-name-{{b.id}}" onclick="event.stopPropagation();">{{ b.name }}</span>
+        <div class="font-medium truncate hover:text-accent">
+          <i class="fa-solid fa-box"></i> <span id="box-name-{{b.id}}">{{ b.name }}</span>
           {% if not read_only %}
           <button type="button" 
                   hx-post="/edit-name"
@@ -65,7 +65,7 @@
                   hx-swap="innerHTML"
                   hx-trigger="click"
                   class="ml-2 text-muted hover:text-accent"
-                  onclick="event.stopPropagation();">
+                  @click.stop>
             <i class="fa-solid fa-pen"></i>
           </button>
           {% endif %}
@@ -74,7 +74,7 @@
       </div>
       <div>
         {% if not read_only %}
-        <form method="post" action="/collection/boxes/{{ b.id }}/delete" class="shrink-0" onclick="event.stopPropagation();"
+        <form method="post" action="/collection/boxes/{{ b.id }}/delete" class="shrink-0" @click.stop
               data-confirm="Delete box {{ b.name }}? Its cards become unfiled."
               onsubmit="return confirm(this.dataset.confirm)">
           <button class="text-muted hover:text-rose-500 tap" title="Delete"><i class="fa-solid fa-trash"></i></button>

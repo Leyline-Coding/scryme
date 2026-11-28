@@ -289,7 +289,7 @@ async def test_a_shared_view_ignores_the_visitors_own_cookies(client, session):
     plain = (await client.get(f"/share/{token}")).text
     with_cookie = (await client.get(f"/share/{token}",
                                     headers={"Cookie": "scryme_currency=eur"})).text
-    assert "$14.00" in plain and "$14.00" in with_cookie
+    assert "$14.00" in plain and "€14.00" in with_cookie
 
 
 # --- owner-side management ------------------------------------------------------------------------
